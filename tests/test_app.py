@@ -3,6 +3,7 @@ import tempfile
 import unittest
 
 from app import create_app
+from db import calculate_fare
 
 
 class CamiguinCentricRidersClubTests(unittest.TestCase):
@@ -28,26 +29,116 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker
+        # 2. Service Worker v2
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
-        self.assertIn("ccrc-pwa-v1", sw_resp.get_data(as_text=True))
+        self.assertIn("ccrc-pwa-v2", sw_resp.get_data(as_text=True))
 
-        # 3. Offline fallback
+        # 3. Offline fallback in English
         off_resp = self.client.get("/offline")
         self.assertEqual(off_resp.status_code, 200)
-        self.assertIn("Walay Internet Connection", off_resp.get_data(as_text=True))
+        self.assertIn("No Internet Connection", off_resp.get_data(as_text=True))
+
+    def test_official_fare_matrix_calculations(self):
+        # Test exact Pick Me Up Camiguin Fare Matrix values
+        settings = {
+            "base_fare": "40.0",
+            "base_km": "2.0",
+            "per_km_rate": "18.0",
+            "min_fare": "40.0",
+            "pabili_service_fee": "20.0",
+            "pasugo_service_fee": "20.0",
+            "queuing_fee": "30.0",
+            "extra_store_fee": "20.0",
+            "bulky_order_fee": "20.0",
+            "hinterland_fee": "30.0",
+        }
+
+        # 1 KM -> 40
+        f1, _, _ = calculate_fare(1.0, "pahatud", settings)
+        self.assertEqual(f1, 40.0)
+
+        # 2 KMS -> 40
+        f2, _, _ = calculate_fare(2.0, "pahatud", settings)
+        self.assertEqual(f2, 40.0)
+
+        # 3 KMS -> 58
+        f3, _, _ = calculate_fare(3.0, "pahatud", settings)
+        self.assertEqual(f3, 58.0)
+
+        # 4 KMS -> 76
+        f4, _, _ = calculate_fare(4.0, "pahatud", settings)
+        self.assertEqual(f4, 76.0)
+
+        # 5 KMS -> 94
+        f5, _, _ = calculate_fare(5.0, "pahatud", settings)
+        self.assertEqual(f5, 94.0)
+
+        # 10 KMS -> 184
+        f10, _, _ = calculate_fare(10.0, "pahatud", settings)
+        self.assertEqual(f10, 184.0)
+
+        # 15 KMS -> 274
+        f15, _, _ = calculate_fare(15.0, "pahatud", settings)
+        self.assertEqual(f15, 274.0)
+
+        # 20 KMS -> 364
+        f20, _, _ = calculate_fare(20.0, "pahatud", settings)
+        self.assertEqual(f20, 364.0)
+
+        # 25 KMS -> 454
+        f25, _, _ = calculate_fare(25.0, "pahatud", settings)
+        self.assertEqual(f25, 454.0)
+
+        # 30 KMS -> 544
+        f30, _, _ = calculate_fare(30.0, "pahatud", settings)
+        self.assertEqual(f30, 544.0)
+
+    def test_fare_matrix_surcharges(self):
+        settings = {
+            "base_fare": "40.0",
+            "base_km": "2.0",
+            "per_km_rate": "18.0",
+            "min_fare": "40.0",
+            "pabili_service_fee": "20.0",
+            "pasugo_service_fee": "20.0",
+            "queuing_fee": "30.0",
+            "extra_store_fee": "20.0",
+            "bulky_order_fee": "20.0",
+            "hinterland_fee": "30.0",
+        }
+
+        # Pasugo/Pabili (+₱20 on top of meter)
+        pabili_fare, _, _ = calculate_fare(2.0, "pabili", settings)
+        self.assertEqual(pabili_fare, 60.0)  # 40 + 20
+
+        # Large Store / Supermarket Queuing (+₱30)
+        store_fare, _, _ = calculate_fare(2.0, "pabili", settings, is_large_store=True)
+        self.assertEqual(store_fare, 90.0)  # 40 + 20 + 30
+
+        # Additional Store Stops (+₱20 per store)
+        multi_fare, _, _ = calculate_fare(2.0, "pabili", settings, extra_stores_count=2)
+        self.assertEqual(multi_fare, 100.0)  # 40 + 20 + 40
+
+        # Bulky orders / orders reaching ₱2,000 (+₱20)
+        bulky_fare, _, _ = calculate_fare(2.0, "pabili", settings, is_bulky_or_high_value=True)
+        self.assertEqual(bulky_fare, 80.0)  # 40 + 20 + 20
+
+        # Hinterland / Mountain Route (+₱30)
+        hinterland_fare, _, _ = calculate_fare(2.0, "pahatud", settings, is_hinterland=True)
+        self.assertEqual(hinterland_fare, 70.0)  # 40 + 30
 
     def test_customer_home_and_fare_estimate(self):
-        # Home view
+        # Home view in English
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, 200)
         html = resp.get_data(as_text=True)
         self.assertIn("Camiguin Centric Riders Club", html)
-        self.assertIn("Pahatud / Pakuha", html)
-        self.assertIn("Pasugo / Padala", html)
-        self.assertIn("Pabili Service", html)
-        self.assertIn("Pabayad / Port Claim", html)
+        self.assertIn("Passenger Ride", html)
+        self.assertIn("Courier &amp; Delivery", html)
+        self.assertIn("Buy For Me", html)
+        self.assertIn("Bills &amp; Port Claim", html)
+        self.assertIn("Official Pick Me Up Camiguin — Fare Matrix", html)
 
         # Fare estimate API
         est_resp = self.client.post(
@@ -63,11 +154,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(est_resp.status_code, 200)
         data = est_resp.get_json()
         self.assertIn("fare_amount", data)
-        self.assertTrue(data["fare_amount"] >= 50.0)
+        self.assertTrue(data["fare_amount"] >= 40.0)
         self.assertTrue(data["estimated_km"] > 0)
+        self.assertIn("breakdown", data)
 
     def test_booking_creation_for_different_services(self):
-        # 1. Passenger Ride (Pahatud)
+        # 1. Passenger Ride
         p_resp = self.client.post(
             "/api/bookings",
             json={
@@ -88,28 +180,29 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(b_data["status"], "broadcast")
         self.assertTrue(b_data["booking_code"].startswith("CCRC-"))
 
-        # 2. Pabili Errand with Budget & Shopping List
+        # 2. Pabili Errand with Budget & Shopping List & Large Store
         b_resp = self.client.post(
             "/api/bookings",
             json={
                 "service_type": "pabili",
                 "customer_name": "Jerome Visitor",
                 "customer_phone": "09187654321",
-                "pickup_address": "Mambajao Public Market",
+                "pickup_address": "Gaisano Camiguin",
                 "pickup_lat": 9.2483,
                 "pickup_lng": 124.6975,
                 "dropoff_address": "Balyali Resort, Yumbing",
                 "dropoff_lat": 9.2588,
                 "dropoff_lng": 124.6432,
-                "item_notes": "1 whole Lechon Manok, 5 puso, 1L Coke",
+                "item_notes": "1 whole Roast Chicken, 5 rice cakes, 1L Juice",
                 "estimated_budget": 500,
+                "is_large_store": True,
             },
         )
         self.assertEqual(b_resp.status_code, 201)
         pabili_booking = b_resp.get_json()["booking"]
         self.assertEqual(pabili_booking["service_type"], "pabili")
         self.assertEqual(pabili_booking["estimated_budget"], 500.0)
-        self.assertIn("Lechon Manok", pabili_booking["item_notes"])
+        self.assertIn("Roast Chicken", pabili_booking["item_notes"])
 
     def test_rider_flow_dispatch_atomic_accept_and_gps_tracking(self):
         # 1. Create a broadcast booking
@@ -152,7 +245,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             json={"rider_id": 2},
         )
         self.assertEqual(second_accept.status_code, 409)
-        self.assertIn("Naunhan ka", second_accept.get_json()["error"])
+        self.assertIn("already been claimed", second_accept.get_json()["error"])
 
         # 5. Rider 1 streams GPS coordinates while heading to pickup
         gps_resp = self.client.post(
@@ -247,14 +340,14 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         set_resp = self.client.post(
             "/api/admin/settings",
             json={
-                "base_fare": 60,
+                "base_fare": 45,
                 "per_km_rate": 18,
                 "hotline": "0917 999 8877",
             },
         )
         self.assertEqual(set_resp.status_code, 200)
         settings = set_resp.get_json()["settings"]
-        self.assertEqual(settings["base_fare"], "60")
+        self.assertEqual(settings["base_fare"], "45")
         self.assertEqual(settings["per_km_rate"], "18")
 
 
