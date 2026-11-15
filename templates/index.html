@@ -199,11 +199,11 @@
               </div>
             </div>
             <div class="fare-distance-badge">
-              <span id="fare-km-display">~2.0 km</span>
-              <small class="text-muted" style="display:block;">Distance Estimate</small>
+              <span id="fare-km-display">~1.8 km (Road Distance)</span>
+              <small class="text-muted" style="display:block;">Actual Road Distance (Kalsada Mismo)</small>
             </div>
           </div>
-          <p class="fare-hint text-muted" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km. Transparent pricing with zero hidden fees.</p>
+          <p class="fare-hint text-muted" id="fare-hint-text">Based on actual road routing (kalsada mismo): 1-2 km = ₱40 base, ₱18 per succeeding km. Transparent pricing with zero hidden fees.</p>
           <div style="margin-top:8px;">
             <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.85rem;color:var(--primary);text-decoration:underline;">
               📋 View Official Camiguin CRC Fare Matrix (1 - 30 KMS)
@@ -239,8 +239,9 @@
       </div>
 
       <div class="map-legend-row">
-        <span><span class="legend-dot dot-pickup"></span> Pickup / Meeting Point</span>
-        <span><span class="legend-dot dot-dropoff"></span> Dropoff / Destination</span>
+        <span><span class="legend-dot dot-pickup"></span> Pickup</span>
+        <span><span class="legend-dot dot-dropoff"></span> Dropoff</span>
+        <span><span style="display:inline-block;width:14px;height:4px;background:#ea580c;border-radius:2px;vertical-align:middle;margin-right:4px;"></span> Actual Road Route</span>
         <span><span class="legend-dot dot-rider"></span> Online Rider</span>
       </div>
     </div>
