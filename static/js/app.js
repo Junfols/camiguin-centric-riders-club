@@ -26,6 +26,15 @@
   const modalBookingCode = document.getElementById("modal-booking-code");
   const modalTrackLink = document.getElementById("modal-track-link");
 
+  // Options & Matrix Modal
+  const optLargeStore = document.getElementById("opt-large-store");
+  const optExtraStores = document.getElementById("opt-extra-stores");
+  const optHinterland = document.getElementById("opt-hinterland");
+  const estimatedBudgetInput = document.getElementById("estimated-budget");
+  const openMatrixBtn = document.getElementById("open-matrix-btn");
+  const closeMatrixBtn = document.getElementById("close-matrix-btn");
+  const fareMatrixModal = document.getElementById("fare-matrix-modal");
+
   let map;
   let pickupMarker = null;
   let dropoffMarker = null;
@@ -42,24 +51,49 @@
 
       if (service === "pabili") {
         if (budgetGroup) budgetGroup.classList.remove("hidden");
-        if (notesLabel) notesLabel.textContent = "Lista sa Palitonon & Tindahan *";
-        if (fareHintText) fareHintText.textContent = "Base fare ₱50 + ₱20 Pabili errand fee, ₱15 matag mosunod nga kilometro.";
+        if (notesLabel) notesLabel.textContent = "Shopping List & Store Names *";
+        if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Buy For Me fee.";
       } else if (service === "pasugo") {
         if (budgetGroup) budgetGroup.classList.add("hidden");
-        if (notesLabel) notesLabel.textContent = "Deskripsyon sa Parsel / Kargamento *";
-        if (fareHintText) fareHintText.textContent = "Base fare ₱50 + ₱10 Pasugo courier fee, ₱15 matag mosunod nga kilometro.";
+        if (notesLabel) notesLabel.textContent = "Parcel Description / Cargo Details *";
+        if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Courier delivery fee.";
       } else if (service === "pabayad") {
         if (budgetGroup) budgetGroup.classList.remove("hidden");
-        if (notesLabel) notesLabel.textContent = "Detalye sa Bayranan / Cargo Claim Number *";
-        if (fareHintText) fareHintText.textContent = "Base fare ₱50 + ₱20 Pabayad/Port fee, ₱15 matag mosunod nga kilometro.";
+        if (notesLabel) notesLabel.textContent = "Payment Details / Port Cargo Claim Number *";
+        if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Port claim fee.";
       } else {
         if (budgetGroup) budgetGroup.classList.add("hidden");
         if (notesLabel) notesLabel.textContent = "Special Requests / Landmark Note";
-        if (fareHintText) fareHintText.textContent = "Base fare ₱50 (first 2 km), ₱15 matag mosunod nga kilometro.";
+        if (fareHintText) fareHintText.textContent = "Official Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km.";
       }
       recalculateFare();
     });
   });
+
+  // Re-calculate when options change
+  [optLargeStore, optExtraStores, optHinterland, estimatedBudgetInput].forEach((el) => {
+    if (el) {
+      el.addEventListener("change", recalculateFare);
+      el.addEventListener("input", recalculateFare);
+    }
+  });
+
+  // Matrix Modal Controls
+  if (openMatrixBtn && fareMatrixModal) {
+    openMatrixBtn.addEventListener("click", () => {
+      fareMatrixModal.classList.remove("hidden");
+    });
+  }
+  if (closeMatrixBtn && fareMatrixModal) {
+    closeMatrixBtn.addEventListener("click", () => {
+      fareMatrixModal.classList.add("hidden");
+    });
+  }
+  if (fareMatrixModal) {
+    fareMatrixModal.addEventListener("click", (e) => {
+      if (e.target === fareMatrixModal) fareMatrixModal.classList.add("hidden");
+    });
+  }
 
   // Target Mode Toggles (Pickup vs Dropoff)
   targetModeButtons.forEach((btn) => {
@@ -175,6 +209,11 @@
     const dLat = parseFloat(dropoffLatInput.value);
     const dLng = parseFloat(dropoffLngInput.value);
     const service = serviceTypeInput.value;
+    const isLarge = optLargeStore ? optLargeStore.checked : false;
+    const extraStores = optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0;
+    const isHinterland = optHinterland ? optHinterland.checked : false;
+    const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
+    const isBulky = budgetVal >= 2000;
 
     try {
       const res = await fetch("/api/fare-estimate", {
@@ -186,6 +225,10 @@
           dropoff_lat: dLat || null,
           dropoff_lng: dLng || null,
           service_type: service,
+          is_large_store: isLarge,
+          extra_stores_count: extraStores,
+          is_bulky_or_high_value: isBulky,
+          is_hinterland: isHinterland,
         }),
       });
       const data = await res.json();
@@ -221,31 +264,30 @@
   if (locatePickupGpsBtn) {
     locatePickupGpsBtn.addEventListener("click", () => {
       if (!navigator.geolocation) {
-        alert("Wala gisuportahan ang GPS sa imong browser.");
+        alert("Geolocation is not supported by your browser.");
         return;
       }
-      locatePickupGpsBtn.textContent = "📍 Gikuha ang GPS...";
+      locatePickupGpsBtn.textContent = "📍 Locating GPS...";
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          locatePickupGpsBtn.textContent = "📍 Akong GPS Karon";
+          locatePickupGpsBtn.textContent = "📍 My Current GPS";
           const lat = parseFloat(pos.coords.latitude.toFixed(5));
           const lng = parseFloat(pos.coords.longitude.toFixed(5));
-          setPickupPoint(lat, lng, "Akong Kasamtangang Lokasyon");
+          setPickupPoint(lat, lng, "My Current GPS Location");
           if (map) map.setView([lat, lng], 14);
         },
         () => {
-          locatePickupGpsBtn.textContent = "📍 Akong GPS Karon";
-          alert("Dili makuha ang GPS position. Palihug tugoti ang Location permission.");
+          locatePickupGpsBtn.textContent = "📍 My Current GPS";
+          alert("Unable to retrieve GPS coordinates. Please grant Location permission.");
         },
         { enableHighAccuracy: true, timeout: 8000 }
       );
     });
   }
 
-  // Set default initial points in Mambajao
+  // Default initial points in Mambajao
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
-    // Default preset: Mambajao Market to Paras Beach
     setPickupPoint(9.2483, 124.6975, "Mambajao Public Market");
     setDropoffPoint(9.2553, 124.6468, "Paras Beach Resort (Yumbing)");
   });
@@ -260,8 +302,9 @@
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "Gipasa sa mga Riders...";
+      submitBtn.textContent = "Broadcasting booking to riders...";
 
+      const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
       const payload = {
         service_type: serviceTypeInput.value,
         pickup_address: pickupInput.value.trim(),
@@ -273,7 +316,11 @@
         customer_name: document.getElementById("customer-name").value.trim(),
         customer_phone: document.getElementById("customer-phone").value.trim(),
         item_notes: document.getElementById("item-notes").value.trim(),
-        estimated_budget: document.getElementById("estimated-budget") ? parseFloat(document.getElementById("estimated-budget").value || 0) : 0,
+        estimated_budget: budgetVal,
+        is_large_store: optLargeStore ? optLargeStore.checked : false,
+        extra_stores_count: optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0,
+        is_hinterland: optHinterland ? optHinterland.checked : false,
+        is_bulky_or_high_value: budgetVal >= 2000,
       };
 
       try {
@@ -284,7 +331,7 @@
         });
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Wala naproseso ang booking.");
+          throw new Error(data.error || "Could not process booking.");
         }
 
         const b = data.booking;
@@ -298,7 +345,7 @@
         }
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "I-Broadcast ang Booking sa mga Riders 🛵 →";
+        submitBtn.textContent = "Broadcast Booking to Active Riders 🛵 →";
       }
     });
   }

@@ -88,7 +88,7 @@
       const password = document.getElementById("login-password").value.trim();
       const btn = document.getElementById("rider-login-btn");
       btn.disabled = true;
-      btn.textContent = "Nag-log in...";
+      btn.textContent = "Logging in...";
 
       try {
         const res = await fetch("/api/rider/login", {
@@ -106,7 +106,7 @@
         loginErrorMsg.classList.remove("hidden");
       } finally {
         btn.disabled = false;
-        btn.textContent = "Mag-Log In isip Rider →";
+        btn.textContent = "Log In as Rider →";
       }
     });
   }
@@ -129,7 +129,7 @@
 
       const btn = document.getElementById("rider-register-btn");
       btn.disabled = true;
-      btn.textContent = "Nagparehistro...";
+      btn.textContent = "Registering...";
 
       try {
         const res = await fetch("/api/rider/register", {
@@ -147,7 +147,7 @@
         registerErrorMsg.classList.remove("hidden");
       } finally {
         btn.disabled = false;
-        btn.textContent = "Rehistro isip CCRC Rider";
+        btn.textContent = "Register as CCRC Rider";
       }
     });
   }
@@ -155,7 +155,7 @@
   // Logout
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
-      if (confirm("Gusto ba gyud nimo mag-log out?")) {
+      if (confirm("Are you sure you want to log out?")) {
         setStoredRider(null);
         if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
         if (pollInterval) clearInterval(pollInterval);
@@ -206,7 +206,7 @@
         if (isOnline) {
           fetchAvailableJobs();
         } else {
-          jobsFeedList.innerHTML = `<div class="empty-state">Naka-OFFLINE ka karon. I-on ang switch sa ibabaw aron makadawat og mga booking sa Camiguin.</div>`;
+          jobsFeedList.innerHTML = `<div class="empty-state">You are currently OFFLINE. Turn the switch above ON to receive booking requests in Camiguin.</div>`;
           jobsCountPill.textContent = "0";
         }
       } catch (_) {}
@@ -253,7 +253,7 @@
         );
       },
       () => {
-        gpsStatusLabel.textContent = "GPS Warning: Palihug i-on ang Location sa cellphone.";
+        gpsStatusLabel.textContent = "GPS Warning: Please enable Location on your phone.";
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
     );
@@ -270,7 +270,7 @@
         },
         () => {
           forceGpsBtn.textContent = "Sync GPS";
-          alert("Dili makuha ang GPS. Palihug tugoti ang Location permission.");
+          alert("Could not retrieve GPS coordinates. Please grant Location permission.");
         }
       );
     });
@@ -292,7 +292,7 @@
       activeJobBox.classList.remove("hidden");
       activeJobCode.textContent = activeJob.booking_code;
       activeJobTitle.textContent = `${activeJob.service_type.toUpperCase()} • ${activeJob.dropoff_address}`;
-      activeJobFare.textContent = `Plete nga Kolektahon: ₱${Math.round(activeJob.fare_amount)}`;
+      activeJobFare.textContent = `Fare to Collect: ₱${Math.round(activeJob.fare_amount)}`;
       activeJobPickup.textContent = activeJob.pickup_address;
       activeJobDropoff.textContent = activeJob.dropoff_address;
       activeJobCustomer.textContent = `${activeJob.customer_name} (${activeJob.customer_phone})`;
@@ -317,7 +317,7 @@
       if (activeJob.item_notes) {
         activeJobNotes.textContent = activeJob.item_notes;
         if (activeJob.estimated_budget && activeJob.estimated_budget > 0) {
-          activeJobBudget.textContent = `Budget nga Abunohan: ₱${activeJob.estimated_budget}`;
+          activeJobBudget.textContent = `Shopping Budget to Advance: ₱${activeJob.estimated_budget}`;
         } else {
           activeJobBudget.textContent = "";
         }
@@ -342,7 +342,7 @@
     jobInProgressBtn.addEventListener("click", async () => {
       if (!activeJob) return;
       jobInProgressBtn.disabled = true;
-      jobInProgressBtn.textContent = "Updating...";
+      jobInProgressBtn.textContent = "Updating status...";
       try {
         const res = await fetch(`/api/bookings/${activeJob.id}/status`, {
           method: "POST",
@@ -360,9 +360,9 @@
   if (jobCompleteBtn) {
     jobCompleteBtn.addEventListener("click", async () => {
       if (!activeJob) return;
-      if (!confirm("Sigurado ka ba nga nahatud na kini nga booking ug nakolekta ang plete?")) return;
+      if (!confirm("Are you sure this trip is completed and fare has been received?")) return;
       jobCompleteBtn.disabled = true;
-      jobCompleteBtn.textContent = "Completing...";
+      jobCompleteBtn.textContent = "Completing trip...";
       try {
         const res = await fetch(`/api/bookings/${activeJob.id}/status`, {
           method: "POST",
@@ -370,7 +370,7 @@
           body: JSON.stringify({ status: "completed" }),
         });
         if (res.ok) {
-          alert("✓ Malampusong Nahuman ang Biyahe! Salamat sa serbisyo.");
+          alert("✓ Trip successfully marked as Completed! Thank you for your service.");
           activeJob = null;
           activeJobBox.classList.add("hidden");
           fetchAvailableJobs();
@@ -408,8 +408,8 @@
         jobsFeedList.innerHTML = `
           <div class="empty-state">
             <span style="font-size:2rem;display:block;margin-bottom:6px;">📡</span>
-            Walay available nga booking sa pagkakaron.<br>
-            <small class="text-muted">Motingog dayon ang cellphone inig naay bag-ong customer!</small>
+            No bookings currently waiting in Camiguin.<br>
+            <small class="text-muted">Your phone will chime with a sound alert when a customer books!</small>
           </div>
         `;
         return;
@@ -424,15 +424,15 @@
                 <span class="job-fare-tag">₱${Math.round(j.fare_amount)}</span>
               </div>
               <div class="job-route-preview">
-                <div>🟢 <strong>Gikan:</strong> ${escapeHtml(j.pickup_address)}</div>
-                <div>🏁 <strong>Hatod:</strong> ${escapeHtml(j.dropoff_address)}</div>
+                <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
+                <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
                 ${j.item_notes ? `<div style="margin-top:4px;color:#64748b;font-size:0.82rem;">🛒 <em>&ldquo;${escapeHtml(j.item_notes)}&rdquo;</em></div>` : ""}
-                ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Abunohan: ₱${j.estimated_budget}</div>` : ""}
+                ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Advance Cash: ₱${j.estimated_budget}</div>` : ""}
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
                 <span class="text-muted" style="font-size:0.8rem;">👤 ${escapeHtml(j.customer_name)}</span>
                 <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
-                  Dawati Kini nga Booking 🛵
+                  Accept This Booking 🛵
                 </button>
               </div>
             </div>
@@ -450,7 +450,7 @@
 
       const jobId = btn.getAttribute("data-id");
       btn.disabled = true;
-      btn.textContent = "Dawaton...";
+      btn.textContent = "Accepting...";
 
       try {
         const res = await fetch(`/api/bookings/${jobId}/accept`, {
@@ -464,7 +464,7 @@
         }
 
         if (window.playDispatchChime) window.playDispatchChime();
-        alert("🎉 Malampuson! Naimo na kining maong booking. Palihug sugdi ang biyahe.");
+        alert("🎉 Success! You have accepted this booking. Please proceed with the trip.");
         checkActiveJob();
         fetchAvailableJobs();
       } catch (err) {

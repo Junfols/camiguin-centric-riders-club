@@ -90,7 +90,7 @@
     if (!riderMarker) {
       riderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
         .addTo(map)
-        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>Aktibo nga nagbiyahe`);
+        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>Active on trip`);
     } else {
       riderMarker.setLatLng([lat, lng]);
     }
@@ -118,15 +118,15 @@
       if (statusPill) {
         statusPill.className = `status-pill status-${b.status}`;
         if (b.status === "broadcast") {
-          statusPill.textContent = "⏳ Nangita pa og Magdawat nga Rider...";
+          statusPill.textContent = "⏳ Waiting for an available rider to accept...";
         } else if (b.status === "accepted") {
-          statusPill.textContent = "🛵 Gidawat na! Padulong na ang Rider sa Pickup...";
+          statusPill.textContent = "🛵 Accepted! Rider is heading to pickup point...";
         } else if (b.status === "in_progress") {
-          statusPill.textContent = "🚀 In Transit / Padulong na sa Hatdanan...";
+          statusPill.textContent = "🚀 In Transit / Heading to destination...";
         } else if (b.status === "completed") {
-          statusPill.textContent = "✓ Nahatud na! Salamat sa pagsalig sa CCRC.";
+          statusPill.textContent = "✓ Delivered! Thank you for using CCRC.";
         } else if (b.status === "cancelled") {
-          statusPill.textContent = "✕ Na-cancel ang booking.";
+          statusPill.textContent = "✕ Booking has been cancelled.";
         }
       }
 
@@ -150,11 +150,11 @@
       // Update distance indicator
       if (liveDistanceIndicator) {
         if (b.status === "accepted" && data.distance_to_pickup_km !== null) {
-          liveDistanceIndicator.innerHTML = `📍 Gilay-on sa Rider gikan sa Pickup: <strong>~${data.distance_to_pickup_km} km</strong>`;
+          liveDistanceIndicator.innerHTML = `📍 Rider distance from Pickup: <strong>~${data.distance_to_pickup_km} km</strong>`;
         } else if (b.status === "in_progress" && data.distance_to_dropoff_km !== null) {
-          liveDistanceIndicator.innerHTML = `📍 Gilay-on sa Rider gikan sa Hatdanan: <strong>~${data.distance_to_dropoff_km} km</strong>`;
+          liveDistanceIndicator.innerHTML = `📍 Rider distance from Destination: <strong>~${data.distance_to_dropoff_km} km</strong>`;
         } else if (b.status === "completed") {
-          liveDistanceIndicator.innerHTML = `✓ <strong>Malampusong Nahatud</strong>`;
+          liveDistanceIndicator.innerHTML = `✓ <strong>Successfully Delivered</strong>`;
         }
       }
     } catch (_) {}
