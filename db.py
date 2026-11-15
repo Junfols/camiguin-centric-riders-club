@@ -5,10 +5,12 @@ Supports SQLite for local development/testing and PostgreSQL for Neon/Render clo
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import secrets
 import sqlite3
+import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
@@ -145,6 +147,50 @@ def calculate_haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -
     )
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return round(r * c, 2)
+
+
+_ROAD_ROUTE_CACHE: dict[tuple[float, float, float, float], tuple[float, list[list[float]] | None]] = {}
+
+
+def calculate_road_km(
+    lat1: float, lng1: float, lat2: float, lng2: float
+) -> tuple[float, list[list[float]] | None]:
+    """
+    Calculate actual driving road distance along Camiguin's road network using OSRM routing.
+    Measures the real road distance ("ang kalsada mismo kung asa ni agi") rather than straight line.
+    Falls back gracefully to realistic island winding road factor if offline or unreachable.
+    Returns (road_km, route_coordinates).
+    """
+    cache_key = (round(lat1, 4), round(lng1, 4), round(lat2, 4), round(lng2, 4))
+    if cache_key in _ROAD_ROUTE_CACHE:
+        return _ROAD_ROUTE_CACHE[cache_key]
+
+    url = f"https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}?overview=full&geometries=geojson"
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "CamiguinCentricRidersClub/1.0 (Island Courier & Ride Logistics)"
+            },
+        )
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("code") == "Ok" and data.get("routes"):
+                meters = data["routes"][0]["distance"]
+                road_km = round(meters / 1000.0, 2)
+                coords = data["routes"][0].get("geometry", {}).get("coordinates", [])
+                result = (road_km, coords)
+                _ROAD_ROUTE_CACHE[cache_key] = result
+                return result
+    except Exception:
+        pass
+
+    straight_km = calculate_haversine_km(lat1, lng1, lat2, lng2)
+    # Camiguin island roads typically add ~25-35% due to coastline curvature and terrain
+    road_km = round(max(straight_km * 1.30, straight_km + 0.35), 2)
+    result = (road_km, None)
+    _ROAD_ROUTE_CACHE[cache_key] = result
+    return result
 
 
 def calculate_fare(

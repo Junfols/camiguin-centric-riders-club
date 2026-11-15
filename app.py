@@ -25,6 +25,7 @@ from db import (
     accept_booking,
     calculate_fare,
     calculate_haversine_km,
+    calculate_road_km,
     create_booking,
     geocode_camiguin_location,
     get_available_broadcast_bookings,
@@ -204,8 +205,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if geo_d:
                 d_lat, d_lng = geo_d["lat"], geo_d["lng"]
 
+        # Client may have provided pre-fetched road route distance from browser OSRM
+        client_road_km = None
+        try:
+            if data.get("road_km"):
+                client_road_km = float(data.get("road_km"))
+        except (ValueError, TypeError):
+            client_road_km = None
+
+        road_coords = None
         if p_lat and p_lng and d_lat and d_lng:
-            km = calculate_haversine_km(p_lat, p_lng, d_lat, d_lng)
+            if client_road_km and client_road_km > 0:
+                km = round(client_road_km, 2)
+            else:
+                road_km, road_coords = calculate_road_km(p_lat, p_lng, d_lat, d_lng)
+                km = road_km
         else:
             km = 1.5  # default close island distance (₱40 base)
 
@@ -220,11 +234,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         return jsonify({
             "estimated_km": estimated_km,
+            "road_km": estimated_km,
             "fare_amount": fare,
             "service_type": service,
             "breakdown": breakdown,
             "resolved_pickup": {"lat": p_lat, "lng": p_lng} if p_lat and p_lng else None,
             "resolved_dropoff": {"lat": d_lat, "lng": d_lng} if d_lat and d_lng else None,
+            "route_coords": road_coords,
         })
 
     @app.post("/api/bookings")
@@ -270,8 +286,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if geo_d:
                 dropoff_lat, dropoff_lng = geo_d["lat"], geo_d["lng"]
 
+        client_road_km = None
+        try:
+            if data.get("road_km"):
+                client_road_km = float(data.get("road_km"))
+        except (ValueError, TypeError):
+            client_road_km = None
+
         if pickup_lat and pickup_lng and dropoff_lat and dropoff_lng:
-            km = calculate_haversine_km(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+            if client_road_km and client_road_km > 0:
+                km = round(client_road_km, 2)
+            else:
+                km, _ = calculate_road_km(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
         else:
             km = 1.5
 
@@ -350,16 +376,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if booking.get("id"):
             trail = get_booking_tracking_trail(conn, booking["id"], limit=20)
 
-        # Compute real-time distance from rider to pickup/dropoff
+        # Compute real-time road distance from rider to pickup/dropoff
         distance_to_pickup_km = None
         if booking.get("rider_lat") and booking.get("rider_lng") and booking.get("pickup_lat") and booking.get("pickup_lng"):
-            distance_to_pickup_km = calculate_haversine_km(
+            distance_to_pickup_km, _ = calculate_road_km(
                 booking["rider_lat"], booking["rider_lng"], booking["pickup_lat"], booking["pickup_lng"]
             )
 
         distance_to_dropoff_km = None
         if booking.get("rider_lat") and booking.get("rider_lng") and booking.get("dropoff_lat") and booking.get("dropoff_lng"):
-            distance_to_dropoff_km = calculate_haversine_km(
+            distance_to_dropoff_km, _ = calculate_road_km(
                 booking["rider_lat"], booking["rider_lng"], booking["dropoff_lat"], booking["dropoff_lng"]
             )
 
