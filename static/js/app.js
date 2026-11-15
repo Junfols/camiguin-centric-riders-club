@@ -261,7 +261,6 @@
     }
 
     updateRouteLine();
-    recalculateFare();
   }
 
   function setDropoffPoint(lat, lng, label) {
@@ -286,10 +285,12 @@
     }
 
     updateRouteLine();
-    recalculateFare();
   }
 
-  function updateRouteLine() {
+  let currentRoadKm = null;
+  let osrmAbortCtrl = null;
+
+  async function updateRouteLine() {
     if (!map) return;
     const pLat = parseFloat(pickupLatInput.value);
     const pLng = parseFloat(pickupLngInput.value);
@@ -298,17 +299,61 @@
 
     if (pLat && pLng && dLat && dLng) {
       if (routeLine) map.removeLayer(routeLine);
+
+      // 1. Initial dashed connecting line as immediate feedback
       routeLine = L.polyline([[pLat, pLng], [dLat, dLng]], {
         color: "#f97316",
-        weight: 4,
-        dashArray: "6, 8",
-        opacity: 0.85,
+        weight: 3,
+        dashArray: "4, 6",
+        opacity: 0.5,
       }).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+      // 2. Query OSRM to get the actual road path ("kalsada mismo kung asa ni agi")
+      if (osrmAbortCtrl) {
+        osrmAbortCtrl.abort();
+      }
+      osrmAbortCtrl = new AbortController();
+
+      try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+        const res = await fetch(osrmUrl, { signal: osrmAbortCtrl.signal });
+        if (res.ok) {
+          const osrmData = await res.json();
+          if (osrmData && osrmData.code === "Ok" && osrmData.routes && osrmData.routes.length > 0) {
+            const bestRoute = osrmData.routes[0];
+            const roadCoords = bestRoute.geometry.coordinates.map((coord) => [coord[1], coord[0]]);
+            const roadMeters = bestRoute.distance;
+            const roadKmVal = parseFloat((roadMeters / 1000.0).toFixed(2));
+            currentRoadKm = roadKmVal;
+
+            if (routeLine) map.removeLayer(routeLine);
+            // Draw real road polyline snapping to Camiguin highway and local streets
+            routeLine = L.polyline(roadCoords, {
+              color: "#ea580c",
+              weight: 5,
+              opacity: 0.95,
+              lineCap: "round",
+              lineJoin: "round",
+            }).addTo(map);
+            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+            // Recalculate fare using the exact road distance
+            recalculateFare(roadKmVal);
+            return;
+          }
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.log("OSRM client fallback to server road engine");
+        }
+      }
     }
+
+    recalculateFare();
   }
 
-  async function recalculateFare() {
+  async function recalculateFare(overrideRoadKm) {
     const pLat = parseFloat(pickupLatInput.value);
     const pLng = parseFloat(pickupLngInput.value);
     const dLat = parseFloat(dropoffLatInput.value);
@@ -319,6 +364,7 @@
     const isHinterland = optHinterland ? optHinterland.checked : false;
     const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
     const isBulky = budgetVal >= 2000;
+    const roadKmToSend = typeof overrideRoadKm === "number" ? overrideRoadKm : currentRoadKm;
 
     try {
       const res = await fetch("/api/fare-estimate", {
@@ -329,6 +375,7 @@
           pickup_lng: pLng || null,
           dropoff_lat: dLat || null,
           dropoff_lng: dLng || null,
+          road_km: roadKmToSend,
           pickup_address: pickupInput ? pickupInput.value.trim() : "",
           dropoff_address: dropoffInput ? dropoffInput.value.trim() : "",
           service_type: service,
@@ -341,9 +388,10 @@
       const data = await res.json();
       if (data && data.fare_amount) {
         if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
-        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km`;
+        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Road Distance)`;
 
         // If backend resolved coordinates that were missing, update markers & inputs
+        let hasNewCoords = false;
         if (data.resolved_pickup && (!pLat || !pLng)) {
           pickupLatInput.value = data.resolved_pickup.lat;
           pickupLngInput.value = data.resolved_pickup.lng;
@@ -352,6 +400,7 @@
           } else if (map) {
             setPickupPoint(data.resolved_pickup.lat, data.resolved_pickup.lng, null);
           }
+          hasNewCoords = true;
         }
         if (data.resolved_dropoff && (!dLat || !dLng)) {
           dropoffLatInput.value = data.resolved_dropoff.lat;
@@ -361,8 +410,22 @@
           } else if (map) {
             setDropoffPoint(data.resolved_dropoff.lat, data.resolved_dropoff.lng, null);
           }
+          hasNewCoords = true;
         }
-        updateRouteLine();
+
+        // If backend sent route coordinates (from server-side road engine) and frontend hasn't drawn yet
+        if (data.route_coords && data.route_coords.length > 0 && (!currentRoadKm || hasNewCoords)) {
+          const roadCoords = data.route_coords.map((pt) => [pt[1], pt[0]]);
+          if (routeLine) map.removeLayer(routeLine);
+          routeLine = L.polyline(roadCoords, {
+            color: "#ea580c",
+            weight: 5,
+            opacity: 0.95,
+            lineCap: "round",
+            lineJoin: "round",
+          }).addTo(map);
+          map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+        }
       }
     } catch (_) {}
   }
@@ -441,6 +504,7 @@
         dropoff_address: dropoffInput.value.trim(),
         dropoff_lat: dropoffLatInput.value ? parseFloat(dropoffLatInput.value) : null,
         dropoff_lng: dropoffLngInput.value ? parseFloat(dropoffLngInput.value) : null,
+        road_km: currentRoadKm,
         customer_name: document.getElementById("customer-name").value.trim(),
         customer_phone: document.getElementById("customer-phone").value.trim(),
         item_notes: document.getElementById("item-notes").value.trim(),

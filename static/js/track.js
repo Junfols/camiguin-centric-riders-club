@@ -55,16 +55,40 @@
         .bindPopup(`<strong>Dropoff:</strong><br>${escapeHtml(booking.dropoff_address)}`);
     }
 
-    // Polyline
+    // Polyline (Road Route)
     if (booking.pickup_lat && booking.dropoff_lat) {
+      const pLat = booking.pickup_lat;
+      const pLng = booking.pickup_lng;
+      const dLat = booking.dropoff_lat;
+      const dLng = booking.dropoff_lng;
+
       routeLine = L.polyline(
         [
-          [booking.pickup_lat, booking.pickup_lng],
-          [booking.dropoff_lat, booking.dropoff_lng],
+          [pLat, pLng],
+          [dLat, dLng],
         ],
-        { color: "#f97316", weight: 4, dashArray: "6, 8", opacity: 0.8 }
+        { color: "#f97316", weight: 3, dashArray: "4, 6", opacity: 0.6 }
       ).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+      // Fetch actual road path from OSRM
+      fetch(`https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.code === "Ok" && data.routes && data.routes.length > 0) {
+            const roadCoords = data.routes[0].geometry.coordinates.map((pt) => [pt[1], pt[0]]);
+            if (routeLine) map.removeLayer(routeLine);
+            routeLine = L.polyline(roadCoords, {
+              color: "#ea580c",
+              weight: 5,
+              opacity: 0.95,
+              lineCap: "round",
+              lineJoin: "round",
+            }).addTo(map);
+            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+          }
+        })
+        .catch(() => {});
     }
 
     // Rider Icon (if rider coordinates exist)
