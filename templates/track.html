@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Live GPS Tracking — {{ booking.booking_code if booking else 'CCRC' }}{% endblock %}
+
+{% block content %}
+<div class="container page-narrow" style="padding-top:1.5rem;padding-bottom:2.5rem;">
+  {% if not booking %}
+  <div class="card text-center" style="padding:2.5rem 1rem;">
+    <h2>Wala Nakit-an ang Booking</h2>
+    <p class="text-muted">Palihug susiha kon sakto ang imong tracking code o link.</p>
+    <a href="/" class="btn btn-primary" style="margin-top:1rem;">Balik sa Home &rarr;</a>
+  </div>
+  {% else %}
+
+  <div class="track-header-card card">
+    <div class="track-status-pill-wrap">
+      <span id="track-status-pill" class="status-pill status-{{ booking.status }}">
+        {% if booking.status == 'broadcast' %}
+          ⏳ Nangita pa og Magdawat nga Rider...
+        {% elif booking.status == 'accepted' %}
+          🛵 Gidawat na! Padulong na ang Rider sa Pickup...
+        {% elif booking.status == 'in_progress' %}
+          🚀 In Transit / Padulong na sa Hatdanan...
+        {% elif booking.status == 'completed' %}
+          ✓ Nahatud na! Salamat sa pagsalig sa CCRC.
+        {% elif booking.status == 'cancelled' %}
+          ✕ Na-cancel ang booking.
+        {% endif %}
+      </span>
+      <span class="booking-code-pill">{{ booking.booking_code }}</span>
+    </div>
+
+    <h1 style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
+      {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
+    </h1>
+    <div class="text-muted" style="font-size:0.86rem;">
+      Plete: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Gilay-on: <strong>{{ booking.estimated_km }} km</strong>
+      {% if booking.estimated_budget and booking.estimated_budget > 0 %}
+        &bull; Pabili Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Interactive Live GPS Map -->
+  <div class="card" style="padding:10px;margin-bottom:1rem;border-radius:14px;overflow:hidden;">
+    <div id="tracking-map" style="height: 380px; width: 100%; border-radius: 10px; z-index: 1;"></div>
+    <div class="tracking-legend" style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px 0;font-size:0.78rem;">
+      <div>
+        <span class="legend-dot dot-rider"></span> <strong>Rider</strong> &bull;
+        <span class="legend-dot dot-pickup"></span> <strong>Pickup</strong> &bull;
+        <span class="legend-dot dot-dropoff"></span> <strong>Dropoff</strong>
+      </div>
+      <div id="live-distance-indicator" class="text-muted">
+        Nag-update matag 3 segundo...
+      </div>
+    </div>
+  </div>
+
+  <!-- Assigned Rider Info Card -->
+  <div id="assigned-rider-card" class="card rider-info-card {% if not booking.rider_id %}hidden{% endif %}">
+    <div class="rider-card-top">
+      <div class="rider-avatar" id="rider-avatar">{{ (booking.rider_name or 'R')[:1] }}</div>
+      <div class="rider-meta">
+        <h3 id="rider-name" style="margin:0;">{{ booking.rider_name or 'Club Rider' }}</h3>
+        <div class="text-muted" id="rider-bike-text" style="font-size:0.85rem;">
+          {{ booking.rider_bike }} &bull; Plate: <strong>{{ booking.rider_plate }}</strong>
+        </div>
+        <div class="rider-stars" style="color:#f59e0b;font-size:0.85rem;">
+          ★ <strong>{{ booking.rider_rating or 5.0 }}</strong> (Verified CCRC Member)
+        </div>
+      </div>
+    </div>
+
+    <div class="rider-actions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      <a id="rider-call-btn" href="tel:{{ booking.rider_phone }}" class="btn btn-primary" style="text-align:center;">
+        📞 Tawagi ang Rider
+      </a>
+      <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
+        💬 Text / SMS
+      </a>
+    </div>
+  </div>
+
+  <!-- Trip Details Card -->
+  <div class="card" style="margin-top:1rem;">
+    <h3 style="margin-top:0;font-size:1.05rem;">Mga Detalye sa Booking</h3>
+    <div class="trip-details-list">
+      <div class="trip-detail-item">
+        <span class="detail-label">Serbisyo:</span>
+        <strong style="text-transform:uppercase;">{{ booking.service_type }}</strong>
+      </div>
+      <div class="trip-detail-item">
+        <span class="detail-label">Pickup Point:</span>
+        <span>{{ booking.pickup_address }}</span>
+      </div>
+      <div class="trip-detail-item">
+        <span class="detail-label">Dropoff Point:</span>
+        <span>{{ booking.dropoff_address }}</span>
+      </div>
+      {% if booking.item_notes %}
+      <div class="trip-detail-item">
+        <span class="detail-label">Palitonon / Parsel Note:</span>
+        <span class="item-notes-text">&ldquo;{{ booking.item_notes }}&rdquo;</span>
+      </div>
+      {% endif %}
+      <div class="trip-detail-item">
+        <span class="detail-label">Kustomer:</span>
+        <span>{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if booking %}
+<script>
+  window.INITIAL_BOOKING = {{ booking | tojson }};
+</script>
+<script src="/static/js/track.js?v=1"></script>
+{% endif %}
+{% endblock %}

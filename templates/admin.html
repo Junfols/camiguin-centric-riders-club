@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Club Admin &amp; Dispatch — {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container page-admin-wrap" style="padding-top:1.5rem;padding-bottom:3rem;">
+  <div class="page-head" style="margin-bottom:1.5rem;">
+    <h1>Club Dispatch &amp; Admin Panel ⚙️</h1>
+    <p class="text-muted">Dumalaha ang tanang riders, live dispatches, ug taripa sa plete sa Camiguin Centric Riders Club.</p>
+  </div>
+
+  <!-- KPI Metrics Grid -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <span class="kpi-label">Riders Online Karon</span>
+      <div class="kpi-val" style="color:#16a34a;">{{ stats.online_riders }}</div>
+      <small class="text-muted">sa {{ stats.total_riders }} rehistradong miyembro</small>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Kasamtangang Aktibong Biyahe</span>
+      <div class="kpi-val" style="color:var(--primary);">{{ stats.active_now }}</div>
+      <small class="text-muted">Broadcast o padulong pa</small>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Nahuman nga mga Biyahe</span>
+      <div class="kpi-val" style="color:#0284c7;">{{ stats.completed }}</div>
+      <small class="text-muted">Malampusong nahatud</small>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Kinatibuk-ang Bookings</span>
+      <div class="kpi-val">{{ stats.total_bookings }}</div>
+      <small class="text-muted">Narehistro sa database</small>
+    </div>
+  </div>
+
+  <!-- 2-Column Grid: Settings & Recent Bookings -->
+  <div class="admin-grid-2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;margin-top:1.5rem;">
+    <!-- Taripa / Settings Form -->
+    <div class="card">
+      <h3 style="margin-top:0;">Taripa sa Plete &amp; Club Settings</h3>
+      <form id="admin-settings-form">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="set-base-fare">Base Fare (₱) *</label>
+            <input type="number" id="set-base-fare" name="base_fare" value="{{ settings.base_fare }}" required min="20">
+          </div>
+          <div class="form-group">
+            <label for="set-base-km">Covered Base Km *</label>
+            <input type="number" id="set-base-km" name="base_km" value="{{ settings.base_km }}" required step="0.5" min="1">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="set-per-km">Per Km Rate (₱/km) *</label>
+            <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required min="5">
+          </div>
+          <div class="form-group">
+            <label for="set-min-fare">Minimum Fare (₱) *</label>
+            <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="30">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="set-pabili-fee">Pabili Extra Fee (₱)</label>
+            <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee or 20 }}" required min="0">
+          </div>
+          <div class="form-group">
+            <label for="set-pasugo-fee">Pasugo Extra Fee (₱)</label>
+            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee or 10 }}" required min="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="set-hotline">Club Hotline / Dispatch Mobile</label>
+          <input type="text" id="set-hotline" name="hotline" value="{{ settings.hotline }}">
+        </div>
+
+        <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block">I-Save ang Bag-ong Taripa</button>
+      </form>
+    </div>
+
+    <!-- Active Club Riders Roster -->
+    <div class="card">
+      <h3 style="margin-top:0;">Opisyal nga mga Riders sa Club ({{ riders|length }})</h3>
+      <div class="riders-table-wrap" style="max-height:360px;overflow-y:auto;">
+        {% for r in riders %}
+        <div class="rider-roster-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:0.86rem;">
+          <div>
+            <strong>{{ r.name }}</strong>
+            <span class="badge {% if r.is_online %}badge-success{% else %}badge-soft{% endif %}" style="font-size:0.7rem;margin-left:4px;">
+              {% if r.is_online %}Online{% else %}Offline{% endif %}
+            </span>
+            <div class="text-muted" style="font-size:0.8rem;">
+              {{ r.bike_model }} &bull; Plate: <strong>{{ r.plate_number }}</strong> &bull; {{ r.phone }}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <strong style="color:var(--primary);">{{ r.total_trips }}</strong> trips
+            <div style="color:#f59e0b;font-size:0.78rem;">★ {{ r.rating_avg }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Dispatch Bookings Table -->
+  <div class="card" style="margin-top:1.5rem;">
+    <h3 style="margin-top:0;">Kasamtangang mga Bookings &amp; Biyahe</h3>
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Kustomer</th>
+            <th>Pickup / Dropoff</th>
+            <th>Plete</th>
+            <th>Rider</th>
+            <th>Aksyon</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in bookings %}
+          <tr>
+            <td><strong>{{ b.booking_code }}</strong></td>
+            <td><span class="badge badge-accent">{{ b.service_type|capitalize }}</span></td>
+            <td>
+              <span class="status-pill status-{{ b.status }}" style="font-size:0.75rem;padding:2px 8px;">
+                {{ b.status }}
+              </span>
+            </td>
+            <td>{{ b.customer_name }}<br><small class="text-muted">{{ b.customer_phone }}</small></td>
+            <td>
+              <div style="font-size:0.82rem;">
+                🟢 {{ b.pickup_address }}<br>
+                🏁 {{ b.dropoff_address }}
+              </div>
+            </td>
+            <td><strong>₱{{ '{:,.0f}'.format(b.fare_amount) }}</strong></td>
+            <td>{{ b.rider_name or '<span class="text-muted">Unassigned</span>'|safe }}</td>
+            <td>
+              <a href="/track/{{ b.booking_code }}" target="_blank" class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:0.75rem;">
+                🗺️ Live GPS
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted" style="padding:20px 0;">Wala pay mga booking nga natala.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const settingsForm = document.getElementById("admin-settings-form");
+  if (settingsForm) {
+    settingsForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("save-settings-btn");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      const payload = {
+        base_fare: document.getElementById("set-base-fare").value,
+        base_km: document.getElementById("set-base-km").value,
+        per_km_rate: document.getElementById("set-per-km").value,
+        min_fare: document.getElementById("set-min-fare").value,
+        pabili_service_fee: document.getElementById("set-pabili-fee").value,
+        pasugo_service_fee: document.getElementById("set-pasugo-fee").value,
+        hotline: document.getElementById("set-hotline").value,
+      };
+
+      try {
+        const res = await fetch("/api/admin/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          alert("Malampusong na-save ang bag-ong taripa!");
+        }
+      } catch (err) {
+        alert("Sayop: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "I-Save ang Bag-ong Taripa";
+      }
+    });
+  }
+</script>
+{% endblock %}
