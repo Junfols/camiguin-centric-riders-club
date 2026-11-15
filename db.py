@@ -52,7 +52,7 @@ def calculate_fare(
     is_hinterland: bool = False,
 ) -> tuple[float, float, dict[str, Any]]:
     """
-    Calculate fare based on the official Pick Me Up Camiguin Fare Matrix:
+    Calculate fare based on the Official Camiguin CRC Fare Matrix:
     - 1 KM: ₱40.00
     - 2 KMS: ₱40.00
     - Succeeding KMS (> 2 KM): +₱18.00 per KM (e.g. 3 km = ₱58, 10 km = ₱184, 30 km = ₱544)
@@ -427,7 +427,7 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
         if not row:
             conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (k, v))
         else:
-            # Upgrade outdated default fare numbers to new Pick Me Up Camiguin Fare Matrix
+            # Upgrade outdated default fare numbers to Official Camiguin CRC Fare Matrix
             old_val = str(row["value"] if isinstance(row, dict) or hasattr(row, "keys") else row[0])
             if (k == "base_fare" and old_val == "50.0") or (k == "per_km_rate" and old_val == "15.0") or (k == "min_fare" and old_val == "50.0"):
                 conn.execute("UPDATE settings SET value = ? WHERE key = ?", (v, k))
