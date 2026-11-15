@@ -6,33 +6,33 @@
 <div class="container page-admin-wrap" style="padding-top:1.5rem;padding-bottom:3rem;">
   <div class="page-head" style="margin-bottom:1.5rem;">
     <h1>Club Dispatch &amp; Admin Panel ⚙️</h1>
-    <p class="text-muted">Dumalaha ang tanang riders, live dispatches, ug taripa sa plete sa Camiguin Centric Riders Club.</p>
+    <p class="text-muted">Manage active club riders, live dispatches, and island fare matrix configuration for Camiguin Centric Riders Club.</p>
   </div>
 
   <!-- KPI Metrics Grid -->
   <div class="kpi-grid">
     <div class="kpi-card">
-      <span class="kpi-label">Riders Online Karon</span>
+      <span class="kpi-label">Riders Online Now</span>
       <div class="kpi-val" style="color:#16a34a;">{{ stats.online_riders }}</div>
-      <small class="text-muted">sa {{ stats.total_riders }} rehistradong miyembro</small>
+      <small class="text-muted">of {{ stats.total_riders }} registered members</small>
     </div>
 
     <div class="kpi-card">
-      <span class="kpi-label">Kasamtangang Aktibong Biyahe</span>
+      <span class="kpi-label">Active Ongoing Trips</span>
       <div class="kpi-val" style="color:var(--primary);">{{ stats.active_now }}</div>
-      <small class="text-muted">Broadcast o padulong pa</small>
+      <small class="text-muted">Broadcast or in transit</small>
     </div>
 
     <div class="kpi-card">
-      <span class="kpi-label">Nahuman nga mga Biyahe</span>
+      <span class="kpi-label">Completed Trips</span>
       <div class="kpi-val" style="color:#0284c7;">{{ stats.completed }}</div>
-      <small class="text-muted">Malampusong nahatud</small>
+      <small class="text-muted">Successfully delivered</small>
     </div>
 
     <div class="kpi-card">
-      <span class="kpi-label">Kinatibuk-ang Bookings</span>
+      <span class="kpi-label">Total Recorded Bookings</span>
       <div class="kpi-val">{{ stats.total_bookings }}</div>
-      <small class="text-muted">Narehistro sa database</small>
+      <small class="text-muted">In system database</small>
     </div>
   </div>
 
@@ -40,15 +40,15 @@
   <div class="admin-grid-2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;margin-top:1.5rem;">
     <!-- Taripa / Settings Form -->
     <div class="card">
-      <h3 style="margin-top:0;">Taripa sa Plete &amp; Club Settings</h3>
+      <h3 style="margin-top:0;">Fare Matrix &amp; Tariff Settings</h3>
       <form id="admin-settings-form">
         <div class="form-grid-2">
           <div class="form-group">
-            <label for="set-base-fare">Base Fare (₱) *</label>
+            <label for="set-base-fare">Base Meter Fare (₱) *</label>
             <input type="number" id="set-base-fare" name="base_fare" value="{{ settings.base_fare }}" required min="20">
           </div>
           <div class="form-group">
-            <label for="set-base-km">Covered Base Km *</label>
+            <label for="set-base-km">Covered Base Distance (km) *</label>
             <input type="number" id="set-base-km" name="base_km" value="{{ settings.base_km }}" required step="0.5" min="1">
           </div>
         </div>
@@ -71,7 +71,18 @@
           </div>
           <div class="form-group">
             <label for="set-pasugo-fee">Pasugo Extra Fee (₱)</label>
-            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee or 10 }}" required min="0">
+            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee or 20 }}" required min="0">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="set-queuing-fee">Large Store Queuing Fee (₱)</label>
+            <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee or 30 }}" required min="0">
+          </div>
+          <div class="form-group">
+            <label for="set-hinterland-fee">Hinterland Route Fee (₱)</label>
+            <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee or 30 }}" required min="0">
           </div>
         </div>
 
@@ -80,13 +91,13 @@
           <input type="text" id="set-hotline" name="hotline" value="{{ settings.hotline }}">
         </div>
 
-        <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block">I-Save ang Bag-ong Taripa</button>
+        <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block">Save Fare Matrix Settings</button>
       </form>
     </div>
 
     <!-- Active Club Riders Roster -->
     <div class="card">
-      <h3 style="margin-top:0;">Opisyal nga mga Riders sa Club ({{ riders|length }})</h3>
+      <h3 style="margin-top:0;">Official Club Riders Roster ({{ riders|length }})</h3>
       <div class="riders-table-wrap" style="max-height:360px;overflow-y:auto;">
         {% for r in riders %}
         <div class="rider-roster-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:0.86rem;">
@@ -111,7 +122,7 @@
 
   <!-- Recent Dispatch Bookings Table -->
   <div class="card" style="margin-top:1.5rem;">
-    <h3 style="margin-top:0;">Kasamtangang mga Bookings &amp; Biyahe</h3>
+    <h3 style="margin-top:0;">Live Dispatch Bookings Log</h3>
     <div class="table-responsive">
       <table class="admin-table">
         <thead>
@@ -119,11 +130,11 @@
             <th>Code</th>
             <th>Type</th>
             <th>Status</th>
-            <th>Kustomer</th>
-            <th>Pickup / Dropoff</th>
-            <th>Plete</th>
+            <th>Customer</th>
+            <th>Pickup / Drop-off</th>
+            <th>Fare</th>
             <th>Rider</th>
-            <th>Aksyon</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -153,7 +164,7 @@
           </tr>
           {% else %}
           <tr>
-            <td colspan="8" class="text-center text-muted" style="padding:20px 0;">Wala pay mga booking nga natala.</td>
+            <td colspan="8" class="text-center text-muted" style="padding:20px 0;">No bookings recorded yet.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -180,6 +191,8 @@
         min_fare: document.getElementById("set-min-fare").value,
         pabili_service_fee: document.getElementById("set-pabili-fee").value,
         pasugo_service_fee: document.getElementById("set-pasugo-fee").value,
+        queuing_fee: document.getElementById("set-queuing-fee") ? document.getElementById("set-queuing-fee").value : 30,
+        hinterland_fee: document.getElementById("set-hinterland-fee") ? document.getElementById("set-hinterland-fee").value : 30,
         hotline: document.getElementById("set-hotline").value,
       };
 
@@ -190,13 +203,13 @@
           body: JSON.stringify(payload),
         });
         if (res.ok) {
-          alert("Malampusong na-save ang bag-ong taripa!");
+          alert("Fare matrix and settings saved successfully!");
         }
       } catch (err) {
-        alert("Sayop: " + err.message);
+        alert("Error: " + err.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = "I-Save ang Bag-ong Taripa";
+        btn.textContent = "Save Fare Matrix Settings";
       }
     });
   }

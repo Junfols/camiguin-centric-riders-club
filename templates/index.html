@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Mag-Book og Rider — {{ club.name }}{% endblock %}
+{% block title %}Book an Island Rider — {{ club.name }}{% endblock %}
 
 {% block content %}
 <div class="container page-booking-wrap">
@@ -9,10 +9,10 @@
     <div class="hero-content">
       <div class="hero-badge">
         <span class="live-dot"></span>
-        <span><strong>{{ online_riders_count }}</strong> Club Riders Online Karon</span>
+        <span><strong>{{ online_riders_count }}</strong> Club Riders Online Now</span>
       </div>
       <h1 class="hero-title">{{ club.name }}</h1>
-      <p class="hero-subtitle">Pahatud, Pakuha, Pasugo, o Pabili bisan asa sa Isla sa Camiguin. Dali, kasaligan, ug lokal nga mga riders.</p>
+      <p class="hero-subtitle">Passenger Ride-Hailing, Parcel Courier, &amp; Errand Services anywhere in Camiguin Island. Fast, reliable, and verified local riders.</p>
     </div>
   </section>
 
@@ -21,34 +21,34 @@
     <!-- Left Column: Service Selector & Form -->
     <div class="card booking-form-card">
       <div class="card-head">
-        <h2>Unsay Imong Kinahanglan Karon?</h2>
-        <p class="text-muted">Pilia ang serbisyo sa ubos aron mahan-ay ang imong booking.</p>
+        <h2>What service do you need today?</h2>
+        <p class="text-muted">Select an island express service below to schedule your request.</p>
       </div>
 
       <!-- Service Selector Tabs -->
       <div class="service-selector-grid" role="tablist">
         <button type="button" class="service-tab-btn active" data-service="pahatud">
           <span class="service-icon">🛵</span>
-          <span class="service-title">Pahatud / Pakuha</span>
-          <small class="service-sub">Sakay pasahero / habal-habal</small>
+          <span class="service-title">Passenger Ride</span>
+          <small class="service-sub">Habal-habal ride-hailing</small>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pasugo">
           <span class="service-icon">📦</span>
-          <span class="service-title">Pasugo / Padala</span>
-          <small class="service-sub">Parsel, sinina, kargamento</small>
+          <span class="service-title">Courier &amp; Delivery</span>
+          <small class="service-sub">Parcels, clothes, cargo (+₱20)</small>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabili">
           <span class="service-icon">🛒</span>
-          <span class="service-title">Pabili Service</span>
-          <small class="service-sub">Pagkaon, merkado, tambal</small>
+          <span class="service-title">Buy For Me</span>
+          <small class="service-sub">Food, grocery, pharmacy (+₱20)</small>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabayad">
           <span class="service-icon">💼</span>
-          <span class="service-title">Pabayad / Port Claim</span>
-          <small class="service-sub">Bills, cargo sa pantalan</small>
+          <span class="service-title">Bills &amp; Port Claim</span>
+          <small class="service-sub">Bills, port baggage (+₱20)</small>
         </button>
       </div>
 
@@ -56,12 +56,12 @@
         <input type="hidden" id="service-type-input" name="service_type" value="pahatud">
 
         <!-- 1. Location Details -->
-        <div class="form-section-title">1. Lokasyon sa Isla (Pickup &amp; Dropoff)</div>
+        <div class="form-section-title">1. Island Locations (Pickup &amp; Destination)</div>
 
         <div class="form-group">
           <div class="label-row">
-            <label for="pickup-address" id="pickup-label">🟢 Pickup / Sakyanan / Tindahan *</label>
-            <button type="button" id="locate-pickup-gps-btn" class="text-btn">📍 Akong GPS Karon</button>
+            <label for="pickup-address" id="pickup-label">🟢 Pickup / Store / Meeting Point *</label>
+            <button type="button" id="locate-pickup-gps-btn" class="text-btn">📍 My Current GPS</button>
           </div>
           <input type="text" id="pickup-address" name="pickup_address" required placeholder="e.g. Paras Beach Resort / Benoni Port / Poblacion Market">
           <input type="hidden" id="pickup-lat" name="pickup_lat">
@@ -70,8 +70,8 @@
 
         <div class="form-group">
           <div class="label-row">
-            <label for="dropoff-address" id="dropoff-label">🏁 Dropoff / Hatdanan Address *</label>
-            <button type="button" id="locate-dropoff-gps-btn" class="text-btn">📍 Pin sa Mapa</button>
+            <label for="dropoff-address" id="dropoff-label">🏁 Drop-off / Destination Address *</label>
+            <button type="button" id="locate-dropoff-gps-btn" class="text-btn">📍 Pin on Map</button>
           </div>
           <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="e.g. Balyali Resort / Mambajao Town Plaza / Benoni Wharf">
           <input type="hidden" id="dropoff-lat" name="dropoff_lat">
@@ -80,7 +80,7 @@
 
         <!-- Landmark Shortcut Chips -->
         <div class="landmarks-box">
-          <div class="landmarks-label">Dali nga mga Dapit sa Camiguin (Tap para ma-pin):</div>
+          <div class="landmarks-label">Quick Island Destinations (Tap to pin):</div>
           <div class="landmark-chips" id="quick-landmark-chips">
             <button type="button" class="chip-btn" data-name="Benoni Port (Mahinog)" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
             <button type="button" class="chip-btn" data-name="Balbagon Port (Mambajao)" data-lat="9.2561" data-lng="124.7175">⛴️ Balbagon Port</button>
@@ -97,25 +97,52 @@
 
         <!-- 2. Service Specific Fields (Pabili / Pasugo Notes) -->
         <div id="service-extra-fields" class="service-extra-fields">
-          <div class="form-section-title">2. Detalye sa Pasugo o Palitonon</div>
+          <div class="form-section-title">2. Errand &amp; Package Details</div>
 
           <div class="form-group" id="budget-group">
-            <label for="estimated-budget">Estimated Budget sa Palitonon (₱) <small class="text-muted">(Para sa Pabili)</small></label>
-            <input type="number" id="estimated-budget" name="estimated_budget" min="0" step="10" placeholder="e.g. 500 (Abunohan una sa rider inig palit)">
+            <label for="estimated-budget">Estimated Shopping Budget (₱) <small class="text-muted">(Rider advances cash upon buying)</small></label>
+            <input type="number" id="estimated-budget" name="estimated_budget" min="0" step="10" placeholder="e.g. 500 (Orders >= ₱2,000 add ₱20 bulky fee)">
           </div>
 
           <div class="form-group">
-            <label for="item-notes" id="notes-label">Lista sa Palitonon o Deskripsyon sa Parsel *</label>
-            <textarea id="item-notes" name="item_notes" rows="3" placeholder="Isulat dinhi ang tindahan, mga pagkaon/tambal/butang nga paliton o ihatod..."></textarea>
+            <label for="item-notes" id="notes-label">Shopping List or Item Description *</label>
+            <textarea id="item-notes" name="item_notes" rows="3" placeholder="Enter store names, food orders, medicines, package dimensions, or instructions..."></textarea>
           </div>
         </div>
 
-        <!-- 3. Customer Contact Information -->
-        <div class="form-section-title">3. Impormasyon sa Kustomer</div>
+        <!-- 3. Official Matrix Additions & Surcharges -->
+        <div class="fare-options-box" style="margin-top:1.2rem;background:#f8fafc;padding:14px;border-radius:10px;border:1px solid #e2e8f0;">
+          <div class="form-section-title" style="margin-top:0;">3. Fare Additions &amp; Special Conditions</div>
+          
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:0.9rem;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="opt-large-store" name="is_large_store" value="1">
+              <span><strong>Large Store / Supermarket Queuing (+₱30)</strong> <small class="text-muted">(Gaisano, Davilett, Nene Uy, etc.)</small></span>
+            </label>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <label for="opt-extra-stores" style="margin:0;"><strong>Additional Store Stops:</strong></label>
+              <select id="opt-extra-stores" name="extra_stores_count" style="width:auto;padding:4px 8px;font-size:0.85rem;border-radius:6px;border:1px solid #cbd5e1;">
+                <option value="0" selected>None (1 Store only - ₱0)</option>
+                <option value="1">+1 Extra Store (+₱20)</option>
+                <option value="2">+2 Extra Stores (+₱40)</option>
+                <option value="3">+3 Extra Stores (+₱60)</option>
+              </select>
+            </div>
+
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
+              <span><strong>Hinterland / Mountain Route (+₱30)</strong> <small class="text-muted">(Soro-soro, Highland, Utopia, Binunsaran, Granelandia, Itum Road)</small></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 4. Customer Contact Information -->
+        <div class="form-section-title" style="margin-top:1.2rem;">4. Customer Contact Information</div>
 
         <div class="form-grid-2">
           <div class="form-group">
-            <label for="customer-name">Imong Pangalan *</label>
+            <label for="customer-name">Your Full Name *</label>
             <input type="text" id="customer-name" name="customer_name" required placeholder="e.g. Maria Santos">
           </div>
 
@@ -129,23 +156,28 @@
         <div class="fare-estimate-card">
           <div class="fare-estimate-top">
             <div>
-              <span class="fare-label">Tantiya nga Plete / Delivery Fee:</span>
+              <span class="fare-label">Estimated Fare / Delivery Fee:</span>
               <div class="fare-amount-display">
-                <span class="fare-peso">₱</span><strong id="fare-display">50</strong>
+                <span class="fare-peso">₱</span><strong id="fare-display">40</strong>
               </div>
             </div>
             <div class="fare-distance-badge">
               <span id="fare-km-display">~2.0 km</span>
-              <small class="text-muted" style="display:block;">Gilay-on sa Isla</small>
+              <small class="text-muted" style="display:block;">Distance Estimate</small>
             </div>
           </div>
-          <p class="fare-hint text-muted" id="fare-hint-text">Base fare ₱50 (first 2 km), ₱15 matag mosunod nga kilometro. Walay hidden fees.</p>
+          <p class="fare-hint text-muted" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km. Transparent pricing with zero hidden fees.</p>
+          <div style="margin-top:8px;">
+            <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.85rem;color:var(--primary);text-decoration:underline;">
+              📋 View Official Camiguin Fare Matrix (1 - 30 KMS)
+            </button>
+          </div>
         </div>
 
         <div id="form-error-msg" class="alert-error hidden"></div>
 
         <button type="submit" id="submit-booking-btn" class="btn btn-primary btn-lg btn-block">
-          I-Broadcast ang Booking sa mga Riders 🛵 &rarr;
+          Broadcast Booking to Active Riders 🛵 &rarr;
         </button>
       </form>
     </div>
@@ -156,7 +188,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <h3>Camiguin Interactive Map 🗺️</h3>
-            <p class="text-muted">I-tap ang mapa aron i-set ang Pickup o Dropoff point.</p>
+            <p class="text-muted">Click the map to set your Pickup or Drop-off point.</p>
           </div>
           <div class="map-mode-toggle" id="map-target-toggle">
             <button type="button" class="btn-sm active" data-target-mode="pickup">Set 🟢 Pickup</button>
@@ -170,9 +202,82 @@
       </div>
 
       <div class="map-legend-row">
-        <span><span class="legend-dot dot-pickup"></span> Pickup / Tindahan</span>
-        <span><span class="legend-dot dot-dropoff"></span> Dropoff / Hatdanan</span>
+        <span><span class="legend-dot dot-pickup"></span> Pickup / Meeting Point</span>
+        <span><span class="legend-dot dot-dropoff"></span> Dropoff / Destination</span>
         <span><span class="legend-dot dot-rider"></span> Online Rider</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Official Fare Matrix Modal -->
+<div id="fare-matrix-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div class="modal-card modal-lg">
+    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:12px;">
+      <h3 style="margin:0;font-size:1.25rem;">🛵 Official Pick Me Up Camiguin — Fare Matrix</h3>
+      <button type="button" id="close-matrix-btn" class="text-btn" style="font-size:1.5rem;line-height:1;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding-top:14px;max-height:70vh;overflow-y:auto;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;">
+        <!-- Left Table: 1-15 km -->
+        <table class="admin-table" style="font-size:0.85rem;">
+          <thead>
+            <tr><th>Distance (KM)</th><th>Fare</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1 KM</td><td><strong>₱40</strong></td></tr>
+            <tr><td>2 KMS</td><td><strong>₱40</strong></td></tr>
+            <tr><td>3 KMS</td><td><strong>₱58</strong></td></tr>
+            <tr><td>4 KMS</td><td><strong>₱76</strong></td></tr>
+            <tr><td>5 KMS</td><td><strong>₱94</strong></td></tr>
+            <tr><td>6 KMS</td><td><strong>₱112</strong></td></tr>
+            <tr><td>7 KMS</td><td><strong>₱130</strong></td></tr>
+            <tr><td>8 KMS</td><td><strong>₱148</strong></td></tr>
+            <tr><td>9 KMS</td><td><strong>₱166</strong></td></tr>
+            <tr><td>10 KMS</td><td><strong>₱184</strong></td></tr>
+            <tr><td>11 KMS</td><td><strong>₱202</strong></td></tr>
+            <tr><td>12 KMS</td><td><strong>₱220</strong></td></tr>
+            <tr><td>13 KMS</td><td><strong>₱238</strong></td></tr>
+            <tr><td>14 KMS</td><td><strong>₱256</strong></td></tr>
+            <tr><td>15 KMS</td><td><strong>₱274</strong></td></tr>
+          </tbody>
+        </table>
+
+        <!-- Right Table: 16-30 km -->
+        <table class="admin-table" style="font-size:0.85rem;">
+          <thead>
+            <tr><th>Distance (KM)</th><th>Fare</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>16 KMS</td><td><strong>₱292</strong></td></tr>
+            <tr><td>17 KMS</td><td><strong>₱310</strong></td></tr>
+            <tr><td>18 KMS</td><td><strong>₱328</strong></td></tr>
+            <tr><td>19 KMS</td><td><strong>₱346</strong></td></tr>
+            <tr><td>20 KMS</td><td><strong>₱364</strong></td></tr>
+            <tr><td>21 KMS</td><td><strong>₱382</strong></td></tr>
+            <tr><td>22 KMS</td><td><strong>₱400</strong></td></tr>
+            <tr><td>23 KMS</td><td><strong>₱418</strong></td></tr>
+            <tr><td>24 KMS</td><td><strong>₱436</strong></td></tr>
+            <tr><td>25 KMS</td><td><strong>₱454</strong></td></tr>
+            <tr><td>26 KMS</td><td><strong>₱472</strong></td></tr>
+            <tr><td>27 KMS</td><td><strong>₱490</strong></td></tr>
+            <tr><td>28 KMS</td><td><strong>₱508</strong></td></tr>
+            <tr><td>29 KMS</td><td><strong>₱526</strong></td></tr>
+            <tr><td>30 KMS</td><td><strong>₱544</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Surcharges Box -->
+      <div style="margin-top:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:0.88rem;">
+        <h4 style="margin:0 0 6px;color:#c2410c;">Additional Surcharges &amp; Conditions:</h4>
+        <ul style="margin:0;padding-left:20px;line-height:1.5;">
+          <li><strong>Pasugo / Pabili Service:</strong> Additional ₱20 (Meter + 20 PHP)</li>
+          <li><strong>Time Consuming / Large Store:</strong> An additional ₱30 plus meter fee when lining up at large stores or supermarkets (Gaisano, Davilett, Nene Uy, etc.)</li>
+          <li><strong>Additional Store Stops:</strong> +₱20 per extra store (excluding food stalls)</li>
+          <li><strong>Bulky Orders:</strong> Orders reaching ₱2,000 budget or heavy items: add ₱20</li>
+          <li><strong>Hinterland / Mountain Route:</strong> +₱30 in Soro-soro, Highland, Utopia, Binunsaran, Granelandia, Itum Road, or any hinterland area</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -183,8 +288,8 @@
   <div class="modal-card modal-md text-center">
     <div class="modal-body">
       <div class="success-icon-pulse">🛵</div>
-      <h2>Napadala na ang Imong Booking!</h2>
-      <p class="text-muted">Gipahibalo na ang tanang online riders sa Camiguin Centric Riders Club. Motingog dayon ang ilang mga cellphone aron dawaton ang imong booking.</p>
+      <h2>Your Booking is Broadcasted!</h2>
+      <p class="text-muted">All active riders in Camiguin Centric Riders Club have received your request. Their phones will alert them immediately to accept.</p>
 
       <div class="booking-code-box">
         <span class="code-label">Booking Code:</span>
@@ -192,7 +297,7 @@
       </div>
 
       <a id="modal-track-link" href="#" class="btn btn-primary btn-lg btn-block" style="margin-top:14px;">
-        Tan-awa ang Live GPS sa Rider &rarr;
+        Track Live Rider GPS &amp; Status &rarr;
       </a>
     </div>
   </div>
@@ -200,5 +305,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/app.js?v=1"></script>
+<script src="/static/js/app.js?v=2"></script>
 {% endblock %}

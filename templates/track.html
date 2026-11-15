@@ -6,9 +6,9 @@
 <div class="container page-narrow" style="padding-top:1.5rem;padding-bottom:2.5rem;">
   {% if not booking %}
   <div class="card text-center" style="padding:2.5rem 1rem;">
-    <h2>Wala Nakit-an ang Booking</h2>
-    <p class="text-muted">Palihug susiha kon sakto ang imong tracking code o link.</p>
-    <a href="/" class="btn btn-primary" style="margin-top:1rem;">Balik sa Home &rarr;</a>
+    <h2>Booking Not Found</h2>
+    <p class="text-muted">Please verify your tracking code or tracking link.</p>
+    <a href="/" class="btn btn-primary" style="margin-top:1rem;">Back to Home &rarr;</a>
   </div>
   {% else %}
 
@@ -16,15 +16,15 @@
     <div class="track-status-pill-wrap">
       <span id="track-status-pill" class="status-pill status-{{ booking.status }}">
         {% if booking.status == 'broadcast' %}
-          ⏳ Nangita pa og Magdawat nga Rider...
+          ⏳ Waiting for an available rider to accept...
         {% elif booking.status == 'accepted' %}
-          🛵 Gidawat na! Padulong na ang Rider sa Pickup...
+          🛵 Accepted! Rider is heading to pickup point...
         {% elif booking.status == 'in_progress' %}
-          🚀 In Transit / Padulong na sa Hatdanan...
+          🚀 In Transit / Heading to destination...
         {% elif booking.status == 'completed' %}
-          ✓ Nahatud na! Salamat sa pagsalig sa CCRC.
+          ✓ Delivered! Thank you for using CCRC.
         {% elif booking.status == 'cancelled' %}
-          ✕ Na-cancel ang booking.
+          ✕ Booking has been cancelled.
         {% endif %}
       </span>
       <span class="booking-code-pill">{{ booking.booking_code }}</span>
@@ -34,9 +34,9 @@
       {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
     </h1>
     <div class="text-muted" style="font-size:0.86rem;">
-      Plete: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Gilay-on: <strong>{{ booking.estimated_km }} km</strong>
+      Fare: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Distance: <strong>{{ booking.estimated_km }} km</strong>
       {% if booking.estimated_budget and booking.estimated_budget > 0 %}
-        &bull; Pabili Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
+        &bull; Shopping Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
       {% endif %}
     </div>
   </div>
@@ -51,7 +51,7 @@
         <span class="legend-dot dot-dropoff"></span> <strong>Dropoff</strong>
       </div>
       <div id="live-distance-indicator" class="text-muted">
-        Nag-update matag 3 segundo...
+        Updating every 3 seconds...
       </div>
     </div>
   </div>
@@ -73,20 +73,20 @@
 
     <div class="rider-actions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
       <a id="rider-call-btn" href="tel:{{ booking.rider_phone }}" class="btn btn-primary" style="text-align:center;">
-        📞 Tawagi ang Rider
+        📞 Call Rider
       </a>
       <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
-        💬 Text / SMS
+        💬 Send SMS
       </a>
     </div>
   </div>
 
   <!-- Trip Details Card -->
   <div class="card" style="margin-top:1rem;">
-    <h3 style="margin-top:0;font-size:1.05rem;">Mga Detalye sa Booking</h3>
+    <h3 style="margin-top:0;font-size:1.05rem;">Trip Details &amp; Summary</h3>
     <div class="trip-details-list">
       <div class="trip-detail-item">
-        <span class="detail-label">Serbisyo:</span>
+        <span class="detail-label">Service Type:</span>
         <strong style="text-transform:uppercase;">{{ booking.service_type }}</strong>
       </div>
       <div class="trip-detail-item">
@@ -94,17 +94,17 @@
         <span>{{ booking.pickup_address }}</span>
       </div>
       <div class="trip-detail-item">
-        <span class="detail-label">Dropoff Point:</span>
+        <span class="detail-label">Drop-off Destination:</span>
         <span>{{ booking.dropoff_address }}</span>
       </div>
       {% if booking.item_notes %}
       <div class="trip-detail-item">
-        <span class="detail-label">Palitonon / Parsel Note:</span>
+        <span class="detail-label">Item Notes / Instructions:</span>
         <span class="item-notes-text">&ldquo;{{ booking.item_notes }}&rdquo;</span>
       </div>
       {% endif %}
       <div class="trip-detail-item">
-        <span class="detail-label">Kustomer:</span>
+        <span class="detail-label">Customer:</span>
         <span>{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
       </div>
     </div>
@@ -119,6 +119,6 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=1"></script>
+<script src="/static/js/track.js?v=2"></script>
 {% endif %}
 {% endblock %}

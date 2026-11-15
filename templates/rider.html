@@ -9,7 +9,7 @@
     <div class="auth-header text-center">
       <span style="font-size:3rem;line-height:1;">📱</span>
       <h2 style="margin:8px 0 4px;">Rider Dispatch Portal</h2>
-      <p class="text-muted">Log in gamit ang imong numero aron makadawat og mga booking sa Camiguin.</p>
+      <p class="text-muted">Log in with your registered mobile number to receive island booking dispatches in Camiguin.</p>
     </div>
 
     <!-- Login Form -->
@@ -26,18 +26,18 @@
       <div id="login-error-msg" class="alert-error hidden"></div>
 
       <button type="submit" id="rider-login-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:10px;">
-        Mag-Log In isip Rider &rarr;
+        Log In as Rider &rarr;
       </button>
 
       <div style="text-align:center;margin-top:14px;">
-        <button type="button" id="switch-to-register-btn" class="text-btn">Bag-ong Rider? Magparehistro Dinhi</button>
+        <button type="button" id="switch-to-register-btn" class="text-btn">New Rider? Register Here</button>
       </div>
     </form>
 
     <!-- Register Form (hidden initially) -->
     <form id="rider-register-form" class="hidden" style="margin-top:1.5rem;">
       <div class="form-group">
-        <label for="reg-name">Kumpleto nga Pangalan *</label>
+        <label for="reg-name">Complete Full Name *</label>
         <input type="text" id="reg-name" required placeholder="e.g. Juan Dela Cruz">
       </div>
       <div class="form-group">
@@ -46,7 +46,7 @@
       </div>
       <div class="form-grid-2">
         <div class="form-group">
-          <label for="reg-bike">Modelo sa Motor *</label>
+          <label for="reg-bike">Motorcycle Model *</label>
           <input type="text" id="reg-bike" required placeholder="e.g. Click 125i / NMAX">
         </div>
         <div class="form-group">
@@ -55,7 +55,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label for="reg-mun">Lungsod sa Camiguin *</label>
+        <label for="reg-mun">Camiguin Municipality *</label>
         <select id="reg-mun">
           <option value="Mambajao" selected>Mambajao</option>
           <option value="Mahinog">Mahinog (Benoni)</option>
@@ -66,17 +66,17 @@
       </div>
       <div class="form-group">
         <label for="reg-password">Password (min 6 chars) *</label>
-        <input type="password" id="reg-password" required minlength="6" placeholder="Paghimo og password">
+        <input type="password" id="reg-password" required minlength="6" placeholder="Create your password">
       </div>
 
       <div id="register-error-msg" class="alert-error hidden"></div>
 
       <button type="submit" id="rider-register-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:10px;">
-        Rehistro isip CCRC Rider
+        Register as CCRC Rider
       </button>
 
       <div style="text-align:center;margin-top:14px;">
-        <button type="button" id="switch-to-login-btn" class="text-btn">&larr; Balik sa Log In</button>
+        <button type="button" id="switch-to-login-btn" class="text-btn">&larr; Back to Log In</button>
       </div>
     </form>
   </div>
@@ -103,7 +103,7 @@
 
       <div class="gps-beacon-bar" id="gps-beacon-bar">
         <span class="beacon-dot"></span>
-        <span id="gps-status-label">Live GPS Beacon: Aktibo ug nag-transmit</span>
+        <span id="gps-status-label">Live GPS Beacon: Active &amp; streaming location</span>
         <button type="button" id="force-gps-btn" class="btn btn-sm btn-outline" style="margin-left:auto;padding:2px 8px;font-size:0.75rem;">Sync GPS</button>
       </div>
     </div>
@@ -111,21 +111,21 @@
     <!-- Active Job (if currently handling one) -->
     <div id="rider-active-job-box" class="card active-job-card hidden">
       <div class="active-job-head">
-        <span class="badge badge-success">Ongoing Active Job</span>
+        <span class="badge badge-success">Ongoing Active Trip</span>
         <strong id="active-job-code" style="font-family:monospace;font-size:1.05rem;">CCRC-0000</strong>
       </div>
 
-      <h3 id="active-job-title" style="margin:8px 0 4px;font-size:1.25rem;">Pahatud &rarr; Destination</h3>
-      <div class="text-muted" id="active-job-fare" style="font-weight:700;color:var(--primary);margin-bottom:10px;">Plete: ₱0.00</div>
+      <h3 id="active-job-title" style="margin:8px 0 4px;font-size:1.25rem;">Service &rarr; Destination</h3>
+      <div class="text-muted" id="active-job-fare" style="font-weight:700;color:var(--primary);margin-bottom:10px;">Fare: ₱0.00</div>
 
       <div class="active-locations-box">
         <div class="loc-step">
           <span class="loc-icon">🟢</span>
           <div>
-            <strong style="font-size:0.85rem;">Pickup / Tindahan:</strong>
+            <strong style="font-size:0.85rem;">Pickup / Store:</strong>
             <div id="active-job-pickup" class="loc-text">Pickup location</div>
             <a id="nav-pickup-btn" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline nav-map-btn">
-              🗺️ Navigate sa Google Maps
+              🗺️ Navigate in Google Maps
             </a>
           </div>
         </div>
@@ -133,10 +133,10 @@
         <div class="loc-step">
           <span class="loc-icon">🏁</span>
           <div>
-            <strong style="font-size:0.85rem;">Dropoff / Hatdanan:</strong>
+            <strong style="font-size:0.85rem;">Dropoff / Destination:</strong>
             <div id="active-job-dropoff" class="loc-text">Dropoff location</div>
             <a id="nav-dropoff-btn" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline nav-map-btn">
-              🗺️ Navigate sa Google Maps
+              🗺️ Navigate in Google Maps
             </a>
           </div>
         </div>
@@ -144,7 +144,7 @@
         <div id="active-job-notes-wrap" class="loc-step hidden">
           <span class="loc-icon">🛒</span>
           <div>
-            <strong style="font-size:0.85rem;">Palitonon / Notes:</strong>
+            <strong style="font-size:0.85rem;">Shopping List / Notes:</strong>
             <div id="active-job-notes" class="loc-text">Notes here...</div>
             <div id="active-job-budget" class="text-muted" style="font-size:0.82rem;margin-top:2px;"></div>
           </div>
@@ -153,10 +153,10 @@
         <div class="loc-step">
           <span class="loc-icon">👤</span>
           <div>
-            <strong style="font-size:0.85rem;">Kustomer:</strong>
+            <strong style="font-size:0.85rem;">Customer:</strong>
             <div id="active-job-customer" class="loc-text">Customer Name</div>
             <a id="active-job-call-btn" href="#" class="btn btn-sm btn-primary nav-map-btn">
-              📞 Tawagi ang Kustomer
+              📞 Call Customer
             </a>
           </div>
         </div>
@@ -165,10 +165,10 @@
       <!-- Action Step Buttons -->
       <div class="job-step-actions" style="margin-top:14px;">
         <button type="button" id="job-in-progress-btn" class="btn btn-primary btn-block btn-lg">
-          🚀 Nakuha na / Padulong na sa Hatdanan
+          🚀 Picked Up / Heading to Destination
         </button>
         <button type="button" id="job-complete-btn" class="btn btn-success btn-block btn-lg hidden" style="background:#15803d;border-color:#15803d;">
-          ✓ Nahatud na (Mark as Completed)
+          ✓ Delivered (Mark as Completed)
         </button>
       </div>
     </div>
@@ -176,7 +176,7 @@
     <!-- Incoming Broadcast Jobs Feed -->
     <div class="dispatch-feed-header">
       <div style="display:flex;align-items:center;gap:8px;">
-        <h3>Mga Available nga Booking sa Isla</h3>
+        <h3>Available Island Booking Requests</h3>
         <span id="jobs-count-pill" class="badge-count">0</span>
       </div>
       <button type="button" id="refresh-jobs-btn" class="btn btn-sm btn-outline">🔄 Refresh</button>
@@ -185,18 +185,18 @@
     <div id="available-jobs-feed" class="jobs-feed-list">
       <div class="empty-state">
         <span style="font-size:2rem;display:block;margin-bottom:6px;">📡</span>
-        Nangita og mga bag-ong pasugo o pahatud sa Camiguin...<br>
-        <small class="text-muted">Motingog dayon ang imong cellphone inig naay bag-ong customer!</small>
+        Scanning for new rides &amp; delivery requests in Camiguin...<br>
+        <small class="text-muted">Your phone will play a sound alert when a customer books!</small>
       </div>
     </div>
 
     <div style="margin-top:1.5rem;text-align:center;">
-      <button type="button" id="rider-logout-btn" class="text-btn text-danger">Log Out sa Rider Account</button>
+      <button type="button" id="rider-logout-btn" class="text-btn text-danger">Log Out of Rider Account</button>
     </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=1"></script>
+<script src="/static/js/rider.js?v=2"></script>
 {% endblock %}
