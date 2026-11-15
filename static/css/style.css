@@ -575,6 +575,10 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--shadow-lg);
 }
 
+.modal-card.modal-lg {
+  max-width: 680px;
+}
+
 .success-icon-pulse {
   font-size: 3.5rem;
   margin-bottom: 0.5rem;
