@@ -40,7 +40,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("No Internet Connection", off_resp.get_data(as_text=True))
 
     def test_official_fare_matrix_calculations(self):
-        # Test exact Pick Me Up Camiguin Fare Matrix values
+        # Test exact Official Camiguin CRC Fare Matrix values
         settings = {
             "base_fare": "40.0",
             "base_km": "2.0",
@@ -138,7 +138,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Courier &amp; Delivery", html)
         self.assertIn("Buy For Me", html)
         self.assertIn("Bills &amp; Port Claim", html)
-        self.assertIn("Official Pick Me Up Camiguin — Fare Matrix", html)
+        self.assertIn("Official Camiguin CRC Fare Matrix", html)
 
         # Fare estimate API
         est_resp = self.client.post(
