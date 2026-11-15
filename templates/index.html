@@ -63,7 +63,7 @@
             <label for="pickup-address" id="pickup-label">🟢 Pickup / Store / Meeting Point *</label>
             <button type="button" id="locate-pickup-gps-btn" class="text-btn">📍 My Current GPS</button>
           </div>
-          <input type="text" id="pickup-address" name="pickup_address" required placeholder="e.g. Paras Beach Resort / Benoni Port / Poblacion Market">
+          <input type="text" id="pickup-address" name="pickup_address" list="camiguin-places-list" required placeholder="e.g. Baylao, Paras Beach, Benoni, Jollibee..." autocomplete="off">
           <input type="hidden" id="pickup-lat" name="pickup_lat">
           <input type="hidden" id="pickup-lng" name="pickup_lng">
         </div>
@@ -73,10 +73,47 @@
             <label for="dropoff-address" id="dropoff-label">🏁 Drop-off / Destination Address *</label>
             <button type="button" id="locate-dropoff-gps-btn" class="text-btn">📍 Pin on Map</button>
           </div>
-          <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="e.g. Balyali Resort / Mambajao Town Plaza / Benoni Wharf">
+          <input type="text" id="dropoff-address" name="dropoff_address" list="camiguin-places-list" required placeholder="e.g. Jollibee, Balyali Resort, Mambajao Market..." autocomplete="off">
           <input type="hidden" id="dropoff-lat" name="dropoff_lat">
           <input type="hidden" id="dropoff-lng" name="dropoff_lng">
         </div>
+
+        <datalist id="camiguin-places-list">
+          <option value="Baylao, Mambajao">
+          <option value="Jollibee Camiguin, Mambajao">
+          <option value="Gaisano Capital Camiguin">
+          <option value="Davilett Store, Mambajao">
+          <option value="Nene Uy Store, Mambajao">
+          <option value="7-Eleven Mambajao">
+          <option value="Mambajao Public Market">
+          <option value="Mambajao Town Plaza">
+          <option value="Balbagon Port (FastCat)">
+          <option value="Benoni Port / Ferry Wharf, Mahinog">
+          <option value="Camiguin Airport">
+          <option value="Camiguin General Hospital">
+          <option value="Provincial Capitol, Mambajao">
+          <option value="Agoho, Mambajao">
+          <option value="Yumbing, Mambajao">
+          <option value="Paras Beach Resort, Yumbing">
+          <option value="Balyali Beach Resort, Yumbing">
+          <option value="White Island Boat Jump-off">
+          <option value="Tongatok Cliff Resort">
+          <option value="Lanzones Resort, Mambajao">
+          <option value="Camiguin Highland Resort / Soro-soro">
+          <option value="Katibawasan Falls">
+          <option value="Ardent Hot Spring">
+          <option value="Sunken Cemetery, Catarman">
+          <option value="Old Church Ruins, Bonbon">
+          <option value="Tuasan Falls, Catarman">
+          <option value="Sto. Niño Cold Spring, Catarman">
+          <option value="Bura Soda Water Park, Catarman">
+          <option value="Mantigue Island Jump-off, Mahinog">
+          <option value="Taguines Lagoon, Mahinog">
+          <option value="Poblacion Mahinog">
+          <option value="Poblacion Catarman">
+          <option value="Poblacion Sagay">
+          <option value="Poblacion Guinsiliban">
+        </datalist>
 
         <!-- Landmark Shortcut Chips -->
         <div class="landmarks-box">
