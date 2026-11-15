@@ -22,6 +22,7 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import (
+    CAMIGUIN_KNOWN_PLACES,
     accept_booking,
     calculate_fare,
     calculate_haversine_km,
@@ -42,6 +43,7 @@ from db import (
     init_db,
     register_rider,
     save_uploaded_media,
+    search_camiguin_places,
     update_booking_status,
     update_rider_location,
     update_rider_online_status,
@@ -242,6 +244,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "resolved_dropoff": {"lat": d_lat, "lng": d_lng} if d_lat and d_lng else None,
             "route_coords": road_coords,
         })
+
+    @app.get("/api/places/search")
+    def api_places_search():
+        q = (request.args.get("q") or "").strip()
+        if not q:
+            return jsonify({"places": []})
+        results = search_camiguin_places(q, limit=10)
+        return jsonify({"places": results})
+
+    @app.get("/api/places/all")
+    def api_places_all():
+        return jsonify({"places": CAMIGUIN_KNOWN_PLACES})
 
     @app.post("/api/bookings")
     def api_create_booking():
