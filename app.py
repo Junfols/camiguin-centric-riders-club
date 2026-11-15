@@ -88,11 +88,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return {
             "club": {
                 "name": settings.get("club_name", "Camiguin Centric Riders Club"),
-                "tagline": settings.get("tagline", "Pahatud, Pakuha, Pasugo & Pabili"),
+                "tagline": settings.get("tagline", "Express Ride-Hailing, Courier, & Errand Services in Camiguin Island"),
                 "hotline": settings.get("hotline", "0917 555 0199"),
-                "base_fare": settings.get("base_fare", "50"),
-                "per_km_rate": settings.get("per_km_rate", "15"),
-                "min_fare": settings.get("min_fare", "50"),
+                "base_fare": settings.get("base_fare", "40"),
+                "per_km_rate": settings.get("per_km_rate", "18"),
+                "min_fare": settings.get("min_fare", "40"),
+                "pabili_service_fee": settings.get("pabili_service_fee", "20"),
+                "pasugo_service_fee": settings.get("pasugo_service_fee", "20"),
+                "queuing_fee": settings.get("queuing_fee", "30"),
+                "extra_store_fee": settings.get("extra_store_fee", "20"),
+                "bulky_order_fee": settings.get("bulky_order_fee", "20"),
+                "hinterland_fee": settings.get("hinterland_fee", "30"),
             },
             "year": datetime.now().year,
         }
@@ -109,7 +115,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             {
                 "name": club_name,
                 "short_name": "Centric Riders",
-                "description": "On-Demand Island Rider & Delivery Booking — Pahatud, Pakuha, Pasugo, Pabili in Camiguin.",
+                "description": "On-Demand Island Rider & Express Delivery Booking — Passenger Ride-Hailing, Parcel Courier, & Buy-For-Me in Camiguin.",
                 "start_url": "/",
                 "display": "standalone",
                 "background_color": "#ffffff",
@@ -179,16 +185,30 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         d_lng = float(data.get("dropoff_lng") or 0.0)
         service = (data.get("service_type") or "pahatud").lower()
 
+        is_large_store = bool(data.get("is_large_store", False))
+        extra_stores_count = int(data.get("extra_stores_count") or 0)
+        is_bulky = bool(data.get("is_bulky_or_high_value", False))
+        is_hinterland = bool(data.get("is_hinterland", False))
+
         if p_lat and p_lng and d_lat and d_lng:
             km = calculate_haversine_km(p_lat, p_lng, d_lat, d_lng)
         else:
             km = 2.0  # default estimate
 
-        fare, estimated_km = calculate_fare(km, service, settings)
+        fare, estimated_km, breakdown = calculate_fare(
+            km=km,
+            service_type=service,
+            settings=settings,
+            is_large_store=is_large_store,
+            extra_stores_count=extra_stores_count,
+            is_bulky_or_high_value=is_bulky,
+            is_hinterland=is_hinterland,
+        )
         return jsonify({
             "estimated_km": estimated_km,
             "fare_amount": fare,
             "service_type": service,
+            "breakdown": breakdown,
         })
 
     @app.post("/api/bookings")
@@ -207,13 +227,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         dropoff_address = (data.get("dropoff_address") or "").strip()
 
         if not customer_name:
-            return jsonify({"error": "Palihug isulat ang imong Pangalan."}), 400
+            return jsonify({"error": "Please enter your full name."}), 400
         if not customer_phone or len(customer_phone) < 7:
-            return jsonify({"error": "Palihug ibutang ang sakto nga Mobile / WhatsApp Number."}), 400
+            return jsonify({"error": "Please provide a valid Mobile / WhatsApp phone number."}), 400
         if not pickup_address:
-            return jsonify({"error": "Palihug ibutang ang Pickup / Tindahan Location."}), 400
+            return jsonify({"error": "Please specify a Pickup / Store location."}), 400
         if not dropoff_address:
-            return jsonify({"error": "Palihug ibutang ang Dropoff / Hatdanan Address."}), 400
+            return jsonify({"error": "Please specify a Drop-off / Destination address."}), 400
 
         try:
             pickup_lat = float(data.get("pickup_lat")) if data.get("pickup_lat") else None
@@ -226,15 +246,33 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if pickup_lat and pickup_lng and dropoff_lat and dropoff_lng:
             km = calculate_haversine_km(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
         else:
-            km = 2.5
-
-        fare_amount, estimated_km = calculate_fare(km, service_type, settings)
+            km = 2.0
 
         item_notes = (data.get("item_notes") or "").strip()
         try:
             estimated_budget = float(data.get("estimated_budget") or 0.0)
         except (ValueError, TypeError):
             estimated_budget = 0.0
+
+        # Special options from Fare Matrix
+        is_large_store = bool(data.get("is_large_store", False))
+        extra_stores_count = int(data.get("extra_stores_count") or 0)
+        is_bulky = bool(data.get("is_bulky_or_high_value", False)) or (estimated_budget >= 2000.0)
+
+        # Auto-detect hinterland route
+        full_addr = f"{pickup_address} {dropoff_address} {item_notes}".lower()
+        hinterland_keywords = ["sorosoro", "soro'soro", "soro-soro", "highland", "utopia", "binunsaran", "granelandia", "itum", "hinterland"]
+        is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
+
+        fare_amount, estimated_km, breakdown = calculate_fare(
+            km=km,
+            service_type=service_type,
+            settings=settings,
+            is_large_store=is_large_store,
+            extra_stores_count=extra_stores_count,
+            is_bulky_or_high_value=is_bulky,
+            is_hinterland=is_hinterland,
+        )
 
         booking = create_booking(
             conn=conn,
@@ -257,8 +295,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         return jsonify({
             "success": True,
-            "message": "Napadala na ang imong booking sa tanang online riders!",
+            "message": "Your booking has been broadcasted to all active riders!",
             "booking": booking,
+            "breakdown": breakdown,
             "tracking_url": f"/track/{booking['booking_code']}",
         }), 201
 
@@ -320,10 +359,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         rider = get_rider_by_phone(conn, phone)
         if not rider:
-            return jsonify({"error": "Wala nakit-an nga numero sa rider."}), 404
+            return jsonify({"error": "Rider phone number not found."}), 404
 
         if not check_password_hash(rider["password_hash"], password):
-            return jsonify({"error": "Sayop nga password."}), 401
+            return jsonify({"error": "Incorrect password."}), 401
 
         session["rider_id"] = rider["id"]
         update_rider_online_status(conn, rider["id"], True)
@@ -346,11 +385,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         municipality = (data.get("municipality") or "Mambajao").strip()
 
         if not name or not phone or not password or not bike_model or not plate_number:
-            return jsonify({"error": "Palihug kompletoha ang tanang gikinahanglang impormasyon."}), 400
+            return jsonify({"error": "Please complete all required fields."}), 400
 
         existing = get_rider_by_phone(conn, phone)
         if existing:
-            return jsonify({"error": "Kini nga numero narehistro na kaniadto. Palihug pag-log in."}), 409
+            return jsonify({"error": "This phone number is already registered. Please log in."}), 409
 
         rider_id = register_rider(
             conn=conn,
@@ -402,25 +441,25 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         data = request.get_json(silent=True) or {}
         rider_id = session.get("rider_id") or data.get("rider_id")
         if not rider_id:
-            return jsonify({"error": "Palihug pag-log in isip rider una modawat og booking."}), 401
+            return jsonify({"error": "Please log in as a rider before accepting bookings."}), 401
 
         rider = get_rider_by_id(conn, int(rider_id))
         if not rider or rider.get("status") != "active":
-            return jsonify({"error": "Wala pa ma-aprobahi o suspendido ang imong rider account."}), 403
+            return jsonify({"error": "Your rider account is pending approval or suspended."}), 403
 
         # Check if rider already has an active ongoing job
         active = get_rider_active_job(conn, int(rider_id))
         if active and active["id"] != booking_id:
-            return jsonify({"error": "Duna pa kay kasamtangang booking nga wala pa mahuman."}), 400
+            return jsonify({"error": "You already have an active ongoing trip that must be completed first."}), 400
 
         claimed = accept_booking(conn, booking_id, int(rider_id))
         if not claimed:
             conn.rollback()
-            return jsonify({"error": "Naunhan ka! Nadawat na kining maong booking sa laing rider."}), 409
+            return jsonify({"error": "This booking has already been claimed by another rider."}), 409
 
         conn.commit()
         updated_job = get_booking_by_id(conn, booking_id)
-        return jsonify({"success": True, "message": "Malampusong nadawat ang booking!", "job": updated_job})
+        return jsonify({"success": True, "message": "Booking accepted successfully!", "job": updated_job})
 
     @app.post("/api/bookings/<int:booking_id>/status")
     def update_job_status(booking_id: int):
@@ -497,7 +536,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         data = request.get_json(silent=True) or {}
         updates = {}
-        for key in ("club_name", "tagline", "hotline", "base_fare", "base_km", "per_km_rate", "min_fare", "pabili_service_fee", "pasugo_service_fee"):
+        for key in (
+            "club_name", "tagline", "hotline", "base_fare", "base_km", "per_km_rate", "min_fare",
+            "pabili_service_fee", "pasugo_service_fee", "queuing_fee", "extra_store_fee", "bulky_order_fee", "hinterland_fee"
+        ):
             if key in data:
                 updates[key] = str(data[key]).strip()
 

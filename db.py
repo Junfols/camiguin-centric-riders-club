@@ -42,32 +42,73 @@ def calculate_haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -
     return round(r * c, 2)
 
 
-def calculate_fare(km: float, service_type: str, settings: dict[str, Any]) -> tuple[float, float]:
+def calculate_fare(
+    km: float,
+    service_type: str,
+    settings: dict[str, Any],
+    is_large_store: bool = False,
+    extra_stores_count: int = 0,
+    is_bulky_or_high_value: bool = False,
+    is_hinterland: bool = False,
+) -> tuple[float, float, dict[str, Any]]:
     """
-    Calculate fare based on service type, estimated distance, and club settings.
-    Returns (fare_amount, estimated_km).
+    Calculate fare based on the official Pick Me Up Camiguin Fare Matrix:
+    - 1 KM: ₱40.00
+    - 2 KMS: ₱40.00
+    - Succeeding KMS (> 2 KM): +₱18.00 per KM (e.g. 3 km = ₱58, 10 km = ₱184, 30 km = ₱544)
+    - Pasugo / Pabili / Pabayad / Delivery errand fee: +₱20.00 (Meter + 20 PHP)
+    - Queuing at large establishments / groceries (Gaisano, Davilett, Nene Uy): +₱30.00
+    - Extra store stops: +₱20.00 per additional store
+    - Bulky orders / Shopping orders >= ₱2,000: +₱20.00
+    - Hinterland / Mountain route (Soro-soro, Highland, Utopia, Binunsaran, Granelandia, Itum Road, etc.): +₱30.00
     """
     clean_km = max(1.0, round(km, 2))
-    base_fare = float(settings.get("base_fare") or 50.0)
+    base_fare = float(settings.get("base_fare") or 40.0)
     base_km = float(settings.get("base_km") or 2.0)
-    per_km_rate = float(settings.get("per_km_rate") or 15.0)
-    min_fare = float(settings.get("min_fare") or 50.0)
+    per_km_rate = float(settings.get("per_km_rate") or 18.0)
+    min_fare = float(settings.get("min_fare") or 40.0)
 
-    # Service-specific base multipliers or additions
-    service_add = 0.0
-    if service_type in ("pabili", "pabayad"):
-        service_add = float(settings.get("pabili_service_fee") or 20.0)
-    elif service_type == "pasugo":
-        service_add = float(settings.get("pasugo_service_fee") or 10.0)
-
+    # 1. Base distance meter calculation
     if clean_km <= base_km:
-        computed = base_fare + service_add
+        meter_fare = base_fare
     else:
         extra_km = clean_km - base_km
-        computed = base_fare + (extra_km * per_km_rate) + service_add
+        meter_fare = base_fare + (extra_km * per_km_rate)
 
-    final_fare = max(min_fare, round(computed, 0))
-    return final_fare, clean_km
+    # 2. Service fee (Pasugo / Pabili / Pabayad: +₱20, Passenger Ride: ₱0)
+    service_add = 0.0
+    st = (service_type or "").lower().strip()
+    if st in ("pabili", "pabayad", "pasugo", "delivery", "courier", "errand", "cargo"):
+        service_add = float(settings.get("pabili_service_fee") or 20.0)
+
+    # 3. Queuing / Large store fee (+₱30)
+    queuing_fee = float(settings.get("queuing_fee") or 30.0) if is_large_store else 0.0
+
+    # 4. Extra stores fee (+₱20 per extra store)
+    per_store_rate = float(settings.get("extra_store_fee") or 20.0)
+    extra_stores_fee = max(0, int(extra_stores_count or 0)) * per_store_rate
+
+    # 5. Bulky / High value order fee (+₱20)
+    bulky_fee = float(settings.get("bulky_order_fee") or 20.0) if is_bulky_or_high_value else 0.0
+
+    # 6. Hinterland / Mountain route fee (+₱30)
+    hinterland_fee = float(settings.get("hinterland_fee") or 30.0) if is_hinterland else 0.0
+
+    total_computed = meter_fare + service_add + queuing_fee + extra_stores_fee + bulky_fee + hinterland_fee
+    final_fare = max(min_fare, round(total_computed, 0))
+
+    breakdown = {
+        "meter_fare": round(meter_fare, 2),
+        "service_fee": round(service_add, 2),
+        "queuing_fee": round(queuing_fee, 2),
+        "extra_stores_fee": round(extra_stores_fee, 2),
+        "bulky_fee": round(bulky_fee, 2),
+        "hinterland_fee": round(hinterland_fee, 2),
+        "total_fare": final_fare,
+        "clean_km": clean_km,
+    }
+
+    return final_fare, clean_km, breakdown
 
 
 def generate_booking_code() -> str:
@@ -364,15 +405,19 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
 
     default_settings = {
         "club_name": "Camiguin Centric Riders Club",
-        "tagline": "Pahatud, Pakuha, Pasugo & Pabili — On-Demand Island Express Riders",
+        "tagline": "Express Ride-Hailing, Courier & Errand Services in Camiguin Island",
         "hotline": "0917 555 0199",
         "admin_password_hash": generate_password_hash("admin1234"),
-        "base_fare": "50.0",
+        "base_fare": "40.0",
         "base_km": "2.0",
-        "per_km_rate": "15.0",
-        "min_fare": "50.0",
+        "per_km_rate": "18.0",
+        "min_fare": "40.0",
         "pabili_service_fee": "20.0",
-        "pasugo_service_fee": "10.0",
+        "pasugo_service_fee": "20.0",
+        "queuing_fee": "30.0",
+        "extra_store_fee": "20.0",
+        "bulky_order_fee": "20.0",
+        "hinterland_fee": "30.0",
         "default_lat": "9.2483",
         "default_lng": "124.6975",  # Mambajao center
     }
@@ -381,6 +426,11 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
         row = conn.execute("SELECT value FROM settings WHERE key = ?", (k,)).fetchone()
         if not row:
             conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (k, v))
+        else:
+            # Upgrade outdated default fare numbers to new Pick Me Up Camiguin Fare Matrix
+            old_val = str(row["value"] if isinstance(row, dict) or hasattr(row, "keys") else row[0])
+            if (k == "base_fare" and old_val == "50.0") or (k == "per_km_rate" and old_val == "15.0") or (k == "min_fare" and old_val == "50.0"):
+                conn.execute("UPDATE settings SET value = ? WHERE key = ?", (v, k))
 
     # Seed starter verified club riders if none exist
     rider_count = conn.execute("SELECT COUNT(*) AS c FROM riders").fetchone()
