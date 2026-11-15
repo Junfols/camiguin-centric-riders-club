@@ -350,6 +350,42 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(settings["base_fare"], "45")
         self.assertEqual(settings["per_km_rate"], "18")
 
+    def test_typed_address_geocoding_baylao_to_jollibee(self):
+        # User scenario: Pickup "Baylao", Dropoff "Jollibee"
+        # Baylao (9.2415, 124.6910) to Jollibee (9.2488, 124.6980) ~ 1.12 km
+        # In Camiguin CRC Fare matrix (1-2 km = 40.00), fare should be 40.00
+        est_resp = self.client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_address": "Baylao",
+                "dropoff_address": "Jollibee",
+                "service_type": "pahatud",
+            },
+        )
+        self.assertEqual(est_resp.status_code, 200)
+        est_data = est_resp.get_json()
+        self.assertAlmostEqual(est_data["estimated_km"], 1.12, delta=0.2)
+        self.assertEqual(est_data["fare_amount"], 40.0)
+        self.assertIsNotNone(est_data["resolved_pickup"])
+        self.assertIsNotNone(est_data["resolved_dropoff"])
+
+        # Also verify booking creation with typed text
+        book_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Maria Santos",
+                "customer_phone": "09171234567",
+                "service_type": "pahatud",
+                "pickup_address": "Baylao, Mambajao",
+                "dropoff_address": "Jollibee Camiguin",
+            },
+        )
+        self.assertEqual(book_resp.status_code, 201)
+        booking = book_resp.get_json()["booking"]
+        self.assertEqual(booking["fare_amount"], 40.0)
+        self.assertIsNotNone(booking["pickup_lat"])
+        self.assertIsNotNone(booking["dropoff_lat"])
+
 
 if __name__ == "__main__":
     unittest.main()
