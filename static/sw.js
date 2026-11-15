@@ -1,14 +1,14 @@
-const CACHE_NAME = "ccrc-pwa-v1";
+const CACHE_NAME = "ccrc-pwa-v2";
 
 const PRECACHE_ASSETS = [
   "/",
   "/rider",
   "/offline",
   "/manifest.webmanifest",
-  "/static/css/style.css?v=1",
-  "/static/js/app.js?v=1",
-  "/static/js/track.js?v=1",
-  "/static/js/rider.js?v=1",
+  "/static/css/style.css?v=2",
+  "/static/js/app.js?v=2",
+  "/static/js/track.js?v=2",
+  "/static/js/rider.js?v=2",
   "/static/icons/icon.svg"
 ];
 
@@ -51,10 +51,12 @@ self.addEventListener("fetch", (event) => {
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
-        .then((networkResponse) => {
-          const cloned = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, cloned));
-          return networkResponse;
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return response;
         })
         .catch(() => {
           return caches.match(req).then((cached) => {
@@ -65,19 +67,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static assets
+  // Stale-while-revalidate for static assets
   event.respondWith(
-    caches.match(req).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(req).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const cloned = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, cloned));
-        }
-        return networkResponse;
-      });
+    caches.match(req).then((cached) => {
+      const fetchPromise = fetch(req)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => cached);
+      return cached || fetchPromise;
     })
   );
 });
