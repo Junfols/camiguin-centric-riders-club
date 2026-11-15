@@ -27,6 +27,111 @@ def get_database_url() -> str:
     return (os.environ.get("DATABASE_URL") or "").strip()
 
 
+# -------------------------------------------------------------------------
+# Camiguin Island Geocoding & Landmark Directory
+# -------------------------------------------------------------------------
+CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
+    # Mambajao Town Center, Stores & Landmarks
+    {"name": "Jollibee Camiguin, Mambajao", "keywords": ["jollibee", "jolibee", "joli", "jolli"], "lat": 9.2488, "lng": 124.6980},
+    {"name": "Gaisano Capital Camiguin", "keywords": ["gaisano", "gaisano capital"], "lat": 9.2475, "lng": 124.6995},
+    {"name": "Davilett Store, Mambajao", "keywords": ["davilett", "davi"], "lat": 9.2482, "lng": 124.6978},
+    {"name": "Nene Uy Store, Mambajao", "keywords": ["nene uy", "nene"], "lat": 9.2480, "lng": 124.6976},
+    {"name": "7-Eleven Mambajao", "keywords": ["7-eleven", "7-11", "711", "seven eleven"], "lat": 9.2487, "lng": 124.6979},
+    {"name": "Mambajao Public Market", "keywords": ["mambajao market", "public market", "merkado", "palengke", "wet market", "market"], "lat": 9.2483, "lng": 124.6975},
+    {"name": "Mambajao Town Plaza / Municipal Hall", "keywords": ["mambajao plaza", "plaza", "municipal hall", "munisipyo"], "lat": 9.2485, "lng": 124.6972},
+    {"name": "Provincial Capitol, Mambajao", "keywords": ["capitol", "kapitolyo"], "lat": 9.2510, "lng": 124.7040},
+    {"name": "Camiguin General Hospital", "keywords": ["hospital", "cgh", "clinic"], "lat": 9.2495, "lng": 124.7020},
+    {"name": "Camiguin Airport", "keywords": ["airport", "tugpahanan"], "lat": 9.2530, "lng": 124.7061},
+    {"name": "Balbagon Port (FastCat Wharf)", "keywords": ["balbagon port", "balbagon wharf", "balbagon", "fastcat"], "lat": 9.2561, "lng": 124.7175},
+    {"name": "Benoni Port / Ferry Wharf, Mahinog", "keywords": ["benoni port", "benoni wharf", "benoni", "wharf", "port"], "lat": 9.1306, "lng": 124.7937},
+
+    # Mambajao Barangays & Tourist Spots
+    {"name": "Baylao, Mambajao", "keywords": ["baylao", "bailao"], "lat": 9.2415, "lng": 124.6910},
+    {"name": "Agoho, Mambajao", "keywords": ["agoho"], "lat": 9.2450, "lng": 124.6620},
+    {"name": "Yumbing, Mambajao", "keywords": ["yumbing"], "lat": 9.2553, "lng": 124.6468},
+    {"name": "Paras Beach Resort, Yumbing", "keywords": ["paras beach", "paras resort", "paras"], "lat": 9.2553, "lng": 124.6468},
+    {"name": "Balyali Beach Resort, Yumbing", "keywords": ["balyali resort", "balyali"], "lat": 9.2588, "lng": 124.6432},
+    {"name": "White Island Boat Jump-off", "keywords": ["white island", "jump-off", "jump off"], "lat": 9.2538, "lng": 124.6532},
+    {"name": "Tongatok Cliff Resort", "keywords": ["tongatok cliff", "tongatok"], "lat": 9.2505, "lng": 124.6341},
+    {"name": "Lanzones Resort, Mambajao", "keywords": ["lanzones resort", "lanzones"], "lat": 9.2390, "lng": 124.6970},
+    {"name": "Camiguin Highland Resort / Soro-soro", "keywords": ["highland resort", "highland", "sorosoro", "soro-soro", "soro'soro"], "lat": 9.2310, "lng": 124.6890},
+    {"name": "Katibawasan Falls", "keywords": ["katibawasan falls", "katibawasan"], "lat": 9.2152, "lng": 124.7188},
+    {"name": "Ardent Hot Spring", "keywords": ["ardent hot spring", "ardent", "hot spring"], "lat": 9.2380, "lng": 124.6610},
+    {"name": "Kuguita, Mambajao", "keywords": ["kuguita", "cuguita"], "lat": 9.2490, "lng": 124.6850},
+    {"name": "Poblacion Mambajao", "keywords": ["poblacion mambajao", "poblacion", "centro"], "lat": 9.2483, "lng": 124.6975},
+    {"name": "Magting, Mambajao", "keywords": ["magting"], "lat": 9.2430, "lng": 124.7250},
+    {"name": "Anito, Mambajao", "keywords": ["anito"], "lat": 9.2350, "lng": 124.7150},
+    {"name": "Pandan, Mambajao", "keywords": ["pandan"], "lat": 9.2460, "lng": 124.7080},
+    {"name": "Bug-ong, Mambajao", "keywords": ["bug-ong", "bugong"], "lat": 9.2530, "lng": 124.6390},
+    {"name": "Naasag, Mambajao", "keywords": ["naasag"], "lat": 9.2510, "lng": 124.6280},
+    {"name": "Itum, Mambajao", "keywords": ["itum road", "itum"], "lat": 9.2250, "lng": 124.6850},
+
+    # Mahinog
+    {"name": "Poblacion Mahinog", "keywords": ["mahinog", "poblacion mahinog"], "lat": 9.1530, "lng": 124.7850},
+    {"name": "Hubangon, Mahinog", "keywords": ["hubangon"], "lat": 9.1680, "lng": 124.7760},
+    {"name": "San Roque / Mantigue Boat Station, Mahinog", "keywords": ["mantigue island", "mantigue", "san roque"], "lat": 9.1720, "lng": 124.7850},
+    {"name": "Katunggan Mangrove Park, Mahinog", "keywords": ["katunggan", "mangrove park"], "lat": 9.1350, "lng": 124.7920},
+    {"name": "Taguines Lagoon, Mahinog", "keywords": ["taguines lagoon", "taguines"], "lat": 9.1290, "lng": 124.7910},
+    {"name": "Binunsaran, Mahinog", "keywords": ["binunsaran"], "lat": 9.1420, "lng": 124.7700},
+    {"name": "Tupsan, Mahinog", "keywords": ["tupsan"], "lat": 9.1850, "lng": 124.7500},
+
+    # Catarman
+    {"name": "Poblacion Catarman", "keywords": ["catarman", "poblacion catarman"], "lat": 9.1280, "lng": 124.6450},
+    {"name": "Sunken Cemetery, Bonbon, Catarman", "keywords": ["sunken cemetery", "sunken"], "lat": 9.2010, "lng": 124.6300},
+    {"name": "Old Church Ruins (Gui-ob), Bonbon", "keywords": ["church ruins", "guiob", "gui-ob", "old church"], "lat": 9.2050, "lng": 124.6320},
+    {"name": "Tuasan Falls, Catarman", "keywords": ["tuasan falls", "tuasan"], "lat": 9.1700, "lng": 124.6750},
+    {"name": "Sto. Niño Cold Spring, Catarman", "keywords": ["cold spring", "sto nino", "sto. nino", "sto niño"], "lat": 9.1550, "lng": 124.6550},
+    {"name": "Bura Soda Water Park, Catarman", "keywords": ["soda water", "bura soda", "soda swimming", "bura"], "lat": 9.1820, "lng": 124.6380},
+    {"name": "Bonbon, Catarman", "keywords": ["bonbon"], "lat": 9.2000, "lng": 124.6320},
+    {"name": "Catibac, Catarman", "keywords": ["catibac"], "lat": 9.1650, "lng": 124.6420},
+    {"name": "Compol, Catarman", "keywords": ["compol"], "lat": 9.1450, "lng": 124.6430},
+    {"name": "Panghiawan, Catarman", "keywords": ["panghiawan"], "lat": 9.1150, "lng": 124.6520},
+
+    # Sagay
+    {"name": "Poblacion Sagay", "keywords": ["sagay", "poblacion sagay"], "lat": 9.1020, "lng": 124.7210},
+    {"name": "Alangilan, Sagay", "keywords": ["alangilan"], "lat": 9.0950, "lng": 124.7080},
+    {"name": "Bacnit, Sagay", "keywords": ["bacnit"], "lat": 9.1120, "lng": 124.7350},
+    {"name": "Balite, Sagay", "keywords": ["balite"], "lat": 9.0980, "lng": 124.7150},
+    {"name": "Bugang, Sagay", "keywords": ["bugang"], "lat": 9.1080, "lng": 124.7280},
+    {"name": "Manuyog, Sagay", "keywords": ["manuyog"], "lat": 9.0880, "lng": 124.6910},
+
+    # Guinsiliban
+    {"name": "Poblacion Guinsiliban", "keywords": ["guinsiliban", "poblacion guinsiliban"], "lat": 9.0940, "lng": 124.7780},
+    {"name": "Giant Clam Sanctuary, Cantaan, Guinsiliban", "keywords": ["giant clam", "clam sanctuary", "cantaan"], "lat": 9.0810, "lng": 124.7860},
+    {"name": "Cabuan, Guinsiliban", "keywords": ["cabuan"], "lat": 9.1050, "lng": 124.7820},
+    {"name": "Liong, Guinsiliban", "keywords": ["liong"], "lat": 9.0910, "lng": 124.7720},
+    {"name": "Maac, Guinsiliban", "keywords": ["maac"], "lat": 9.1120, "lng": 124.7850},
+]
+
+
+def geocode_camiguin_location(query: str) -> dict[str, Any] | None:
+    """
+    Search for a Camiguin location by name or keyword.
+    Returns the place dict with lat and lng if found, or None.
+    """
+    if not query:
+        return None
+    q = query.lower().strip()
+
+    # 1. Exact match on keyword or place name
+    for place in CAMIGUIN_KNOWN_PLACES:
+        if q == place["name"].lower():
+            return place
+        for kw in place["keywords"]:
+            if q == kw:
+                return place
+
+    # 2. Substring match
+    for place in CAMIGUIN_KNOWN_PLACES:
+        for kw in place["keywords"]:
+            if kw in q or q in kw:
+                return place
+        if q in place["name"].lower():
+            return place
+
+    return None
+
+
 def calculate_haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate the great circle distance in kilometers between two GPS points."""
     r = 6371.0  # Earth radius in kilometers

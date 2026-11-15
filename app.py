@@ -26,6 +26,7 @@ from db import (
     calculate_fare,
     calculate_haversine_km,
     create_booking,
+    geocode_camiguin_location,
     get_available_broadcast_bookings,
     get_booking_by_code,
     get_booking_by_id,
@@ -183,6 +184,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         p_lng = float(data.get("pickup_lng") or 0.0)
         d_lat = float(data.get("dropoff_lat") or 0.0)
         d_lng = float(data.get("dropoff_lng") or 0.0)
+        p_addr = (data.get("pickup_address") or "").strip()
+        d_addr = (data.get("dropoff_address") or "").strip()
         service = (data.get("service_type") or "pahatud").lower()
 
         is_large_store = bool(data.get("is_large_store", False))
@@ -190,10 +193,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         is_bulky = bool(data.get("is_bulky_or_high_value", False))
         is_hinterland = bool(data.get("is_hinterland", False))
 
+        # Auto-geocode text addresses if coordinates are missing
+        if (not p_lat or not p_lng) and p_addr:
+            geo_p = geocode_camiguin_location(p_addr)
+            if geo_p:
+                p_lat, p_lng = geo_p["lat"], geo_p["lng"]
+
+        if (not d_lat or not d_lng) and d_addr:
+            geo_d = geocode_camiguin_location(d_addr)
+            if geo_d:
+                d_lat, d_lng = geo_d["lat"], geo_d["lng"]
+
         if p_lat and p_lng and d_lat and d_lng:
             km = calculate_haversine_km(p_lat, p_lng, d_lat, d_lng)
         else:
-            km = 2.0  # default estimate
+            km = 1.5  # default close island distance (₱40 base)
 
         fare, estimated_km, breakdown = calculate_fare(
             km=km,
@@ -209,6 +223,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "fare_amount": fare,
             "service_type": service,
             "breakdown": breakdown,
+            "resolved_pickup": {"lat": p_lat, "lng": p_lng} if p_lat and p_lng else None,
+            "resolved_dropoff": {"lat": d_lat, "lng": d_lng} if d_lat and d_lng else None,
         })
 
     @app.post("/api/bookings")
@@ -243,10 +259,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except (ValueError, TypeError):
             pickup_lat = pickup_lng = dropoff_lat = dropoff_lng = None
 
+        # Auto-geocode text addresses if coordinates are missing
+        if (not pickup_lat or not pickup_lng) and pickup_address:
+            geo_p = geocode_camiguin_location(pickup_address)
+            if geo_p:
+                pickup_lat, pickup_lng = geo_p["lat"], geo_p["lng"]
+
+        if (not dropoff_lat or not dropoff_lng) and dropoff_address:
+            geo_d = geocode_camiguin_location(dropoff_address)
+            if geo_d:
+                dropoff_lat, dropoff_lng = geo_d["lat"], geo_d["lng"]
+
         if pickup_lat and pickup_lng and dropoff_lat and dropoff_lng:
             km = calculate_haversine_km(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
         else:
-            km = 2.0
+            km = 1.5
 
         item_notes = (data.get("item_notes") or "").strip()
         try:
