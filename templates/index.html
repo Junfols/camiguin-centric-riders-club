@@ -61,9 +61,15 @@
         <div class="form-group">
           <div class="label-row">
             <label for="pickup-address" id="pickup-label">🟢 Pickup / Store / Meeting Point *</label>
-            <button type="button" id="locate-pickup-gps-btn" class="text-btn">📍 My Current GPS</button>
+            <div style="display:flex;gap:8px;">
+              <button type="button" id="locate-pickup-gps-btn" class="text-btn">📍 My GPS</button>
+              <button type="button" id="pin-pickup-map-btn" class="text-btn">📍 Pin on Map</button>
+            </div>
           </div>
-          <input type="text" id="pickup-address" name="pickup_address" list="camiguin-places-list" required placeholder="e.g. Baylao, Paras Beach, Benoni, Jollibee..." autocomplete="off">
+          <div class="places-autocomplete-wrap">
+            <input type="text" id="pickup-address" name="pickup_address" required placeholder="Type store, street, building, or barangay (e.g. Baylao, Market, Gaisano)..." autocomplete="off">
+            <div id="pickup-suggestions" class="places-dropdown hidden"></div>
+          </div>
           <input type="hidden" id="pickup-lat" name="pickup_lat">
           <input type="hidden" id="pickup-lng" name="pickup_lng">
         </div>
@@ -71,9 +77,12 @@
         <div class="form-group">
           <div class="label-row">
             <label for="dropoff-address" id="dropoff-label">🏁 Drop-off / Destination Address *</label>
-            <button type="button" id="locate-dropoff-gps-btn" class="text-btn">📍 Pin on Map</button>
+            <button type="button" id="locate-dropoff-gps-btn" class="text-btn" style="font-weight:700;color:var(--primary);">📍 Pin on Map</button>
           </div>
-          <input type="text" id="dropoff-address" name="dropoff_address" list="camiguin-places-list" required placeholder="e.g. Jollibee, Balyali Resort, Mambajao Market..." autocomplete="off">
+          <div class="places-autocomplete-wrap">
+            <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Type store, street, building, or barangay (e.g. Jollibee, Mercury Drug, Bonbon)..." autocomplete="off">
+            <div id="dropoff-suggestions" class="places-dropdown hidden"></div>
+          </div>
           <input type="hidden" id="dropoff-lat" name="dropoff_lat">
           <input type="hidden" id="dropoff-lng" name="dropoff_lng">
         </div>
@@ -234,8 +243,9 @@
         </div>
       </div>
 
-      <div class="map-canvas-container">
+      <div class="map-canvas-container" style="position:relative;">
         <div id="booking-map" class="booking-map" style="height: 480px; width: 100%; border-radius: 12px; z-index: 1;"></div>
+        <div id="map-toast-pill" class="map-toast-pill hidden"></div>
       </div>
 
       <div class="map-legend-row">
