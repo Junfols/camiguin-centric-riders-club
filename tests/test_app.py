@@ -418,6 +418,33 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         est2_data = est_resp2.get_json()
         self.assertEqual(est2_data["fare_amount"], 103.0)
 
+    def test_camiguin_places_search_api(self):
+        # 1. Search stores & pharmacies
+        resp = self.client.get("/api/places/search?q=mercury")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertGreater(len(data["places"]), 0)
+        self.assertIn("Mercury Drug", data["places"][0]["name"])
+
+        # 2. Search barangays
+        b_resp = self.client.get("/api/places/search?q=baylao")
+        self.assertEqual(b_resp.status_code, 200)
+        b_data = b_resp.get_json()
+        self.assertGreater(len(b_data["places"]), 0)
+        self.assertIn("Baylao", b_data["places"][0]["name"])
+
+        # 3. Search streets
+        s_resp = self.client.get("/api/places/search?q=rizal")
+        self.assertEqual(s_resp.status_code, 200)
+        s_data = s_resp.get_json()
+        self.assertGreater(len(s_data["places"]), 0)
+
+        # 4. Check all places list
+        all_resp = self.client.get("/api/places/all")
+        self.assertEqual(all_resp.status_code, 200)
+        all_data = all_resp.get_json()
+        self.assertGreater(len(all_data["places"]), 100)
+
 
 if __name__ == "__main__":
     unittest.main()
