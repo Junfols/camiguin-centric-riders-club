@@ -35,6 +35,65 @@
   const closeMatrixBtn = document.getElementById("close-matrix-btn");
   const fareMatrixModal = document.getElementById("fare-matrix-modal");
 
+  // Camiguin Island Knowledge Base (Auto-resolves typed places to coordinates)
+  const CAMIGUIN_PLACES = [
+    { name: "Baylao, Mambajao", keywords: ["baylao", "bailao"], lat: 9.2415, lng: 124.6910 },
+    { name: "Jollibee Camiguin, Mambajao", keywords: ["jollibee", "jolibee", "joli", "jolli"], lat: 9.2488, lng: 124.6980 },
+    { name: "Gaisano Capital Camiguin", keywords: ["gaisano", "gaisano capital"], lat: 9.2475, lng: 124.6995 },
+    { name: "Davilett Store, Mambajao", keywords: ["davilett", "davi"], lat: 9.2482, lng: 124.6978 },
+    { name: "Nene Uy Store, Mambajao", keywords: ["nene uy", "nene"], lat: 9.2480, lng: 124.6976 },
+    { name: "7-Eleven Mambajao", keywords: ["7-eleven", "7-11", "711", "seven eleven"], lat: 9.2487, lng: 124.6979 },
+    { name: "Mambajao Public Market", keywords: ["market", "merkado", "palengke", "mambajao market"], lat: 9.2483, lng: 124.6975 },
+    { name: "Mambajao Town Plaza", keywords: ["mambajao plaza", "plaza", "municipal hall"], lat: 9.2485, lng: 124.6972 },
+    { name: "Balbagon Port (FastCat)", keywords: ["balbagon", "balbagon port", "fastcat"], lat: 9.2561, lng: 124.7175 },
+    { name: "Benoni Port / Ferry Wharf, Mahinog", keywords: ["benoni", "benoni port", "benoni wharf", "wharf", "port"], lat: 9.1306, lng: 124.7937 },
+    { name: "Camiguin Airport", keywords: ["airport", "tugpahanan"], lat: 9.2530, lng: 124.7061 },
+    { name: "Camiguin General Hospital", keywords: ["hospital", "cgh", "clinic"], lat: 9.2495, lng: 124.7020 },
+    { name: "Provincial Capitol, Mambajao", keywords: ["capitol", "kapitolyo"], lat: 9.2510, lng: 124.7040 },
+    { name: "Paras Beach Resort, Yumbing", keywords: ["paras", "paras beach"], lat: 9.2553, lng: 124.6468 },
+    { name: "Balyali Beach Resort, Yumbing", keywords: ["balyali", "balyali resort"], lat: 9.2588, lng: 124.6432 },
+    { name: "White Island Boat Jump-off", keywords: ["white island", "jump-off"], lat: 9.2538, lng: 124.6532 },
+    { name: "Katibawasan Falls", keywords: ["katibawasan", "katibawasan falls"], lat: 9.2152, lng: 124.7188 },
+    { name: "Ardent Hot Spring", keywords: ["ardent", "ardent hot spring"], lat: 9.2380, lng: 124.6610 },
+    { name: "Sunken Cemetery, Catarman", keywords: ["sunken", "sunken cemetery"], lat: 9.2010, lng: 124.6300 },
+    { name: "Old Church Ruins, Catarman", keywords: ["church ruins", "guiob", "gui-ob"], lat: 9.2050, lng: 124.6320 },
+    { name: "Tuasan Falls, Catarman", keywords: ["tuasan", "tuasan falls"], lat: 9.1700, lng: 124.6750 },
+    { name: "Sto. Niño Cold Spring, Catarman", keywords: ["cold spring", "sto nino", "sto. nino"], lat: 9.1550, lng: 124.6550 },
+    { name: "Mantigue Island Jump-off, Mahinog", keywords: ["mantigue", "san roque"], lat: 9.1720, lng: 124.7850 },
+    { name: "Taguines Lagoon, Mahinog", keywords: ["taguines", "taguines lagoon"], lat: 9.1290, lng: 124.7910 },
+    { name: "Tongatok Cliff Resort", keywords: ["tongatok", "tongatok cliff"], lat: 9.2505, lng: 124.6341 },
+    { name: "Lanzones Resort, Mambajao", keywords: ["lanzones", "lanzones resort"], lat: 9.2390, lng: 124.6970 },
+    { name: "Camiguin Highland Resort", keywords: ["highland", "highland resort", "sorosoro", "soro-soro", "soro'soro"], lat: 9.2310, lng: 124.6890 },
+    { name: "Agoho, Mambajao", keywords: ["agoho"], lat: 9.2450, lng: 124.6620 },
+    { name: "Yumbing, Mambajao", keywords: ["yumbing"], lat: 9.2553, lng: 124.6468 },
+    { name: "Kuguita, Mambajao", keywords: ["kuguita"], lat: 9.2490, lng: 124.6850 },
+    { name: "Poblacion Mambajao", keywords: ["poblacion mambajao", "poblacion", "centro"], lat: 9.2483, lng: 124.6975 },
+    { name: "Poblacion Mahinog", keywords: ["mahinog", "poblacion mahinog"], lat: 9.1530, lng: 124.7850 },
+    { name: "Poblacion Catarman", keywords: ["catarman", "poblacion catarman"], lat: 9.1280, lng: 124.6450 },
+    { name: "Poblacion Sagay", keywords: ["sagay", "poblacion sagay"], lat: 9.1020, lng: 124.7210 },
+    { name: "Poblacion Guinsiliban", keywords: ["guinsiliban", "poblacion guinsiliban"], lat: 9.0940, lng: 124.7780 }
+  ];
+
+  function matchCamiguinPlace(str) {
+    if (!str) return null;
+    const s = str.trim().toLowerCase();
+    // 1. Exact match
+    for (const p of CAMIGUIN_PLACES) {
+      if (s === p.name.toLowerCase()) return p;
+      for (const k of p.keywords) {
+        if (s === k) return p;
+      }
+    }
+    // 2. Word/Substring match
+    for (const p of CAMIGUIN_PLACES) {
+      for (const k of p.keywords) {
+        if (s.includes(k) || k.includes(s)) return p;
+      }
+      if (p.name.toLowerCase().includes(s)) return p;
+    }
+    return null;
+  }
+
   let map;
   let pickupMarker = null;
   let dropoffMarker = null;
@@ -77,6 +136,53 @@
       el.addEventListener("input", recalculateFare);
     }
   });
+
+  // Handle typing inside Pickup and Dropoff inputs
+  function handleTypedAddress(isPickup) {
+    const input = isPickup ? pickupInput : dropoffInput;
+    const text = input.value.trim();
+    if (text.length >= 2) {
+      const found = matchCamiguinPlace(text);
+      if (found) {
+        if (isPickup) {
+          pickupLatInput.value = found.lat;
+          pickupLngInput.value = found.lng;
+          if (pickupMarker) {
+            pickupMarker.setLatLng([found.lat, found.lng]);
+          } else if (map) {
+            setPickupPoint(found.lat, found.lng, null);
+          }
+        } else {
+          dropoffLatInput.value = found.lat;
+          dropoffLngInput.value = found.lng;
+          if (dropoffMarker) {
+            dropoffMarker.setLatLng([found.lat, found.lng]);
+          } else if (map) {
+            setDropoffPoint(found.lat, found.lng, null);
+          }
+        }
+        updateRouteLine();
+      }
+    }
+    recalculateFare();
+  }
+
+  let typeTimer = null;
+  if (pickupInput) {
+    pickupInput.addEventListener("input", () => {
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(() => handleTypedAddress(true), 250);
+    });
+    pickupInput.addEventListener("change", () => handleTypedAddress(true));
+  }
+
+  if (dropoffInput) {
+    dropoffInput.addEventListener("input", () => {
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(() => handleTypedAddress(false), 250);
+    });
+    dropoffInput.addEventListener("change", () => handleTypedAddress(false));
+  }
 
   // Matrix Modal Controls
   if (openMatrixBtn && fareMatrixModal) {
@@ -123,7 +229,6 @@
 
       if (currentTargetMode === "pickup") {
         setPickupPoint(lat, lng, `Pinned Pickup (${lat}, ${lng})`);
-        // Auto-switch to dropoff after placing pickup
         if (!dropoffLatInput.value) {
           targetModeButtons.forEach((b) => b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff"));
           currentTargetMode = "dropoff";
@@ -224,6 +329,8 @@
           pickup_lng: pLng || null,
           dropoff_lat: dLat || null,
           dropoff_lng: dLng || null,
+          pickup_address: pickupInput ? pickupInput.value.trim() : "",
+          dropoff_address: dropoffInput ? dropoffInput.value.trim() : "",
           service_type: service,
           is_large_store: isLarge,
           extra_stores_count: extraStores,
@@ -235,6 +342,27 @@
       if (data && data.fare_amount) {
         if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
         if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km`;
+
+        // If backend resolved coordinates that were missing, update markers & inputs
+        if (data.resolved_pickup && (!pLat || !pLng)) {
+          pickupLatInput.value = data.resolved_pickup.lat;
+          pickupLngInput.value = data.resolved_pickup.lng;
+          if (pickupMarker) {
+            pickupMarker.setLatLng([data.resolved_pickup.lat, data.resolved_pickup.lng]);
+          } else if (map) {
+            setPickupPoint(data.resolved_pickup.lat, data.resolved_pickup.lng, null);
+          }
+        }
+        if (data.resolved_dropoff && (!dLat || !dLng)) {
+          dropoffLatInput.value = data.resolved_dropoff.lat;
+          dropoffLngInput.value = data.resolved_dropoff.lng;
+          if (dropoffMarker) {
+            dropoffMarker.setLatLng([data.resolved_dropoff.lat, data.resolved_dropoff.lng]);
+          } else if (map) {
+            setDropoffPoint(data.resolved_dropoff.lat, data.resolved_dropoff.lng, null);
+          }
+        }
+        updateRouteLine();
       }
     } catch (_) {}
   }
