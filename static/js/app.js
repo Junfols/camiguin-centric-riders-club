@@ -20,7 +20,11 @@
   const errorMsg = document.getElementById("form-error-msg");
   const landmarkChips = document.getElementById("quick-landmark-chips");
   const locatePickupGpsBtn = document.getElementById("locate-pickup-gps-btn");
+  const pinPickupMapBtn = document.getElementById("pin-pickup-map-btn");
   const locateDropoffGpsBtn = document.getElementById("locate-dropoff-gps-btn");
+  const pickupSuggestions = document.getElementById("pickup-suggestions");
+  const dropoffSuggestions = document.getElementById("dropoff-suggestions");
+  const mapToastPill = document.getElementById("map-toast-pill");
   const targetModeButtons = document.querySelectorAll("[data-target-mode]");
   const successModal = document.getElementById("broadcast-success-modal");
   const modalBookingCode = document.getElementById("modal-booking-code");
@@ -35,44 +39,165 @@
   const closeMatrixBtn = document.getElementById("close-matrix-btn");
   const fareMatrixModal = document.getElementById("fare-matrix-modal");
 
-  // Camiguin Island Knowledge Base (Auto-resolves typed places to coordinates)
-  const CAMIGUIN_PLACES = [
-    { name: "Baylao, Mambajao", keywords: ["baylao", "bailao"], lat: 9.2415, lng: 124.6910 },
-    { name: "Jollibee Camiguin, Mambajao", keywords: ["jollibee", "jolibee", "joli", "jolli"], lat: 9.2488, lng: 124.6980 },
-    { name: "Gaisano Capital Camiguin", keywords: ["gaisano", "gaisano capital"], lat: 9.2475, lng: 124.6995 },
-    { name: "Davilett Store, Mambajao", keywords: ["davilett", "davi"], lat: 9.2482, lng: 124.6978 },
-    { name: "Nene Uy Store, Mambajao", keywords: ["nene uy", "nene"], lat: 9.2480, lng: 124.6976 },
-    { name: "7-Eleven Mambajao", keywords: ["7-eleven", "7-11", "711", "seven eleven"], lat: 9.2487, lng: 124.6979 },
-    { name: "Mambajao Public Market", keywords: ["market", "merkado", "palengke", "mambajao market"], lat: 9.2483, lng: 124.6975 },
-    { name: "Mambajao Town Plaza", keywords: ["mambajao plaza", "plaza", "municipal hall"], lat: 9.2485, lng: 124.6972 },
-    { name: "Balbagon Port (FastCat)", keywords: ["balbagon", "balbagon port", "fastcat"], lat: 9.2561, lng: 124.7175 },
-    { name: "Benoni Port / Ferry Wharf, Mahinog", keywords: ["benoni", "benoni port", "benoni wharf", "wharf", "port"], lat: 9.1306, lng: 124.7937 },
-    { name: "Camiguin Airport", keywords: ["airport", "tugpahanan"], lat: 9.2530, lng: 124.7061 },
-    { name: "Camiguin General Hospital", keywords: ["hospital", "cgh", "clinic"], lat: 9.2495, lng: 124.7020 },
-    { name: "Provincial Capitol, Mambajao", keywords: ["capitol", "kapitolyo"], lat: 9.2510, lng: 124.7040 },
-    { name: "Paras Beach Resort, Yumbing", keywords: ["paras", "paras beach"], lat: 9.2553, lng: 124.6468 },
-    { name: "Balyali Beach Resort, Yumbing", keywords: ["balyali", "balyali resort"], lat: 9.2588, lng: 124.6432 },
-    { name: "White Island Boat Jump-off", keywords: ["white island", "jump-off"], lat: 9.2538, lng: 124.6532 },
-    { name: "Katibawasan Falls", keywords: ["katibawasan", "katibawasan falls"], lat: 9.2152, lng: 124.7188 },
-    { name: "Ardent Hot Spring", keywords: ["ardent", "ardent hot spring"], lat: 9.2380, lng: 124.6610 },
-    { name: "Sunken Cemetery, Catarman", keywords: ["sunken", "sunken cemetery"], lat: 9.2010, lng: 124.6300 },
-    { name: "Old Church Ruins, Catarman", keywords: ["church ruins", "guiob", "gui-ob"], lat: 9.2050, lng: 124.6320 },
-    { name: "Tuasan Falls, Catarman", keywords: ["tuasan", "tuasan falls"], lat: 9.1700, lng: 124.6750 },
-    { name: "Sto. Niño Cold Spring, Catarman", keywords: ["cold spring", "sto nino", "sto. nino"], lat: 9.1550, lng: 124.6550 },
-    { name: "Mantigue Island Jump-off, Mahinog", keywords: ["mantigue", "san roque"], lat: 9.1720, lng: 124.7850 },
-    { name: "Taguines Lagoon, Mahinog", keywords: ["taguines", "taguines lagoon"], lat: 9.1290, lng: 124.7910 },
-    { name: "Tongatok Cliff Resort", keywords: ["tongatok", "tongatok cliff"], lat: 9.2505, lng: 124.6341 },
-    { name: "Lanzones Resort, Mambajao", keywords: ["lanzones", "lanzones resort"], lat: 9.2390, lng: 124.6970 },
-    { name: "Camiguin Highland Resort", keywords: ["highland", "highland resort", "sorosoro", "soro-soro", "soro'soro"], lat: 9.2310, lng: 124.6890 },
-    { name: "Agoho, Mambajao", keywords: ["agoho"], lat: 9.2450, lng: 124.6620 },
-    { name: "Yumbing, Mambajao", keywords: ["yumbing"], lat: 9.2553, lng: 124.6468 },
-    { name: "Kuguita, Mambajao", keywords: ["kuguita"], lat: 9.2490, lng: 124.6850 },
-    { name: "Poblacion Mambajao", keywords: ["poblacion mambajao", "poblacion", "centro"], lat: 9.2483, lng: 124.6975 },
-    { name: "Poblacion Mahinog", keywords: ["mahinog", "poblacion mahinog"], lat: 9.1530, lng: 124.7850 },
-    { name: "Poblacion Catarman", keywords: ["catarman", "poblacion catarman"], lat: 9.1280, lng: 124.6450 },
-    { name: "Poblacion Sagay", keywords: ["sagay", "poblacion sagay"], lat: 9.1020, lng: 124.7210 },
-    { name: "Poblacion Guinsiliban", keywords: ["guinsiliban", "poblacion guinsiliban"], lat: 9.0940, lng: 124.7780 }
+  // Camiguin Master Places Directory (126+ Locations)
+  let CAMIGUIN_PLACES = [
+    // Stores & Supermarkets
+    { name: "Gaisano Capital Camiguin", cat: "supermarket", keywords: ["gaisano", "gaisano capital", "mall", "supermarket", "grocery"], lat: 9.2475, lng: 124.6995, mun: "Mambajao" },
+    { name: "Davilett Store & Supermarket, Mambajao", cat: "supermarket", keywords: ["davilett", "davilet", "davi", "supermarket"], lat: 9.2482, lng: 124.6978, mun: "Mambajao" },
+    { name: "Nene Uy Store / Wholesaler, Mambajao", cat: "store", keywords: ["nene uy", "nene", "wholesaler", "grocery"], lat: 9.2480, lng: 124.6976, mun: "Mambajao" },
+    { name: "Prince Hypermart Camiguin", cat: "supermarket", keywords: ["prince hypermart", "prince", "hypermart"], lat: 9.2465, lng: 124.7010, mun: "Mambajao" },
+    { name: "7-Eleven Mambajao Town Center", cat: "store", keywords: ["7-eleven", "7-11", "711", "seven eleven"], lat: 9.2487, lng: 124.6979, mun: "Mambajao" },
+    { name: "7-Eleven Balbagon Port Branch", cat: "store", keywords: ["7-eleven balbagon", "711 balbagon"], lat: 9.2558, lng: 124.7169, mun: "Mambajao" },
+    { name: "Mercury Drug Camiguin, Mambajao", cat: "pharmacy", keywords: ["mercury drug", "mercury", "pharmacy", "botika", "tambal"], lat: 9.2525, lng: 124.7164, mun: "Mambajao" },
+    { name: "Rose Pharmacy Mambajao", cat: "pharmacy", keywords: ["rose pharmacy", "rose", "pharmacy", "botika"], lat: 9.2486, lng: 124.6977, mun: "Mambajao" },
+    { name: "Julies Bakeshop Mambajao", cat: "store", keywords: ["julies", "julies bakeshop", "bakeshop", "tinapay"], lat: 9.2484, lng: 124.6974, mun: "Mambajao" },
+    { name: "Chooks to Go Mambajao", cat: "food", keywords: ["chooks", "chooks to go", "manok"], lat: 9.2485, lng: 124.6982, mun: "Mambajao" },
+    { name: "Andoks Litson Mambajao", cat: "food", keywords: ["andoks", "andok", "litson"], lat: 9.2489, lng: 124.6985, mun: "Mambajao" },
+    { name: "Dunkin Donuts Camiguin", cat: "food", keywords: ["dunkin", "donuts"], lat: 9.2483, lng: 124.6981, mun: "Mambajao" },
+
+    // Markets & Food
+    { name: "Jollibee Camiguin, Mambajao", cat: "food", keywords: ["jollibee", "jolibee", "joli", "jolli", "fastfood"], lat: 9.2488, lng: 124.6980, mun: "Mambajao" },
+    { name: "Mambajao Public Market", cat: "market", keywords: ["mambajao market", "public market", "merkado", "palengke", "wet market"], lat: 9.2483, lng: 124.6975, mun: "Mambajao" },
+    { name: "Mahinog Public Market", cat: "market", keywords: ["mahinog market", "merkado mahinog"], lat: 9.1535, lng: 124.7852, mun: "Mahinog" },
+    { name: "Catarman Public Market", cat: "market", keywords: ["catarman market", "merkado catarman"], lat: 9.1275, lng: 124.6455, mun: "Catarman" },
+    { name: "Sagay Public Market", cat: "market", keywords: ["sagay market", "merkado sagay"], lat: 9.1025, lng: 124.7205, mun: "Sagay" },
+    { name: "Guinsiliban Public Market", cat: "market", keywords: ["guinsiliban market", "merkado guinsiliban"], lat: 9.0938, lng: 124.7778, mun: "Guinsiliban" },
+    { name: "Checkpoint Food Park, Mambajao", cat: "food", keywords: ["checkpoint", "food park", "resto bar"], lat: 9.2498, lng: 124.7005, mun: "Mambajao" },
+    { name: "Hayahay Cafe & Restaurant", cat: "food", keywords: ["hayahay cafe", "hayahay"], lat: 9.2512, lng: 124.6720, mun: "Mambajao" },
+    { name: "Casa Roces / Guerrera Restaurant, Yumbing", cat: "food", keywords: ["guerrera", "casa roces"], lat: 9.2548, lng: 124.6475, mun: "Mambajao" },
+    { name: "Northern Lights Cafe, Agoho", cat: "food", keywords: ["northern lights"], lat: 9.2460, lng: 124.6610, mun: "Mambajao" },
+    { name: "La Dolce Vita Italian Pizza, Agoho", cat: "food", keywords: ["la dolce vita", "pizza"], lat: 9.2455, lng: 124.6615, mun: "Mambajao" },
+    { name: "Penongs Barbeque Mambajao", cat: "food", keywords: ["penongs", "bbq"], lat: 9.2492, lng: 124.6990, mun: "Mambajao" },
+
+    // Government, Hospital, Schools & Ports
+    { name: "Provincial Capitol Compound, Mambajao", cat: "building", keywords: ["capitol", "kapitolyo"], lat: 9.2510, lng: 124.7040, mun: "Mambajao" },
+    { name: "Mambajao Town Plaza / Municipal Hall", cat: "building", keywords: ["mambajao plaza", "plaza", "municipal hall", "munisipyo"], lat: 9.2485, lng: 124.6972, mun: "Mambajao" },
+    { name: "Camiguin General Hospital (CGH)", cat: "hospital", keywords: ["hospital", "cgh", "clinic", "doktor"], lat: 9.2495, lng: 124.7020, mun: "Mambajao" },
+    { name: "Mahinog Municipal Hall", cat: "building", keywords: ["munisipyo mahinog"], lat: 9.1532, lng: 124.7850, mun: "Mahinog" },
+    { name: "Catarman Municipal Hall", cat: "building", keywords: ["munisipyo catarman"], lat: 9.1282, lng: 124.6448, mun: "Catarman" },
+    { name: "Sagay Municipal Hall", cat: "building", keywords: ["munisipyo sagay"], lat: 9.1022, lng: 124.7212, mun: "Sagay" },
+    { name: "Guinsiliban Municipal Hall", cat: "building", keywords: ["munisipyo guinsiliban"], lat: 9.0942, lng: 124.7782, mun: "Guinsiliban" },
+    { name: "Camiguin Polytechnic State College (CPSC)", cat: "school", keywords: ["cpsc", "polytechnic", "college"], lat: 9.2520, lng: 124.7110, mun: "Mambajao" },
+    { name: "Fatima College of Camiguin", cat: "school", keywords: ["fatima college", "fcc"], lat: 9.2478, lng: 124.6965, mun: "Mambajao" },
+    { name: "Camiguin Provincial Police Office", cat: "building", keywords: ["police", "pnp", "pulis"], lat: 9.2505, lng: 124.7030, mun: "Mambajao" },
+    { name: "Balbagon Port (FastCat & Ferry Wharf)", cat: "transport", keywords: ["balbagon port", "balbagon", "fastcat", "pantalan"], lat: 9.2561, lng: 124.7175, mun: "Mambajao" },
+    { name: "Benoni Port / Ferry Wharf, Mahinog", cat: "transport", keywords: ["benoni port", "benoni", "wharf", "port", "pantalan benoni"], lat: 9.1306, lng: 124.7937, mun: "Mahinog" },
+    { name: "Guinsiliban Port / Ferry Terminal", cat: "transport", keywords: ["guinsiliban port"], lat: 9.0925, lng: 124.7815, mun: "Guinsiliban" },
+    { name: "Camiguin Airport", cat: "transport", keywords: ["airport", "tugpahanan"], lat: 9.2530, lng: 124.7061, mun: "Mambajao" },
+
+    // Tourist Spots, Falls & Resorts
+    { name: "White Island Boat Jump-off, Yumbing", cat: "tourist", keywords: ["white island", "jump-off"], lat: 9.2538, lng: 124.6532, mun: "Mambajao" },
+    { name: "Mantigue Island Boat Station, San Roque", cat: "tourist", keywords: ["mantigue island", "mantigue"], lat: 9.1720, lng: 124.7850, mun: "Mahinog" },
+    { name: "Katibawasan Falls", cat: "tourist", keywords: ["katibawasan falls", "katibawasan", "busay"], lat: 9.2152, lng: 124.7188, mun: "Mambajao" },
+    { name: "Tuasan Falls, Mainit, Catarman", cat: "tourist", keywords: ["tuasan falls", "tuasan"], lat: 9.1700, lng: 124.6750, mun: "Catarman" },
+    { name: "Ardent Hot Spring, Esperanza", cat: "tourist", keywords: ["ardent hot spring", "ardent"], lat: 9.2380, lng: 124.6610, mun: "Mambajao" },
+    { name: "Sto. Niño Cold Spring, Catarman", cat: "tourist", keywords: ["cold spring", "sto nino", "sto. nino"], lat: 9.1550, lng: 124.6550, mun: "Catarman" },
+    { name: "Bura Soda Water Park, Catarman", cat: "tourist", keywords: ["soda water", "bura soda", "bura"], lat: 9.1820, lng: 124.6380, mun: "Catarman" },
+    { name: "Sunken Cemetery & Giant Cross, Bonbon", cat: "tourist", keywords: ["sunken cemetery", "sunken"], lat: 9.2010, lng: 124.6300, mun: "Catarman" },
+    { name: "Old Church Ruins (Gui-ob), Bonbon", cat: "tourist", keywords: ["church ruins", "guiob", "gui-ob"], lat: 9.2050, lng: 124.6320, mun: "Catarman" },
+    { name: "Mount Vulcan Daan / Walkway to Old Volcano", cat: "tourist", keywords: ["vulcan daan", "old volcano"], lat: 9.2085, lng: 124.6350, mun: "Catarman" },
+    { name: "Mount Hibok-Hibok Base Jump-off", cat: "tourist", keywords: ["hibok-hibok", "hibok hibok"], lat: 9.2030, lng: 124.6710, mun: "Mambajao" },
+    { name: "Giant Clam Sanctuary, Cantaan", cat: "tourist", keywords: ["giant clam", "cantaan"], lat: 9.0810, lng: 124.7860, mun: "Guinsiliban" },
+    { name: "Taguines Lagoon & Zipline, Benoni", cat: "tourist", keywords: ["taguines lagoon", "taguines"], lat: 9.1290, lng: 124.7910, mun: "Mahinog" },
+    { name: "Katunggan Mangrove Park, Mahinog", cat: "tourist", keywords: ["katunggan", "mangrove park"], lat: 9.1350, lng: 124.7920, mun: "Mahinog" },
+    { name: "Paras Beach Resort, Yumbing", cat: "resort", keywords: ["paras beach", "paras resort", "paras"], lat: 9.2553, lng: 124.6468, mun: "Mambajao" },
+    { name: "Balyali Beach Resort, Yumbing", cat: "resort", keywords: ["balyali resort", "balyali"], lat: 9.2588, lng: 124.6432, mun: "Mambajao" },
+    { name: "Tongatok Cliff Resort, Yumbing", cat: "resort", keywords: ["tongatok cliff", "tongatok"], lat: 9.2505, lng: 124.6341, mun: "Mambajao" },
+    { name: "Lanzones Resort, Baylao, Mambajao", cat: "resort", keywords: ["lanzones resort", "lanzones"], lat: 9.2390, lng: 124.6970, mun: "Mambajao" },
+    { name: "Camiguin Highland Resort, Soro-soro", cat: "resort", keywords: ["highland resort", "highland", "sorosoro", "soro-soro", "soro'soro"], lat: 9.2310, lng: 124.6890, mun: "Mambajao" },
+
+    // All 57 Barangays
+    { name: "Baylao, Mambajao", cat: "barangay", keywords: ["baylao", "bailao"], lat: 9.2415, lng: 124.6910, mun: "Mambajao" },
+    { name: "Agoho, Mambajao", cat: "barangay", keywords: ["agoho"], lat: 9.2450, lng: 124.6620, mun: "Mambajao" },
+    { name: "Yumbing, Mambajao", cat: "barangay", keywords: ["yumbing"], lat: 9.2553, lng: 124.6468, mun: "Mambajao" },
+    { name: "Kuguita, Mambajao", cat: "barangay", keywords: ["kuguita", "cuguita"], lat: 9.2490, lng: 124.6850, mun: "Mambajao" },
+    { name: "Poblacion, Mambajao", cat: "barangay", keywords: ["poblacion mambajao", "poblacion", "centro"], lat: 9.2483, lng: 124.6975, mun: "Mambajao" },
+    { name: "Balbagon, Mambajao", cat: "barangay", keywords: ["balbagon"], lat: 9.2540, lng: 124.7140, mun: "Mambajao" },
+    { name: "Magting, Mambajao", cat: "barangay", keywords: ["magting"], lat: 9.2430, lng: 124.7250, mun: "Mambajao" },
+    { name: "Anito, Mambajao", cat: "barangay", keywords: ["anito"], lat: 9.2350, lng: 124.7150, mun: "Mambajao" },
+    { name: "Pandan, Mambajao", cat: "barangay", keywords: ["pandan"], lat: 9.2460, lng: 124.7080, mun: "Mambajao" },
+    { name: "Bug-ong, Mambajao", cat: "barangay", keywords: ["bug-ong", "bugong"], lat: 9.2530, lng: 124.6390, mun: "Mambajao" },
+    { name: "Naasag, Mambajao", cat: "barangay", keywords: ["naasag"], lat: 9.2510, lng: 124.6280, mun: "Mambajao" },
+    { name: "Soro-soro, Mambajao", cat: "barangay", keywords: ["soro-soro", "sorosoro"], lat: 9.2310, lng: 124.6890, mun: "Mambajao" },
+    { name: "Tagdo, Mambajao", cat: "barangay", keywords: ["tagdo"], lat: 9.2380, lng: 124.6820, mun: "Mambajao" },
+    { name: "Tupsan, Mambajao", cat: "barangay", keywords: ["tupsan mambajao"], lat: 9.2220, lng: 124.7280, mun: "Mambajao" },
+    { name: "Benhaan, Mambajao", cat: "barangay", keywords: ["benhaan"], lat: 9.2380, lng: 124.7110, mun: "Mambajao" },
+    { name: "Poblacion, Mahinog", cat: "barangay", keywords: ["mahinog", "poblacion mahinog"], lat: 9.1530, lng: 124.7850, mun: "Mahinog" },
+    { name: "Benoni, Mahinog", cat: "barangay", keywords: ["benoni"], lat: 9.1306, lng: 124.7937, mun: "Mahinog" },
+    { name: "Hubangon, Mahinog", cat: "barangay", keywords: ["hubangon"], lat: 9.1680, lng: 124.7760, mun: "Mahinog" },
+    { name: "San Roque, Mahinog", cat: "barangay", keywords: ["san roque mahinog", "san roque"], lat: 9.1720, lng: 124.7850, mun: "Mahinog" },
+    { name: "Binunsaran, Mahinog", cat: "barangay", keywords: ["binunsaran"], lat: 9.1420, lng: 124.7700, mun: "Mahinog" },
+    { name: "Binuangan, Mahinog", cat: "barangay", keywords: ["binuangan"], lat: 9.1380, lng: 124.7890, mun: "Mahinog" },
+    { name: "Catohugan, Mahinog", cat: "barangay", keywords: ["catohugan"], lat: 9.1620, lng: 124.7810, mun: "Mahinog" },
+    { name: "Owakan, Mahinog", cat: "barangay", keywords: ["owakan"], lat: 9.1510, lng: 124.7740, mun: "Mahinog" },
+    { name: "Puntod, Mahinog", cat: "barangay", keywords: ["puntod"], lat: 9.1460, lng: 124.7810, mun: "Mahinog" },
+    { name: "San Isidro, Mahinog", cat: "barangay", keywords: ["san isidro mahinog"], lat: 9.1650, lng: 124.7680, mun: "Mahinog" },
+    { name: "San Jose, Mahinog", cat: "barangay", keywords: ["san jose mahinog"], lat: 9.1580, lng: 124.7710, mun: "Mahinog" },
+    { name: "San Miguel, Mahinog", cat: "barangay", keywords: ["san miguel mahinog"], lat: 9.1700, lng: 124.7790, mun: "Mahinog" },
+    { name: "Tubod, Mahinog", cat: "barangay", keywords: ["tubod mahinog"], lat: 9.1600, lng: 124.7750, mun: "Mahinog" },
+    { name: "Tupsan Pequeño, Mahinog", cat: "barangay", keywords: ["tupsan pequeno"], lat: 9.1850, lng: 124.7500, mun: "Mahinog" },
+    { name: "Poblacion, Catarman", cat: "barangay", keywords: ["catarman", "poblacion catarman"], lat: 9.1280, lng: 124.6450, mun: "Catarman" },
+    { name: "Bonbon, Catarman", cat: "barangay", keywords: ["bonbon"], lat: 9.2000, lng: 124.6320, mun: "Catarman" },
+    { name: "Bura, Catarman", cat: "barangay", keywords: ["bura"], lat: 9.1820, lng: 124.6380, mun: "Catarman" },
+    { name: "Catibac, Catarman", cat: "barangay", keywords: ["catibac"], lat: 9.1650, lng: 124.6420, mun: "Catarman" },
+    { name: "Compol, Catarman", cat: "barangay", keywords: ["compol"], lat: 9.1450, lng: 124.6430, mun: "Catarman" },
+    { name: "Panghiawan, Catarman", cat: "barangay", keywords: ["panghiawan"], lat: 9.1150, lng: 124.6520, mun: "Catarman" },
+    { name: "Alga, Catarman", cat: "barangay", keywords: ["alga"], lat: 9.1180, lng: 124.6550, mun: "Catarman" },
+    { name: "Lawigan, Catarman", cat: "barangay", keywords: ["lawigan"], lat: 9.1350, lng: 124.6410, mun: "Catarman" },
+    { name: "Liloan, Catarman", cat: "barangay", keywords: ["liloan"], lat: 9.1400, lng: 124.6420, mun: "Catarman" },
+    { name: "Mandawa, Catarman", cat: "barangay", keywords: ["mandawa"], lat: 9.1500, lng: 124.6430, mun: "Catarman" },
+    { name: "Mainit, Catarman", cat: "barangay", keywords: ["mainit"], lat: 9.1680, lng: 124.6650, mun: "Catarman" },
+    { name: "Santo Niño, Catarman", cat: "barangay", keywords: ["santo nino brgy", "santo niño"], lat: 9.1550, lng: 124.6550, mun: "Catarman" },
+    { name: "Tangaro, Catarman", cat: "barangay", keywords: ["tangaro"], lat: 9.1220, lng: 124.6480, mun: "Catarman" },
+    { name: "Poblacion, Sagay", cat: "barangay", keywords: ["sagay", "poblacion sagay"], lat: 9.1020, lng: 124.7210, mun: "Sagay" },
+    { name: "Alangilan, Sagay", cat: "barangay", keywords: ["alangilan"], lat: 9.0950, lng: 124.7080, mun: "Sagay" },
+    { name: "Bacnit, Sagay", cat: "barangay", keywords: ["bacnit"], lat: 9.1120, lng: 124.7350, mun: "Sagay" },
+    { name: "Balite, Sagay", cat: "barangay", keywords: ["balite"], lat: 9.0980, lng: 124.7150, mun: "Sagay" },
+    { name: "Bugang, Sagay", cat: "barangay", keywords: ["bugang"], lat: 9.1080, lng: 124.7280, mun: "Sagay" },
+    { name: "Cuna, Sagay", cat: "barangay", keywords: ["cuna"], lat: 9.1050, lng: 124.7190, mun: "Sagay" },
+    { name: "Manuyog, Sagay", cat: "barangay", keywords: ["manuyog"], lat: 9.0880, lng: 124.6910, mun: "Sagay" },
+    { name: "Mayana, Sagay", cat: "barangay", keywords: ["mayana"], lat: 9.1150, lng: 124.7120, mun: "Sagay" },
+    { name: "Poblacion, Guinsiliban", cat: "barangay", keywords: ["guinsiliban", "poblacion guinsiliban"], lat: 9.0940, lng: 124.7780, mun: "Guinsiliban" },
+    { name: "Cabuan, Guinsiliban", cat: "barangay", keywords: ["cabuan"], lat: 9.1050, lng: 124.7820, mun: "Guinsiliban" },
+    { name: "Cantaan, Guinsiliban", cat: "barangay", keywords: ["cantaan"], lat: 9.0810, lng: 124.7860, mun: "Guinsiliban" },
+    { name: "Liong, Guinsiliban", cat: "barangay", keywords: ["liong"], lat: 9.0910, lng: 124.7720, mun: "Guinsiliban" },
+    { name: "Maac, Guinsiliban", cat: "barangay", keywords: ["maac"], lat: 9.1120, lng: 124.7850, mun: "Guinsiliban" },
+    { name: "Butay, Guinsiliban", cat: "barangay", keywords: ["butay"], lat: 9.0990, lng: 124.7750, mun: "Guinsiliban" },
+    { name: "North Poblacion, Guinsiliban", cat: "barangay", keywords: ["north poblacion guinsiliban"], lat: 9.0960, lng: 124.7790, mun: "Guinsiliban" },
+    { name: "South Poblacion, Guinsiliban", cat: "barangay", keywords: ["south poblacion guinsiliban"], lat: 9.0920, lng: 124.7770, mun: "Guinsiliban" },
+
+    // Streets & Roads
+    { name: "Camiguin Circumferential Road, Mambajao", cat: "street", keywords: ["circumferential road", "national highway", "highway"], lat: 9.2480, lng: 124.6980, mun: "Mambajao" },
+    { name: "Rizal Street, Mambajao", cat: "street", keywords: ["rizal street", "rizal st", "rizal"], lat: 9.2485, lng: 124.6970, mun: "Mambajao" },
+    { name: "Aranas Street, Mambajao", cat: "street", keywords: ["aranas street", "aranas st", "aranas"], lat: 9.2488, lng: 124.6975, mun: "Mambajao" },
+    { name: "Burgos Street, Mambajao", cat: "street", keywords: ["burgos street", "burgos st", "burgos"], lat: 9.2482, lng: 124.6968, mun: "Mambajao" },
+    { name: "Airport Road, Mambajao", cat: "street", keywords: ["airport road", "airport st"], lat: 9.2520, lng: 124.7060, mun: "Mambajao" },
+    { name: "Balbagon Boulevard / Seaside Promenade", cat: "street", keywords: ["boulevard", "seaside", "baywalk"], lat: 9.2550, lng: 124.7150, mun: "Mambajao" },
+    { name: "Itum Road / Mountain Route", cat: "street", keywords: ["itum road", "itum", "hinterland"], lat: 9.2250, lng: 124.6850, mun: "Mambajao" },
+    { name: "Granelandia Road, Binunsaran", cat: "street", keywords: ["granelandia", "granelandia road"], lat: 9.1450, lng: 124.7680, mun: "Mahinog" },
+    { name: "Utopia Road, Soro-soro", cat: "street", keywords: ["utopia", "utopia road"], lat: 9.2290, lng: 124.6860, mun: "Mambajao" }
   ];
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  let toastTimer = null;
+  function showMapToast(msg) {
+    if (!mapToastPill) return;
+    mapToastPill.textContent = msg;
+    mapToastPill.classList.remove("hidden");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      mapToastPill.classList.add("hidden");
+    }, 3500);
+  }
 
   function matchCamiguinPlace(str) {
     if (!str) return null;
@@ -200,6 +325,219 @@
       if (e.target === fareMatrixModal) fareMatrixModal.classList.add("hidden");
     });
   }
+
+  // Pin on Map Handlers ("mudiritso dayun pag pin ang map")
+  if (locateDropoffGpsBtn) {
+    locateDropoffGpsBtn.addEventListener("click", () => {
+      targetModeButtons.forEach((b) =>
+        b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff")
+      );
+      currentTargetMode = "dropoff";
+
+      const currentVal = dropoffInput ? dropoffInput.value.trim() : "";
+      let targetLat = dropoffLatInput.value ? parseFloat(dropoffLatInput.value) : null;
+      let targetLng = dropoffLngInput.value ? parseFloat(dropoffLngInput.value) : null;
+
+      if (!targetLat || !targetLng) {
+        const found = matchCamiguinPlace(currentVal);
+        if (found) {
+          targetLat = found.lat;
+          targetLng = found.lng;
+        } else if (map) {
+          const c = map.getCenter();
+          targetLat = parseFloat(c.lat.toFixed(5));
+          targetLng = parseFloat(c.lng.toFixed(5));
+        } else {
+          targetLat = 9.2488;
+          targetLng = 124.6980;
+        }
+      }
+
+      setDropoffPoint(targetLat, targetLng, currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`);
+      if (map) {
+        map.flyTo([targetLat, targetLng], 14, { duration: 0.8 });
+      }
+
+      const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
+      if (mapCard) {
+        mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      showMapToast("🏁 Drop-off Pinned on Map! Drag pin or click anywhere to adjust.");
+    });
+  }
+
+  if (pinPickupMapBtn) {
+    pinPickupMapBtn.addEventListener("click", () => {
+      targetModeButtons.forEach((b) =>
+        b.classList.toggle("active", b.getAttribute("data-target-mode") === "pickup")
+      );
+      currentTargetMode = "pickup";
+
+      const currentVal = pickupInput ? pickupInput.value.trim() : "";
+      let targetLat = pickupLatInput.value ? parseFloat(pickupLatInput.value) : null;
+      let targetLng = pickupLngInput.value ? parseFloat(pickupLngInput.value) : null;
+
+      if (!targetLat || !targetLng) {
+        const found = matchCamiguinPlace(currentVal);
+        if (found) {
+          targetLat = found.lat;
+          targetLng = found.lng;
+        } else if (map) {
+          const c = map.getCenter();
+          targetLat = parseFloat(c.lat.toFixed(5));
+          targetLng = parseFloat(c.lng.toFixed(5));
+        } else {
+          targetLat = 9.2483;
+          targetLng = 124.6975;
+        }
+      }
+
+      setPickupPoint(targetLat, targetLng, currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`);
+      if (map) {
+        map.flyTo([targetLat, targetLng], 14, { duration: 0.8 });
+      }
+
+      const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
+      if (mapCard) {
+        mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      showMapToast("🟢 Pickup Pinned on Map! Drag pin or click anywhere to adjust.");
+    });
+  }
+
+  // Autocomplete Dropdown Search & Instant Pinning
+  function setupPlacesAutocomplete(inputEl, dropdownEl, isPickup) {
+    if (!inputEl || !dropdownEl) return;
+    let debounceTimer = null;
+
+    async function searchAndRender() {
+      const q = inputEl.value.trim();
+      if (q.length < 1) {
+        dropdownEl.classList.add("hidden");
+        dropdownEl.innerHTML = "";
+        return;
+      }
+
+      const qLower = q.toLowerCase();
+      const localMatches = [];
+      for (const p of CAMIGUIN_PLACES) {
+        const nLower = p.name.toLowerCase();
+        if (nLower.includes(qLower) || p.keywords.some((k) => k.includes(qLower) || qLower.includes(k))) {
+          localMatches.push(p);
+          if (localMatches.length >= 8) break;
+        }
+      }
+
+      renderResults(localMatches);
+
+      if (q.length >= 2) {
+        try {
+          const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.places && data.places.length > 0) {
+              const seen = new Set(localMatches.map((m) => m.name.toLowerCase()));
+              for (const item of data.places) {
+                if (!seen.has(item.name.toLowerCase())) {
+                  localMatches.push(item);
+                  seen.add(item.name.toLowerCase());
+                }
+              }
+              renderResults(localMatches);
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    function renderResults(items) {
+      if (!items || items.length === 0) {
+        dropdownEl.classList.add("hidden");
+        dropdownEl.innerHTML = "";
+        return;
+      }
+
+      const catIcons = {
+        store: "🏪",
+        supermarket: "🛒",
+        pharmacy: "💊",
+        food: "🍽️",
+        market: "🏬",
+        barangay: "🏘️",
+        resort: "🏖️",
+        tourist: "🏝️",
+        building: "🏛️",
+        hospital: "🏥",
+        school: "🏫",
+        transport: "⛴️",
+        street: "🛣️",
+        landmark: "📍"
+      };
+
+      dropdownEl.innerHTML = items
+        .slice(0, 10)
+        .map((item, idx) => {
+          const icon = catIcons[item.cat || item.category] || "📍";
+          const catLabel = item.cat || item.category || "Place";
+          const munLabel = item.mun ? `(${item.mun})` : "";
+          const subtitle = item.full_address || munLabel || "Camiguin Island";
+          return `
+            <div class="places-item" data-idx="${idx}">
+              <div class="places-item-info">
+                <div class="places-item-name">${icon} ${escapeHtml(item.name)}</div>
+                <div class="places-item-sub">${escapeHtml(subtitle)}</div>
+              </div>
+              <span class="places-cat-badge">${escapeHtml(catLabel)}</span>
+            </div>
+          `;
+        })
+        .join("");
+
+      dropdownEl.classList.remove("hidden");
+
+      dropdownEl.querySelectorAll(".places-item").forEach((el, idx) => {
+        el.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const item = items[idx];
+          if (!item) return;
+
+          inputEl.value = item.name;
+          dropdownEl.classList.add("hidden");
+
+          // MUDIRITSO DAYUN PAG PIN ANG MAP!
+          if (isPickup) {
+            setPickupPoint(item.lat, item.lng, item.name);
+          } else {
+            setDropoffPoint(item.lat, item.lng, item.name);
+          }
+
+          if (map) {
+            map.flyTo([item.lat, item.lng], 14, { duration: 0.8 });
+          }
+
+          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} Pinned: ${item.name}`);
+        });
+      });
+    }
+
+    inputEl.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(searchAndRender, 150);
+    });
+
+    inputEl.addEventListener("focus", () => {
+      if (inputEl.value.trim().length >= 1) searchAndRender();
+    });
+
+    inputEl.addEventListener("blur", () => {
+      setTimeout(() => dropdownEl.classList.add("hidden"), 200);
+    });
+  }
+
+  setupPlacesAutocomplete(pickupInput, pickupSuggestions, true);
+  setupPlacesAutocomplete(dropoffInput, dropoffSuggestions, false);
 
   // Target Mode Toggles (Pickup vs Dropoff)
   targetModeButtons.forEach((btn) => {
