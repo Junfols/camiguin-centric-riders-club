@@ -113,15 +113,16 @@
     { name: "Kuguita, Mambajao", cat: "barangay", keywords: ["kuguita", "cuguita"], lat: 9.2490, lng: 124.6850, mun: "Mambajao" },
     { name: "Poblacion, Mambajao", cat: "barangay", keywords: ["poblacion mambajao", "poblacion", "centro"], lat: 9.2483, lng: 124.6975, mun: "Mambajao" },
     { name: "Balbagon, Mambajao", cat: "barangay", keywords: ["balbagon"], lat: 9.2540, lng: 124.7140, mun: "Mambajao" },
-    { name: "Magting, Mambajao", cat: "barangay", keywords: ["magting"], lat: 9.2430, lng: 124.7250, mun: "Mambajao" },
-    { name: "Anito, Mambajao", cat: "barangay", keywords: ["anito"], lat: 9.2350, lng: 124.7150, mun: "Mambajao" },
-    { name: "Pandan, Mambajao", cat: "barangay", keywords: ["pandan"], lat: 9.2460, lng: 124.7080, mun: "Mambajao" },
+    { name: "Magting, Mambajao", cat: "barangay", keywords: ["magting", "brgy magting", "barangay magting", "magting mambajao"], lat: 9.2189, lng: 124.7560, mun: "Mambajao" },
+    { name: "Magting Elementary School, Mambajao", cat: "school", keywords: ["magting elementary", "magting school", "es magting"], lat: 9.2242, lng: 124.7514, mun: "Mambajao" },
+    { name: "Anito, Mambajao", cat: "barangay", keywords: ["anito", "brgy anito", "barangay anito"], lat: 9.2296, lng: 124.7444, mun: "Mambajao" },
+    { name: "Pandan, Mambajao", cat: "barangay", keywords: ["pandan", "brgy pandan"], lat: 9.2460, lng: 124.7080, mun: "Mambajao" },
     { name: "Bug-ong, Mambajao", cat: "barangay", keywords: ["bug-ong", "bugong"], lat: 9.2530, lng: 124.6390, mun: "Mambajao" },
     { name: "Naasag, Mambajao", cat: "barangay", keywords: ["naasag"], lat: 9.2510, lng: 124.6280, mun: "Mambajao" },
     { name: "Soro-soro, Mambajao", cat: "barangay", keywords: ["soro-soro", "sorosoro"], lat: 9.2310, lng: 124.6890, mun: "Mambajao" },
     { name: "Tagdo, Mambajao", cat: "barangay", keywords: ["tagdo"], lat: 9.2380, lng: 124.6820, mun: "Mambajao" },
-    { name: "Tupsan, Mambajao", cat: "barangay", keywords: ["tupsan mambajao"], lat: 9.2220, lng: 124.7280, mun: "Mambajao" },
-    { name: "Benhaan, Mambajao", cat: "barangay", keywords: ["benhaan"], lat: 9.2380, lng: 124.7110, mun: "Mambajao" },
+    { name: "Tupsan, Mambajao", cat: "barangay", keywords: ["tupsan mambajao", "tupsan", "brgy tupsan"], lat: 9.2019, lng: 124.7774, mun: "Mambajao" },
+    { name: "Benhaan, Mambajao", cat: "barangay", keywords: ["benhaan", "brgy benhaan"], lat: 9.2032, lng: 124.7677, mun: "Mambajao" },
     { name: "Poblacion, Mahinog", cat: "barangay", keywords: ["mahinog", "poblacion mahinog"], lat: 9.1530, lng: 124.7850, mun: "Mahinog" },
     { name: "Benoni, Mahinog", cat: "barangay", keywords: ["benoni"], lat: 9.1306, lng: 124.7937, mun: "Mahinog" },
     { name: "Hubangon, Mahinog", cat: "barangay", keywords: ["hubangon"], lat: 9.1680, lng: 124.7760, mun: "Mahinog" },
@@ -335,27 +336,29 @@
       currentTargetMode = "dropoff";
 
       const currentVal = dropoffInput ? dropoffInput.value.trim() : "";
-      let targetLat = dropoffLatInput.value ? parseFloat(dropoffLatInput.value) : null;
-      let targetLng = dropoffLngInput.value ? parseFloat(dropoffLngInput.value) : null;
+      const found = currentVal ? matchCamiguinPlace(currentVal) : null;
+      let targetLat = null;
+      let targetLng = null;
 
-      if (!targetLat || !targetLng) {
-        const found = matchCamiguinPlace(currentVal);
-        if (found) {
-          targetLat = found.lat;
-          targetLng = found.lng;
-        } else if (map) {
-          const c = map.getCenter();
-          targetLat = parseFloat(c.lat.toFixed(5));
-          targetLng = parseFloat(c.lng.toFixed(5));
-        } else {
-          targetLat = 9.2488;
-          targetLng = 124.6980;
-        }
+      if (found) {
+        targetLat = found.lat;
+        targetLng = found.lng;
+      } else if (dropoffLatInput.value && dropoffLngInput.value) {
+        targetLat = parseFloat(dropoffLatInput.value);
+        targetLng = parseFloat(dropoffLngInput.value);
+      } else if (map) {
+        const c = map.getCenter();
+        targetLat = parseFloat(c.lat.toFixed(5));
+        targetLng = parseFloat(c.lng.toFixed(5));
+      } else {
+        targetLat = 9.2189;
+        targetLng = 124.7560;
       }
 
-      setDropoffPoint(targetLat, targetLng, currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`);
+      const displayLabel = found ? found.name : (currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`);
+      setDropoffPoint(targetLat, targetLng, displayLabel);
       if (map) {
-        map.flyTo([targetLat, targetLng], 14, { duration: 0.8 });
+        map.flyTo([targetLat, targetLng], 15, { duration: 0.8 });
       }
 
       const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
@@ -363,7 +366,7 @@
         mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast("🏁 Drop-off Pinned on Map! Drag pin or click anywhere to adjust.");
+      showMapToast(`🏁 Drop-off Pinned: ${displayLabel}`);
     });
   }
 
@@ -375,27 +378,29 @@
       currentTargetMode = "pickup";
 
       const currentVal = pickupInput ? pickupInput.value.trim() : "";
-      let targetLat = pickupLatInput.value ? parseFloat(pickupLatInput.value) : null;
-      let targetLng = pickupLngInput.value ? parseFloat(pickupLngInput.value) : null;
+      const found = currentVal ? matchCamiguinPlace(currentVal) : null;
+      let targetLat = null;
+      let targetLng = null;
 
-      if (!targetLat || !targetLng) {
-        const found = matchCamiguinPlace(currentVal);
-        if (found) {
-          targetLat = found.lat;
-          targetLng = found.lng;
-        } else if (map) {
-          const c = map.getCenter();
-          targetLat = parseFloat(c.lat.toFixed(5));
-          targetLng = parseFloat(c.lng.toFixed(5));
-        } else {
-          targetLat = 9.2483;
-          targetLng = 124.6975;
-        }
+      if (found) {
+        targetLat = found.lat;
+        targetLng = found.lng;
+      } else if (pickupLatInput.value && pickupLngInput.value) {
+        targetLat = parseFloat(pickupLatInput.value);
+        targetLng = parseFloat(pickupLngInput.value);
+      } else if (map) {
+        const c = map.getCenter();
+        targetLat = parseFloat(c.lat.toFixed(5));
+        targetLng = parseFloat(c.lng.toFixed(5));
+      } else {
+        targetLat = 9.2483;
+        targetLng = 124.6975;
       }
 
-      setPickupPoint(targetLat, targetLng, currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`);
+      const displayLabel = found ? found.name : (currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`);
+      setPickupPoint(targetLat, targetLng, displayLabel);
       if (map) {
-        map.flyTo([targetLat, targetLng], 14, { duration: 0.8 });
+        map.flyTo([targetLat, targetLng], 15, { duration: 0.8 });
       }
 
       const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
@@ -403,7 +408,7 @@
         mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast("🟢 Pickup Pinned on Map! Drag pin or click anywhere to adjust.");
+      showMapToast(`🟢 Pickup Pinned: ${displayLabel}`);
     });
   }
 
