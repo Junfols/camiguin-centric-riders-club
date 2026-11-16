@@ -34,6 +34,22 @@
   {% block head %}{% endblock %}
 </head>
 <body class="app-body">
+  <!-- App Splash / Loading Screen -->
+  <div id="app-splash-screen" class="app-splash-screen" role="status" aria-label="Loading Application">
+    <div class="splash-inner">
+      <div class="splash-logo-wrap">
+        <img src="/static/icons/logo.png" alt="Camiguin Centric Riders Club Logo" class="splash-logo-img">
+        <div class="splash-pulse-ring"></div>
+      </div>
+      <h1 class="splash-title">CAMIGUIN CENTRIC RIDERS CLUB</h1>
+      <p class="splash-tagline">YOUR SAFETY IS OUR PRIORITY</p>
+
+      <div class="splash-loader-wrap">
+        <div class="splash-loader-bar"></div>
+      </div>
+      <span class="splash-status-text">Connecting to Island Express Riders...</span>
+    </div>
+  </div>
   <div id="offline-banner" class="offline-banner hidden" role="status">
     <span>⚠️ Offline mode — No internet connection detected.</span>
   </div>
@@ -304,6 +320,27 @@
 
       logo.addEventListener("pointerdown", onIconTap, { passive: false });
       logo.addEventListener("click", onIconTap, { passive: false });
+    })();
+  </script>
+  <!-- Splash Screen Auto-Dismissal -->
+  <script>
+    (function () {
+      const splash = document.getElementById("app-splash-screen");
+      if (!splash) return;
+
+      function hideSplash() {
+        if (splash.classList.contains("fade-out")) return;
+        splash.classList.add("fade-out");
+        setTimeout(function() {
+          splash.style.display = "none";
+        }, 500);
+      }
+
+      window.addEventListener("load", function() {
+        setTimeout(hideSplash, 650);
+      });
+      setTimeout(hideSplash, 1800);
+      splash.addEventListener("click", hideSplash);
     })();
   </script>
 </body>
