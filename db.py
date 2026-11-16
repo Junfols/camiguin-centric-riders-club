@@ -916,7 +916,8 @@ def get_online_riders(conn: DatabaseConnection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT id, name, phone, bike_model, plate_number, municipality, color,
-               last_lat, last_lng, last_active_at, total_trips, rating_avg
+               last_lat, last_lng, last_active_at, total_trips, rating_avg,
+               avatar_url, license_no
         FROM riders
         WHERE is_online = 1 AND status = 'active'
         ORDER BY last_active_at DESC
