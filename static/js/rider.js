@@ -299,11 +299,13 @@
     // Check active job and start polling available jobs
     checkActiveJob();
     fetchAvailableJobs();
+    fetchCoRiders();
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
       if (onlineToggle.checked) {
         fetchAvailableJobs();
+        fetchCoRiders();
         if (activeJob) checkActiveJob();
       }
     }, 3500);
@@ -747,6 +749,139 @@
     if (!riderChatPollTimer) {
       riderChatPollTimer = setInterval(pollRiderChat, 2500);
     }
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Fellow Online Riders (Kauban nga Online) Roster & Radar Map
+  // ---------------------------------------------------------------------------
+  const coRidersList = document.getElementById("co-riders-list");
+  const coRidersCountPill = document.getElementById("co-riders-count-pill");
+  const toggleRadarMapBtn = document.getElementById("toggle-radar-map-btn");
+  const radarMapContainer = document.getElementById("radar-map-container");
+  const radarMapEl = document.getElementById("co-riders-radar-map");
+
+  let radarMap = null;
+  let radarMarkers = {};
+
+  function initRadarMap() {
+    if (!radarMapEl || radarMap || typeof L === "undefined") return;
+    radarMap = L.map(radarMapEl).setView([9.2000, 124.7200], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(radarMap);
+  }
+
+  if (toggleRadarMapBtn && radarMapContainer) {
+    toggleRadarMapBtn.addEventListener("click", () => {
+      const isHidden = radarMapContainer.classList.contains("hidden");
+      if (isHidden) {
+        radarMapContainer.classList.remove("hidden");
+        toggleRadarMapBtn.textContent = "✕ Close Map";
+        initRadarMap();
+        setTimeout(() => {
+          if (radarMap) radarMap.invalidateSize();
+        }, 150);
+      } else {
+        radarMapContainer.classList.add("hidden");
+        toggleRadarMapBtn.textContent = "🗺️ Radar Map";
+      }
+    });
+  }
+
+  async function fetchCoRiders() {
+    if (!currentRider) return;
+    try {
+      const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = data.co_riders || [];
+
+      if (coRidersCountPill) {
+        coRidersCountPill.textContent = `${list.length} Online`;
+      }
+
+      if (!coRidersList) return;
+
+      if (list.length === 0) {
+        coRidersList.innerHTML = `
+          <div class="empty-state" style="padding:1rem;">
+            <span class="text-muted">Ikaw pa lang ang online rider karon. Paabota ang imong mga kauban!</span>
+          </div>
+        `;
+        return;
+      }
+
+      coRidersList.innerHTML = list.map((r) => {
+        const isSelf = r.is_self;
+        const avatarHtml = r.avatar_url
+          ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
+          : `<div class="co-rider-avatar-placeholder">🛵</div>`;
+
+        const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">Ikaw</span>` : '';
+        const town = escapeHtml(r.municipality || 'Camiguin');
+        const phoneBtn = (!isSelf && r.phone)
+          ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Tawag</a>`
+          : '';
+
+        return `
+          <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
+            ${avatarHtml}
+            <div class="co-rider-info">
+              <div class="co-rider-name-row">
+                <span class="co-rider-name">${escapeHtml(r.name)}</span>
+                ${selfBadge}
+              </div>
+              <div class="co-rider-sub">
+                🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
+              </div>
+              <span class="co-rider-town">📍 ${town}</span>
+            </div>
+            <div class="co-rider-actions">
+              ${phoneBtn}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Update Radar Map Pins if map initialized
+      if (radarMap) {
+        const activeIds = new Set();
+        list.forEach((r) => {
+          if (r.last_lat && r.last_lng) {
+            activeIds.add(r.id);
+            const isSelf = r.is_self;
+            const iconHtml = isSelf
+              ? `<div style="background:#f97316;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🛵</div>`
+              : `<div style="background:#16a34a;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🟢</div>`;
+
+            const customIcon = L.divIcon({
+              className: "co-rider-radar-pin",
+              html: iconHtml,
+              iconSize: [34, 34],
+              iconAnchor: [17, 17],
+            });
+
+            if (!radarMarkers[r.id]) {
+              radarMarkers[r.id] = L.marker([r.last_lat, r.last_lng], { icon: customIcon })
+                .addTo(radarMap)
+                .bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality)}`);
+            } else {
+              radarMarkers[r.id].setLatLng([r.last_lat, r.last_lng]);
+            }
+          }
+        });
+
+        // Remove old markers
+        Object.keys(radarMarkers).forEach((id) => {
+          if (!activeIds.has(parseInt(id))) {
+            radarMap.removeLayer(radarMarkers[id]);
+            delete radarMarkers[id];
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   // On Load: Check stored session
