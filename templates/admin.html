@@ -185,6 +185,79 @@
     </div>
   </div>
 
+
+  <!-- System Data Backup & Restore Card -->
+  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px;">
+      <div>
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.4rem;">💾</span> System Data Backup &amp; Restore
+        </h3>
+        <p class="text-muted" style="margin:4px 0 0;font-size:0.88rem;">
+          I-backup o i-restore ang tanan nga data sa club (Riders, Bookings, Chat Messages, Reviews, Settings, &amp; Media Photos).
+        </p>
+      </div>
+      <span class="badge" style="background:#0284c7;color:#ffffff;font-size:0.75rem;padding:4px 10px;border-radius:12px;">
+        🔒 Admin Restricted Tool
+      </span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+      <!-- Export / Download Section -->
+      <div style="padding:1.2rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+            📥
+          </div>
+          <div>
+            <strong style="font-size:1rem;color:#0f172a;">1-Click Database Backup</strong>
+            <div class="text-muted" style="font-size:0.8rem;">Export complete system snapshot to JSON</div>
+          </div>
+        </div>
+        <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
+          I-download ang tibuok kopya sa database lakip ang riders list, registration records, license numbers, active/past trips, chat history, ug custom taripa settings.
+        </p>
+        <a href="/api/admin/backup" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;text-decoration:none;">
+          <span>⬇️</span> Download Full System Backup (.JSON)
+        </a>
+      </div>
+
+      <!-- Import / Restore Section -->
+      <div style="padding:1.2rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+            🔄
+          </div>
+          <div>
+            <strong style="font-size:1rem;color:#0f172a;">Restore from Backup File</strong>
+            <div class="text-muted" style="font-size:0.8rem;">I-balik ang database gikan sa na-download nga .json</div>
+          </div>
+        </div>
+
+        <form id="admin-restore-form" enctype="multipart/form-data">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="restore-file-input" style="font-size:0.82rem;font-weight:600;color:#334155;">Pilia ang Backup File (.json) *</label>
+            <input type="file" id="restore-file-input" name="backup_file" accept=".json,application/json" required style="font-size:0.85rem;padding:6px;width:100%;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;">
+          </div>
+
+          <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="restore-wipe-mode" name="wipe_existing" value="true" checked style="width:16px;height:16px;accent-color:var(--primary);">
+            <label for="restore-wipe-mode" style="font-size:0.8rem;color:#475569;cursor:pointer;user-select:none;">
+              <strong>Clean Sync</strong> (I-overwrite ug i-synchronize tanan records sumala sa backup)
+            </label>
+          </div>
+
+          <div id="restore-status-msg" class="hidden" style="margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
+
+          <button type="submit" id="restore-submit-btn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#b45309;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span>⬆️</span> I-restore Kini nga Backup
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Recent Bookings Table -->
   <div class="card" style="margin-top:1.5rem;">
     <h3 style="margin-top:0;">Recent Island Bookings (Latest 50)</h3>
