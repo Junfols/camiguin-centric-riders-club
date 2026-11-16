@@ -184,9 +184,131 @@
     } catch (_) {}
   }
 
+
+  // ---------------------------------------------------------------------------
+  // Live Chat System (Customer Side)
+  // ---------------------------------------------------------------------------
+  const chatMessagesBox = document.getElementById("chat-messages-box");
+  const chatForm = document.getElementById("chat-form");
+  const chatInputField = document.getElementById("chat-input-field");
+  const chatEmptyHint = document.getElementById("chat-empty-hint");
+  const cannedButtons = document.querySelectorAll("#customer-canned-replies .canned-btn");
+  let lastMessageId = 0;
+  let chatPollTimer = null;
+
+  function playChatBeep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+      if ("vibrate" in navigator) {
+        navigator.vibrate([60, 40, 60]);
+      }
+    } catch (_) {}
+  }
+
+  function appendChatMessage(msg, isSelf) {
+    if (chatEmptyHint) chatEmptyHint.style.display = "none";
+
+    const wrap = document.createElement("div");
+    wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
+
+    const sender = isSelf ? "You" : (msg.sender_name || "Kuya Rider");
+    const roleIcon = isSelf ? "👤" : "🛵";
+    const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
+
+    wrap.innerHTML = `
+      <span class="chat-sender-label">${roleIcon} ${escapeHtml(sender)}</span>
+      <div class="chat-bubble">
+        ${escapeHtml(msg.message)}
+        <span class="chat-time">${timeStr}</span>
+      </div>
+    `;
+
+    chatMessagesBox.appendChild(wrap);
+    chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight;
+  }
+
+  async function pollChatMessages() {
+    try {
+      const res = await fetch(`/api/chat/${encodeURIComponent(booking.booking_code)}/messages?after=${lastMessageId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.messages && data.messages.length > 0) {
+        let hasIncomingFromOther = false;
+        for (const msg of data.messages) {
+          if (msg.id > lastMessageId) {
+            lastMessageId = msg.id;
+            const isSelf = (msg.sender_role === "customer");
+            appendChatMessage(msg, isSelf);
+            if (!isSelf) hasIncomingFromOther = true;
+          }
+        }
+        if (hasIncomingFromOther) {
+          playChatBeep();
+        }
+      }
+    } catch (_) {}
+  }
+
+  async function sendCustomerMessage(text) {
+    if (!text || !text.trim()) return;
+    const msgText = text.trim();
+    if (chatInputField) chatInputField.value = "";
+
+    try {
+      const res = await fetch(`/api/chat/${encodeURIComponent(booking.booking_code)}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_role: "customer",
+          sender_name: booking.customer_name || "Customer",
+          message: msgText,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.message) {
+          if (data.message.id > lastMessageId) {
+            lastMessageId = data.message.id;
+            appendChatMessage(data.message, true);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (chatForm) {
+    chatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (chatInputField) {
+        sendCustomerMessage(chatInputField.value);
+      }
+    });
+  }
+
+  cannedButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const msg = btn.getAttribute("data-msg");
+      if (msg) sendCustomerMessage(msg);
+    });
+  });
+
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
     // Start polling every 3 seconds
     setInterval(pollLiveStatus, 3000);
+    // Poll chat messages every 2.5 seconds
+    pollChatMessages();
+    chatPollTimer = setInterval(pollChatMessages, 2500);
   });
 })();
