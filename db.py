@@ -474,6 +474,10 @@ def init_db(conn: DatabaseConnection) -> None:
         _create_postgres_schema(conn)
     else:
         _create_sqlite_schema(conn)
+    try:
+        conn.execute("ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''")
+    except Exception:
+        pass
     _seed_initial_data(conn)
     conn.commit()
 
@@ -498,6 +502,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             plate_number TEXT NOT NULL,
             municipality TEXT DEFAULT 'Mambajao',
             color TEXT DEFAULT '#f97316',
+            license_no TEXT DEFAULT '',
             avatar_url TEXT DEFAULT '',
             status TEXT DEFAULT 'active', -- active, pending, suspended
             is_online INTEGER DEFAULT 0,
@@ -620,6 +625,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             plate_number VARCHAR(32) NOT NULL,
             municipality VARCHAR(64) DEFAULT 'Mambajao',
             color VARCHAR(32) DEFAULT '#f97316',
+            license_no VARCHAR(64) DEFAULT '',
             avatar_url TEXT DEFAULT '',
             status VARCHAR(32) DEFAULT 'active',
             is_online INTEGER DEFAULT 0,
@@ -857,6 +863,8 @@ def register_rider(
     bike_model: str,
     plate_number: str,
     municipality: str = "Mambajao",
+    license_no: str = "",
+    avatar_url: str = "",
 ) -> int:
     clean_phone = phone.strip().replace(" ", "").replace("-", "")
     pwd_hash = generate_password_hash(password)
@@ -865,10 +873,10 @@ def register_rider(
         """
         INSERT INTO riders (
             name, phone, password_hash, bike_model, plate_number,
-            municipality, status, is_online, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?)
+            municipality, license_no, avatar_url, status, is_online, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
         """,
-        (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, now),
+        (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), now),
     )
 
 
@@ -975,7 +983,8 @@ def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, An
         SELECT b.*,
                r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
-               r.last_lng AS rider_lng, r.rating_avg AS rider_rating
+               r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+               r.avatar_url AS rider_avatar, r.license_no AS rider_license
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
         WHERE b.id = ?
@@ -991,7 +1000,8 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
         SELECT b.*,
                r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
-               r.last_lng AS rider_lng, r.rating_avg AS rider_rating
+               r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+               r.avatar_url AS rider_avatar, r.license_no AS rider_license
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
         WHERE UPPER(b.booking_code) = ?
