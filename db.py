@@ -839,7 +839,7 @@ def register_rider(
         INSERT INTO riders (
             name, phone, password_hash, bike_model, plate_number,
             municipality, status, is_online, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 1, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?)
         """,
         (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, now),
     )
