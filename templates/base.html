@@ -21,6 +21,15 @@
 
   <!-- Main Stylesheet -->
   <link rel="stylesheet" href="/static/css/style.css?v=3">
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem("ccrc_rider_session")) {
+          document.documentElement.classList.add("is-rider-session");
+        }
+      } catch(_) {}
+    })();
+  </script>
   {% block head %}{% endblock %}
 </head>
 <body class="app-body">
@@ -35,7 +44,7 @@
         <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;cursor:pointer;" title="{{ club.name }}">
           <span class="brand-logo-emoji">🛵</span>
         </div>
-        <a href="{% if active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" style="text-decoration:none;color:inherit;" aria-label="{{ club.name }} Home">
+        <a href="{% if session.get('rider_id') or active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" style="text-decoration:none;color:inherit;" aria-label="{{ club.name }} Home">
           <span class="brand-name">{{ club.name }}</span>
           <span class="brand-sub">
             {% if active_nav == 'rider' %}
@@ -53,9 +62,13 @@
         {% if active_nav == 'admin' %}
           <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#1e293b;color:white;border-radius:20px;font-weight:600;">⚙️ Club Admin Mode</span>
           <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
+        {% elif session.get('rider_id') %}
+          <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
+          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;">Log Out 🚪</button>
         {% else %}
-          <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %}">Book a Ride 🛵</a>
-          <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}">Rider Hub 📱</a>
+          <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
+          <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}" id="nav-rider-link">Rider Hub 📱</a>
+          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger nav-rider-logged-item hidden" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;">Log Out 🚪</button>
         {% endif %}
       </nav>
 
@@ -88,15 +101,34 @@
       <span>Exit to App</span>
     </a>
   </nav>
+  {% elif session.get('rider_id') %}
+  <nav class="bottom-nav" aria-label="Rider Navigation">
+    <a href="/rider" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📱</span>
+      <span>Rider Hub</span>
+    </a>
+    <a href="javascript:void(0)" id="bottom-rider-refresh-btn" class="bottom-nav-item">
+      <span class="bottom-nav-icon">🔄</span>
+      <span>Refresh</span>
+    </a>
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger">
+      <span class="bottom-nav-icon">🚪</span>
+      <span>Log Out</span>
+    </a>
+  </nav>
   {% else %}
   <nav class="bottom-nav" aria-label="App Navigation">
-    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %}">
+    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="bottom-nav-book">
       <span class="bottom-nav-icon">🛵</span>
       <span>Book a Ride</span>
     </a>
-    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}">
+    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}" id="bottom-nav-rider">
       <span class="bottom-nav-icon">📱</span>
       <span>Rider Hub</span>
+    </a>
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item nav-rider-logged-item text-danger hidden">
+      <span class="bottom-nav-icon">🚪</span>
+      <span>Log Out</span>
     </a>
   </nav>
   {% endif %}
