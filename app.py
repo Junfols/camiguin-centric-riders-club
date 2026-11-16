@@ -791,7 +791,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         updates = {}
         for key in (
             "club_name", "tagline", "hotline", "base_fare", "base_km", "per_km_rate", "min_fare",
-            "pabili_service_fee", "pasugo_service_fee", "queuing_fee", "extra_store_fee", "bulky_order_fee", "hinterland_fee"
+            "pabili_service_fee", "pasugo_service_fee", "queuing_fee", "extra_store_fee", "bulky_order_fee", "hinterland_fee",
+            "google_drive_webhook_url"
         ):
             if key in data:
                 updates[key] = str(data[key]).strip()
@@ -864,6 +865,81 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except Exception as e:
             conn.rollback()
             return jsonify({"error": f"Restore failed: {str(e)}"}), 500
+
+
+    @app.post("/api/admin/backup/google-drive")
+    def admin_upload_backup_google_drive():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+
+        conn = get_db()
+        settings = get_settings(conn)
+        webhook_url = (settings.get("google_drive_webhook_url") or "").strip()
+
+        backup_data = export_full_backup(conn)
+
+        import base64
+        import json
+        import urllib.request
+        from datetime import datetime
+
+        def _json_serial(obj):
+            if hasattr(obj, "isoformat"):
+                return obj.isoformat()
+            if isinstance(obj, (bytes, memoryview)):
+                return base64.b64encode(bytes(obj)).decode("ascii")
+            return str(obj)
+
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"ccrc_backup_{timestamp_str}.json"
+
+        if not webhook_url:
+            return jsonify({
+                "configured": False,
+                "message": "Google Drive Webhook URL is not configured yet in Settings.",
+                "backup_data": backup_data,
+                "filename": filename,
+            })
+
+        # Send to Google Apps Script Web App / Webhook
+        try:
+            payload = {
+                "filename": filename,
+                "timestamp": datetime.now().isoformat(),
+                "app": "Camiguin Centric Riders Club",
+                "content": json.dumps(backup_data, indent=2, default=_json_serial),
+                "summary": backup_data.get("summary", {}),
+            }
+            req_data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                webhook_url,
+                data=req_data,
+                headers={"Content-Type": "application/json", "User-Agent": "CCRC-Backup-Client/1.0"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resp_text = resp.read().decode("utf-8")
+                try:
+                    resp_json = json.loads(resp_text)
+                    file_url = resp_json.get("url") or resp_json.get("file_url") or "https://drive.google.com"
+                except Exception:
+                    file_url = "https://drive.google.com"
+
+            return jsonify({
+                "configured": True,
+                "success": True,
+                "filename": filename,
+                "file_url": file_url,
+                "message": f"Malampusong na-upload ang backup ({filename}) sa Google Drive!",
+            })
+        except Exception as e:
+            return jsonify({
+                "configured": True,
+                "success": False,
+                "error": f"Failed to upload to Google Drive webhook: {str(e)}",
+                "backup_data": backup_data,
+                "filename": filename,
+            }), 502
 
     return app
 
