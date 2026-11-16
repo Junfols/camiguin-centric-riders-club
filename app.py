@@ -24,6 +24,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import (
     CAMIGUIN_KNOWN_PLACES,
+    add_booking_message,
+    get_booking_messages,
     accept_booking,
     calculate_fare,
     calculate_haversine_km,
@@ -372,6 +374,65 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "breakdown": breakdown,
             "tracking_url": f"/track/{booking['booking_code']}",
         }), 201
+
+
+    # -------------------------------------------------------------------------
+    # In-App Chat Routes (Customer & Rider Live Messaging)
+    # -------------------------------------------------------------------------
+    @app.get("/api/chat/<code_or_id>/messages")
+    def get_chat_messages(code_or_id: str):
+        conn = get_db()
+        booking = None
+        if code_or_id.isdigit():
+            booking = get_booking_by_id(conn, int(code_or_id))
+        if not booking:
+            booking = get_booking_by_code(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        after_id = int(request.args.get("after") or 0)
+        messages = get_booking_messages(conn, booking["id"], after_id=after_id)
+        return jsonify({
+            "success": True,
+            "booking_id": booking["id"],
+            "booking_code": booking["booking_code"],
+            "messages": messages,
+        })
+
+    @app.post("/api/chat/<code_or_id>/messages")
+    def post_chat_message(code_or_id: str):
+        conn = get_db()
+        booking = None
+        if code_or_id.isdigit():
+            booking = get_booking_by_id(conn, int(code_or_id))
+        if not booking:
+            booking = get_booking_by_code(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        data = request.get_json(silent=True) or {}
+        text = (data.get("message") or "").strip()
+        if not text:
+            return jsonify({"error": "Message cannot be empty."}), 400
+
+        sender_role = (data.get("sender_role") or "customer").lower()
+        if sender_role not in ["customer", "rider", "system"]:
+            sender_role = "customer"
+
+        sender_name = (data.get("sender_name") or "").strip()
+        if not sender_name:
+            sender_name = "Kuya Rider" if sender_role == "rider" else booking["customer_name"]
+
+        new_msg = add_booking_message(conn, booking["id"], sender_role, sender_name, text)
+        conn.commit()
+
+        after_id = int(request.args.get("after") or 0)
+        messages = get_booking_messages(conn, booking["id"], after_id=after_id)
+        return jsonify({
+            "success": True,
+            "message": new_msg,
+            "messages": messages,
+        })
 
     # -------------------------------------------------------------------------
     # Live Tracking Routes
