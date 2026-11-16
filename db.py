@@ -1156,3 +1156,471 @@ def get_booking_messages(
         (booking_id, after_id, limit),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+# -----------------------------------------------------------------------------
+# Admin System Data Backup & Restore Functions
+# -----------------------------------------------------------------------------
+def export_full_backup(conn: DatabaseConnection) -> dict[str, Any]:
+    """
+    Exports a comprehensive JSON-serializable snapshot of all database tables:
+    settings, riders, bookings, booking_messages, reviews, uploaded_media (base64),
+    and tracking_logs.
+    """
+    import base64
+
+    # 1. Settings
+    settings_rows = conn.execute("SELECT key, value FROM settings").fetchall()
+    settings_data = [{"key": str(r["key"]), "value": str(r["value"])} for r in settings_rows]
+
+    # 2. Riders
+    riders_rows = conn.execute("SELECT * FROM riders ORDER BY id ASC").fetchall()
+    riders_data = [dict(r) for r in riders_rows]
+
+    # 3. Bookings
+    bookings_rows = conn.execute("SELECT * FROM bookings ORDER BY id ASC").fetchall()
+    bookings_data = [dict(r) for r in bookings_rows]
+
+    # 4. Booking Messages
+    messages_rows = conn.execute("SELECT * FROM booking_messages ORDER BY id ASC").fetchall()
+    messages_data = [dict(r) for r in messages_rows]
+
+    # 5. Reviews
+    reviews_rows = conn.execute("SELECT * FROM reviews ORDER BY id ASC").fetchall()
+    reviews_data = [dict(r) for r in reviews_rows]
+
+    # 6. Uploaded Media (convert bytea/blob to base64 string)
+    media_rows = conn.execute("SELECT filename, mimetype, created_at, data FROM uploaded_media").fetchall()
+    media_data = []
+    for r in media_rows:
+        try:
+            raw_bytes = bytes(r["data"]) if r["data"] is not None else b""
+            b64_str = base64.b64encode(raw_bytes).decode("ascii")
+        except Exception:
+            b64_str = ""
+        media_data.append({
+            "filename": str(r["filename"]),
+            "mimetype": str(r["mimetype"]),
+            "created_at": str(r["created_at"]),
+            "data_base64": b64_str,
+        })
+
+    # 7. Tracking Logs (latest 1000)
+    tracking_rows = conn.execute("SELECT * FROM tracking_logs ORDER BY id DESC LIMIT 1000").fetchall()
+    tracking_data = [dict(r) for r in reversed(tracking_rows)]
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    return {
+        "app": "Camiguin Centric Riders Club",
+        "system": "CCRC Admin Backup & Restore System",
+        "version": "1.0",
+        "exported_at": now_iso,
+        "summary": {
+            "settings_count": len(settings_data),
+            "riders_count": len(riders_data),
+            "bookings_count": len(bookings_data),
+            "messages_count": len(messages_data),
+            "reviews_count": len(reviews_data),
+            "media_count": len(media_data),
+            "tracking_logs_count": len(tracking_data),
+        },
+        "tables": {
+            "settings": settings_data,
+            "riders": riders_data,
+            "bookings": bookings_data,
+            "booking_messages": messages_data,
+            "reviews": reviews_data,
+            "uploaded_media": media_data,
+            "tracking_logs": tracking_data,
+        },
+    }
+
+
+def restore_full_backup(
+    conn: DatabaseConnection,
+    backup_data: dict[str, Any],
+    wipe_existing: bool = True,
+) -> dict[str, Any]:
+    """
+    Restores the database from a backup dictionary.
+    Supports either full wipe & replace (wipe_existing=True) or safe merge/upsert.
+    Transaction integrity is maintained by the caller.
+    """
+    import base64
+
+    if not isinstance(backup_data, dict):
+        raise ValueError("Invalid backup data format: must be a JSON object.")
+
+    tables = backup_data.get("tables")
+    if not isinstance(tables, dict):
+        raise ValueError("Invalid backup file: missing 'tables' payload.")
+
+    restored_summary = {
+        "settings": 0,
+        "riders": 0,
+        "bookings": 0,
+        "booking_messages": 0,
+        "reviews": 0,
+        "uploaded_media": 0,
+        "tracking_logs": 0,
+    }
+
+    if conn.backend == "sqlite":
+        conn.execute("PRAGMA foreign_keys = OFF")
+
+    try:
+        if wipe_existing:
+            # Wipe existing records in reverse dependency order
+            conn.execute("DELETE FROM tracking_logs")
+            conn.execute("DELETE FROM booking_messages")
+            conn.execute("DELETE FROM reviews")
+            conn.execute("DELETE FROM bookings")
+            conn.execute("DELETE FROM riders")
+            conn.execute("DELETE FROM uploaded_media")
+            conn.execute("DELETE FROM settings")
+
+        # 1. Restore settings
+        for s in tables.get("settings", []):
+            k = s.get("key")
+            v = s.get("value")
+            if k is not None and v is not None:
+                if not wipe_existing:
+                    conn.execute("DELETE FROM settings WHERE key = ?", (str(k),))
+                conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (str(k), str(v)))
+                restored_summary["settings"] += 1
+
+        # 2. Restore riders
+        for r in tables.get("riders", []):
+            r_id = r.get("id")
+            phone = str(r.get("phone") or "").strip()
+            if not phone:
+                continue
+            if not wipe_existing:
+                if r_id:
+                    conn.execute("DELETE FROM riders WHERE id = ? OR phone = ?", (r_id, phone))
+                else:
+                    conn.execute("DELETE FROM riders WHERE phone = ?", (phone,))
+
+            if r_id is not None:
+                conn.execute(
+                    """
+                    INSERT INTO riders (
+                        id, name, phone, password_hash, bike_model, plate_number,
+                        municipality, color, license_no, avatar_url, status,
+                        is_online, last_lat, last_lng, last_active_at, total_trips,
+                        rating_avg, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        r_id,
+                        r.get("name", "Unknown Rider"),
+                        phone,
+                        r.get("password_hash", ""),
+                        r.get("bike_model", "Motorcycle"),
+                        r.get("plate_number", ""),
+                        r.get("municipality", "Mambajao"),
+                        r.get("color", "#f97316"),
+                        r.get("license_no", ""),
+                        r.get("avatar_url", ""),
+                        r.get("status", "active"),
+                        int(r.get("is_online") or 0),
+                        r.get("last_lat"),
+                        r.get("last_lng"),
+                        r.get("last_active_at"),
+                        int(r.get("total_trips") or 0),
+                        float(r.get("rating_avg") or 5.0),
+                        r.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO riders (
+                        name, phone, password_hash, bike_model, plate_number,
+                        municipality, color, license_no, avatar_url, status,
+                        is_online, last_lat, last_lng, last_active_at, total_trips,
+                        rating_avg, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        r.get("name", "Unknown Rider"),
+                        phone,
+                        r.get("password_hash", ""),
+                        r.get("bike_model", "Motorcycle"),
+                        r.get("plate_number", ""),
+                        r.get("municipality", "Mambajao"),
+                        r.get("color", "#f97316"),
+                        r.get("license_no", ""),
+                        r.get("avatar_url", ""),
+                        r.get("status", "active"),
+                        int(r.get("is_online") or 0),
+                        r.get("last_lat"),
+                        r.get("last_lng"),
+                        r.get("last_active_at"),
+                        int(r.get("total_trips") or 0),
+                        float(r.get("rating_avg") or 5.0),
+                        r.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            restored_summary["riders"] += 1
+
+        # 3. Restore bookings
+        for b in tables.get("bookings", []):
+            b_id = b.get("id")
+            code = str(b.get("booking_code") or "").strip()
+            if not code:
+                continue
+            if not wipe_existing:
+                if b_id:
+                    conn.execute("DELETE FROM bookings WHERE id = ? OR booking_code = ?", (b_id, code))
+                else:
+                    conn.execute("DELETE FROM bookings WHERE booking_code = ?", (code,))
+
+            if b_id is not None:
+                conn.execute(
+                    """
+                    INSERT INTO bookings (
+                        id, booking_code, service_type, status, customer_name,
+                        customer_phone, pickup_address, pickup_lat, pickup_lng,
+                        dropoff_address, dropoff_lat, dropoff_lng, item_notes,
+                        estimated_budget, estimated_km, fare_amount, payment_method,
+                        rider_id, accepted_at, pickup_time, completed_at,
+                        cancelled_reason, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        b_id,
+                        code,
+                        b.get("service_type", "pahatud"),
+                        b.get("status", "broadcast"),
+                        b.get("customer_name", "Customer"),
+                        b.get("customer_phone", ""),
+                        b.get("pickup_address", ""),
+                        b.get("pickup_lat"),
+                        b.get("pickup_lng"),
+                        b.get("dropoff_address", ""),
+                        b.get("dropoff_lat"),
+                        b.get("dropoff_lng"),
+                        b.get("item_notes", ""),
+                        float(b.get("estimated_budget") or 0.0),
+                        float(b.get("estimated_km") or 0.0),
+                        float(b.get("fare_amount") or 0.0),
+                        b.get("payment_method", "cash"),
+                        b.get("rider_id"),
+                        b.get("accepted_at"),
+                        b.get("pickup_time"),
+                        b.get("completed_at"),
+                        b.get("cancelled_reason", ""),
+                        b.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO bookings (
+                        booking_code, service_type, status, customer_name,
+                        customer_phone, pickup_address, pickup_lat, pickup_lng,
+                        dropoff_address, dropoff_lat, dropoff_lng, item_notes,
+                        estimated_budget, estimated_km, fare_amount, payment_method,
+                        rider_id, accepted_at, pickup_time, completed_at,
+                        cancelled_reason, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        code,
+                        b.get("service_type", "pahatud"),
+                        b.get("status", "broadcast"),
+                        b.get("customer_name", "Customer"),
+                        b.get("customer_phone", ""),
+                        b.get("pickup_address", ""),
+                        b.get("pickup_lat"),
+                        b.get("pickup_lng"),
+                        b.get("dropoff_address", ""),
+                        b.get("dropoff_lat"),
+                        b.get("dropoff_lng"),
+                        b.get("item_notes", ""),
+                        float(b.get("estimated_budget") or 0.0),
+                        float(b.get("estimated_km") or 0.0),
+                        float(b.get("fare_amount") or 0.0),
+                        b.get("payment_method", "cash"),
+                        b.get("rider_id"),
+                        b.get("accepted_at"),
+                        b.get("pickup_time"),
+                        b.get("completed_at"),
+                        b.get("cancelled_reason", ""),
+                        b.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            restored_summary["bookings"] += 1
+
+        # 4. Restore booking_messages
+        for m in tables.get("booking_messages", []):
+            m_id = m.get("id")
+            b_id = m.get("booking_id")
+            if not b_id:
+                continue
+            if not wipe_existing and m_id:
+                conn.execute("DELETE FROM booking_messages WHERE id = ?", (m_id,))
+
+            if m_id is not None:
+                conn.execute(
+                    """
+                    INSERT INTO booking_messages (id, booking_id, sender_role, sender_name, message, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        m_id,
+                        b_id,
+                        m.get("sender_role", "system"),
+                        m.get("sender_name", "System"),
+                        m.get("message", ""),
+                        m.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO booking_messages (booking_id, sender_role, sender_name, message, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        b_id,
+                        m.get("sender_role", "system"),
+                        m.get("sender_name", "System"),
+                        m.get("message", ""),
+                        m.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            restored_summary["booking_messages"] += 1
+
+        # 5. Restore reviews
+        for rv in tables.get("reviews", []):
+            rv_id = rv.get("id")
+            rider_id = rv.get("rider_id")
+            if not rider_id:
+                continue
+            if not wipe_existing and rv_id:
+                conn.execute("DELETE FROM reviews WHERE id = ?", (rv_id,))
+
+            if rv_id is not None:
+                conn.execute(
+                    """
+                    INSERT INTO reviews (id, booking_id, rider_id, customer_name, rating, comment, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        rv_id,
+                        rv.get("booking_id"),
+                        rider_id,
+                        rv.get("customer_name", "Customer"),
+                        int(rv.get("rating") or 5),
+                        rv.get("comment", ""),
+                        rv.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO reviews (booking_id, rider_id, customer_name, rating, comment, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        rv.get("booking_id"),
+                        rider_id,
+                        rv.get("customer_name", "Customer"),
+                        int(rv.get("rating") or 5),
+                        rv.get("comment", ""),
+                        rv.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            restored_summary["reviews"] += 1
+
+        # 6. Restore uploaded_media
+        for med in tables.get("uploaded_media", []):
+            fname = med.get("filename")
+            b64_data = med.get("data_base64")
+            mimetype = med.get("mimetype", "application/octet-stream")
+            created_at = med.get("created_at") or datetime.now().isoformat()
+            if not fname or not b64_data:
+                continue
+            try:
+                raw_bytes = base64.b64decode(b64_data)
+            except Exception:
+                continue
+            conn.execute(
+                """
+                INSERT INTO uploaded_media (filename, data, mimetype, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(filename) DO UPDATE SET data = excluded.data, mimetype = excluded.mimetype
+                """,
+                (fname, raw_bytes, mimetype, created_at),
+            )
+            restored_summary["uploaded_media"] += 1
+
+        # 7. Restore tracking_logs
+        for tl in tables.get("tracking_logs", []):
+            tl_id = tl.get("id")
+            b_id = tl.get("booking_id")
+            r_id = tl.get("rider_id")
+            lat = tl.get("lat")
+            lng = tl.get("lng")
+            if not (b_id and r_id and lat is not None and lng is not None):
+                continue
+            if not wipe_existing and tl_id:
+                conn.execute("DELETE FROM tracking_logs WHERE id = ?", (tl_id,))
+
+            if tl_id is not None:
+                conn.execute(
+                    """
+                    INSERT INTO tracking_logs (id, booking_id, rider_id, lat, lng, speed, heading, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        tl_id,
+                        b_id,
+                        r_id,
+                        float(lat),
+                        float(lng),
+                        float(tl.get("speed") or 0.0),
+                        float(tl.get("heading") or 0.0),
+                        tl.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO tracking_logs (booking_id, rider_id, lat, lng, speed, heading, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        b_id,
+                        r_id,
+                        float(lat),
+                        float(lng),
+                        float(tl.get("speed") or 0.0),
+                        float(tl.get("heading") or 0.0),
+                        tl.get("created_at") or datetime.now().isoformat(),
+                    ),
+                )
+            restored_summary["tracking_logs"] += 1
+
+        # If Postgres backend, synchronize sequence values
+        if conn.backend == "postgresql":
+            for seq_tbl in ("riders", "bookings", "booking_messages", "reviews", "tracking_logs"):
+                try:
+                    conn.execute(
+                        f"SELECT setval(pg_get_serial_sequence('{seq_tbl}', 'id'), COALESCE((SELECT MAX(id) FROM {seq_tbl}), 1));"
+                    )
+                except Exception:
+                    pass
+
+    finally:
+        if conn.backend == "sqlite":
+            conn.execute("PRAGMA foreign_keys = ON")
+
+    return {
+        "success": True,
+        "wipe_existing": wipe_existing,
+        "restored": restored_summary,
+        "message": f"Successfully restored {restored_summary['riders']} riders, {restored_summary['bookings']} bookings, {restored_summary['settings']} settings, {restored_summary['booking_messages']} chat messages, and {restored_summary['uploaded_media']} media files.",
+    }
