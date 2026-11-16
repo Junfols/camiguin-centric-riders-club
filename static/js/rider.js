@@ -159,20 +159,52 @@
     });
   }
 
-  // Logout
+  // Unified Logout Handler
+  async function handleRiderLogout() {
+    if (confirm("Are you sure you want to log out of your Rider Account?")) {
+      setStoredRider(null);
+      document.documentElement.classList.remove("is-rider-session");
+      document.body.classList.remove("rider-logged-in");
+      if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+      if (pollInterval) clearInterval(pollInterval);
+      try {
+        await fetch("/api/rider/logout", { method: "POST" });
+      } catch (_) {}
+      window.location.href = "/";
+    }
+  }
+
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      if (confirm("Are you sure you want to log out?")) {
-        setStoredRider(null);
-        if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
-        if (pollInterval) clearInterval(pollInterval);
-        location.reload();
-      }
-    });
+    logoutBtn.addEventListener("click", handleRiderLogout);
+  }
+  const bottomNavLogout = document.getElementById("bottom-nav-rider-logout");
+  if (bottomNavLogout) {
+    bottomNavLogout.addEventListener("click", handleRiderLogout);
+  }
+  const headerNavLogout = document.getElementById("header-rider-logout-btn");
+  if (headerNavLogout) {
+    headerNavLogout.addEventListener("click", handleRiderLogout);
+  }
+  const bottomRiderRefresh = document.getElementById("bottom-rider-refresh-btn");
+  if (bottomRiderRefresh) {
+    bottomRiderRefresh.addEventListener("click", fetchAvailableJobs);
   }
 
   function initRiderSession(rider) {
     currentRider = rider;
+    document.documentElement.classList.add("is-rider-session");
+    document.body.classList.add("rider-logged-in");
+
+    // Strictly hide "Book a Ride" from nav & header when rider is logged in
+    document.querySelectorAll(".nav-book-item, #nav-book-link, #bottom-nav-book").forEach((el) => {
+      el.style.display = "none";
+    });
+
+    const bLogout = document.getElementById("bottom-nav-rider-logout");
+    if (bLogout) bLogout.classList.remove("hidden");
+    const hLogout = document.getElementById("header-rider-logout-btn");
+    if (hLogout) hLogout.classList.remove("hidden");
+
     authSection.classList.add("hidden");
     dashSection.classList.remove("hidden");
 
