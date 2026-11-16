@@ -128,6 +128,7 @@
               <th style="padding:6px;">Phone</th>
               <th style="padding:6px;">Bike / Plate</th>
               <th style="padding:6px;">Town</th>
+              <th style="padding:6px;">Admin Action</th>
             </tr>
           </thead>
           <tbody>
@@ -146,6 +147,16 @@
               <td style="padding:6px;"><a href="tel:{{ r.phone }}">{{ r.phone }}</a></td>
               <td style="padding:6px;">{{ r.bike_model }} <small class="text-muted">({{ r.plate_number }})</small></td>
               <td style="padding:6px;">{{ r.municipality }}</td>
+              <td style="padding:6px;white-space:nowrap;">
+                {% if r.status == 'pending' %}
+                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
+                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.75rem;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="setRiderStatus({{ r.id }}, 'rejected')">Reject ❌</button>
+                {% elif r.status == 'active' %}
+                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'suspended')">Deactivate</button>
+                {% else %}
+                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
+                {% endif %}
+              </td>
             </tr>
             {% else %}
             <tr><td colspan="5" class="text-muted" style="padding:12px;text-align:center;">No riders registered yet.</td></tr>
@@ -225,6 +236,25 @@
 
 {% block scripts %}
 <script>
+    // Admin Set Rider Status Handler
+  window.setRiderStatus = async function(riderId, newStatus) {
+    const actionLabel = newStatus === 'active' ? 'APPROVE' : (newStatus === 'rejected' ? 'REJECT' : 'DEACTIVATE');
+    if (!confirm(`Are you sure you want to ${actionLabel} this rider?`)) return;
+    try {
+      const res = await fetch(`/api/admin/riders/${riderId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update rider status");
+      alert(`Rider status successfully updated to ${newStatus.toUpperCase()}!`);
+      window.location.reload();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
   // Admin Login Handler
   const loginForm = document.getElementById("admin-login-form");
   if (loginForm) {
