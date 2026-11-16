@@ -118,6 +118,55 @@
     });
   }
 
+
+  // Photo Upload & Client-side Auto-Compression
+  let currentAvatarBase64 = "";
+  const regPhotoInput = document.getElementById("reg-photo");
+  const photoPreviewImg = document.getElementById("photo-preview-img");
+  const photoPlaceholderIcon = document.getElementById("photo-placeholder-icon");
+
+  if (regPhotoInput) {
+    regPhotoInput.addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          const maxDim = 500;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          currentAvatarBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+          if (photoPreviewImg) {
+            photoPreviewImg.src = currentAvatarBase64;
+            photoPreviewImg.classList.remove("hidden");
+          }
+          if (photoPlaceholderIcon) {
+            photoPlaceholderIcon.classList.add("hidden");
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Register Handler
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
@@ -125,13 +174,28 @@
       registerErrorMsg.classList.add("hidden");
       registerErrorMsg.textContent = "";
 
+      const licenseVal = (document.getElementById("reg-license") ? document.getElementById("reg-license").value.trim().toUpperCase() : "");
+      if (!licenseVal) {
+        registerErrorMsg.textContent = "Please enter your Driver's License Number.";
+        registerErrorMsg.classList.remove("hidden");
+        return;
+      }
+
+      if (!currentAvatarBase64) {
+        registerErrorMsg.textContent = "Please upload a clear profile picture (face photo).";
+        registerErrorMsg.classList.remove("hidden");
+        return;
+      }
+
       const payload = {
         name: document.getElementById("reg-name").value.trim(),
         phone: document.getElementById("reg-phone").value.trim(),
+        license_no: licenseVal,
         bike_model: document.getElementById("reg-bike").value.trim(),
         plate_number: document.getElementById("reg-plate").value.trim(),
         municipality: document.getElementById("reg-mun").value,
         password: document.getElementById("reg-password").value,
+        avatar_base64: currentAvatarBase64,
       };
 
       const btn = document.getElementById("rider-register-btn");
@@ -210,6 +274,20 @@
 
     dashRiderName.textContent = rider.name;
     dashRiderBike.textContent = `${rider.bike_model} • Plate: ${rider.plate_number} • ${rider.municipality}`;
+
+    const dashLicense = document.getElementById("dash-rider-license");
+    if (dashLicense) {
+      dashLicense.textContent = rider.license_no ? `License: ${rider.license_no}` : "";
+    }
+    const dashAvatar = document.getElementById("dash-rider-avatar-img");
+    if (dashAvatar) {
+      if (rider.avatar_url) {
+        dashAvatar.src = rider.avatar_url;
+        dashAvatar.classList.remove("hidden");
+      } else {
+        dashAvatar.classList.add("hidden");
+      }
+    }
 
     // Online switch state
     onlineToggle.checked = rider.is_online === 1;
