@@ -158,7 +158,13 @@
       if (b.rider_id && assignedRiderCard) {
         assignedRiderCard.classList.remove("hidden");
         if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
-        if (riderAvatar) riderAvatar.textContent = (b.rider_name || "R")[0].toUpperCase();
+        if (riderAvatar) {
+          if (b.rider_avatar) {
+            riderAvatar.innerHTML = `<img src="${escapeHtml(b.rider_avatar)}" alt="${escapeHtml(b.rider_name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+          } else {
+            riderAvatar.textContent = (b.rider_name || "R")[0].toUpperCase();
+          }
+        }
         if (riderBikeText) {
           riderBikeText.innerHTML = `${escapeHtml(b.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(b.rider_plate || "")}</strong>`;
         }
