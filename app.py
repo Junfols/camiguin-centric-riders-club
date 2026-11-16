@@ -14,6 +14,7 @@ from flask import (
     Response,
     g,
     jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -170,6 +171,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/customer")
     @app.get("/bookings")
     def index():
+        if session.get("rider_id"):
+            return redirect("/rider")
         conn = get_db()
         online_riders = get_online_riders(conn)
         settings = get_settings(conn)
@@ -418,6 +421,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/rider")
     def rider_view():
         return render_template("rider.html", active_nav="rider")
+
+    @app.post("/api/rider/logout")
+    def rider_logout():
+        rider_id = session.pop("rider_id", None)
+        if rider_id:
+            conn = get_db()
+            update_rider_online_status(conn, rider_id, False)
+            conn.commit()
+        return jsonify({"success": True})
 
     @app.post("/api/rider/login")
     def rider_login():
