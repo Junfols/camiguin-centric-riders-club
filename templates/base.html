@@ -31,11 +31,11 @@
   <!-- Header Navigation: Strictly Role-Specific -->
   <header class="site-header">
     <div class="container header-inner">
-      <a href="{% if active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-link" aria-label="{{ club.name }} Home">
-        <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;">
+      <div class="brand-link" style="display:flex;align-items:center;gap:10px;">
+        <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;cursor:pointer;" title="{{ club.name }}">
           <span class="brand-logo-emoji">🛵</span>
         </div>
-        <div class="brand-text">
+        <a href="{% if active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" style="text-decoration:none;color:inherit;" aria-label="{{ club.name }} Home">
           <span class="brand-name">{{ club.name }}</span>
           <span class="brand-sub">
             {% if active_nav == 'rider' %}
@@ -46,8 +46,8 @@
               Camiguin Island On-Demand Express
             {% endif %}
           </span>
-        </div>
-      </a>
+        </a>
+      </div>
 
       <nav class="desktop-nav" aria-label="Main Navigation">
         {% if active_nav == 'admin' %}
@@ -101,14 +101,12 @@
   </nav>
   {% endif %}
 
-  <!-- Footer with JRG IT SOLUTIONS 2026 Developer Trigger -->
+  <!-- Footer: Clean & Professional with JRG IT SOLUTIONS 2026 -->
   <footer class="site-footer" style="padding:2.5rem 1rem 6.5rem;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
     <p>&copy; 2026 Camiguin Centric Riders Club &bull; Safe Island Rides &amp; Deliveries</p>
-    <div style="margin-top:12px;">
-      <span id="jrg-admin-trigger" style="display:inline-block;padding:8px 18px;background:rgba(241,245,249,0.8);border:1px solid #e2e8f0;border-radius:24px;cursor:pointer;font-weight:700;font-size:0.8rem;color:#475569;user-select:none;touch-action:manipulation;transition:all 0.15s ease;letter-spacing:0.5px;">
-        ⚡ JRG IT SOLUTIONS 2026
-      </span>
-    </div>
+    <p style="margin-top:8px;font-size:0.78rem;color:#64748b;letter-spacing:0.3px;">
+      Designed &amp; Developed by <strong>JRG IT SOLUTIONS 2026</strong>
+    </p>
   </footer>
 
   <!-- Audio Dispatch Chime Generator (Web Audio API) -->
@@ -222,16 +220,19 @@
   </script>
 
   {% block scripts %}{% endblock %}
-  <!-- JRG IT SOLUTIONS 2026 5-Tap Admin Trigger -->
+  <!-- Secret 10-Tap on 🛵 Logo Icon to Unlock Admin -->
   <script>
     (function() {
       let taps = 0;
       let tapTimer = null;
       let lastTapTime = 0;
 
-      function handleJrgTap(e) {
+      const logo = document.getElementById("secret-admin-trigger");
+      if (!logo) return;
+
+      function onIconTap(e) {
         const now = Date.now();
-        if (now - lastTapTime < 70) return;
+        if (now - lastTapTime < 60) return; // Debounce rapid ghost triggers
         lastTapTime = now;
 
         if (e && e.cancelable) e.preventDefault();
@@ -240,53 +241,36 @@
         taps++;
         clearTimeout(tapTimer);
 
-        const jrgBtn = document.getElementById("jrg-admin-trigger");
-        if (jrgBtn) {
-          jrgBtn.style.transform = "scale(0.88)";
-          jrgBtn.style.borderColor = "#f97316";
-          jrgBtn.style.color = "#f97316";
-          jrgBtn.style.background = "#fff7ed";
-          setTimeout(() => {
-            if (jrgBtn) {
-              jrgBtn.style.transform = "";
-              jrgBtn.style.borderColor = "#e2e8f0";
-              jrgBtn.style.color = "#475569";
-              jrgBtn.style.background = "rgba(241,245,249,0.8)";
-            }
-          }, 140);
-        }
+        // Visual bounce animation on the 🛵 logo
+        logo.style.transition = "transform 0.08s ease";
+        logo.style.transform = "scale(0.75)";
+        setTimeout(() => {
+          if (logo) logo.style.transform = "";
+        }, 110);
 
+        // Subtle haptic vibration per tap on mobile
         if (navigator.vibrate) {
-          try { navigator.vibrate(35); } catch(err) {}
+          try { navigator.vibrate(30); } catch(err) {}
         }
 
-        if (taps >= 5) {
+        // When reached exactly 10 taps!
+        if (taps >= 10) {
           taps = 0;
           if (navigator.vibrate) {
-            try { navigator.vibrate([100, 50, 100]); } catch(err) {}
+            try { navigator.vibrate([100, 50, 150]); } catch(err) {}
           }
           window.location.href = "/admin";
           return;
         }
 
+        // Rolling timeout: reset after 4.5 seconds of inactivity
         tapTimer = setTimeout(() => {
           taps = 0;
-        }, 3000);
+        }, 4500);
       }
 
-      function initJrgTrigger() {
-        const trigger = document.getElementById("jrg-admin-trigger");
-        if (trigger) {
-          trigger.addEventListener("pointerdown", handleJrgTap, { passive: false });
-          trigger.addEventListener("click", handleJrgTap, { passive: false });
-        }
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initJrgTrigger);
-      } else {
-        initJrgTrigger();
-      }
+      logo.addEventListener("pointerdown", onIconTap, { passive: false });
+      logo.addEventListener("click", onIconTap, { passive: false });
     })();
   </script>
 </body>
