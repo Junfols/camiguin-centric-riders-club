@@ -4,9 +4,33 @@
 
 {% block content %}
 <div class="container page-admin-wrap" style="padding-top:1.5rem;padding-bottom:3rem;">
-  <div class="page-head" style="margin-bottom:1.5rem;">
-    <h1>Club Dispatch &amp; Admin Panel ⚙️</h1>
-    <p class="text-muted">Manage active club riders, live dispatches, and island fare matrix configuration for Camiguin Centric Riders Club.</p>
+  {% if not is_admin %}
+  <!-- Admin Login Screen (Unauthorized riders or customers cannot view admin data) -->
+  <div class="card" style="max-width:440px;margin:3rem auto;padding:2.2rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);">
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <span style="font-size:3rem;line-height:1;">🔒</span>
+      <h2 style="margin:8px 0 4px;font-size:1.4rem;">Club Admin Verification</h2>
+      <p class="text-muted" style="font-size:0.88rem;">Authorized officers only. Please enter the club admin password to access dispatches and tariff settings.</p>
+    </div>
+    <form id="admin-login-form">
+      <div class="form-group">
+        <label for="admin-pwd">Admin Password *</label>
+        <input type="password" id="admin-pwd" required placeholder="Enter password (default: admin1234)" autofocus>
+      </div>
+      <div id="admin-login-err" class="alert-error hidden" style="margin-bottom:12px;"></div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Unlock Admin Dashboard &rarr;</button>
+    </form>
+  </div>
+  {% else %}
+  <!-- Authenticated Admin Control Panel -->
+  <div class="page-head" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 style="margin:0;">Club Dispatch &amp; Admin Panel ⚙️</h1>
+      <p class="text-muted" style="margin:4px 0 0;">Manage active club riders, live dispatches, and island fare matrix configuration.</p>
+    </div>
+    <button type="button" id="admin-logout-btn" class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;font-weight:600;">
+      🚪 Log Out Admin
+    </button>
   </div>
 
   <!-- KPI Metrics Grid -->
@@ -59,157 +83,200 @@
             <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required min="5">
           </div>
           <div class="form-group">
-            <label for="set-min-fare">Minimum Fare (₱) *</label>
-            <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="30">
+            <label for="set-min-fare">Minimum Trip Fare (₱) *</label>
+            <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="20">
+          </div>
+        </div>
+
+        <h4 style="margin:16px 0 8px;font-size:0.95rem;">Additional Surcharges (₱)</h4>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="set-pabili-fee">Pabili / Buy-For-Me Fee</label>
+            <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee }}">
+          </div>
+          <div class="form-group">
+            <label for="set-pasugo-fee">Pasugo / Errand Fee</label>
+            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee }}">
           </div>
         </div>
 
         <div class="form-grid-2">
           <div class="form-group">
-            <label for="set-pabili-fee">Pabili Extra Fee (₱)</label>
-            <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee or 20 }}" required min="0">
+            <label for="set-queuing-fee">Queuing / Waiting Fee</label>
+            <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee }}">
           </div>
           <div class="form-group">
-            <label for="set-pasugo-fee">Pasugo Extra Fee (₱)</label>
-            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee or 20 }}" required min="0">
+            <label for="set-hinterland-fee">Mountain / Trail Surcharge</label>
+            <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee }}">
           </div>
         </div>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="set-queuing-fee">Large Store Queuing Fee (₱)</label>
-            <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee or 30 }}" required min="0">
-          </div>
-          <div class="form-group">
-            <label for="set-hinterland-fee">Hinterland Route Fee (₱)</label>
-            <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee or 30 }}" required min="0">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="set-hotline">Club Hotline / Dispatch Mobile</label>
-          <input type="text" id="set-hotline" name="hotline" value="{{ settings.hotline }}">
-        </div>
-
-        <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block">Save Fare Matrix Settings</button>
+        <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
+        <button type="submit" id="save-settings-btn" class="btn btn-primary" style="margin-top:12px;">Save Taripa Settings</button>
       </form>
     </div>
 
-    <!-- Active Club Riders Roster -->
+    <!-- Active Club Riders List -->
     <div class="card">
-      <h3 style="margin-top:0;">Official Club Riders Roster ({{ riders|length }})</h3>
-      <div class="riders-table-wrap" style="max-height:360px;overflow-y:auto;">
-        {% for r in riders %}
-        <div class="rider-roster-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:0.86rem;">
-          <div>
-            <strong>{{ r.name }}</strong>
-            <span class="badge {% if r.is_online %}badge-success{% else %}badge-soft{% endif %}" style="font-size:0.7rem;margin-left:4px;">
-              {% if r.is_online %}Online{% else %}Offline{% endif %}
-            </span>
-            <div class="text-muted" style="font-size:0.8rem;">
-              {{ r.bike_model }} &bull; Plate: <strong>{{ r.plate_number }}</strong> &bull; {{ r.phone }}
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <strong style="color:var(--primary);">{{ r.total_trips }}</strong> trips
-            <div style="color:#f59e0b;font-size:0.78rem;">★ {{ r.rating_avg }}</div>
-          </div>
-        </div>
-        {% endfor %}
+      <h3 style="margin-top:0;">Registered Club Riders ({{ riders|length }})</h3>
+      <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
+        <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left;">
+              <th style="padding:6px;">Status</th>
+              <th style="padding:6px;">Name</th>
+              <th style="padding:6px;">Phone</th>
+              <th style="padding:6px;">Bike / Plate</th>
+              <th style="padding:6px;">Town</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in riders %}
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:6px;">
+                {% if r.is_online == 1 and r.status == 'active' %}
+                  <span class="badge badge-success" style="font-size:0.75rem;">🟢 Online</span>
+                {% elif r.status == 'pending' %}
+                  <span class="badge badge-warning" style="font-size:0.75rem;">⏳ Pending</span>
+                {% else %}
+                  <span class="badge" style="font-size:0.75rem;background:#94a3b8;color:white;">Offline</span>
+                {% endif %}
+              </td>
+              <td style="padding:6px;"><strong>{{ r.name }}</strong></td>
+              <td style="padding:6px;"><a href="tel:{{ r.phone }}">{{ r.phone }}</a></td>
+              <td style="padding:6px;">{{ r.bike_model }} <small class="text-muted">({{ r.plate_number }})</small></td>
+              <td style="padding:6px;">{{ r.municipality }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-muted" style="padding:12px;text-align:center;">No riders registered yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <!-- Recent Dispatch Bookings Table -->
+  <!-- Recent Bookings Table -->
   <div class="card" style="margin-top:1.5rem;">
-    <h3 style="margin-top:0;">Live Dispatch Bookings Log</h3>
-    <div class="table-responsive">
-      <table class="admin-table">
+    <h3 style="margin-top:0;">Recent Island Bookings (Latest 50)</h3>
+    <div class="table-wrap" style="max-height:440px;overflow-y:auto;">
+      <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
         <thead>
-          <tr>
-            <th>Code</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Customer</th>
-            <th>Pickup / Drop-off</th>
-            <th>Fare</th>
-            <th>Rider</th>
-            <th>Action</th>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <th style="padding:8px;">Code</th>
+            <th style="padding:8px;">Service</th>
+            <th style="padding:8px;">Status</th>
+            <th style="padding:8px;">Customer</th>
+            <th style="padding:8px;">Pickup &rarr; Dropoff</th>
+            <th style="padding:8px;">Fare</th>
+            <th style="padding:8px;">Rider</th>
+            <th style="padding:8px;">Live Track</th>
           </tr>
         </thead>
         <tbody>
           {% for b in bookings %}
-          <tr>
-            <td><strong>{{ b.booking_code }}</strong></td>
-            <td><span class="badge badge-accent">{{ b.service_type|capitalize }}</span></td>
-            <td>
-              <span class="status-pill status-{{ b.status }}" style="font-size:0.75rem;padding:2px 8px;">
-                {{ b.status }}
-              </span>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.code }}</td>
+            <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
+            <td style="padding:8px;">
+              {% if b.status == 'completed' %}
+                <span class="badge badge-success">Completed</span>
+              {% elif b.status == 'in_progress' %}
+                <span class="badge badge-primary">In Transit</span>
+              {% elif b.status == 'accepted' %}
+                <span class="badge" style="background:#0284c7;color:white;">Rider Heading</span>
+              {% elif b.status == 'broadcast' %}
+                <span class="badge badge-warning">Broadcast</span>
+              {% else %}
+                <span class="badge">{{ b.status }}</span>
+              {% endif %}
             </td>
-            <td>{{ b.customer_name }}<br><small class="text-muted">{{ b.customer_phone }}</small></td>
-            <td>
-              <div style="font-size:0.82rem;">
-                🟢 {{ b.pickup_address }}<br>
-                🏁 {{ b.dropoff_address }}
-              </div>
+            <td style="padding:8px;">
+              <strong>{{ b.customer_name }}</strong><br>
+              <a href="tel:{{ b.customer_phone }}" class="text-muted">{{ b.customer_phone }}</a>
             </td>
-            <td><strong>₱{{ '{:,.0f}'.format(b.fare_amount) }}</strong></td>
-            <td>{{ b.rider_name or '<span class="text-muted">Unassigned</span>'|safe }}</td>
-            <td>
-              <a href="/track/{{ b.booking_code }}" target="_blank" class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:0.75rem;">
-                🗺️ Live GPS
-              </a>
+            <td style="padding:8px;">
+              <small><strong>From:</strong> {{ b.pickup_location }}</small><br>
+              <small><strong>To:</strong> {{ b.dropoff_location }}</small>
+            </td>
+            <td style="padding:8px;font-weight:700;color:var(--primary);">₱{{ "%.2f"|format(b.estimated_fare|float) }}</td>
+            <td style="padding:8px;">
+              {% if b.rider_name %}
+                <strong>{{ b.rider_name }}</strong><br>
+                <small class="text-muted">{{ b.rider_bike }}</small>
+              {% else %}
+                <span class="text-muted">Unassigned</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;">
+              <a href="/track/{{ b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
             </td>
           </tr>
           {% else %}
-          <tr>
-            <td colspan="8" class="text-center text-muted" style="padding:20px 0;">No bookings recorded yet.</td>
-          </tr>
+          <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No bookings recorded yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
+  {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+  // Admin Login Handler
+  const loginForm = document.getElementById("admin-login-form");
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pwd = document.getElementById("admin-pwd").value;
+      const errEl = document.getElementById("admin-login-err");
+      errEl.classList.add("hidden");
+      try {
+        const res = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({password: pwd})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+        window.location.reload();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove("hidden");
+      }
+    });
+  }
+
+  // Admin Logout Handler
+  const logoutBtn = document.getElementById("admin-logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      await fetch("/api/admin/logout", {method: "POST"});
+      window.location.reload();
+    });
+  }
+
+  // Admin Settings Form Handler
   const settingsForm = document.getElementById("admin-settings-form");
   if (settingsForm) {
     settingsForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = document.getElementById("save-settings-btn");
-      btn.disabled = true;
-      btn.textContent = "Saving...";
-
-      const payload = {
-        base_fare: document.getElementById("set-base-fare").value,
-        base_km: document.getElementById("set-base-km").value,
-        per_km_rate: document.getElementById("set-per-km").value,
-        min_fare: document.getElementById("set-min-fare").value,
-        pabili_service_fee: document.getElementById("set-pabili-fee").value,
-        pasugo_service_fee: document.getElementById("set-pasugo-fee").value,
-        queuing_fee: document.getElementById("set-queuing-fee") ? document.getElementById("set-queuing-fee").value : 30,
-        hinterland_fee: document.getElementById("set-hinterland-fee") ? document.getElementById("set-hinterland-fee").value : 30,
-        hotline: document.getElementById("set-hotline").value,
-      };
-
+      const formData = new FormData(settingsForm);
+      const payload = Object.fromEntries(formData.entries());
+      const successEl = document.getElementById("settings-save-success");
       try {
         const res = await fetch("/api/admin/settings", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
         });
-        if (res.ok) {
-          alert("Fare matrix and settings saved successfully!");
-        }
+        if (!res.ok) throw new Error("Failed to save settings");
+        successEl.classList.remove("hidden");
+        setTimeout(() => successEl.classList.add("hidden"), 3000);
       } catch (err) {
-        alert("Error: " + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Save Fare Matrix Settings";
+        alert("Error saving settings: " + err.message);
       }
     });
   }
