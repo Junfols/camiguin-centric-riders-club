@@ -1555,3 +1555,88 @@ input:focus, select:focus, textarea:focus {
     flex-grow: 1 !important;
   }
 }
+
+/* ==========================================================================
+   Android Mobile Viewport & Text Scaling Optimization
+   ========================================================================== */
+html {
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+  font-size: 16px;
+}
+
+body {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    max-width: 100% !important;
+  }
+
+  .booking-hero-clean {
+    padding: 1rem 0 0.75rem !important;
+  }
+
+  .booking-hero-title {
+    font-size: 1.45rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .booking-hero-sub {
+    font-size: 0.88rem !important;
+  }
+
+  .booking-panel-clean {
+    padding: 1.1rem !important;
+    border-radius: 16px !important;
+  }
+
+  /* Crucial for Android: prevent tiny input font */
+  .route-field-wrap input,
+  input[type="text"],
+  input[type="tel"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  .service-selector-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .service-tab-btn {
+    padding: 10px 6px !important;
+  }
+
+  .service-tab-btn .service-icon {
+    font-size: 1.6rem !important;
+  }
+
+  .service-tab-btn .service-title {
+    font-size: 0.82rem !important;
+  }
+
+  .service-tab-btn .service-tag {
+    font-size: 0.7rem !important;
+  }
+
+  .fare-estimate-card-clean {
+    padding: 12px 14px !important;
+  }
+
+  .fare-clean-number {
+    font-size: 1.85rem !important;
+  }
+
+  .btn-broadcast-cta {
+    padding: 15px 16px !important;
+    font-size: 0.96rem !important;
+  }
+}
