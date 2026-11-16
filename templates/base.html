@@ -32,7 +32,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <a href="{% if active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-link" aria-label="{{ club.name }} Home">
-        <div class="brand-logo-wrap">
+        <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;">
           <span class="brand-logo-emoji">🛵</span>
         </div>
         <div class="brand-text">
@@ -183,5 +183,54 @@
   </script>
 
   {% block scripts %}{% endblock %}
+  <!-- Secret 5-Tap Developer Backdoor to Admin -->
+  <script>
+    (function() {
+      let taps = 0;
+      let tapTimer = null;
+
+      function handleSecretTap(e) {
+        taps++;
+        clearTimeout(tapTimer);
+
+        // Visual subtle feedback (tiny pulse)
+        const el = e.currentTarget;
+        if (el) {
+          el.style.transform = "scale(0.92)";
+          setTimeout(() => { if (el) el.style.transform = ""; }, 120);
+        }
+
+        if (taps >= 5) {
+          if (e.cancelable) e.preventDefault();
+          e.stopPropagation();
+          taps = 0;
+          if (navigator.vibrate) {
+            try { navigator.vibrate([80, 50, 80]); } catch(err) {}
+          }
+          window.location.href = "/admin";
+          return;
+        }
+
+        tapTimer = setTimeout(() => {
+          taps = 0;
+        }, 1800);
+      }
+
+      const logoTrigger = document.getElementById("secret-admin-trigger");
+      if (logoTrigger) {
+        logoTrigger.addEventListener("click", handleSecretTap);
+      }
+
+      // Also allow 5-tap on hero title if present
+      document.addEventListener("DOMContentLoaded", () => {
+        const heroTitle = document.querySelector(".hero-title");
+        if (heroTitle) {
+          heroTitle.style.cursor = "pointer";
+          heroTitle.addEventListener("click", handleSecretTap);
+        }
+      });
+    })();
+  </script>
 </body>
+
 </html>
