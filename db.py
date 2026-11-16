@@ -581,6 +581,19 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS booking_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+            sender_role TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_booking ON booking_messages(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
@@ -685,6 +698,19 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS booking_messages (
+            id SERIAL PRIMARY KEY,
+            booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+            sender_role VARCHAR(32) NOT NULL,
+            sender_name VARCHAR(120) NOT NULL,
+            message TEXT NOT NULL,
+            created_at VARCHAR(32) NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_booking ON booking_messages(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
@@ -1071,3 +1097,51 @@ def get_uploaded_media(conn: DatabaseConnection, filename: str) -> tuple[bytes, 
     if not row:
         return None
     return bytes(row["data"]), str(row["mimetype"])
+
+
+# -----------------------------------------------------------------------------
+# In-App Chat Functions (Rider & Customer Communication)
+# -----------------------------------------------------------------------------
+def add_booking_message(
+    conn: DatabaseConnection,
+    booking_id: int,
+    sender_role: str,
+    sender_name: str,
+    message: str,
+) -> dict[str, Any]:
+    now = datetime.now().isoformat(timespec="seconds")
+    cur = conn.execute(
+        """
+        INSERT INTO booking_messages (booking_id, sender_role, sender_name, message, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (booking_id, sender_role, sender_name, message, now),
+    )
+    msg_id = cur.lastrowid
+    return {
+        "id": msg_id,
+        "booking_id": booking_id,
+        "sender_role": sender_role,
+        "sender_name": sender_name,
+        "message": message,
+        "created_at": now,
+    }
+
+
+def get_booking_messages(
+    conn: DatabaseConnection,
+    booking_id: int,
+    after_id: int = 0,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT id, booking_id, sender_role, sender_name, message, created_at
+        FROM booking_messages
+        WHERE booking_id = ? AND id > ?
+        ORDER BY id ASC
+        LIMIT ?
+        """,
+        (booking_id, after_id, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
