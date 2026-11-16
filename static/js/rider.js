@@ -325,8 +325,10 @@
 
       if (!activeJob) {
         activeJobBox.classList.add("hidden");
+        resetRiderChat(null);
         return;
       }
+      resetRiderChat(activeJob);
 
       activeJobBox.classList.remove("hidden");
       activeJobCode.textContent = activeJob.booking_code;
@@ -525,6 +527,148 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Rider Live Chat with Customer
+  // ---------------------------------------------------------------------------
+  const riderChatBox = document.getElementById("rider-chat-messages-box");
+  const riderChatForm = document.getElementById("rider-chat-form");
+  const riderChatInput = document.getElementById("rider-chat-input-field");
+  const riderChatCustName = document.getElementById("rider-chat-cust-name");
+  const riderChatEmptyHint = document.getElementById("rider-chat-empty-hint");
+  const riderCannedBtns = document.querySelectorAll("#rider-canned-replies .canned-btn");
+  let riderLastMessageId = 0;
+  let riderChatPollTimer = null;
+  let currentActiveJobId = null;
+
+  function playRiderBeep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+      if ("vibrate" in navigator) {
+        navigator.vibrate([100, 60, 100]);
+      }
+    } catch (_) {}
+  }
+
+  function appendRiderChatMessage(msg, isSelf) {
+    if (riderChatEmptyHint) riderChatEmptyHint.style.display = "none";
+
+    const wrap = document.createElement("div");
+    wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
+
+    const sender = isSelf ? "You (Rider)" : (msg.sender_name || "Customer");
+    const roleIcon = isSelf ? "🛵" : "👤";
+    const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
+
+    wrap.innerHTML = `
+      <span class="chat-sender-label">${roleIcon} ${escapeHtml(sender)}</span>
+      <div class="chat-bubble">
+        ${escapeHtml(msg.message)}
+        <span class="chat-time">${timeStr}</span>
+      </div>
+    `;
+
+    riderChatBox.appendChild(wrap);
+    riderChatBox.scrollTop = riderChatBox.scrollHeight;
+  }
+
+  async function pollRiderChat() {
+    if (!activeJob) return;
+    try {
+      const res = await fetch(`/api/chat/${activeJob.id}/messages?after=${riderLastMessageId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.messages && data.messages.length > 0) {
+        let hasIncomingFromCustomer = false;
+        for (const msg of data.messages) {
+          if (msg.id > riderLastMessageId) {
+            riderLastMessageId = msg.id;
+            const isSelf = (msg.sender_role === "rider");
+            appendRiderChatMessage(msg, isSelf);
+            if (!isSelf) hasIncomingFromCustomer = true;
+          }
+        }
+        if (hasIncomingFromCustomer) {
+          playRiderBeep();
+        }
+      }
+    } catch (_) {}
+  }
+
+  async function sendRiderMessage(text) {
+    if (!text || !text.trim() || !activeJob) return;
+    const msgText = text.trim();
+    if (riderChatInput) riderChatInput.value = "";
+
+    try {
+      const res = await fetch(`/api/chat/${activeJob.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_role: "rider",
+          sender_name: currentRider ? currentRider.name : "Kuya Rider",
+          message: msgText,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.message) {
+          if (data.message.id > riderLastMessageId) {
+            riderLastMessageId = data.message.id;
+            appendRiderChatMessage(data.message, true);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (riderChatForm) {
+    riderChatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (riderChatInput) sendRiderMessage(riderChatInput.value);
+    });
+  }
+
+  riderCannedBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const msg = btn.getAttribute("data-msg");
+      if (msg) sendRiderMessage(msg);
+    });
+  });
+
+  function resetRiderChat(job) {
+    if (!job) {
+      if (riderChatPollTimer) clearInterval(riderChatPollTimer);
+      return;
+    }
+    if (currentActiveJobId !== job.id) {
+      currentActiveJobId = job.id;
+      riderLastMessageId = 0;
+      if (riderChatBox) riderChatBox.innerHTML = "";
+      if (riderChatEmptyHint) {
+        riderChatEmptyHint.style.display = "block";
+        riderChatBox.appendChild(riderChatEmptyHint);
+      }
+      if (riderChatCustName) riderChatCustName.textContent = job.customer_name || "Passenger";
+    }
+    pollRiderChat();
+    if (!riderChatPollTimer) {
+      riderChatPollTimer = setInterval(pollRiderChat, 2500);
+    }
   }
 
   // On Load: Check stored session
