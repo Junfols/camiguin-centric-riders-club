@@ -44,6 +44,27 @@
         <label for="reg-phone">Mobile Number *</label>
         <input type="tel" id="reg-phone" required placeholder="e.g. 0917 123 4567">
       </div>
+
+      <!-- Driver's License Number & Profile Picture -->
+      <div class="form-group">
+        <label for="reg-license">Driver's License Number *</label>
+        <input type="text" id="reg-license" required placeholder="e.g. K01-12-123456" style="text-transform:uppercase;">
+      </div>
+
+      <div class="form-group">
+        <label>Rider Profile Picture (Photo) *</label>
+        <div class="photo-upload-box" style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:12px;border:1.5px dashed #cbd5e1;border-radius:12px;">
+          <div id="photo-preview-wrap" style="width:62px;height:62px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid #cbd5e1;">
+            <span id="photo-placeholder-icon" style="font-size:1.8rem;">👤</span>
+            <img id="photo-preview-img" src="" alt="Preview" class="hidden" style="width:100%;height:100%;object-fit:cover;">
+          </div>
+          <div style="flex:1;">
+            <input type="file" id="reg-photo" accept="image/*" style="font-size:0.84rem;width:100%;" required>
+            <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">Clear face photo for passenger safety and club verification.</small>
+          </div>
+        </div>
+      </div>
+
       <div class="form-grid-2">
         <div class="form-group">
           <label for="reg-bike">Motorcycle Model *</label>
@@ -86,10 +107,14 @@
     <!-- Header with Online Switch -->
     <div class="card rider-status-banner">
       <div class="rider-header-row">
-        <div>
-          <span class="badge badge-accent">CCRC Verified Rider</span>
-          <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
-          <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img id="dash-rider-avatar-img" src="" alt="Rider Photo" class="hidden" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <div>
+            <span class="badge badge-accent">CCRC Verified Rider</span>
+            <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
+            <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
+            <div class="text-muted" id="dash-rider-license" style="font-size:0.78rem;color:#64748b;margin-top:2px;">License: #</div>
+          </div>
         </div>
 
         <div class="online-switch-wrap">
