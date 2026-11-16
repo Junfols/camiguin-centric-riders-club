@@ -24,6 +24,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import (
     CAMIGUIN_KNOWN_PLACES,
+    export_full_backup,
+    restore_full_backup,
     add_booking_message,
     get_booking_messages,
     accept_booking,
@@ -799,6 +801,69 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             conn.commit()
 
         return jsonify({"success": True, "settings": get_settings(conn)})
+
+
+    @app.get("/api/admin/backup")
+    def admin_download_backup():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+        conn = get_db()
+        backup_data = export_full_backup(conn)
+
+        import base64
+        import json
+
+        def _json_serial(obj):
+            if hasattr(obj, "isoformat"):
+                return obj.isoformat()
+            if isinstance(obj, (bytes, memoryview)):
+                return base64.b64encode(bytes(obj)).decode("ascii")
+            return str(obj)
+
+        json_str = json.dumps(backup_data, indent=2, default=_json_serial)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"ccrc_backup_{timestamp_str}.json"
+        resp = Response(json_str, mimetype="application/json")
+        resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
+
+    @app.post("/api/admin/restore")
+    def admin_restore_backup():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+
+        import json
+
+        backup_data = None
+        wipe_existing = True
+
+        if "backup_file" in request.files:
+            file = request.files["backup_file"]
+            if not file or not file.filename:
+                return jsonify({"error": "No backup file selected."}), 400
+            try:
+                content = file.read().decode("utf-8")
+                backup_data = json.loads(content)
+            except Exception as e:
+                return jsonify({"error": f"Invalid backup file: {str(e)}"}), 400
+            wipe_val = (request.form.get("wipe_existing") or "true").lower()
+            wipe_existing = wipe_val in ("true", "1", "yes")
+        else:
+            payload = request.get_json(silent=True) or {}
+            backup_data = payload.get("backup_data") or payload
+            wipe_existing = bool(payload.get("wipe_existing", True))
+
+        if not backup_data or not isinstance(backup_data, dict):
+            return jsonify({"error": "Missing or invalid backup data."}), 400
+
+        conn = get_db()
+        try:
+            result = restore_full_backup(conn, backup_data, wipe_existing=wipe_existing)
+            conn.commit()
+            return jsonify(result)
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": f"Restore failed: {str(e)}"}), 500
 
     return app
 
