@@ -522,16 +522,40 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         name = (data.get("name") or "").strip()
         phone = (data.get("phone") or "").strip()
         password = (data.get("password") or "").strip()
+        license_no = (data.get("license_no") or "").strip().upper()
         bike_model = (data.get("bike_model") or "").strip()
         plate_number = (data.get("plate_number") or "").strip()
         municipality = (data.get("municipality") or "Mambajao").strip()
+        avatar_b64 = (data.get("avatar_base64") or "").strip()
 
         if not name or not phone or not password or not bike_model or not plate_number:
             return jsonify({"error": "Please complete all required fields."}), 400
 
+        if not license_no:
+            return jsonify({"error": "Driver's License Number is required."}), 400
+
         existing = get_rider_by_phone(conn, phone)
         if existing:
             return jsonify({"error": "This phone number is already registered. Please log in."}), 409
+
+        # Process and save profile picture
+        avatar_url = ""
+        if avatar_b64 and "," in avatar_b64:
+            import base64
+            try:
+                head, b64str = avatar_b64.split(",", 1)
+                mimetype = "image/jpeg"
+                if "png" in head:
+                    mimetype = "image/png"
+                elif "webp" in head:
+                    mimetype = "image/webp"
+                raw_bytes = base64.b64decode(b64str)
+                clean_p = phone.replace(" ", "").replace("-", "")
+                ts = int(datetime.now().timestamp())
+                fname = f"rider_{clean_p}_{ts}.jpg"
+                avatar_url = save_uploaded_media(conn, fname, raw_bytes, mimetype)
+            except Exception as e:
+                print("Failed to save avatar:", e)
 
         rider_id = register_rider(
             conn=conn,
@@ -541,6 +565,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             bike_model=bike_model,
             plate_number=plate_number,
             municipality=municipality,
+            license_no=license_no,
+            avatar_url=avatar_url,
         )
         conn.commit()
         return jsonify({
