@@ -99,6 +99,13 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Login failed");
 
+        if (data.pending) {
+          alert(data.message || "Registration submitted! Your application is now PENDING APPROVAL by the Club Admin.");
+          // Switch to login tab
+          registerForm.classList.add("hidden");
+          loginForm.classList.remove("hidden");
+          return;
+        }
         setStoredRider(data.rider);
         initRiderSession(data.rider);
       } catch (err) {
