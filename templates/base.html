@@ -20,7 +20,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <!-- Main Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2">
+  <link rel="stylesheet" href="/static/css/style.css?v=3">
   {% block head %}{% endblock %}
 </head>
 <body class="app-body">
@@ -149,7 +149,7 @@
     };
   </script>
 
-  <!-- PWA Service Worker Registration -->
+  <!-- PWA Service Worker & Intelligent Install Hide Logic -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -157,21 +157,64 @@
       });
     }
 
+    function isAppAlreadyInstalled() {
+      // 1. Running in standalone window / PWA mode
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        return true;
+      }
+      // 2. Previously marked installed on this device
+      if (localStorage.getItem("pwa_installed") === "true") {
+        return true;
+      }
+      return false;
+    }
+
     let deferredPrompt;
     const installBtn = document.getElementById("install-app-btn");
+
+    // Immediately hide if already installed
+    if (isAppAlreadyInstalled() && installBtn) {
+      installBtn.style.display = "none";
+      installBtn.classList.remove("visible");
+    }
+
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
+      if (isAppAlreadyInstalled()) {
+        if (installBtn) {
+          installBtn.style.display = "none";
+          installBtn.classList.remove("visible");
+        }
+        return;
+      }
       deferredPrompt = e;
-      if (installBtn) installBtn.classList.add("visible");
+      if (installBtn) {
+        installBtn.classList.add("visible");
+      }
+    });
+
+    window.addEventListener("appinstalled", () => {
+      localStorage.setItem("pwa_installed", "true");
+      if (installBtn) {
+        installBtn.classList.remove("visible");
+        installBtn.style.display = "none";
+      }
+      deferredPrompt = null;
     });
 
     if (installBtn) {
       installBtn.addEventListener("click", async () => {
-        if (!deferredPrompt) return;
+        if (!deferredPrompt) {
+          localStorage.setItem("pwa_installed", "true");
+          installBtn.style.display = "none";
+          return;
+        }
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === "accepted") {
+          localStorage.setItem("pwa_installed", "true");
           installBtn.classList.remove("visible");
+          installBtn.style.display = "none";
         }
         deferredPrompt = null;
       });
