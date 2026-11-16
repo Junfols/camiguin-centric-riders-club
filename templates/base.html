@@ -28,23 +28,35 @@
     <span>⚠️ Offline mode — No internet connection detected.</span>
   </div>
 
-  <!-- Header Navigation -->
+  <!-- Header Navigation: Strictly Role-Specific -->
   <header class="site-header">
     <div class="container header-inner">
-      <a href="/" class="brand-link" aria-label="{{ club.name }} Home">
+      <a href="{% if active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-link" aria-label="{{ club.name }} Home">
         <div class="brand-logo-wrap">
           <span class="brand-logo-emoji">🛵</span>
         </div>
         <div class="brand-text">
           <span class="brand-name">{{ club.name }}</span>
-          <span class="brand-sub">Camiguin Island On-Demand Express</span>
+          <span class="brand-sub">
+            {% if active_nav == 'rider' %}
+              Rider Dispatch Portal 📱
+            {% elif active_nav == 'admin' %}
+              Club Admin Control Center ⚙️
+            {% else %}
+              Camiguin Island On-Demand Express
+            {% endif %}
+          </span>
         </div>
       </a>
 
       <nav class="desktop-nav" aria-label="Main Navigation">
-        <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %}">Book a Ride 🛵</a>
-        <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}">Rider Dispatch 📱</a>
-        <a href="/admin" class="nav-link {% if active_nav == 'admin' %}active{% endif %}">Club Admin ⚙️</a>
+        {% if active_nav == 'rider' %}
+          <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#f97316;color:white;border-radius:20px;font-weight:600;">📱 Rider Portal</span>
+        {% elif active_nav == 'admin' %}
+          <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#1e293b;color:white;border-radius:20px;font-weight:600;">⚙️ Club Admin Mode</span>
+        {% else %}
+          <a href="/" class="nav-link active">Book a Ride 🛵</a>
+        {% endif %}
       </nav>
 
       <div class="header-actions">
@@ -64,25 +76,47 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Mobile Bottom Navigation -->
-  <nav class="bottom-nav" aria-label="Mobile Navigation">
-    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %}">
-      <span class="bottom-nav-icon">🛵</span>
-      <span>Book</span>
-    </a>
-    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}">
+  <!-- Mobile Bottom Navigation (Strictly Role-Specific: Rider sees only Rider, Admin sees only Admin, Customer sees only Book) -->
+  {% if active_nav == 'rider' %}
+  <nav class="bottom-nav" aria-label="Rider Navigation">
+    <a href="/rider" class="bottom-nav-item active">
       <span class="bottom-nav-icon">📱</span>
-      <span>Rider Hub</span>
-    </a>
-    <a href="/admin" class="bottom-nav-item {% if active_nav == 'admin' %}active{% endif %}">
-      <span class="bottom-nav-icon">⚙️</span>
-      <span>Admin</span>
+      <span>Rider Dispatch</span>
     </a>
   </nav>
+  {% elif active_nav == 'admin' %}
+  <nav class="bottom-nav" aria-label="Admin Navigation">
+    <a href="/admin" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">⚙️</span>
+      <span>Admin Panel</span>
+    </a>
+  </nav>
+  {% else %}
+  <nav class="bottom-nav" aria-label="Customer Navigation">
+    <a href="/" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">🛵</span>
+      <span>Book a Ride</span>
+    </a>
+  </nav>
+  {% endif %}
+
+  <!-- Discreet Footer (Prevents role clutter while keeping links available) -->
+  <footer class="site-footer" style="padding:2rem 1rem 6rem;text-align:center;font-size:0.82rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
+    <p>&copy; 2026 Camiguin Centric Riders Club &bull; Safe Island Rides &amp; Deliveries</p>
+    {% if active_nav == 'rider' %}
+      <p style="margin-top:6px;color:#f97316;font-weight:600;">Authorized Rider Portal &bull; Dispatch &amp; Job Board</p>
+    {% elif active_nav == 'admin' %}
+      <p style="margin-top:6px;color:#0284c7;font-weight:600;">Authorized Club Administrator Control Center</p>
+    {% else %}
+      <p style="margin-top:8px;">
+        <a href="/rider" style="color:#94a3b8;text-decoration:none;margin-right:16px;">Rider Login</a>
+        <a href="/admin" style="color:#94a3b8;text-decoration:none;">Admin Login</a>
+      </p>
+    {% endif %}
+  </footer>
 
   <!-- Audio Dispatch Chime Generator (Web Audio API) -->
   <script>
-    // Play an attention-grabbing dispatch chime for riders without external mp3 dependency
     window.playDispatchChime = function() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -90,12 +124,11 @@
         const ctx = new AudioCtx();
         const now = ctx.currentTime;
 
-        // Beep 1
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = "sine";
-        osc1.frequency.setValueAtTime(587.33, now); // D5
-        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+        osc1.frequency.setValueAtTime(587.33, now);
+        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15);
         gain1.gain.setValueAtTime(0.3, now);
         gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
         osc1.connect(gain1);
@@ -103,12 +136,11 @@
         osc1.start(now);
         osc1.stop(now + 0.25);
 
-        // Beep 2 (higher tone)
         const osc2 = ctx.createOscillator();
         const gain2 = ctx.createGain();
         osc2.type = "sine";
-        osc2.frequency.setValueAtTime(880, now + 0.28); // A5
-        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.45); // D6
+        osc2.frequency.setValueAtTime(880, now + 0.28);
+        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.45);
         gain2.gain.setValueAtTime(0.35, now + 0.28);
         gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
         osc2.connect(gain2);
