@@ -575,6 +575,35 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "message": "✅ Application submitted! Your rider account is now PENDING APPROVAL by the Club Admin. You can log in once approved."
         }), 201
 
+
+    @app.get("/api/rider/co-riders")
+    def get_rider_co_riders():
+        conn = get_db()
+        riders = get_online_riders(conn)
+        current_rider_id = request.args.get("rider_id", type=int) or session.get("rider_id")
+        clean_list = []
+        for r in riders:
+            clean_list.append({
+                "id": r["id"],
+                "name": r["name"],
+                "phone": r["phone"],
+                "bike_model": r["bike_model"],
+                "plate_number": r["plate_number"],
+                "municipality": r.get("municipality") or "Mambajao",
+                "avatar_url": r.get("avatar_url") or "",
+                "license_no": r.get("license_no") or "",
+                "rating_avg": r.get("rating_avg") or 5.0,
+                "last_lat": r.get("last_lat"),
+                "last_lng": r.get("last_lng"),
+                "last_active_at": r.get("last_active_at"),
+                "is_self": bool(current_rider_id and r["id"] == current_rider_id),
+            })
+        return jsonify({
+            "success": True,
+            "total_online": len(clean_list),
+            "co_riders": clean_list,
+        })
+
     @app.post("/api/rider/status")
     def rider_toggle_status():
         conn = get_db()
