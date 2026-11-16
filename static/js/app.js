@@ -1,6 +1,15 @@
 (function () {
   "use strict";
 
+  // If a rider is logged in, redirect them directly to Rider Hub (hide Book a Ride)
+  try {
+    const savedRider = localStorage.getItem("ccrc_rider_session");
+    if (savedRider && (window.location.pathname === "/" || window.location.pathname === "/customer" || window.location.pathname === "/bookings")) {
+      window.location.replace("/rider");
+      return;
+    }
+  } catch (_) {}
+
   // Elements
   const serviceTabs = document.querySelectorAll(".service-tab-btn");
   const serviceTypeInput = document.getElementById("service-type-input");
