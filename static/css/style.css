@@ -2013,3 +2013,155 @@ body.rider-logged-in .nav-rider-logged-item {
   align-items: center;
   gap: 4px;
 }
+
+/* ==========================================================================
+   App Splash / Loading Screen (Camiguin Centric Riders Club)
+   ========================================================================== */
+.app-splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(circle at 50% 38%, #1e293b 0%, #090d16 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.app-splash-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-inner {
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: splash-appear 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes splash-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.splash-logo-wrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 10px 28px rgba(249, 115, 22, 0.4));
+  animation: splash-float 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes splash-float {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-7px);
+  }
+}
+
+.splash-pulse-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.4) 0%, rgba(249, 115, 22, 0) 70%);
+  z-index: 1;
+  animation: splash-ring 2.2s infinite ease-out;
+}
+
+@keyframes splash-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.splash-title {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.25;
+}
+
+.splash-tagline {
+  color: #fb923c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0 0 24px;
+}
+
+.splash-loader-wrap {
+  width: 160px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.splash-loader-bar {
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fbbf24);
+  border-radius: 4px;
+  animation: splash-loading 1.2s infinite ease-in-out;
+}
+
+@keyframes splash-loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.splash-status-text {
+  color: #94a3b8;
+  font-size: 0.74rem;
+  letter-spacing: 0.4px;
+}
