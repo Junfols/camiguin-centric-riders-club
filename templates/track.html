@@ -81,6 +81,46 @@
     </div>
   </div>
 
+
+  <!-- Live In-App Chat with Assigned Rider -->
+  <div class="card chat-card" id="chat-section">
+    <div class="chat-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.4rem;">💬</span>
+        <div>
+          <h3 style="margin:0;font-size:1.05rem;">Live Chat with Rider</h3>
+          <span class="chat-subtitle text-muted" id="chat-rider-status-text" style="font-size:0.8rem;">
+            Direct in-app messaging with {{ booking.rider_name or 'your assigned driver' }}
+          </span>
+        </div>
+      </div>
+      <span class="badge badge-success" id="chat-online-badge">Online</span>
+    </div>
+
+    <!-- Quick Canned Replies for Customer -->
+    <div class="canned-replies" id="customer-canned-replies">
+      <button type="button" class="canned-btn" data-msg="Asa na dapit Kuya?">📍 Asa na dapit Kuya?</button>
+      <button type="button" class="canned-btn" data-msg="Diri ra ko sa gawas naghulat Kuya.">🏠 Diri ra ko sa gawas naghulat.</button>
+      <button type="button" class="canned-btn" data-msg="Salamat Kuya!">👍 Salamat Kuya!</button>
+      <button type="button" class="canned-btn" data-msg="Palihug ko pag-abot Kuya.">🛵 Palihug ko pag-abot.</button>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="chat-messages" id="chat-messages-box">
+      <div class="chat-empty-hint" id="chat-empty-hint">
+        <span>💬 Start chatting with your rider for directions, landmarks, or special requests.</span>
+      </div>
+    </div>
+
+    <!-- Input Form -->
+    <form class="chat-input-bar" id="chat-form">
+      <input type="text" id="chat-input-field" placeholder="Type a message to rider..." maxlength="300" autocomplete="off" required>
+      <button type="submit" id="chat-send-btn" class="btn btn-primary chat-send-btn" title="Send message">
+        <span>Send</span> ✈️
+      </button>
+    </form>
+  </div>
+
   <!-- Trip Details Card -->
   <div class="card" style="margin-top:1rem;">
     <h3 style="margin-top:0;font-size:1.05rem;">Trip Details &amp; Summary</h3>
