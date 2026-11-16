@@ -124,8 +124,8 @@
           <thead>
             <tr style="border-bottom:2px solid var(--border);text-align:left;">
               <th style="padding:6px;">Status</th>
-              <th style="padding:6px;">Name</th>
-              <th style="padding:6px;">Phone</th>
+              <th style="padding:6px;">Rider &amp; Photo</th>
+              <th style="padding:6px;">License No.</th>
               <th style="padding:6px;">Bike / Plate</th>
               <th style="padding:6px;">Town</th>
               <th style="padding:6px;">Admin Action</th>
@@ -143,8 +143,26 @@
                   <span class="badge" style="font-size:0.75rem;background:#94a3b8;color:white;">Offline</span>
                 {% endif %}
               </td>
-              <td style="padding:6px;"><strong>{{ r.name }}</strong></td>
-              <td style="padding:6px;"><a href="tel:{{ r.phone }}">{{ r.phone }}</a></td>
+              <td style="padding:6px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  {% if r.avatar_url %}
+                    <a href="{{ r.avatar_url }}" target="_blank" title="View Full Profile Photo">
+                      <img src="{{ r.avatar_url }}" alt="{{ r.name }}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid #cbd5e1;">
+                    </a>
+                  {% else %}
+                    <span style="width:38px;height:38px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
+                  {% endif %}
+                  <div>
+                    <strong>{{ r.name }}</strong>
+                    <div style="font-size:0.78rem;"><a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a></div>
+                  </div>
+                </div>
+              </td>
+              <td style="padding:6px;">
+                <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-family:monospace;font-size:0.8rem;">
+                  {{ r.license_no or 'N/A' }}
+                </span>
+              </td>
               <td style="padding:6px;">{{ r.bike_model }} <small class="text-muted">({{ r.plate_number }})</small></td>
               <td style="padding:6px;">{{ r.municipality }}</td>
               <td style="padding:6px;white-space:nowrap;">
