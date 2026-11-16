@@ -167,6 +167,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # Customer Storefront & Booking Routes
     # -------------------------------------------------------------------------
     @app.get("/")
+    @app.get("/customer")
+    @app.get("/bookings")
     def index():
         conn = get_db()
         online_riders = get_online_riders(conn)
