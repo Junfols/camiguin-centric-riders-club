@@ -12,7 +12,8 @@
   <meta name="apple-mobile-web-app-title" content="CentricRiders">
 
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+  <link rel="icon" type="image/png" href="/static/icons/logo.png">
+  <link rel="shortcut icon" href="/static/icons/logo.png">
   <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/icon-192.png">
 
   <!-- Leaflet Map CSS & JS -->
@@ -42,7 +43,7 @@
     <div class="container header-inner">
       <div class="brand-link" style="display:flex;align-items:center;gap:10px;">
         <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;cursor:pointer;" title="{{ club.name }}">
-          <span class="brand-logo-emoji">🛵</span>
+          <img src="/static/icons/logo.png" alt="{{ club.name }}" class="brand-logo-img" style="width:42px;height:42px;object-fit:contain;border-radius:50%;display:block;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
         </div>
         <a href="{% if session.get('rider_id') or active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" style="text-decoration:none;color:inherit;" aria-label="{{ club.name }} Home">
           <span class="brand-name">{{ club.name }}</span>
