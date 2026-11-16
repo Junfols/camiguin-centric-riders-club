@@ -1640,3 +1640,212 @@ body {
     font-size: 0.96rem !important;
   }
 }
+
+/* ==========================================================================
+   100% Mobile Phone Screen Fit (Strict Zero-Overflow Rules for Android)
+   ========================================================================== */
+html, body {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+
+/* Default Mobile: Clean 1-Column Fluid Fit */
+.page-booking-wrap,
+.container {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  overflow-x: hidden !important;
+}
+
+.booking-grid {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+  margin-bottom: 2rem !important;
+}
+
+.booking-panel-clean,
+.map-panel-clean {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  padding: 14px !important;
+  border-radius: 16px !important;
+  box-sizing: border-box !important;
+}
+
+/* Map on Mobile: Fits cleanly on phone */
+.booking-map-clean,
+#booking-map {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 380px !important;
+  border-radius: 14px !important;
+}
+
+/* Service 2x2 Grid on Mobile */
+.service-selector-grid {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important;
+}
+
+.service-tab-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 10px 6px !important;
+}
+
+/* Route Box: Zero Horizontal Overflow */
+.route-box-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 12px 10px !important;
+}
+
+.route-inputs-col {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
+}
+
+.route-field-wrap {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.route-field-wrap input {
+  min-width: 0 !important;
+  flex: 1 1 130px !important;
+  width: auto !important;
+  font-size: 16px !important;
+  padding: 6px 0 !important;
+}
+
+.route-actions-inline {
+  display: flex !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.route-mini-btn {
+  padding: 4px 8px !important;
+  font-size: 0.72rem !important;
+}
+
+/* Landmarks scroll container */
+.landmarks-clean-box {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.landmark-chips-scroll {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  gap: 6px !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 6px !important;
+}
+
+.chip-pill {
+  flex-shrink: 0 !important;
+  font-size: 0.78rem !important;
+  padding: 6px 12px !important;
+}
+
+/* Customer details grid */
+.customer-info-card,
+.fare-options-accordion,
+.fare-estimate-card-clean {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.form-grid-2 {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+/* Broadcast Button: Wrap cleanly on phone */
+.btn-broadcast-cta {
+  width: 100% !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  text-align: center !important;
+  font-size: 1rem !important;
+  padding: 15px 14px !important;
+  box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   Desktop-Only Overrides (Screens 992px and up)
+   ========================================================================== */
+@media (min-width: 992px) {
+  .page-booking-wrap,
+  .container {
+    max-width: 1240px !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+
+  .booking-grid {
+    display: grid !important;
+    grid-template-columns: 500px 1fr !important;
+    gap: 2rem !important;
+    align-items: start !important;
+  }
+
+  .booking-panel-clean {
+    padding: 1.75rem !important;
+    border-radius: 20px !important;
+  }
+
+  .map-panel-clean {
+    position: sticky !important;
+    top: 84px !important;
+    height: calc(100vh - 120px) !important;
+    max-height: 840px !important;
+    padding: 1.5rem !important;
+    border-radius: 20px !important;
+  }
+
+  .booking-map-clean,
+  #booking-map {
+    height: 100% !important;
+    min-height: 520px !important;
+  }
+
+  .service-selector-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .form-grid-2 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+}
