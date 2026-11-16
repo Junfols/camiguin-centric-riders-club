@@ -1849,3 +1849,18 @@ html, body {
     gap: 12px !important;
   }
 }
+
+/* Hide Book a Ride when Rider is logged in */
+html.is-rider-session .nav-book-item,
+html.is-rider-session #nav-book-link,
+html.is-rider-session #bottom-nav-book,
+body.rider-logged-in .nav-book-item,
+body.rider-logged-in #nav-book-link,
+body.rider-logged-in #bottom-nav-book {
+  display: none !important;
+}
+
+html.is-rider-session .nav-rider-logged-item,
+body.rider-logged-in .nav-rider-logged-item {
+  display: flex !important;
+}
