@@ -1,6 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}Club Admin &amp; Dispatch — {{ club.name }}{% endblock %}
+{% block title %}Club Admin &amp; Dispatch — {{ club.name }}
+<!-- Google Drive Setup Guide Modal -->
+<div id="gdrive-guide-modal" class="modal-backdrop hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem;">
+  <div class="card" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);border-radius:14px;background:#ffffff;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
+        <span>☁️</span> Giya: Libre nga Google Drive Auto-Backup
+      </h3>
+      <button type="button" onclick="closeGdriveGuideModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;">&times;</button>
+    </div>
+    <p style="font-size:0.86rem;color:#475569;margin-bottom:12px;">
+      Gusto ka nga sa matag click nimo ug <strong>"I-Save sa Google Drive"</strong>, awtomatikong mosulod ang file sa imong Google Drive folder nga walay bayad? Sunda kining 3 ka sayon nga lakang:
+    </p>
+    <ol style="font-size:0.84rem;color:#334155;padding-left:1.2rem;line-height:1.5;margin-bottom:14px;">
+      <li style="margin-bottom:8px;">
+        Ablihi ang <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> gamit ang imong Gmail account, unya i-click ang <strong>"New Project"</strong>.
+      </li>
+      <li style="margin-bottom:8px;">
+        I-delete ang sulod sa editor ug i-paste kining mubo nga code:
+        <pre style="background:#0f172a;color:#f8fafc;padding:10px;border-radius:8px;font-size:0.75rem;overflow-x:auto;margin:6px 0;">function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var folder = DriveApp.getRootFolder();
+  var file = folder.createFile(data.filename, data.content, MimeType.PLAIN_TEXT);
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    file_url: file.getUrl()
+  })).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      </li>
+      <li style="margin-bottom:8px;">
+        I-click ang <strong>Deploy &gt; New deployment</strong>. Pilia ang <strong>Web app</strong>, ibutang sa <em>Who has access</em>: <strong>Anyone</strong>, unya i-click ang <strong>Deploy</strong>.
+      </li>
+      <li>
+        Kopyaha ang gihatag nga <strong>Web App URL</strong> ug i-paste kini sa kahon sa <strong>Google Drive Webhook / Apps Script URL</strong> dinhi sa Admin Settings, dayon i-save!
+      </li>
+    </ol>
+    <div style="text-align:right;">
+      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
 
 {% block content %}
 <div class="container page-admin-wrap" style="padding-top:1.5rem;padding-bottom:3rem;">
@@ -111,6 +153,18 @@
           </div>
         </div>
 
+        <h4 style="margin:16px 0 8px;font-size:0.95rem;display:flex;align-items:center;gap:6px;">
+          <span>☁️</span> Google Drive Cloud Backup (Optional)
+        </h4>
+        <div class="form-group">
+          <label for="set-gdrive-webhook">Google Drive Webhook / Apps Script URL</label>
+          <input type="url" id="set-gdrive-webhook" name="google_drive_webhook_url" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec">
+          <small class="text-muted" style="display:block;margin-top:4px;">
+            Awtomatikong i-upload ang backup diretso sa imong Google Drive.
+            <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">Unsaon kini pag-set up? (1 ka minuto) &rarr;</a>
+          </small>
+        </div>
+
         <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
         <button type="submit" id="save-settings-btn" class="btn btn-primary" style="margin-top:12px;">Save Taripa Settings</button>
       </form>
@@ -217,9 +271,15 @@
         <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
           I-download ang tibuok kopya sa database lakip ang riders list, registration records, license numbers, active/past trips, chat history, ug custom taripa settings.
         </p>
-        <a href="/api/admin/backup" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;text-decoration:none;">
-          <span>⬇️</span> Download Full System Backup (.JSON)
-        </a>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a href="/api/admin/backup" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;text-decoration:none;">
+            <span>⬇️</span> Download Full Backup (.JSON)
+          </a>
+          <button type="button" id="gdrive-backup-btn" class="btn btn-block" onclick="backupToGoogleDrive()" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;background:#0f172a;color:#ffffff;border:1px solid #334155;border-radius:var(--radius-md);cursor:pointer;">
+            <span>☁️</span> I-Save sa Google Drive
+          </button>
+        </div>
+        <div id="gdrive-status-msg" class="hidden" style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
       </div>
 
       <!-- Import / Restore Section -->
@@ -323,6 +383,48 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Google Drive Setup Guide Modal -->
+<div id="gdrive-guide-modal" class="modal-backdrop hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem;">
+  <div class="card" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);border-radius:14px;background:#ffffff;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
+        <span>☁️</span> Giya: Libre nga Google Drive Auto-Backup
+      </h3>
+      <button type="button" onclick="closeGdriveGuideModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;">&times;</button>
+    </div>
+    <p style="font-size:0.86rem;color:#475569;margin-bottom:12px;">
+      Gusto ka nga sa matag click nimo ug <strong>"I-Save sa Google Drive"</strong>, awtomatikong mosulod ang file sa imong Google Drive folder nga walay bayad? Sunda kining 3 ka sayon nga lakang:
+    </p>
+    <ol style="font-size:0.84rem;color:#334155;padding-left:1.2rem;line-height:1.5;margin-bottom:14px;">
+      <li style="margin-bottom:8px;">
+        Ablihi ang <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> gamit ang imong Gmail account, unya i-click ang <strong>"New Project"</strong>.
+      </li>
+      <li style="margin-bottom:8px;">
+        I-delete ang sulod sa editor ug i-paste kining mubo nga code:
+        <pre style="background:#0f172a;color:#f8fafc;padding:10px;border-radius:8px;font-size:0.75rem;overflow-x:auto;margin:6px 0;">function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var folder = DriveApp.getRootFolder();
+  var file = folder.createFile(data.filename, data.content, MimeType.PLAIN_TEXT);
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    file_url: file.getUrl()
+  })).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      </li>
+      <li style="margin-bottom:8px;">
+        I-click ang <strong>Deploy &gt; New deployment</strong>. Pilia ang <strong>Web app</strong>, ibutang sa <em>Who has access</em>: <strong>Anyone</strong>, unya i-click ang <strong>Deploy</strong>.
+      </li>
+      <li>
+        Kopyaha ang gihatag nga <strong>Web App URL</strong> ug i-paste kini sa kahon sa <strong>Google Drive Webhook / Apps Script URL</strong> dinhi sa Admin Settings, dayon i-save!
+      </li>
+    </ol>
+    <div style="text-align:right;">
+      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -402,4 +504,46 @@
     });
   }
 </script>
+
+<!-- Google Drive Setup Guide Modal -->
+<div id="gdrive-guide-modal" class="modal-backdrop hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem;">
+  <div class="card" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);border-radius:14px;background:#ffffff;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
+        <span>☁️</span> Giya: Libre nga Google Drive Auto-Backup
+      </h3>
+      <button type="button" onclick="closeGdriveGuideModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;">&times;</button>
+    </div>
+    <p style="font-size:0.86rem;color:#475569;margin-bottom:12px;">
+      Gusto ka nga sa matag click nimo ug <strong>"I-Save sa Google Drive"</strong>, awtomatikong mosulod ang file sa imong Google Drive folder nga walay bayad? Sunda kining 3 ka sayon nga lakang:
+    </p>
+    <ol style="font-size:0.84rem;color:#334155;padding-left:1.2rem;line-height:1.5;margin-bottom:14px;">
+      <li style="margin-bottom:8px;">
+        Ablihi ang <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> gamit ang imong Gmail account, unya i-click ang <strong>"New Project"</strong>.
+      </li>
+      <li style="margin-bottom:8px;">
+        I-delete ang sulod sa editor ug i-paste kining mubo nga code:
+        <pre style="background:#0f172a;color:#f8fafc;padding:10px;border-radius:8px;font-size:0.75rem;overflow-x:auto;margin:6px 0;">function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var folder = DriveApp.getRootFolder();
+  var file = folder.createFile(data.filename, data.content, MimeType.PLAIN_TEXT);
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    file_url: file.getUrl()
+  })).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      </li>
+      <li style="margin-bottom:8px;">
+        I-click ang <strong>Deploy &gt; New deployment</strong>. Pilia ang <strong>Web app</strong>, ibutang sa <em>Who has access</em>: <strong>Anyone</strong>, unya i-click ang <strong>Deploy</strong>.
+      </li>
+      <li>
+        Kopyaha ang gihatag nga <strong>Web App URL</strong> ug i-paste kini sa kahon sa <strong>Google Drive Webhook / Apps Script URL</strong> dinhi sa Admin Settings, dayon i-save!
+      </li>
+    </ol>
+    <div style="text-align:right;">
+      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
