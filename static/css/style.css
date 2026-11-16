@@ -999,3 +999,501 @@ input:focus, select:focus, textarea:focus {
     transform: translate(-50%, 0);
   }
 }
+
+/* ==========================================================================
+   Modern Clean Ride Booking UI Enhancements
+   ========================================================================== */
+.booking-hero-clean {
+  padding: 1.5rem 0 1rem;
+  text-align: left;
+}
+
+.hero-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.booking-hero-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 4px 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.booking-hero-sub {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin: 0;
+  max-width: 620px;
+}
+
+/* Booking Panels */
+.booking-panel-clean {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.map-panel-clean {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.map-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Service Selector Cards */
+.service-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .service-selector-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.service-tab-btn {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.service-tab-btn:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.service-tab-btn.active {
+  background: #fff7ed;
+  border-color: #f97316;
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.18);
+  transform: translateY(-2px);
+}
+
+.service-tab-btn .service-icon {
+  font-size: 1.75rem;
+  margin-bottom: 4px;
+}
+
+.service-tab-btn .service-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.service-tab-btn .service-tag {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Route Box (Grab/Uber connected card) */
+.route-box-card {
+  display: flex;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s ease;
+}
+
+.route-box-card:focus-within {
+  border-color: #f97316;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(249, 115, 22, 0.08);
+}
+
+.route-connector-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  margin-right: 14px;
+  width: 16px;
+}
+
+.route-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-green {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.dot-orange {
+  background: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.25);
+}
+
+.route-line {
+  flex-grow: 1;
+  width: 2px;
+  background: #cbd5e1;
+  margin: 4px 0;
+}
+
+.route-inputs-col {
+  flex-grow: 1;
+}
+
+.route-input-row {
+  position: relative;
+}
+
+.route-field-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.6px;
+  margin-bottom: 2px;
+}
+
+.route-field-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.route-field-wrap input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 6px 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #0f172a;
+  outline: none;
+}
+
+.route-field-wrap input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.route-actions-inline {
+  display: flex;
+  gap: 6px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.route-mini-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.route-mini-btn:hover {
+  background: #f1f5f9;
+  color: var(--primary);
+  border-color: #cbd5e1;
+}
+
+.route-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 10px 0 8px;
+}
+
+/* Quick Landmark Chips */
+.landmarks-clean-box {
+  margin-bottom: 14px;
+}
+
+.landmarks-clean-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.landmark-chips-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.chip-pill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.chip-pill:hover {
+  background: #ffffff;
+  border-color: #f97316;
+  color: #f97316;
+  transform: translateY(-1px);
+}
+
+/* Section Badge Title */
+.section-badge-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+/* Service extra fields */
+.service-extra-fields-clean {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+/* Options Accordion */
+.fare-options-accordion {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.fare-options-summary {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+}
+
+.fare-options-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fare-options-content {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.86rem;
+}
+
+.custom-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.86rem;
+}
+
+.custom-select-row select {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+}
+
+/* Customer Info Card */
+.customer-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+/* Premium Fare Card */
+.fare-estimate-card-clean {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1.5px solid #fed7aa;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.fare-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fare-clean-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #9a3412;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fare-clean-number {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #c2410c;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.fare-clean-number .peso-sign {
+  font-size: 1.4rem;
+  margin-right: 2px;
+  font-weight: 700;
+}
+
+.fare-distance-pill {
+  background: #ffffff;
+  border: 1px solid #fdba74;
+  padding: 6px 14px;
+  border-radius: 12px;
+  text-align: right;
+}
+
+.fare-distance-pill span {
+  display: block;
+  font-weight: 800;
+  color: #9a3412;
+  font-size: 0.92rem;
+}
+
+.fare-hint-clean {
+  font-size: 0.8rem;
+  color: #7c2d12;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+/* CTA Broadcast Button */
+.btn-broadcast-cta {
+  width: 100%;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border: none;
+  padding: 16px 20px;
+  border-radius: 16px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 25px -4px rgba(249, 115, 22, 0.45);
+  transition: all 0.2s ease;
+}
+
+.btn-broadcast-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -4px rgba(249, 115, 22, 0.55);
+}
+
+.btn-broadcast-cta:active {
+  transform: translateY(0);
+}
+
+.cta-arrow {
+  font-size: 1.25rem;
+  transition: transform 0.2s ease;
+}
+
+.btn-broadcast-cta:hover .cta-arrow {
+  transform: translateX(4px);
+}
+
+/* Map Clean */
+.booking-map-clean {
+  border: 1.5px solid #e2e8f0;
+}
+
+.map-legend-clean {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 10px;
+  padding: 6px 4px;
+}
+
+.legend-route-line {
+  display: inline-block;
+  width: 16px;
+  height: 4px;
+  background: #ea580c;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
