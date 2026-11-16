@@ -50,12 +50,12 @@
       </a>
 
       <nav class="desktop-nav" aria-label="Main Navigation">
-        {% if active_nav == 'rider' %}
-          <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#f97316;color:white;border-radius:20px;font-weight:600;">📱 Rider Portal</span>
-        {% elif active_nav == 'admin' %}
+        {% if active_nav == 'admin' %}
           <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#1e293b;color:white;border-radius:20px;font-weight:600;">⚙️ Club Admin Mode</span>
+          <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
         {% else %}
-          <a href="/" class="nav-link active">Book a Ride 🛵</a>
+          <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %}">Book a Ride 🛵</a>
+          <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}">Rider Hub 📱</a>
         {% endif %}
       </nav>
 
@@ -76,43 +76,35 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Mobile Bottom Navigation (Strictly Role-Specific: Rider sees only Rider, Admin sees only Admin, Customer sees only Book) -->
-  {% if active_nav == 'rider' %}
-  <nav class="bottom-nav" aria-label="Rider Navigation">
-    <a href="/rider" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">📱</span>
-      <span>Rider Dispatch</span>
-    </a>
-  </nav>
-  {% elif active_nav == 'admin' %}
+  <!-- Mobile Bottom Navigation: Customer & Rider unified (Admin hidden) -->
+  {% if active_nav == 'admin' %}
   <nav class="bottom-nav" aria-label="Admin Navigation">
     <a href="/admin" class="bottom-nav-item active">
       <span class="bottom-nav-icon">⚙️</span>
       <span>Admin Panel</span>
     </a>
+    <a href="/" class="bottom-nav-item">
+      <span class="bottom-nav-icon">🏠</span>
+      <span>Exit to App</span>
+    </a>
   </nav>
   {% else %}
-  <nav class="bottom-nav" aria-label="Customer Navigation">
-    <a href="/" class="bottom-nav-item active">
+  <nav class="bottom-nav" aria-label="App Navigation">
+    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %}">
       <span class="bottom-nav-icon">🛵</span>
       <span>Book a Ride</span>
+    </a>
+    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}">
+      <span class="bottom-nav-icon">📱</span>
+      <span>Rider Hub</span>
     </a>
   </nav>
   {% endif %}
 
-  <!-- Discreet Footer (Prevents role clutter while keeping links available) -->
+  <!-- Footer: Clean & Professional -->
   <footer class="site-footer" style="padding:2rem 1rem 6rem;text-align:center;font-size:0.82rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
     <p>&copy; 2026 Camiguin Centric Riders Club &bull; Safe Island Rides &amp; Deliveries</p>
-    {% if active_nav == 'rider' %}
-      <p style="margin-top:6px;color:#f97316;font-weight:600;">Authorized Rider Portal &bull; Dispatch &amp; Job Board</p>
-    {% elif active_nav == 'admin' %}
-      <p style="margin-top:6px;color:#0284c7;font-weight:600;">Authorized Club Administrator Control Center</p>
-    {% else %}
-      <p style="margin-top:8px;">
-        <a href="/rider" style="color:#94a3b8;text-decoration:none;margin-right:16px;">Rider Login</a>
-        <a href="/admin" style="color:#94a3b8;text-decoration:none;">Admin Login</a>
-      </p>
-    {% endif %}
+    <p style="margin-top:4px;font-size:0.75rem;color:#cbd5e1;">Serving Mambajao, Mahinog, Catarman, Sagay, &amp; Guinsiliban</p>
   </footer>
 
   <!-- Audio Dispatch Chime Generator (Web Audio API) -->
