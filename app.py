@@ -470,10 +470,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             municipality=municipality,
         )
         conn.commit()
-        session["rider_id"] = rider_id
-        rider = get_rider_by_id(conn, rider_id)
-        clean_rider = {k: v for k, v in rider.items() if k != "password_hash"}
-        return jsonify({"success": True, "rider": clean_rider}), 201
+        return jsonify({
+            "success": True,
+            "pending": True,
+            "message": "✅ Application submitted! Your rider account is now PENDING APPROVAL by the Club Admin. You can log in once approved."
+        }), 201
 
     @app.post("/api/rider/status")
     def rider_toggle_status():
@@ -568,6 +569,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # -------------------------------------------------------------------------
     # Admin / Club Management Portal
     # -------------------------------------------------------------------------
+    @app.post("/api/admin/riders/<int:rider_id>/status")
+    def admin_update_rider_status(rider_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        new_status = (data.get("status") or "").strip().lower()
+        if new_status not in ("active", "pending", "suspended", "rejected"):
+            return jsonify({"error": "Invalid status."}), 400
+        conn.execute("UPDATE riders SET status = ? WHERE id = ?", (new_status, rider_id))
+        conn.commit()
+        return jsonify({"success": True, "status": new_status})
+
     @app.post("/api/admin/login")
     def admin_login():
         data = request.get_json(silent=True) or {}
