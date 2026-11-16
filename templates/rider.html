@@ -162,6 +162,45 @@
         </div>
       </div>
 
+
+      <!-- Rider-Customer In-App Live Chat -->
+      <div class="card chat-card rider-chat-card" style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;">
+        <div class="chat-header" style="padding-bottom:8px;border-bottom:1px solid #e2e8f0;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.4rem;">💬</span>
+            <div>
+              <h3 style="margin:0;font-size:1.05rem;">Chat with Customer (<span id="rider-chat-cust-name">Passenger</span>)</h3>
+              <span class="chat-subtitle text-muted" style="font-size:0.8rem;">Direct in-app messaging</span>
+            </div>
+          </div>
+          <span class="badge badge-accent" id="rider-chat-badge">Active Chat</span>
+        </div>
+
+        <!-- Quick Canned Replies for Rider -->
+        <div class="canned-replies" id="rider-canned-replies" style="margin:8px 0;">
+          <button type="button" class="canned-btn" data-msg="Padulong nako Ma'am/Sir!">🛵 Padulong nako!</button>
+          <button type="button" class="canned-btn" data-msg="Naa nako sa pickup point Ma'am/Sir.">📍 Naa nako sa pickup point.</button>
+          <button type="button" class="canned-btn" data-msg="Paabot lang kadali Ma'am/Sir.">⏳ Paabot lang kadali.</button>
+          <button type="button" class="canned-btn" data-msg="Naa nako sa gawas!">🏠 Naa nako sa gawas!</button>
+          <button type="button" class="canned-btn" data-msg="Salamat Ma'am/Sir!">👍 Salamat Ma'am/Sir!</button>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="chat-messages" id="rider-chat-messages-box" style="height:220px;overflow-y:auto;">
+          <div class="chat-empty-hint" id="rider-chat-empty-hint">
+            <span>💬 Customer chat messages will appear here in real-time.</span>
+          </div>
+        </div>
+
+        <!-- Input Form -->
+        <form class="chat-input-bar" id="rider-chat-form" style="margin-top:8px;">
+          <input type="text" id="rider-chat-input-field" placeholder="Reply to customer..." maxlength="300" autocomplete="off" required>
+          <button type="submit" id="rider-chat-send-btn" class="btn btn-primary chat-send-btn">
+            <span>Send</span> ✈️
+          </button>
+        </form>
+      </div>
+
       <!-- Action Step Buttons -->
       <div class="job-step-actions" style="margin-top:14px;">
         <button type="button" id="job-in-progress-btn" class="btn btn-primary btn-block btn-lg">
