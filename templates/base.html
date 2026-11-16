@@ -101,13 +101,14 @@
   </nav>
   {% endif %}
 
-  <!-- Footer: Clean & Professional -->
-  <footer class="site-footer" style="padding:2rem 1rem 6rem;text-align:center;font-size:0.82rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
+  <!-- Footer with JRG IT SOLUTIONS 2026 Developer Trigger -->
+  <footer class="site-footer" style="padding:2.5rem 1rem 6.5rem;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
     <p>&copy; 2026 Camiguin Centric Riders Club &bull; Safe Island Rides &amp; Deliveries</p>
-    <p style="margin-top:4px;font-size:0.75rem;color:#cbd5e1;">
-      Serving Mambajao, Mahinog, Catarman, Sagay, &amp; Guinsiliban &bull; 
-      <a href="/admin" style="color:#94a3b8;text-decoration:none;font-weight:600;">Admin Access 🔒</a>
-    </p>
+    <div style="margin-top:12px;">
+      <span id="jrg-admin-trigger" style="display:inline-block;padding:8px 18px;background:rgba(241,245,249,0.8);border:1px solid #e2e8f0;border-radius:24px;cursor:pointer;font-weight:700;font-size:0.8rem;color:#475569;user-select:none;touch-action:manipulation;transition:all 0.15s ease;letter-spacing:0.5px;">
+        ⚡ JRG IT SOLUTIONS 2026
+      </span>
+    </div>
   </footer>
 
   <!-- Audio Dispatch Chime Generator (Web Audio API) -->
@@ -178,36 +179,42 @@
   </script>
 
   {% block scripts %}{% endblock %}
-  <!-- Secret 5-Tap Developer Backdoor to Admin (Rock-Solid for Mobile & Desktop) -->
+  <!-- JRG IT SOLUTIONS 2026 5-Tap Admin Trigger -->
   <script>
     (function() {
       let taps = 0;
       let tapTimer = null;
       let lastTapTime = 0;
 
-      function triggerAdminTap(e) {
+      function handleJrgTap(e) {
         const now = Date.now();
-        if (now - lastTapTime < 80) return; // Prevent double-fire from pointerdown + click
+        if (now - lastTapTime < 70) return;
         lastTapTime = now;
 
-        // Crucial: prevent parent <a> from navigating/reloading before 5 taps
         if (e && e.cancelable) e.preventDefault();
         if (e && e.stopPropagation) e.stopPropagation();
 
         taps++;
         clearTimeout(tapTimer);
 
-        // Visual bounce feedback on logo
-        const logo = document.getElementById("secret-admin-trigger");
-        if (logo) {
-          logo.style.transition = "transform 0.1s ease";
-          logo.style.transform = "scale(0.82)";
-          setTimeout(() => { if (logo) logo.style.transform = ""; }, 120);
+        const jrgBtn = document.getElementById("jrg-admin-trigger");
+        if (jrgBtn) {
+          jrgBtn.style.transform = "scale(0.88)";
+          jrgBtn.style.borderColor = "#f97316";
+          jrgBtn.style.color = "#f97316";
+          jrgBtn.style.background = "#fff7ed";
+          setTimeout(() => {
+            if (jrgBtn) {
+              jrgBtn.style.transform = "";
+              jrgBtn.style.borderColor = "#e2e8f0";
+              jrgBtn.style.color = "#475569";
+              jrgBtn.style.background = "rgba(241,245,249,0.8)";
+            }
+          }, 140);
         }
 
-        // Haptic feedback if supported
         if (navigator.vibrate) {
-          try { navigator.vibrate(30); } catch(err) {}
+          try { navigator.vibrate(35); } catch(err) {}
         }
 
         if (taps >= 5) {
@@ -219,31 +226,23 @@
           return;
         }
 
-        // Reset after 3 seconds of inactivity
         tapTimer = setTimeout(() => {
           taps = 0;
         }, 3000);
       }
 
-      function attachTriggers() {
-        const logoTrigger = document.getElementById("secret-admin-trigger");
-        if (logoTrigger) {
-          logoTrigger.addEventListener("pointerdown", triggerAdminTap, { passive: false });
-          logoTrigger.addEventListener("click", triggerAdminTap, { passive: false });
-        }
-
-        const heroTitle = document.querySelector(".hero-title");
-        if (heroTitle) {
-          heroTitle.style.cursor = "pointer";
-          heroTitle.addEventListener("pointerdown", triggerAdminTap, { passive: false });
-          heroTitle.addEventListener("click", triggerAdminTap, { passive: false });
+      function initJrgTrigger() {
+        const trigger = document.getElementById("jrg-admin-trigger");
+        if (trigger) {
+          trigger.addEventListener("pointerdown", handleJrgTap, { passive: false });
+          trigger.addEventListener("click", handleJrgTap, { passive: false });
         }
       }
 
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", attachTriggers);
+        document.addEventListener("DOMContentLoaded", initJrgTrigger);
       } else {
-        attachTriggers();
+        initJrgTrigger();
       }
     })();
   </script>
