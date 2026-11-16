@@ -254,6 +254,40 @@
       </div>
     </div>
 
+    <!-- Fellow Online Riders Roster (Kauban nga Online) -->
+    <div class="card co-riders-card" style="margin-top:1.5rem;">
+      <div class="dispatch-feed-header" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.4rem;">🛵</span>
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;">Kauban nga Online Riders</h3>
+            <span class="text-muted" style="font-size:0.8rem;">Active on-duty club riders across Camiguin</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" id="toggle-radar-map-btn" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 9px;">🗺️ Radar Map</button>
+          <span id="co-riders-count-pill" class="badge badge-success" style="font-size:0.8rem;padding:4px 9px;">0 Online</span>
+        </div>
+      </div>
+
+      <!-- Collapsible Island Radar Map -->
+      <div id="radar-map-container" class="hidden" style="margin-bottom:14px;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1;">
+        <div id="co-riders-radar-map" style="height:260px;width:100%;"></div>
+        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;">
+          <span>🟢 Green = Active Rider &bull; 🛵 Centric Emblem = Your Location</span>
+          <span>Auto-syncs live GPS</span>
+        </div>
+      </div>
+
+      <!-- Online Co-Riders Grid/List -->
+      <div id="co-riders-list" class="co-riders-grid">
+        <div class="empty-state" style="padding:1rem;">
+          <span class="text-muted">Scanning for fellow online riders in Camiguin...</span>
+        </div>
+      </div>
+    </div>
+
+
     <div style="margin-top:1.5rem;text-align:center;">
       <button type="button" id="rider-logout-btn" class="text-btn text-danger">Log Out of Rider Account</button>
     </div>
