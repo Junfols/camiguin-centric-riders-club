@@ -2637,12 +2637,30 @@ class DatabaseConnection:
     def __init__(self, backend: str, raw_connection: Any):
         self.backend = backend
         self._raw = raw_connection
+        self._last_cursor = None
+
+    def cursor(self) -> DatabaseConnection:
+        """Cursor compatibility so conn.cursor() calls return this connection object."""
+        return self
 
     def execute(self, sql: str, params: tuple | list = ()) -> Any:
         if self.backend == "postgresql":
             pg_sql = translate_sql_to_postgres(sql)
-            return self._raw.execute(pg_sql, params or None)
-        return self._raw.execute(sql, params)
+            cur = self._raw.execute(pg_sql, params or None)
+        else:
+            cur = self._raw.execute(sql, params)
+        self._last_cursor = cur
+        return cur
+
+    def fetchone(self) -> Any:
+        if self._last_cursor is not None:
+            return self._last_cursor.fetchone()
+        return None
+
+    def fetchall(self) -> list[Any]:
+        if self._last_cursor is not None:
+            return self._last_cursor.fetchall()
+        return []
 
     def executemany(self, sql: str, seq_of_params: list) -> Any:
         if self.backend == "postgresql":
@@ -4322,7 +4340,16 @@ def toggle_customer_verify(conn: DatabaseConnection, customer_id: int) -> dict[s
     return dict(updated) if updated else None
 
 def get_customer_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
-    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone.strip(),)).fetchone()
+    clean_p = phone.strip()
+    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (clean_p,)).fetchone()
+    if not row:
+        digits = "".join(filter(str.isdigit, clean_p))
+        if len(digits) >= 10:
+            last10 = digits[-10:]
+            row = conn.execute(
+                "SELECT * FROM customers WHERE phone = ? OR phone = ? OR phone LIKE ? ORDER BY id DESC LIMIT 1",
+                (f"0{last10}", f"+63{last10}", f"%{last10}")
+            ).fetchone()
     return dict(row) if row else None
 
 def get_all_customers(conn: DatabaseConnection) -> list[dict[str, Any]]:
@@ -4357,17 +4384,24 @@ def update_customer_stats(conn: DatabaseConnection, customer_phone: str, fare_am
         )
 
 def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int = 15) -> list[dict[str, Any]]:
-    return conn.execute(
+    clean_p = phone.strip()
+    digits = "".join(filter(str.isdigit, clean_p))
+    last10 = digits[-10:] if len(digits) >= 10 else digits
+
+    rows = conn.execute(
         f"""
         SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone
         FROM bookings b
         LEFT JOIN riders r ON b.rider_id = r.id
         WHERE b.customer_phone = ?
+           OR b.customer_phone LIKE ?
+           OR b.customer_phone LIKE ?
         ORDER BY b.id DESC
         LIMIT {int(limit)}
         """,
-        (phone.strip(),)
+        (clean_p, f"%{last10}", f"0{last10}")
     ).fetchall()
+    return [dict(r) for r in rows]
 
 
 # -------------------------------------------------------------------------
@@ -4592,10 +4626,11 @@ def create_review(conn: DatabaseConnection, booking_id: int | None, rider_id: in
     return {"id": review_id, "rider_id": rider_id, "rating": rating, "comment": comment, "created_at": now_iso}
 
 def get_rider_reviews(conn: DatabaseConnection, rider_id: int, limit: int = 10) -> list[dict[str, Any]]:
-    return conn.execute(
+    rows = conn.execute(
         f"SELECT * FROM reviews WHERE rider_id = ? ORDER BY id DESC LIMIT {int(limit)}",
         (rider_id,)
     ).fetchall()
+    return [dict(r) for r in rows]
 
 # -------------------------------------------------------------------------
 # Nearest Rider ETA Calculation

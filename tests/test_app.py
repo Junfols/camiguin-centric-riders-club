@@ -681,6 +681,46 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(resp2.status_code, 201)
         self.assertEqual(resp2.get_json()["booking"]["customer_phone"], "09990001122")
 
+    def test_customer_history_and_active_booking_endpoints(self):
+        # Test creating booking then fetching history and active booking by phone
+        with self.app.app_context():
+            conn = self.app.get_db() if hasattr(self.app, 'get_db') else None
+        
+        # Post booking via test client
+        resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Test History User",
+                "customer_phone": "09187654321",
+                "service_type": "pahatud",
+                "pickup_address": "Balbagon Port",
+                "dropoff_address": "Sunken Cemetery",
+                "fare_amount": 120.0,
+            },
+        )
+        self.assertEqual(resp.status_code, 201)
+        code = resp.get_json()["booking"]["booking_code"]
+
+        # Fetch history via exact phone
+        h_resp = self.client.get("/api/customer/history/09187654321")
+        self.assertEqual(h_resp.status_code, 200)
+        h_data = h_resp.get_json()
+        self.assertTrue(h_data["success"])
+        self.assertEqual(len(h_data["history"]), 1)
+        self.assertEqual(h_data["history"][0]["booking_code"], code)
+
+        # Fetch history with formatted phone (spaces)
+        hf_resp = self.client.get("/api/customer/history/0918%20765%204321")
+        self.assertEqual(hf_resp.status_code, 200)
+        self.assertEqual(len(hf_resp.get_json()["history"]), 1)
+
+        # Fetch active booking via phone query parameter
+        act_resp = self.client.get("/api/customer/active-booking?phone=09187654321")
+        self.assertEqual(act_resp.status_code, 200)
+        act_data = act_resp.get_json()
+        self.assertTrue(act_data["active"])
+        self.assertEqual(act_data["booking"]["booking_code"], code)
+
 
 if __name__ == "__main__":
     unittest.main()

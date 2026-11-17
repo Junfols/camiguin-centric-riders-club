@@ -58,9 +58,27 @@
   const profileCard = document.getElementById("customer-profile-card");
   const profileName = document.getElementById("profile-name");
   const profileCount = document.getElementById("profile-ride-count");
+  const profileVerifiedBadge = document.getElementById("profile-verified-badge");
 
-  // Auto-fill phone from localStorage if previously booked
-  const savedPhone = localStorage.getItem("ccrc_customer_phone");
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Auto-fill phone from localStorage if previously logged in or booked
+  let savedPhone = "";
+  try {
+    const custStored = JSON.parse(localStorage.getItem("ccrc_customer_user") || "null");
+    if (custStored && custStored.phone) savedPhone = custStored.phone;
+  } catch(_) {}
+  if (!savedPhone) {
+    savedPhone = localStorage.getItem("ccrc_customer_phone") || "";
+  }
   const savedActiveCode = localStorage.getItem("ccrc_active_booking");
 
   if (savedPhone) {
@@ -73,6 +91,7 @@
   async function loadActiveOnly(code) {
     try {
       const res = await fetch(`/api/customer/active-booking?code=${encodeURIComponent(code)}`);
+      if (!res.ok) return;
       const data = await res.json();
       if (data.active && data.booking && data.booking.customer_phone) {
         phoneInput.value = data.booking.customer_phone;
@@ -96,12 +115,35 @@
 
     try {
       const res = await fetch(`/api/customer/history/${encodeURIComponent(phone)}`);
+      if (!res.ok) {
+        let errMsg = `Server error (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) errMsg = errData.error;
+        } catch(_) {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
 
       if (data.customer) {
         profileName.textContent = data.customer.name || "Island Passenger";
-        const tripsCount = (data.customer.total_rides !== undefined && data.customer.total_rides !== null) ? data.customer.total_rides : (data.total_rides !== undefined ? data.total_rides : (data.history ? data.history.length : 0));
+        const tripsCount = (data.customer.total_rides !== undefined && data.customer.total_rides !== null)
+          ? data.customer.total_rides
+          : (data.total_rides !== undefined ? data.total_rides : (data.history ? data.history.length : 0));
         profileCount.textContent = tripsCount;
+        if (profileVerifiedBadge) {
+          if (data.customer.is_verified) {
+            profileVerifiedBadge.innerHTML = '🛡️ Verified Passenger Account ✓';
+            profileVerifiedBadge.style.background = '#dcfce7';
+            profileVerifiedBadge.style.color = '#15803d';
+            profileVerifiedBadge.style.borderColor = '#86efac';
+          } else {
+            profileVerifiedBadge.innerHTML = '👤 Passenger Account';
+            profileVerifiedBadge.style.background = '#f1f5f9';
+            profileVerifiedBadge.style.color = '#475569';
+            profileVerifiedBadge.style.borderColor = '#cbd5e1';
+          }
+        }
         profileCard.classList.remove("hidden");
       }
 
@@ -110,7 +152,7 @@
         feed.innerHTML = `
           <div class="empty-state">
             <span style="font-size:2.5rem;display:block;margin-bottom:8px;">🏖️</span>
-            No bookings found for <strong>${phone}</strong> yet.<br>
+            No bookings found for <strong>${escapeHtml(phone)}</strong> yet.<br>
             <a href="/" class="btn btn-primary" style="margin-top:14px;display:inline-block;">Book Your First Ride &rarr;</a>
           </div>
         `;
@@ -120,37 +162,47 @@
       let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
       list.forEach((b) => {
         const isOngoing = ['broadcast', 'accepted', 'in_progress'].includes(b.status);
-        if (isOngoing) {
+        if (isOngoing && b.booking_code) {
           try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch(_) {}
         }
+        const fare = Number(b.fare_amount || b.estimated_fare || 0).toLocaleString();
+        const pickup = escapeHtml(b.pickup_address || b.pickup_location || 'Pickup Location');
+        const dropoff = escapeHtml(b.dropoff_address || b.dropoff_location || 'Dropoff Location');
+        const code = escapeHtml(b.booking_code || '');
+        const service = escapeHtml(b.service_type || 'Ride');
+        const status = escapeHtml(b.status || '');
+        const rider = b.rider_name ? escapeHtml(b.rider_name) : '';
+        const createdDate = b.created_at ? escapeHtml(b.created_at.slice(0, 16).replace('T', ' ')) : '';
+
         html += `
           <div class="card" style="padding:14px;border:${isOngoing ? '2px solid #ea580c;background:#fff7ed;' : '1px solid #e2e8f0;'};border-radius:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
               <div>
-                <strong style="font-family:monospace;font-size:0.95rem;">${b.booking_code}</strong>
-                <span class="badge badge-accent" style="margin-left:6px;font-size:0.75rem;text-transform:capitalize;">${b.service_type}</span>
+                <strong style="font-family:monospace;font-size:0.95rem;">${code}</strong>
+                <span class="badge badge-accent" style="margin-left:6px;font-size:0.75rem;text-transform:capitalize;">${service}</span>
                 ${isOngoing ? '<span class="badge" style="background:#ea580c;color:white;margin-left:6px;font-size:0.72rem;font-weight:700;">🟢 ACTIVE NOW</span>' : ''}
               </div>
-              <span class="status-pill status-${b.status}" style="font-size:0.75rem;padding:2px 8px;">
-                ${b.status}
+              <span class="status-pill status-${status}" style="font-size:0.75rem;padding:2px 8px;">
+                ${status}
               </span>
             </div>
 
             <div style="font-size:0.86rem;color:#334155;line-height:1.5;">
-              <div>🟢 <strong>Pickup:</strong> ${b.pickup_address}</div>
-              <div>🏁 <strong>Drop-off:</strong> ${b.dropoff_address}</div>
+              <div>🟢 <strong>Pickup:</strong> ${pickup}</div>
+              <div>🏁 <strong>Drop-off:</strong> ${dropoff}</div>
+              ${createdDate ? `<div style="font-size:0.78rem;color:#64748b;margin-top:2px;">📅 ${createdDate}</div>` : ''}
             </div>
 
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid ${isOngoing ? '#fed7aa' : '#f1f5f9'};font-size:0.84rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid ${isOngoing ? '#fed7aa' : '#f1f5f9'};font-size:0.84rem;flex-wrap:wrap;gap:8px;">
               <div>
-                Fare: <strong style="color:var(--primary);font-size:1.05rem;">₱${Number(b.fare_amount).toLocaleString()}</strong>
-                ${b.rider_name ? `<span class="text-muted">&bull; Rider: <strong>${b.rider_name}</strong></span>` : ''}
+                Fare: <strong style="color:var(--primary);font-size:1.05rem;">₱${fare}</strong>
+                ${rider ? `<span class="text-muted">&bull; Rider: <strong>${rider}</strong></span>` : ''}
               </div>
               <div style="display:flex;gap:8px;">
-                <a href="/track/${b.booking_code}" class="btn btn-sm ${isOngoing ? 'btn-primary' : 'btn-outline'}" style="padding:4px 10px;font-size:0.8rem;font-weight:700;">
-                  ${isOngoing ? '🗺️ Live GPS Tracking &rarr;' : 'Track / Receipt'}
+                <a href="/track/${code}" class="btn btn-sm ${isOngoing ? 'btn-primary' : 'btn-outline'}" style="padding:4px 10px;font-size:0.8rem;font-weight:700;">
+                  ${isOngoing ? '🗺️ Live GPS Tracking &rarr;' : 'Track / Receipt 🧾'}
                 </a>
-                <a href="/?pickup=${encodeURIComponent(b.pickup_address)}&dropoff=${encodeURIComponent(b.dropoff_address)}&service=${b.service_type}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;">
+                <a href="/?pickup=${encodeURIComponent(b.pickup_address || '')}&dropoff=${encodeURIComponent(b.dropoff_address || '')}&service=${encodeURIComponent(b.service_type || 'pahatud')}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;">
                   Rebook 🛵
                 </a>
               </div>
@@ -161,7 +213,7 @@
       html += '</div>';
       feed.innerHTML = html;
     } catch (err) {
-      feed.innerHTML = `<div class="empty-state text-danger">Error fetching history: ${err.message}</div>`;
+      feed.innerHTML = `<div class="empty-state text-danger">Error fetching history: ${escapeHtml(err.message)}</div>`;
     }
   }
 </script>

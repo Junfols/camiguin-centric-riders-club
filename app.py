@@ -397,8 +397,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if code:
             booking = get_booking_by_code(conn, code)
         elif phone:
-            cur = conn.cursor()
-            cur.execute("""
+            digits = "".join(filter(str.isdigit, phone))
+            last10 = digits[-10:] if len(digits) >= 10 else digits
+            cur = conn.execute("""
                 SELECT b.*,
                        r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                        r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
@@ -406,9 +407,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                        r.avatar_url AS rider_avatar
                 FROM bookings b
                 LEFT JOIN riders r ON b.rider_id = r.id
-                WHERE b.customer_phone = ? AND b.status IN ('broadcast', 'accepted', 'in_progress')
+                WHERE (b.customer_phone = ? OR b.customer_phone LIKE ? OR b.customer_phone LIKE ?)
+                  AND b.status IN ('broadcast', 'accepted', 'in_progress')
                 ORDER BY b.id DESC LIMIT 1
-            """, (phone,))
+            """, (phone, f"%{last10}", f"0{last10}"))
             row = cur.fetchone()
             if row:
                 booking = dict(row)
@@ -502,6 +504,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         clean_p = phone.strip()
         customer = get_customer_by_phone(conn, clean_p)
         history = get_customer_ride_history(conn, clean_p)
+        if not customer and history:
+            customer = {
+                "name": history[0].get("customer_name") or "Passenger",
+                "phone": clean_p,
+                "is_verified": 0,
+                "total_rides": len(history),
+                "total_spent": sum(float(b.get("fare_amount") or 0) for b in history if b.get("status") == "completed")
+            }
         return jsonify({
             "success": True,
             "customer": customer,
