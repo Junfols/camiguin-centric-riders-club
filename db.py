@@ -1625,6 +1625,46 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "mun": "Mambajao"
     },
     {
+        "name": "Boloc-boloc, Mambajao",
+        "cat": "barangay",
+        "keywords": [
+            "boloc boloc",
+            "boloc-boloc",
+            "bolocboloc",
+            "bolok bolok",
+            "bolok-bolok",
+            "bolokbolok",
+            "boloc",
+            "bolok",
+            "sitio boloc-boloc",
+            "sitio boloc boloc",
+            "boloc boloc mambajao",
+            "bolocboloc mambajao",
+            "poblacion boloc boloc"
+        ],
+        "lat": 9.25725,
+        "lng": 124.70658,
+        "mun": "Mambajao",
+        "full_address": "Sitio Boloc-boloc, Poblacion, Mambajao, Camiguin"
+    },
+    {
+        "name": "Sa-ay Cold Spring, Mambajao",
+        "cat": "tourist",
+        "keywords": [
+            "sa-ay",
+            "saay",
+            "sa ay",
+            "sa-ay cold spring",
+            "saay cold spring",
+            "quipasa",
+            "spring"
+        ],
+        "lat": 9.2211,
+        "lng": 124.7034,
+        "mun": "Mambajao",
+        "full_address": "Quipasa, Mambajao, Camiguin"
+    },
+    {
         "name": "Poblacion, Mambajao",
         "cat": "barangay",
         "keywords": [
