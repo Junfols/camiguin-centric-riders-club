@@ -2715,6 +2715,14 @@ def init_db(conn: DatabaseConnection) -> None:
         conn.execute("ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''")
     except Exception:
         pass
+    try:
+        conn.execute("ALTER TABLE customers ADD COLUMN avatar_url TEXT DEFAULT ''")
+    except Exception:
+        pass
+    try:
+        conn.execute("ALTER TABLE customers ADD COLUMN email TEXT DEFAULT ''")
+    except Exception:
+        pass
     _seed_initial_data(conn)
     conn.commit()
 
@@ -2836,6 +2844,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             name TEXT NOT NULL,
             password_hash TEXT DEFAULT '',
             email TEXT DEFAULT '',
+            avatar_url TEXT DEFAULT '',
             barangay TEXT DEFAULT '',
             is_verified INTEGER DEFAULT 0,
             status TEXT DEFAULT 'active',
@@ -3036,6 +3045,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             name VARCHAR(120) NOT NULL,
             password_hash VARCHAR(255) DEFAULT '',
             email VARCHAR(120) DEFAULT '',
+            avatar_url TEXT DEFAULT '',
             barangay VARCHAR(120) DEFAULT '',
             is_verified INTEGER DEFAULT 0,
             status VARCHAR(32) DEFAULT 'active',
@@ -4301,11 +4311,13 @@ def register_customer(
     password: str = "",
     barangay: str = "",
     email: str = "",
+    avatar_url: str = "",
 ) -> dict[str, Any]:
     clean_phone = normalize_ph_phone(phone)
     name = (name or "").strip()
     barangay = (barangay or "").strip()
     email = (email or "").strip().lower()
+    avatar_url = (avatar_url or "").strip()
     pwd_hash = generate_password_hash(password) if password else ""
     is_verified = 1 if password else 0
     now_iso = datetime.now().isoformat(timespec="seconds")
@@ -4320,22 +4332,23 @@ def register_customer(
                 password_hash = CASE WHEN ? != '' THEN ? ELSE password_hash END,
                 barangay = COALESCE(NULLIF(?, ''), barangay),
                 email = COALESCE(NULLIF(?, ''), email),
+                avatar_url = COALESCE(NULLIF(?, ''), avatar_url),
                 is_verified = CASE WHEN ? != '' THEN 1 ELSE is_verified END,
                 last_active_at = ?
             WHERE id = ?
             """,
-            (name, clean_phone, password, pwd_hash, barangay, email, password, now_iso, cust["id"]),
+            (name, clean_phone, password, pwd_hash, barangay, email, avatar_url, password, now_iso, cust["id"]),
         )
         return dict(conn.execute("SELECT * FROM customers WHERE id = ?", (cust["id"],)).fetchone())
 
     conn.execute(
         """
         INSERT INTO customers (
-            phone, name, password_hash, email, barangay, is_verified, status,
+            phone, name, password_hash, email, avatar_url, barangay, is_verified, status,
             total_rides, total_spent, saved_notes, created_at, last_active_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 0, 0.0, '', ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 0, 0.0, '', ?, ?)
         """,
-        (clean_phone, name or "Camiguin Passenger", pwd_hash, email, barangay, is_verified, now_iso, now_iso),
+        (clean_phone, name or "Camiguin Passenger", pwd_hash, email, avatar_url, barangay, is_verified, now_iso, now_iso),
     )
     return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (clean_phone,)).fetchone())
 

@@ -442,21 +442,43 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         password = (data.get("password") or "").strip()
         barangay = (data.get("barangay") or "").strip()
         email = (data.get("email") or "").strip()
+        avatar_b64 = (data.get("avatar_base64") or "").strip()
 
         if not name:
             return jsonify({"success": False, "error": "Please enter your full name."}), 400
         if not phone or len(phone) < 7:
             return jsonify({"success": False, "error": "Please provide a valid Philippine phone number."}), 400
+        if not email or "@" not in email:
+            return jsonify({"success": False, "error": "Please enter a valid email address (e.g. maria@gmail.com)."}), 400
         if not password or len(password) < 6:
             return jsonify({"success": False, "error": "Password must be at least 6 characters long."}), 400
 
+        avatar_url = ""
+        if avatar_b64 and "," in avatar_b64:
+            import base64
+            try:
+                head, b64str = avatar_b64.split(",", 1)
+                mimetype = "image/jpeg"
+                if "png" in head:
+                    mimetype = "image/png"
+                elif "webp" in head:
+                    mimetype = "image/webp"
+                raw_bytes = base64.b64decode(b64str)
+                clean_p = phone.replace(" ", "").replace("-", "")
+                ts = int(datetime.now().timestamp())
+                fname = f"cust_{clean_p}_{ts}.jpg"
+                avatar_url = save_uploaded_media(conn, fname, raw_bytes, mimetype)
+            except Exception as e:
+                print("Failed to save customer avatar:", e)
+
         try:
-            cust = register_customer(conn, name=name, phone=phone, password=password, barangay=barangay, email=email)
+            cust = register_customer(conn, name=name, phone=phone, password=password, barangay=barangay, email=email, avatar_url=avatar_url)
             conn.commit()
-            session["customer_phone"] = cust["phone"]
-            session["customer_name"] = cust["name"]
-            session["customer_id"] = cust["id"]
-            return jsonify({"success": True, "message": "Account registered and verified!", "customer": cust})
+            clean_cust = {k: v for k, v in cust.items() if k != "password_hash"}
+            session["customer_phone"] = clean_cust["phone"]
+            session["customer_name"] = clean_cust["name"]
+            session["customer_id"] = clean_cust["id"]
+            return jsonify({"success": True, "message": "Account registered and verified!", "customer": clean_cust})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 

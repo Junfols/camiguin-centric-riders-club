@@ -253,7 +253,7 @@
         </div>
 
         <!-- Errand & Package Details (Dynamic for Pabili/Pasugo) -->
-        <div id="service-extra-fields" class="service-extra-fields-clean">
+        <div id="service-extra-fields" class="service-extra-fields-clean hidden">
           <div class="section-badge-title">📦 Package / Errand Details</div>
           <div class="form-group" id="budget-group" style="margin-top:8px;">
             <label for="estimated-budget">Shopping Cash Budget (₱) <small class="text-muted">(Rider advances cash)</small></label>
@@ -266,7 +266,7 @@
         </div>
 
         <!-- Optional Conditions & Surcharges (Clean Collapsible Accordion) -->
-        <details class="fare-options-accordion">
+        <details class="fare-options-accordion hidden" id="fare-options-accordion">
           <summary class="fare-options-summary">
             <span>⚙️ Special Route Options &amp; Additional Stops <small class="text-muted">(Optional)</small></span>
             <span class="chevron-icon">&darr;</span>
@@ -646,5 +646,5 @@
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
 </script>
-<script src="/static/js/app.js?v=25"></script>
+<script src="/static/js/app.js?v=27"></script>
 {% endblock %}

@@ -291,6 +291,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         final_track = self.client.get(f"/api/bookings/track/{code}").get_json()["booking"]
         self.assertEqual(final_track["status"], "completed")
 
+        track_html_resp = self.client.get(f"/track/{code}")
+        self.assertEqual(track_html_resp.status_code, 200)
+        t_page = track_html_resp.get_data(as_text=True)
+        self.assertIn("Balik sa Dashboard", t_page)
+        self.assertIn("Delivered! Thank you for using CCRC", t_page)
+
     def test_rider_registration_and_login(self):
         # Register new rider
         reg_resp = self.client.post(
@@ -568,6 +574,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             json={
                 "name": "Maria Test Santos",
                 "phone": "09179998877",
+                "email": "maria@test.com",
+                "avatar_base64": "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
                 "barangay": "Agoho, Mambajao",
                 "password": "secretpassword123",
             },
@@ -775,12 +783,26 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Universal Header Auth Sync", t_html)
 
     def test_customer_and_rider_registration_and_login_flow(self):
+        # 0. Missing or invalid email should fail with 400
+        invalid_email_reg = self.client.post(
+            "/api/customer/register",
+            json={
+                "name": "No Email",
+                "phone": "0917 111 2233",
+                "password": "secretpassword",
+                "email": "not-an-email",
+            },
+        )
+        self.assertEqual(invalid_email_reg.status_code, 400)
+
         # 1. Customer registration with spaced phone
         c_reg = self.client.post(
             "/api/customer/register",
             json={
                 "name": "Maria Test",
                 "phone": "0917 999 8888",
+                "email": "maria.reg@example.com",
+                "avatar_base64": "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
                 "password": "secretpassword",
                 "barangay": "Mambajao",
             },
@@ -800,6 +822,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         )
         self.assertEqual(c_login.status_code, 200)
         self.assertTrue(c_login.get_json()["success"])
+
+        # When customer is logged in, rider nav link is hidden from customer bottom nav
+        home_resp = self.client.get("/")
+        self.assertEqual(home_resp.status_code, 200)
+        home_html = home_resp.get_data(as_text=True)
+        self.assertNotIn('id="bottom-nav-rider"', home_html)
 
         # 2. Rider registration returns pending rider
         r_reg = self.client.post(

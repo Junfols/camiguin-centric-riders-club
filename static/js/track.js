@@ -284,6 +284,12 @@
           statusPill.textContent = "🚀 In Transit / Heading to destination...";
         } else if (b.status === "completed") {
           statusPill.textContent = "✓ Delivered! Thank you for using CCRC.";
+          const backWrap = document.getElementById("track-completed-back-wrap");
+          if (backWrap) backWrap.classList.remove("hidden");
+          const deliveredCard = document.getElementById("delivered-actions-card");
+          if (deliveredCard) deliveredCard.classList.remove("hidden");
+          const reviewCard = document.getElementById("review-submission-card");
+          if (reviewCard) reviewCard.classList.remove("hidden");
         } else if (b.status === "cancelled") {
           statusPill.textContent = "✕ Booking has been cancelled.";
         }
@@ -540,7 +546,7 @@
         const data = await res.json();
         if (res.ok && data.success) {
           if (reviewFeedback) {
-            reviewFeedback.textContent = "✓ Salamat kaayo! Your review has been submitted.";
+            reviewFeedback.innerHTML = `✓ Salamat kaayo! Your review has been submitted.<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Balik sa Dashboard</a></div>`;
             reviewFeedback.classList.remove("hidden");
           }
           if (btn) btn.style.display = "none";

@@ -2403,6 +2403,9 @@
   let currentTargetMode = "pickup"; // 'pickup' or 'dropoff'
 
   // Service Type Switcher
+  const serviceExtraFields = document.getElementById("service-extra-fields");
+  const fareOptionsAccordion = document.getElementById("fare-options-accordion") || document.querySelector(".fare-options-accordion");
+
   serviceTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       serviceTabs.forEach((t) => t.classList.remove("active"));
@@ -2410,21 +2413,35 @@
       const service = tab.getAttribute("data-service");
       serviceTypeInput.value = service;
 
-      if (service === "pabili") {
+      if (service === "pahatud") {
+        // Passenger ride: strictly HIDE package/errand details and special route options & stops
+        if (serviceExtraFields) serviceExtraFields.classList.add("hidden");
+        if (fareOptionsAccordion) {
+          fareOptionsAccordion.classList.add("hidden");
+          fareOptionsAccordion.open = false;
+        }
+        if (fareHintText) fareHintText.textContent = "Official Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km.";
+      } else if (service === "pabili") {
+        if (serviceExtraFields) serviceExtraFields.classList.remove("hidden");
+        if (fareOptionsAccordion) fareOptionsAccordion.classList.remove("hidden");
         if (budgetGroup) budgetGroup.classList.remove("hidden");
         if (notesLabel) notesLabel.textContent = "Shopping List & Store Names *";
         if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Buy For Me fee.";
       } else if (service === "pasugo") {
+        if (serviceExtraFields) serviceExtraFields.classList.remove("hidden");
+        if (fareOptionsAccordion) fareOptionsAccordion.classList.remove("hidden");
         if (budgetGroup) budgetGroup.classList.add("hidden");
         if (notesLabel) notesLabel.textContent = "Parcel Description / Cargo Details *";
         if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Courier delivery fee.";
       } else if (service === "pabayad") {
+        if (serviceExtraFields) serviceExtraFields.classList.remove("hidden");
+        if (fareOptionsAccordion) fareOptionsAccordion.classList.remove("hidden");
         if (budgetGroup) budgetGroup.classList.remove("hidden");
         if (notesLabel) notesLabel.textContent = "Payment Details / Port Cargo Claim Number *";
         if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Port claim fee.";
       } else {
-        if (budgetGroup) budgetGroup.classList.add("hidden");
-        if (notesLabel) notesLabel.textContent = "Special Requests / Landmark Note";
+        if (serviceExtraFields) serviceExtraFields.classList.add("hidden");
+        if (fareOptionsAccordion) fareOptionsAccordion.classList.add("hidden");
         if (fareHintText) fareHintText.textContent = "Official Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km.";
       }
       recalculateFare();
@@ -3922,7 +3939,27 @@
         if (pPhone) pPhone.textContent = cust.phone || "";
         if (pRides) pRides.textContent = cust.total_rides || 0;
         if (pSpent) pSpent.textContent = `₱${Number(cust.total_spent || 0).toFixed(2)}`;
+
+        // Customer Avatar in Profile Modal
+        const profImg = document.getElementById("c-profile-avatar-img");
+        const profPlaceholder = document.getElementById("c-profile-avatar-placeholder");
+        if (profImg && cust.avatar_url) {
+          profImg.src = cust.avatar_url;
+          profImg.classList.remove("hidden");
+          if (profPlaceholder) profPlaceholder.classList.add("hidden");
+        } else if (profPlaceholder) {
+          profPlaceholder.classList.remove("hidden");
+          if (profImg) profImg.classList.add("hidden");
+        }
       }
+
+      // Hide bottom-right rider icon when customer is logged in
+      const bottomRiderNav = document.getElementById("bottom-nav-rider");
+      if (bottomRiderNav) {
+        bottomRiderNav.style.setProperty("display", "none", "important");
+        bottomRiderNav.classList.add("hidden");
+      }
+
       loadCustomerHomeHistory();
     } else {
       // Show Sign In button!
@@ -3941,6 +3978,13 @@
       if (authedView) authedView.classList.add("hidden");
       const historyCard = document.getElementById("customer-home-history-card");
       if (historyCard) historyCard.classList.add("hidden");
+
+      // Show bottom-right rider icon when customer is NOT logged in
+      const bottomRiderNav = document.getElementById("bottom-nav-rider");
+      if (bottomRiderNav) {
+        bottomRiderNav.style.removeProperty("display");
+        bottomRiderNav.classList.remove("hidden");
+      }
     }
   }
 
@@ -4108,6 +4152,76 @@
     });
   }
 
+  // Customer Registration Photo Handler (Camera & Gallery)
+  let currentCustAvatarBase64 = "";
+  const cCamBtn = document.getElementById("c-photo-camera-btn");
+  const cGalBtn = document.getElementById("c-photo-gallery-btn");
+  const cCamInput = document.getElementById("c-reg-file-camera");
+  const cGalInput = document.getElementById("c-reg-file-gallery");
+  const cPhotoImg = document.getElementById("c-reg-photo-img");
+  const cPhotoPlaceholder = document.getElementById("c-reg-photo-placeholder");
+  const cPhotoStatus = document.getElementById("c-photo-status");
+
+  if (cCamBtn && cCamInput) {
+    cCamBtn.addEventListener("click", () => cCamInput.click());
+  }
+  if (cGalBtn && cGalInput) {
+    cGalBtn.addEventListener("click", () => cGalInput.click());
+  }
+
+  function handleCustPhotoFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const maxDim = 500;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        currentCustAvatarBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+        if (cPhotoImg) {
+          cPhotoImg.src = currentCustAvatarBase64;
+          cPhotoImg.classList.remove("hidden");
+        }
+        if (cPhotoPlaceholder) {
+          cPhotoPlaceholder.classList.add("hidden");
+        }
+        if (cPhotoStatus) {
+          cPhotoStatus.textContent = "✓ Litrato napili (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
+          cPhotoStatus.style.color = "#16a34a";
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (cCamInput) {
+    cCamInput.addEventListener("change", function() {
+      if (this.files && this.files[0]) handleCustPhotoFile(this.files[0]);
+    });
+  }
+  if (cGalInput) {
+    cGalInput.addEventListener("change", function() {
+      if (this.files && this.files[0]) handleCustPhotoFile(this.files[0]);
+    });
+  }
+
   // Handle Customer Register
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
@@ -4116,8 +4230,25 @@
       if (errEl) errEl.classList.add("hidden");
       const name = document.getElementById("c-reg-name")?.value.trim();
       const phone = document.getElementById("c-reg-phone")?.value.trim();
+      const email = document.getElementById("c-reg-email")?.value.trim();
       const barangay = document.getElementById("c-reg-barangay")?.value;
       const password = document.getElementById("c-reg-pwd")?.value;
+
+      if (!email || !email.includes("@") || !email.includes(".")) {
+        if (errEl) {
+          errEl.textContent = "Palihug ibutang ang imong saktong Email Address (e.g. maria@gmail.com).";
+          errEl.classList.remove("hidden");
+        }
+        return;
+      }
+      if (!currentCustAvatarBase64) {
+        if (errEl) {
+          errEl.textContent = "Palihug pagkuha o pagpili og litrato (Camera o Gallery) para sa imong customer verification.";
+          errEl.classList.remove("hidden");
+        }
+        return;
+      }
+
       const btn = document.getElementById("c-reg-btn");
       btn.disabled = true;
       btn.textContent = "Registering...";
@@ -4126,7 +4257,14 @@
         const res = await fetch("/api/customer/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, phone, barangay, password }),
+          body: JSON.stringify({
+            name,
+            phone,
+            email,
+            barangay,
+            password,
+            avatar_base64: currentCustAvatarBase64,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Registration failed");

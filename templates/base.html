@@ -189,10 +189,12 @@
       <span class="bottom-nav-icon">📜</span>
       <span>History</span>
     </a>
+    {% if not session.get('customer_id') and not session.get('customer_phone') %}
     <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}" id="bottom-nav-rider">
       <span class="bottom-nav-icon">📱</span>
       <span>Riders</span>
     </a>
+    {% endif %}
     <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item nav-rider-logged-item text-danger hidden">
       <span class="bottom-nav-icon">🚪</span>
       <span>Log Out</span>
@@ -393,6 +395,39 @@
             <input type="tel" id="c-reg-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
           </div>
           <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-email" style="font-size:0.85rem;font-weight:600;">Email Address *</label>
+            <input type="email" id="c-reg-email" name="email" required placeholder="e.g. maria@gmail.com" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <!-- Customer Profile Picture (Camera / Gallery) -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:0.85rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+              <span>Passenger Profile Picture *</span>
+              <small class="text-muted" style="font-size:0.75rem;">Required for Verification</small>
+            </label>
+            <div style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:10px 12px;border:1.5px dashed #cbd5e1;border-radius:10px;">
+              <div id="c-reg-photo-preview-wrap" style="width:56px;height:56px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid #cbd5e1;">
+                <span id="c-reg-photo-placeholder" style="font-size:1.6rem;">👤</span>
+                <img id="c-reg-photo-img" src="" alt="Preview" class="hidden" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                  <button type="button" id="c-photo-camera-btn" class="btn btn-sm" style="background:#0284c7;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                    📷 Camera
+                  </button>
+                  <button type="button" id="c-photo-gallery-btn" class="btn btn-sm" style="background:#475569;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                    🖼️ Gallery
+                  </button>
+                </div>
+                <!-- Native file inputs -->
+                <input type="file" id="c-reg-file-camera" accept="image/*" capture="user" style="display:none;">
+                <input type="file" id="c-reg-file-gallery" accept="image/*" style="display:none;">
+                <small class="text-muted" id="c-photo-status" style="display:block;font-size:0.74rem;">Kuhaa sa camera o pagpili sa gallery.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
             <label for="c-reg-barangay" style="font-size:0.85rem;font-weight:600;">Camiguin Municipality / Barangay</label>
             <select id="c-reg-barangay" name="barangay" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;">
               <option value="Mambajao">Mambajao</option>
@@ -560,6 +595,8 @@
         const phone = (customer && customer.phone) || localStorage.getItem("ccrc_customer_phone");
         const name = (customer && customer.name) || localStorage.getItem("ccrc_customer_name") || "Account";
 
+        const bottomRiderNav = document.getElementById("bottom-nav-rider");
+
         if (phone) {
           // Customer is signed in: Strictly HIDE Sign In button, SHOW Verified Account pill!
           if (signInBtn) {
@@ -574,6 +611,11 @@
             const shortName = name.split(" ")[0] || "Account";
             pillName.textContent = shortName + " ✓";
           }
+          // Hide bottom-right rider icon when customer is logged in
+          if (bottomRiderNav) {
+            bottomRiderNav.style.setProperty("display", "none", "important");
+            bottomRiderNav.classList.add("hidden");
+          }
         } else {
           // Customer is NOT signed in
           if (signInBtn) {
@@ -583,6 +625,10 @@
           if (loggedPill) {
             loggedPill.style.setProperty("display", "none", "important");
             loggedPill.classList.add("hidden");
+          }
+          if (bottomRiderNav) {
+            bottomRiderNav.style.removeProperty("display");
+            bottomRiderNav.classList.remove("hidden");
           }
         }
       }
