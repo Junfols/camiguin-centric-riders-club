@@ -98,18 +98,24 @@
           body: JSON.stringify({ phone, password }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Login failed");
-
-        if (data.pending) {
-          alert(data.message || "Registration submitted! Your application is now PENDING APPROVAL by the Club Admin.");
-          // Switch to login tab
-          registerForm.classList.add("hidden");
-          loginForm.classList.remove("hidden");
-          return;
+        if (!res.ok) {
+          if (res.status === 403 && data.pending) {
+            loginErrorMsg.style.color = "#854d0e";
+            loginErrorMsg.style.backgroundColor = "#fef9c3";
+            loginErrorMsg.style.borderColor = "#facc15";
+            loginErrorMsg.innerHTML = "⏳ <strong>ACCOUNT PENDING APPROVAL</strong><br>" + (data.error || "Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon ug ma-activate ang imong account.");
+            loginErrorMsg.classList.remove("hidden");
+            return;
+          }
+          throw new Error(data.error || "Login failed");
         }
+
         setStoredRider(data.rider);
         initRiderSession(data.rider);
       } catch (err) {
+        loginErrorMsg.style.color = "";
+        loginErrorMsg.style.backgroundColor = "";
+        loginErrorMsg.style.borderColor = "";
         loginErrorMsg.textContent = err.message;
         loginErrorMsg.classList.remove("hidden");
       } finally {
@@ -211,6 +217,25 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Registration failed");
+
+        if (data.pending) {
+          alert("✅ Malampusong napasa ang imong Rider Application!\n\nStatus: PENDING APPROVAL\n\nPalihug bisitaha ang CCRC Club Admin sa personal dala ang imong:\n1. Driver's License\n2. OR/CR sa Motor\n3. Imong Motorsiklo para sa physical inspection\n\nInig ma-aprobahan na sa Admin, pwede na ka maka-log in dinhi.");
+          // Switch to login tab and pre-fill phone
+          registerForm.classList.add("hidden");
+          loginForm.classList.remove("hidden");
+          const loginPhoneInput = document.getElementById("login-phone");
+          if (loginPhoneInput) {
+            loginPhoneInput.value = payload.phone;
+          }
+          if (loginErrorMsg) {
+            loginErrorMsg.style.color = "#854d0e";
+            loginErrorMsg.style.backgroundColor = "#fef9c3";
+            loginErrorMsg.style.borderColor = "#facc15";
+            loginErrorMsg.innerHTML = "⏳ <strong>Application Submitted (PENDING APPROVAL)</strong><br>Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon ug ma-activate.";
+            loginErrorMsg.classList.remove("hidden");
+          }
+          return;
+        }
 
         setStoredRider(data.rider);
         initRiderSession(data.rider);

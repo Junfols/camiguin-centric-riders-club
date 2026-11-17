@@ -35,6 +35,12 @@
 
   <!-- KPI Metrics Grid -->
   <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;">
+    <div class="kpi-card" style="{% if stats.pending_riders > 0 %}border:1.5px solid #f59e0b;background:#fffbeb;{% endif %}">
+      <span class="kpi-label">Pending Rider Approvals</span>
+      <div class="kpi-val" style="color:#d97706;">{{ stats.pending_riders or 0 }}</div>
+      <small class="text-muted">Need in-person check</small>
+    </div>
+
     <div class="kpi-card">
       <span class="kpi-label">Riders Online Now</span>
       <div class="kpi-val" style="color:#16a34a;">{{ stats.online_riders }}</div>
@@ -144,7 +150,25 @@
 
     <!-- Active Club Riders List -->
     <div class="card">
-      <h3 style="margin-top:0;">Registered Club Riders ({{ riders|length }})</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h3 style="margin:0;">Registered Club Riders ({{ riders|length }})</h3>
+        {% set pending_count = riders | selectattr('status', 'equalto', 'pending') | list | length %}
+        {% if pending_count > 0 %}
+          <span class="badge" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;font-weight:700;font-size:0.82rem;padding:4px 10px;">
+            ⚠️ {{ pending_count }} Application{{ 's' if pending_count > 1 else '' }} Pending Verification
+          </span>
+        {% endif %}
+      </div>
+
+      {% set pending_riders = riders | selectattr('status', 'equalto', 'pending') | list %}
+      {% if pending_riders | length > 0 %}
+        <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#78350f;line-height:1.45;">
+          <strong>⚠️ Mahinungdanong Pahibalo sa Admin:</strong>
+          May <strong>{{ pending_riders | length }}</strong> ka nag-apply nga rider nga naghulat sa imong pag-aproba.<br>
+          Palihug seguroha nga <strong>personal silang moadto sa opisina</strong> dala ang ilang <strong>Driver's License, OR/CR, ug motorsiklo</strong> para sa physical inspection sa dili pa i-click ang <span style="background:#16a34a;color:white;padding:2px 6px;border-radius:3px;font-weight:600;font-size:0.75rem;">Approve ✅</span>.
+        </div>
+      {% endif %}
+
       <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
         <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
           <thead>
@@ -159,7 +183,7 @@
           </thead>
           <tbody>
             {% for r in riders %}
-            <tr style="border-bottom:1px solid var(--border);">
+            <tr style="border-bottom:1px solid var(--border);{% if r.status == 'pending' %}background:#fffdf0;{% endif %}">
               <td style="padding:6px;">
                 {% if r.is_online == 1 and r.status == 'active' %}
                   <span class="badge badge-success" style="font-size:0.75rem;">🟢 Online</span>

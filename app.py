@@ -871,6 +871,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not check_password_hash(rider["password_hash"], password):
             return jsonify({"error": "Incorrect password."}), 401
 
+        status = (rider.get("status") or "").lower()
+        if status == "pending":
+            return jsonify({
+                "error": "Ang imong account anaa pa sa PENDING APPROVAL. Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motorsiklo aron ma-inspeksyon, ma-verify ug ma-activate ang imong account.",
+                "pending": True,
+            }), 403
+
+        if status in ("suspended", "rejected"):
+            return jsonify({
+                "error": "Ang imong account nasuspenso o gibalibaran sa Club Admin. Palihug pakigkita sa CCRC Admin.",
+                "suspended": True,
+            }), 403
+
         session["rider_id"] = rider["id"]
         update_rider_online_status(conn, rider["id"], True)
         conn.commit()
@@ -933,18 +946,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             license_no=license_no,
             avatar_url=avatar_url,
         )
-        update_rider_online_status(conn, rider_id, True)
         conn.commit()
 
         rider = get_rider_by_id(conn, rider_id)
-        session["rider_id"] = rider["id"]
         clean_rider = {k: v for k, v in rider.items() if k != "password_hash"}
-        clean_rider["is_online"] = 1
+        clean_rider["is_online"] = 0
 
         return jsonify({
             "success": True,
+            "pending": True,
             "rider": clean_rider,
-            "message": f"✅ Congratulations {name}! Your CCRC Rider account is now registered and active."
+            "message": f"✅ Malampusong napasa ang imong Rider Application, {name}! Ang imong account anaa pa sa PENDING APPROVAL. Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon, ma-verify ug ma-activate ang imong account."
         }), 201
 
 
@@ -1227,6 +1239,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "completed": sum(1 for b in recent_bookings if b["status"] == "completed"),
             "active_now": sum(1 for b in recent_bookings if b["status"] in ("broadcast", "accepted", "in_progress")),
             "online_riders": sum(1 for r in riders if r["is_online"] == 1 and r["status"] == "active"),
+            "pending_riders": sum(1 for r in riders if r["status"] == "pending"),
             "total_riders": len(riders),
             "total_revenue": fin_summary["total_revenue"],
             "total_transactions": fin_summary["all_transactions"],

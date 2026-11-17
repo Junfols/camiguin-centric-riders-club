@@ -42,6 +42,15 @@
 
     <!-- Register Form (hidden initially) -->
     <form id="rider-register-form" class="hidden" style="margin-top:1.5rem;">
+      <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#1e40af;line-height:1.45;">
+        <strong>ℹ️ Pahibalo sa Mag-apply:</strong><br>
+        Human nimo mapasa kining application, ang imong account ma-save isip <strong>PENDING APPROVAL</strong>. Aron ma-inspeksyon ug ma-activate isip <strong>Verified CCRC Rider</strong>, palihug bisitaha ang <strong>CCRC Club Admin sa personal</strong> dala ang imong:
+        <ul style="margin:4px 0 0 16px;padding:0;font-size:0.8rem;">
+          <li>Driver's License</li>
+          <li>OR/CR sa Motorsiklo</li>
+          <li>Motorsiklo para sa physical inspection</li>
+        </ul>
+      </div>
       <div class="form-group">
         <label for="reg-name">Complete Full Name *</label>
         <input type="text" id="reg-name" required placeholder="e.g. Juan Dela Cruz">
@@ -408,5 +417,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=26"></script>
+<script src="/static/js/rider.js?v=27"></script>
 {% endblock %}

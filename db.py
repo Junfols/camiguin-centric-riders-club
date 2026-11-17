@@ -2715,10 +2715,6 @@ def init_db(conn: DatabaseConnection) -> None:
         conn.execute("ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''")
     except Exception:
         pass
-    try:
-        conn.execute("UPDATE riders SET status = 'active' WHERE status = 'pending'")
-    except Exception:
-        pass
     _seed_initial_data(conn)
     conn.commit()
 
@@ -3372,7 +3368,7 @@ def register_rider(
         INSERT INTO riders (
             name, phone, password_hash, bike_model, plate_number,
             municipality, license_no, avatar_url, status, is_online, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 1, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
         """,
         (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), now),
     )

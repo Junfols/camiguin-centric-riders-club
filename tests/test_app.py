@@ -306,7 +306,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             },
         )
         self.assertEqual(reg_resp.status_code, 201)
-        self.assertTrue(reg_resp.get_json()["success"])
+        reg_data = reg_resp.get_json()
+        self.assertTrue(reg_data["success"])
+        self.assertTrue(reg_data["pending"])
+        self.assertEqual(reg_data["rider"]["status"], "pending")
+        self.assertEqual(reg_data["rider"]["is_online"], 0)
+        rider_id = reg_data["rider"]["id"]
 
         # Duplicate registration should return 409
         dup_resp = self.client.post(
@@ -322,13 +327,33 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         )
         self.assertEqual(dup_resp.status_code, 409)
 
-        # Login
+        # Login while pending must be BLOCKED with 403
+        log_pending = self.client.post(
+            "/api/rider/login",
+            json={"phone": "09170001122", "password": "ridersecret"},
+        )
+        self.assertEqual(log_pending.status_code, 403)
+        self.assertTrue(log_pending.get_json().get("pending"))
+        self.assertIn("PENDING APPROVAL", log_pending.get_json().get("error", ""))
+
+        # Admin in-person approval via /api/admin/riders/<id>/status
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+        appr_resp = self.client.post(
+            f"/api/admin/riders/{rider_id}/status",
+            json={"status": "active"},
+        )
+        self.assertEqual(appr_resp.status_code, 200)
+
+        # Now verified rider can successfully login
         log_resp = self.client.post(
             "/api/rider/login",
             json={"phone": "09170001122", "password": "ridersecret"},
         )
         self.assertEqual(log_resp.status_code, 200)
         self.assertTrue(log_resp.get_json()["success"])
+        self.assertEqual(log_resp.get_json()["rider"]["status"], "active")
+        self.assertEqual(log_resp.get_json()["rider"]["is_online"], 1)
 
     def test_admin_view_and_settings(self):
         with self.client.session_transaction() as sess:
@@ -776,7 +801,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(c_login.status_code, 200)
         self.assertTrue(c_login.get_json()["success"])
 
-        # 2. Rider registration returns active rider and logs in
+        # 2. Rider registration returns pending rider
         r_reg = self.client.post(
             "/api/rider/register",
             json={
@@ -792,11 +817,30 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(r_reg.status_code, 201)
         r_data = r_reg.get_json()
         self.assertTrue(r_data["success"])
+        self.assertTrue(r_data["pending"])
         self.assertIn("rider", r_data)
-        self.assertEqual(r_data["rider"]["status"], "active")
+        self.assertEqual(r_data["rider"]["status"], "pending")
         self.assertEqual(r_data["rider"]["phone"], "09185554444")
+        new_rider_id = r_data["rider"]["id"]
 
-        # Rider login works smoothly
+        # Rider login while pending is blocked
+        r_login_pending = self.client.post(
+            "/api/rider/login",
+            json={
+                "phone": "09185554444",
+                "password": "ridersecret",
+            },
+        )
+        self.assertEqual(r_login_pending.status_code, 403)
+        self.assertTrue(r_login_pending.get_json().get("pending"))
+
+        # Admin approves in-person application
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+        appr = self.client.post(f"/api/admin/riders/{new_rider_id}/status", json={"status": "active"})
+        self.assertEqual(appr.status_code, 200)
+
+        # Rider login now succeeds
         r_login = self.client.post(
             "/api/rider/login",
             json={
@@ -806,6 +850,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         )
         self.assertEqual(r_login.status_code, 200)
         self.assertTrue(r_login.get_json()["success"])
+        self.assertEqual(r_login.get_json()["rider"]["status"], "active")
 
 
 if __name__ == "__main__":
