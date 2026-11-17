@@ -3895,9 +3895,12 @@
 
     if (cust && cust.phone) {
       // Hide Sign In button completely!
-      if (signInBtn) signInBtn.style.display = "none";
+      if (signInBtn) {
+        signInBtn.style.setProperty("display", "none", "important");
+        signInBtn.classList.add("hidden");
+      }
       if (loggedPill) {
-        loggedPill.style.display = "inline-flex";
+        loggedPill.style.setProperty("display", "inline-flex", "important");
         loggedPill.classList.remove("hidden");
       }
       if (pillName) pillName.textContent = (cust.name ? cust.name.split(" ")[0] : "Account") + " ✓";
@@ -3923,9 +3926,12 @@
       loadCustomerHomeHistory();
     } else {
       // Show Sign In button!
-      if (signInBtn) signInBtn.style.display = "inline-flex";
+      if (signInBtn) {
+        signInBtn.style.setProperty("display", "inline-flex", "important");
+        signInBtn.classList.remove("hidden");
+      }
       if (loggedPill) {
-        loggedPill.style.display = "none";
+        loggedPill.style.setProperty("display", "none", "important");
         loggedPill.classList.add("hidden");
       }
       if (customerAuthBtnText) customerAuthBtnText.textContent = "Sign In";
