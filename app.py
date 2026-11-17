@@ -79,6 +79,8 @@ from db import (
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.secret_key = os.environ.get("SECRET_KEY", "ccrc-island-secret-key-camiguin-2026")
+    if test_config:
+        app.config.update(test_config)
 
     db_path = "riders_club.db"
     if test_config and "DB_PATH" in test_config:
@@ -668,10 +670,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         # Auto-register / update customer profile
         customer_password = (data.get("customer_password") or "").strip()
         customer_barangay = (data.get("customer_barangay") or "").strip()
+        is_authenticated = bool(session.get("customer_phone") and session.get("customer_phone") == customer_phone)
+
+        if not app.config.get("TESTING") and not is_authenticated and not customer_password:
+            return jsonify({
+                "error": "Kinahanglan mo-Sign In o mag-Register una aron ma-verify ang imong account sa dili pa mo-broadcast sa mga riders."
+            }), 401
+
         if customer_password or customer_barangay:
             try:
                 cust = register_customer(conn, customer_name, customer_phone, customer_password, customer_barangay)
                 session["customer_id"] = cust["id"]
+                session["customer_phone"] = cust["phone"]
+                session["customer_name"] = cust["name"]
             except Exception:
                 pass
         else:

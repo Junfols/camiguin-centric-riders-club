@@ -96,9 +96,21 @@
       </nav>
 
       <div class="header-actions" style="display:flex;align-items:center;gap:8px;">
-        <button type="button" id="customer-auth-btn" class="btn btn-outline btn-sm" style="font-size:0.8rem;padding:6px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;border-color:#cbd5e1;background:#ffffff;">
-          <span>👤</span> <span id="customer-auth-btn-text">Sign In</span>
+        <!-- When NOT logged in: Show Sign In button -->
+        <button type="button" id="customer-signin-btn" class="btn btn-outline btn-sm" style="font-size:0.82rem;padding:6px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;border-color:#0284c7;color:#0284c7;background:#ffffff;font-weight:700;cursor:pointer;">
+          <span>👤</span> <span>Sign In</span>
         </button>
+
+        <!-- When LOGGED IN: Sign In button disappears! Show Verified Account pill and Logout -->
+        <div id="customer-logged-pill" class="hidden" style="display:none;align-items:center;gap:6px;">
+          <button type="button" id="customer-profile-btn" class="btn btn-outline btn-sm" style="font-size:0.8rem;padding:5px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border-color:#86efac;color:#15803d;font-weight:700;cursor:pointer;" title="View Verified Account Profile">
+            <span>🛡️</span> <span id="customer-pill-name">Account ✓</span>
+          </button>
+          <button type="button" id="header-cust-logout-btn" class="btn btn-sm btn-outline" title="Log Out of Account" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
+            🚪
+          </button>
+        </div>
+
         <button type="button" id="install-app-btn" class="btn btn-install" title="Install App on Phone">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3v12"/>

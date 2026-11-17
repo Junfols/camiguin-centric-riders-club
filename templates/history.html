@@ -22,15 +22,19 @@
     </form>
 
     <!-- Customer Profile Summary (hidden initially) -->
-    <div id="customer-profile-card" class="hidden" style="margin-top:1.25rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px 16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div id="customer-profile-card" class="hidden" style="margin-top:1.25rem;background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;padding:14px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <div>
-          <span style="font-size:0.8rem;color:#c2410c;font-weight:700;text-transform:uppercase;">CCRC Member Passenger</span>
-          <h3 id="profile-name" style="margin:2px 0 0;font-size:1.15rem;color:#9a3412;">Customer</h3>
+          <span style="font-size:0.75rem;color:#c2410c;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">CCRC Verified Passenger Account</span>
+          <h3 id="profile-name" style="margin:2px 0 0;font-size:1.2rem;color:#9a3412;">Customer</h3>
+          <span id="profile-verified-badge" class="badge" style="background:#dcfce7;color:#15803d;font-size:0.75rem;font-weight:700;margin-top:4px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;">
+            🛡️ Verified Passenger Account ✓
+          </span>
         </div>
         <div style="text-align:right;">
-          <span id="profile-ride-count" style="font-size:1.4rem;font-weight:800;color:#ea580c;">0</span>
-          <span class="text-muted" style="display:block;font-size:0.75rem;">Total Trips</span>
+          <span style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:block;">Naka-book na og:</span>
+          <span id="profile-ride-count" style="font-size:1.6rem;font-weight:800;color:#ea580c;">0</span>
+          <span class="text-muted" style="display:block;font-size:0.78rem;font-weight:600;">ka biyahe (Total Trips)</span>
         </div>
       </div>
     </div>
@@ -96,7 +100,8 @@
 
       if (data.customer) {
         profileName.textContent = data.customer.name || "Island Passenger";
-        profileCount.textContent = data.customer.ride_count || data.count || 0;
+        const tripsCount = (data.customer.total_rides !== undefined && data.customer.total_rides !== null) ? data.customer.total_rides : (data.total_rides !== undefined ? data.total_rides : (data.history ? data.history.length : 0));
+        profileCount.textContent = tripsCount;
         profileCard.classList.remove("hidden");
       }
 

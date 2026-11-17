@@ -647,6 +647,40 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(toggle_resp.status_code, 200)
         self.assertTrue(toggle_resp.get_json()["success"])
 
+    def test_unauthenticated_booking_blocked_in_production_mode(self):
+        prod_app = create_app({"TESTING": False, "DB_PATH": self.db_path})
+        client = prod_app.test_client()
+
+        # Attempt to broadcast without sign in
+        resp = client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Unverified Passenger",
+                "customer_phone": "09990001122",
+                "service_type": "pahatud",
+                "pickup_address": "Mambajao Public Market",
+                "dropoff_address": "Agoho, Mambajao",
+            },
+        )
+        self.assertEqual(resp.status_code, 401)
+        self.assertIn("Kinahanglan mo-Sign In o mag-Register una", resp.get_json()["error"])
+
+        # Broadcast with inline registration password succeeds
+        resp2 = client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Unverified Passenger",
+                "customer_phone": "09990001122",
+                "customer_password": "mypassword123",
+                "customer_barangay": "Mambajao",
+                "service_type": "pahatud",
+                "pickup_address": "Mambajao Public Market",
+                "dropoff_address": "Agoho, Mambajao",
+            },
+        )
+        self.assertEqual(resp2.status_code, 201)
+        self.assertEqual(resp2.get_json()["booking"]["customer_phone"], "09990001122")
+
 
 if __name__ == "__main__":
     unittest.main()

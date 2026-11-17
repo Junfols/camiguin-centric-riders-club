@@ -3517,6 +3517,33 @@
         payload.customer_barangay = regMun ? regMun.value : "";
       }
 
+      // MANDATORY: Customer must be signed in or registering with password to broadcast!
+      const currentCust = getStoredCustomer();
+      const isRegisteringNow = regToggle && regToggle.checked && regPwd && regPwd.value.trim().length >= 6;
+
+      if (!currentCust && !isRegisteringNow) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Broadcast Request to Active Riders 🛵 →";
+        if (errorMsg) {
+          errorMsg.innerHTML = "⚠️ <strong>Kinahanglan mo-Sign In o mag-Register una!</strong><br>Aron lehitimo ug ma-verify ang imong account sa mga riders, palihug pag-sign in o pag-register sa popup sa ubos.";
+          errorMsg.classList.remove("hidden");
+          errorMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        // Pre-fill phone and name into login/register forms
+        const cLoginPhone = document.getElementById("c-login-phone");
+        const cRegName = document.getElementById("c-reg-name");
+        const cRegPhone = document.getElementById("c-reg-phone");
+        if (cLoginPhone && payload.customer_phone) cLoginPhone.value = payload.customer_phone;
+        if (cRegPhone && payload.customer_phone) cRegPhone.value = payload.customer_phone;
+        if (cRegName && payload.customer_name) cRegName.value = payload.customer_name;
+
+        // Open modal
+        const custModal = document.getElementById("customer-auth-modal");
+        if (custModal) custModal.classList.remove("hidden");
+        return;
+      }
+
       try {
         const res = await fetch("/api/bookings", {
           method: "POST",
@@ -3862,8 +3889,18 @@
     const regOption = document.getElementById("booking-register-option");
     const nameInput = document.getElementById("customer-name");
     const phoneInput = document.getElementById("customer-phone");
+    const signInBtn = document.getElementById("customer-signin-btn") || document.getElementById("customer-auth-btn");
+    const loggedPill = document.getElementById("customer-logged-pill");
+    const pillName = document.getElementById("customer-pill-name");
 
     if (cust && cust.phone) {
+      // Hide Sign In button completely!
+      if (signInBtn) signInBtn.style.display = "none";
+      if (loggedPill) {
+        loggedPill.style.display = "inline-flex";
+        loggedPill.classList.remove("hidden");
+      }
+      if (pillName) pillName.textContent = (cust.name ? cust.name.split(" ")[0] : "Account") + " ✓";
       if (customerAuthBtnText) customerAuthBtnText.textContent = cust.name ? cust.name.split(" ")[0] + " ✓" : "Account ✓";
       if (custBadge) custBadge.classList.remove("hidden");
       if (regOption) regOption.classList.add("hidden");
@@ -3883,20 +3920,124 @@
         if (pRides) pRides.textContent = cust.total_rides || 0;
         if (pSpent) pSpent.textContent = `₱${Number(cust.total_spent || 0).toFixed(2)}`;
       }
+      loadCustomerHomeHistory();
     } else {
+      // Show Sign In button!
+      if (signInBtn) signInBtn.style.display = "inline-flex";
+      if (loggedPill) {
+        loggedPill.style.display = "none";
+        loggedPill.classList.add("hidden");
+      }
       if (customerAuthBtnText) customerAuthBtnText.textContent = "Sign In";
       if (custBadge) custBadge.classList.add("hidden");
       if (regOption) regOption.classList.remove("hidden");
       if (unauthedView) unauthedView.classList.remove("hidden");
       if (authedView) authedView.classList.add("hidden");
+      const historyCard = document.getElementById("customer-home-history-card");
+      if (historyCard) historyCard.classList.add("hidden");
     }
   }
 
+  // Load Customer Home Booking History & Stats Card (same as Rider)
+  async function loadCustomerHomeHistory() {
+    const cust = getStoredCustomer();
+    const historyCard = document.getElementById("customer-home-history-card");
+    if (!historyCard) return;
+
+    if (!cust || !cust.phone) {
+      historyCard.classList.add("hidden");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/customer/history/${encodeURIComponent(cust.phone)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      historyCard.classList.remove("hidden");
+
+      const tripsCountEl = document.getElementById("customer-home-trips-count");
+      const spentEl = document.getElementById("customer-home-spent-amount");
+      const nameEl = document.getElementById("customer-home-name");
+      const feedEl = document.getElementById("customer-home-recent-feed");
+
+      const totalTrips = (data.customer && data.customer.total_rides !== undefined && data.customer.total_rides !== null) ? data.customer.total_rides : (data.total_rides !== undefined ? data.total_rides : (data.history ? data.history.length : 0));
+      const totalSpent = (data.customer && data.customer.total_spent) ? Number(data.customer.total_spent) : 0;
+
+      if (tripsCountEl) tripsCountEl.textContent = `${totalTrips} ka biyahe`;
+      if (spentEl) spentEl.textContent = `₱${totalSpent.toFixed(2)}`;
+      if (nameEl) nameEl.textContent = (data.customer && data.customer.name) || cust.name || "Passenger";
+
+      const list = data.history || data.rides || [];
+      if (feedEl) {
+        if (!list || list.length === 0) {
+          feedEl.innerHTML = `
+            <div style="padding:12px;text-align:center;color:#94a3b8;font-size:0.82rem;">
+              Wala pa kay nahuman nga biyahe. Pag-book karon aron makasugod sa imong travel record!
+            </div>
+          `;
+        } else {
+          feedEl.innerHTML = list.slice(0, 3).map(b => {
+            const isCompleted = b.status === 'completed';
+            return `
+              <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <div>
+                  <div style="font-weight:700;font-size:0.88rem;color:#f8fafc;display:flex;align-items:center;gap:6px;">
+                    <span style="font-family:monospace;color:#38bdf8;">${escapeHtml(b.booking_code)}</span>
+                    <span class="badge badge-accent" style="font-size:0.7rem;text-transform:uppercase;">${escapeHtml(b.service_type)}</span>
+                  </div>
+                  <div style="color:#94a3b8;font-size:0.78rem;margin-top:2px;">
+                    🟢 ${escapeHtml(b.pickup_address)} &rarr; 🏁 ${escapeHtml(b.dropoff_address)}
+                  </div>
+                  <div style="color:#64748b;font-size:0.74rem;margin-top:2px;">
+                    ${b.created_at ? b.created_at.slice(0, 16).replace('T', ' ') : ''} ${b.rider_name ? `&bull; Rider: <strong style="color:#cbd5e1;">${escapeHtml(b.rider_name)}</strong>` : ''}
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="color:#4ade80;font-weight:700;font-size:1.05rem;">₱${Math.round(b.fare_amount || 0)}</div>
+                  <span class="badge ${isCompleted ? 'badge-success' : 'badge-primary'}" style="font-size:0.7rem;margin-top:2px;">
+                    ${escapeHtml(b.status)}
+                  </span>
+                  <div style="margin-top:4px;">
+                    <a href="/track/${encodeURIComponent(b.booking_code)}" class="btn btn-sm" style="font-size:0.72rem;padding:2px 8px;background:#1e293b;color:white;border:1px solid #475569;text-decoration:none;">
+                      Receipt 🧾
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+      }
+    } catch (_) {}
+  }
+
   // Open Customer Modal
-  if (customerAuthBtn && customerAuthModal) {
-    customerAuthBtn.addEventListener("click", () => {
+  const signInBtnElem = document.getElementById("customer-signin-btn") || document.getElementById("customer-auth-btn");
+  if (signInBtnElem && customerAuthModal) {
+    signInBtnElem.addEventListener("click", () => {
       updateCustomerAuthUI();
       customerAuthModal.classList.remove("hidden");
+    });
+  }
+
+  const custProfileBtn = document.getElementById("customer-profile-btn");
+  if (custProfileBtn && customerAuthModal) {
+    custProfileBtn.addEventListener("click", () => {
+      updateCustomerAuthUI();
+      customerAuthModal.classList.remove("hidden");
+    });
+  }
+
+  const headerCustLogoutBtn = document.getElementById("header-cust-logout-btn");
+  if (headerCustLogoutBtn) {
+    headerCustLogoutBtn.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to log out of your customer account?")) {
+        try {
+          await fetch("/api/customer/logout", { method: "POST" });
+        } catch (_) {}
+        setStoredCustomer(null);
+        window.location.reload();
+      }
     });
   }
 
