@@ -65,6 +65,8 @@ from db import (
     get_customer_ride_history,
     delete_rider,
     delete_customer,
+    update_rider_password,
+    update_customer_password,
     record_transaction,
     get_all_transactions,
     get_rider_transactions,
@@ -514,6 +516,55 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         session.pop("customer_avatar", None)
         return jsonify({"success": True, "message": "Logged out successfully."})
 
+    @app.post("/api/customer/forgot-password")
+    def api_customer_forgot_password():
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        phone = (data.get("phone") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        new_password = (data.get("new_password") or "").strip()
+
+        if not phone:
+            return jsonify({"success": False, "error": "Palihug ibutang ang imong rehistradong mobile phone number."}), 400
+        if not email:
+            return jsonify({"success": False, "error": "Palihug ibutang ang imong rehistradong email address para sa verification."}), 400
+        if not new_password or len(new_password) < 6:
+            return jsonify({"success": False, "error": "Ang bag-ong password kinahanglan labing menos 6 ka characters."}), 400
+
+        cust = get_customer_by_phone(conn, phone)
+        if not cust:
+            return jsonify({"success": False, "error": "Wala makit-i ang customer account alang niining numero."}), 404
+
+        cust_email = (cust.get("email") or "").strip().lower()
+        name_input = (data.get("name") or "").strip().lower()
+        cust_name = (cust.get("name") or "").strip().lower()
+
+        matches = False
+        if cust_email and cust_email == email:
+            matches = True
+        elif not cust_email:
+            if name_input and name_input == cust_name:
+                matches = True
+            elif "@" in email:
+                matches = True
+                try:
+                    conn.execute("UPDATE customers SET email = ? WHERE id = ?", (email, cust["id"]))
+                except Exception:
+                    pass
+
+        if not matches:
+            return jsonify({
+                "success": False,
+                "error": "Wala motukma ang Email Address alang niining account. Palihug susiha o kontaka ang Admin."
+            }), 400
+
+        pwd_hash = generate_password_hash(new_password)
+        update_customer_password(conn, cust["id"], pwd_hash)
+        return jsonify({
+            "success": True,
+            "message": "Malampusong na-reset ang imong passenger password! Pwede na ka mag-login."
+        })
+
     @app.get("/api/customer/me")
     def api_customer_me():
         conn = get_db()
@@ -920,6 +971,42 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         clean_rider["is_online"] = 1
         return jsonify({"success": True, "rider": clean_rider})
 
+    @app.post("/api/rider/forgot-password")
+    def rider_forgot_password():
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        phone = (data.get("phone") or "").strip()
+        identifier = (data.get("identifier") or "").strip()
+        new_password = (data.get("new_password") or "").strip()
+
+        if not phone:
+            return jsonify({"success": False, "error": "Palihug ibutang ang imong rehistradong mobile phone number."}), 400
+        if not identifier:
+            return jsonify({"success": False, "error": "Palihug ibutang ang imong Plate Number o Driver's License Number para sa verification."}), 400
+        if not new_password or len(new_password) < 6:
+            return jsonify({"success": False, "error": "Ang bag-ong password kinahanglan labing menos 6 ka characters."}), 400
+
+        rider = get_rider_by_phone(conn, phone)
+        if not rider:
+            return jsonify({"success": False, "error": "Wala makit-i ang rider account alang niining numero."}), 404
+
+        clean_input = identifier.replace(" ", "").replace("-", "").upper()
+        clean_plate = (rider.get("plate_number") or "").replace(" ", "").replace("-", "").upper()
+        clean_license = (rider.get("license_no") or "").replace(" ", "").replace("-", "").upper()
+
+        if clean_input != clean_plate and clean_input != clean_license:
+            return jsonify({
+                "success": False,
+                "error": "Wala motukma ang Plate Number o Driver's License Number alang niining account. Palihug susiha o kontaka ang Admin."
+            }), 400
+
+        pwd_hash = generate_password_hash(new_password)
+        update_rider_password(conn, rider["id"], pwd_hash)
+        return jsonify({
+            "success": True,
+            "message": "Malampusong na-reset ang imong rider password! Pwede na ka mag-login."
+        })
+
     @app.post("/api/rider/register")
     def rider_register():
         conn = get_db()
@@ -1209,6 +1296,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"error": "Rider not found or could not be deleted."}), 404
         return jsonify({"success": True, "message": "Rider account permanently deleted."})
 
+    @app.post("/api/admin/riders/<int:rider_id>/reset-password")
+    def admin_reset_rider_password(rider_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        new_password = (data.get("new_password") or "").strip()
+        if not new_password or len(new_password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters."}), 400
+        pwd_hash = generate_password_hash(new_password)
+        success = update_rider_password(conn, rider_id, pwd_hash)
+        if not success:
+            return jsonify({"error": "Rider not found."}), 404
+        return jsonify({"success": True, "message": "Rider password updated successfully."})
+
     @app.post("/api/admin/login")
     def admin_login():
         data = request.get_json(silent=True) or {}
@@ -1317,6 +1419,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not success:
             return jsonify({"error": "Customer not found or could not be deleted."}), 404
         return jsonify({"success": True, "message": "Customer account permanently deleted."})
+
+    @app.post("/api/admin/customers/<int:customer_id>/reset-password")
+    def admin_reset_customer_password(customer_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        new_password = (data.get("new_password") or "").strip()
+        if not new_password or len(new_password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters."}), 400
+        pwd_hash = generate_password_hash(new_password)
+        success = update_customer_password(conn, customer_id, pwd_hash)
+        if not success:
+            return jsonify({"error": "Customer not found."}), 404
+        return jsonify({"success": True, "message": "Customer password updated successfully."})
 
     @app.get("/api/admin/transactions")
     def admin_get_transactions():

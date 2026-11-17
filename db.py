@@ -3324,6 +3324,16 @@ def delete_rider(conn: DatabaseConnection, rider_id: int) -> bool:
     return True
 
 
+def update_rider_password(conn: DatabaseConnection, rider_id: int, new_password_hash: str) -> bool:
+    """Updates password hash for a rider account."""
+    row = conn.execute("SELECT id FROM riders WHERE id = ?", (rider_id,)).fetchone()
+    if not row:
+        return False
+    conn.execute("UPDATE riders SET password_hash = ? WHERE id = ?", (new_password_hash, rider_id))
+    conn.commit()
+    return True
+
+
 def update_rider_online_status(conn: DatabaseConnection, rider_id: int, is_online: bool) -> None:
     now = datetime.now().isoformat(timespec="seconds")
     conn.execute(
@@ -4320,6 +4330,15 @@ def delete_customer(conn: DatabaseConnection, customer_id: int) -> bool:
     if not row:
         return False
     conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+    conn.commit()
+    return True
+
+def update_customer_password(conn: DatabaseConnection, customer_id: int, new_password_hash: str) -> bool:
+    """Updates password hash for a registered customer account."""
+    row = conn.execute("SELECT id FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if not row:
+        return False
+    conn.execute("UPDATE customers SET password_hash = ? WHERE id = ?", (new_password_hash, customer_id))
     conn.commit()
     return True
 

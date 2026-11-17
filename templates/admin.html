@@ -224,6 +224,7 @@
                 {% else %}
                   <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
                 {% endif %}
+                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="adminResetRiderPassword({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Reset Pwd 🔑</button>
                 <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="deleteRider({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Delete 🗑️</button>
               </td>
             </tr>
@@ -574,6 +575,9 @@
                   Mark as Verified Legit ✓
                 </button>
               {% endif %}
+              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;cursor:pointer;margin-left:6px;" onclick="adminResetCustomerPassword({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+                Reset Pwd 🔑
+              </button>
               <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;margin-left:6px;" onclick="deleteCustomer({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
                 Delete 🗑️
               </button>
@@ -704,6 +708,50 @@
       if (!res.ok) throw new Error(data.error || "Failed to delete customer");
       alert("Customer account successfully deleted.");
       window.location.reload();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  // Admin Quick Password Reset for Rider
+  window.adminResetRiderPassword = async function(riderId, riderName) {
+    const newPwd = prompt(`Ibutang ang bag-ong password para sa Rider "${riderName}" (labing menos 6 ka characters):`, "rider1234");
+    if (!newPwd) return;
+    if (newPwd.length < 6) {
+      alert("Ang password kinahanglan labing menos 6 ka characters.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/riders/${riderId}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_password: newPwd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset rider password");
+      alert(`Malampusong na-set ang bag-ong password para kang Rider "${riderName}"!`);
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  // Admin Quick Password Reset for Customer
+  window.adminResetCustomerPassword = async function(customerId, customerName) {
+    const newPwd = prompt(`Ibutang ang bag-ong password para sa Customer "${customerName}" (labing menos 6 ka characters):`, "pass1234");
+    if (!newPwd) return;
+    if (newPwd.length < 6) {
+      alert("Ang password kinahanglan labing menos 6 ka characters.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_password: newPwd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset customer password");
+      alert(`Malampusong na-set ang bag-ong password para kang Customer "${customerName}"!`);
     } catch (err) {
       alert("Error: " + err.message);
     }

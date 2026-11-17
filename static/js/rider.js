@@ -64,17 +64,117 @@
     }
   }
 
-  // Switch between Login and Register Forms
+  // Switch between Login, Register, and Forgot Password Forms
+  const forgotForm = document.getElementById("rider-forgot-form");
+  const switchToForgotBtn = document.getElementById("switch-to-forgot-btn");
+  const switchForgotToLoginBtn = document.getElementById("switch-forgot-to-login-btn");
+  const forgotStatusMsg = document.getElementById("forgot-status-msg");
+
   if (switchToRegisterBtn) {
     switchToRegisterBtn.addEventListener("click", () => {
       loginForm.classList.add("hidden");
+      if (forgotForm) forgotForm.classList.add("hidden");
       registerForm.classList.remove("hidden");
     });
   }
   if (switchToLoginBtn) {
     switchToLoginBtn.addEventListener("click", () => {
       registerForm.classList.add("hidden");
+      if (forgotForm) forgotForm.classList.add("hidden");
       loginForm.classList.remove("hidden");
+    });
+  }
+  if (switchToForgotBtn) {
+    switchToForgotBtn.addEventListener("click", () => {
+      loginForm.classList.add("hidden");
+      registerForm.classList.add("hidden");
+      if (forgotForm) {
+        forgotForm.classList.remove("hidden");
+        // Pre-fill phone if user already entered it in login
+        const loginPhoneVal = document.getElementById("login-phone")?.value.trim();
+        const forgotPhoneInput = document.getElementById("forgot-phone");
+        if (loginPhoneVal && forgotPhoneInput && !forgotPhoneInput.value) {
+          forgotPhoneInput.value = loginPhoneVal;
+        }
+      }
+    });
+  }
+  if (switchForgotToLoginBtn) {
+    switchForgotToLoginBtn.addEventListener("click", () => {
+      if (forgotForm) forgotForm.classList.add("hidden");
+      registerForm.classList.add("hidden");
+      loginForm.classList.remove("hidden");
+    });
+  }
+
+  // Rider Forgot Password Handler
+  if (forgotForm) {
+    forgotForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!forgotStatusMsg) return;
+      forgotStatusMsg.classList.add("hidden");
+      forgotStatusMsg.textContent = "";
+
+      const phone = document.getElementById("forgot-phone")?.value.trim() || "";
+      const identifier = document.getElementById("forgot-identifier")?.value.trim() || "";
+      const newPwd = document.getElementById("forgot-new-pwd")?.value || "";
+      const confirmPwd = document.getElementById("forgot-confirm-pwd")?.value || "";
+      const resetBtn = document.getElementById("rider-reset-btn");
+
+      if (newPwd !== confirmPwd) {
+        forgotStatusMsg.style.background = "#fee2e2";
+        forgotStatusMsg.style.color = "#991b1b";
+        forgotStatusMsg.style.border = "1px solid #fca5a5";
+        forgotStatusMsg.textContent = "Dili pareho ang bag-ong password ug ang confirmation password.";
+        forgotStatusMsg.classList.remove("hidden");
+        return;
+      }
+
+      resetBtn.disabled = true;
+      resetBtn.textContent = "Ginasusi ug gina-save...";
+
+      try {
+        const res = await fetch("/api/rider/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: phone,
+            identifier: identifier,
+            new_password: newPwd,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to reset password.");
+        }
+
+        forgotStatusMsg.style.background = "#dcfce7";
+        forgotStatusMsg.style.color = "#166534";
+        forgotStatusMsg.style.border = "1px solid #86efac";
+        forgotStatusMsg.innerHTML = "✅ <strong>Malampuson!</strong> " + (data.message || "Na-reset na ang imong password.") + "<br><small>Ibalik na tika sa Log In...</small>";
+        forgotStatusMsg.classList.remove("hidden");
+
+        // Prefill login phone
+        const loginPhoneInput = document.getElementById("login-phone");
+        if (loginPhoneInput) loginPhoneInput.value = phone;
+
+        setTimeout(() => {
+          forgotForm.classList.add("hidden");
+          loginForm.classList.remove("hidden");
+          forgotStatusMsg.classList.add("hidden");
+          const loginPwd = document.getElementById("login-password");
+          if (loginPwd) loginPwd.focus();
+        }, 1800);
+      } catch (err) {
+        forgotStatusMsg.style.background = "#fee2e2";
+        forgotStatusMsg.style.color = "#991b1b";
+        forgotStatusMsg.style.border = "1px solid #fca5a5";
+        forgotStatusMsg.textContent = err.message;
+        forgotStatusMsg.classList.remove("hidden");
+      } finally {
+        resetBtn.disabled = false;
+        resetBtn.textContent = "I-save ang Bag-ong Password →";
+      }
     });
   }
 

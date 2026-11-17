@@ -363,7 +363,7 @@
 
       <!-- State 1: Not Logged In Tabs (Login vs Register) -->
       <div id="cust-auth-unauthed-view" style="padding:18px;">
-        <div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
+        <div id="cust-auth-tab-bar" style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
           <button type="button" id="cust-tab-login" class="btn" style="flex:1;border:none;border-bottom:3px solid var(--primary);border-radius:0;background:none;font-weight:700;padding:8px;color:var(--primary);">
             Log In
           </button>
@@ -379,7 +379,12 @@
             <input type="tel" id="c-login-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
           </div>
           <div class="form-group" style="margin-bottom:14px;">
-            <label for="c-login-pwd" style="font-size:0.85rem;font-weight:600;">Password *</label>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <label for="c-login-pwd" style="font-size:0.85rem;font-weight:600;margin:0;">Password *</label>
+              <button type="button" id="c-switch-forgot-btn" class="text-btn" style="font-size:0.78rem;color:#0284c7;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;">
+                Nakalimot sa Password?
+              </button>
+            </div>
             <input type="password" id="c-login-pwd" name="password" required placeholder="Enter your password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
           </div>
           <div id="c-login-err" class="alert-error hidden" style="margin-bottom:10px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
@@ -449,6 +454,46 @@
           <button type="submit" id="c-reg-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;background:#16a34a;border-color:#16a34a;">
             Register &amp; Get Verified Badge 🛡️
           </button>
+        </form>
+
+        <!-- Tab Form: Forgot Password -->
+        <form id="cust-forgot-form" class="hidden">
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.82rem;color:#166534;line-height:1.45;">
+            <strong>🔑 Reset Passenger Password:</strong><br>
+            Ibutang ang imong rehistradong <strong>Mobile Phone Number</strong> ug <strong>Email Address</strong> aron ma-verify ang imong account ug maka-set og bag-ong password.
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-forgot-phone" style="font-size:0.85rem;font-weight:600;">Registered Phone Number *</label>
+            <input type="tel" id="c-forgot-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-forgot-email" style="font-size:0.85rem;font-weight:600;">Registered Email Address *</label>
+            <input type="email" id="c-forgot-email" name="email" required placeholder="e.g. maria@gmail.com" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-forgot-new-pwd" style="font-size:0.85rem;font-weight:600;">Bag-ong Password (min. 6 characters) *</label>
+            <input type="password" id="c-forgot-new-pwd" name="new_password" required minlength="6" placeholder="Choose a new password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="c-forgot-confirm-pwd" style="font-size:0.85rem;font-weight:600;">I-kumpirma ang Bag-ong Password *</label>
+            <input type="password" id="c-forgot-confirm-pwd" required minlength="6" placeholder="Re-type new password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div id="c-forgot-msg" class="hidden" style="margin-bottom:10px;font-size:0.82rem;padding:10px 12px;border-radius:8px;"></div>
+
+          <button type="submit" id="c-forgot-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;background:#0284c7;border-color:#0284c7;">
+            I-save ang Bag-ong Password &rarr;
+          </button>
+
+          <div style="text-align:center;margin-top:12px;">
+            <button type="button" id="c-forgot-back-btn" class="text-btn" style="font-size:0.82rem;color:#64748b;cursor:pointer;background:none;border:none;">
+              &larr; Balik sa Log In
+            </button>
+          </div>
         </form>
       </div>
 

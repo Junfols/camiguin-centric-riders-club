@@ -4146,6 +4146,7 @@
       tabRegister.style.fontWeight = "600";
       loginForm.classList.remove("hidden");
       registerForm.classList.add("hidden");
+      if (custForgotForm) custForgotForm.classList.add("hidden");
     });
 
     tabRegister.addEventListener("click", () => {
@@ -4157,6 +4158,105 @@
       tabLogin.style.fontWeight = "600";
       registerForm.classList.remove("hidden");
       loginForm.classList.add("hidden");
+      if (custForgotForm) custForgotForm.classList.add("hidden");
+    });
+  }
+
+  // Customer Forgot Password UI & Form Handling
+  const custForgotForm = document.getElementById("cust-forgot-form");
+  const custSwitchForgotBtn = document.getElementById("c-switch-forgot-btn");
+  const custForgotBackBtn = document.getElementById("c-forgot-back-btn");
+  const custTabBar = document.getElementById("cust-auth-tab-bar");
+  const custForgotMsg = document.getElementById("c-forgot-msg");
+
+  if (custSwitchForgotBtn && custForgotForm) {
+    custSwitchForgotBtn.addEventListener("click", () => {
+      if (loginForm) loginForm.classList.add("hidden");
+      if (registerForm) registerForm.classList.add("hidden");
+      if (custTabBar) custTabBar.classList.add("hidden");
+      custForgotForm.classList.remove("hidden");
+
+      const enteredPhone = document.getElementById("c-login-phone")?.value.trim();
+      const forgotPhone = document.getElementById("c-forgot-phone");
+      if (enteredPhone && forgotPhone && !forgotPhone.value) {
+        forgotPhone.value = enteredPhone;
+      }
+    });
+  }
+
+  if (custForgotBackBtn && custForgotForm) {
+    custForgotBackBtn.addEventListener("click", () => {
+      custForgotForm.classList.add("hidden");
+      if (custTabBar) custTabBar.classList.remove("hidden");
+      if (loginForm) loginForm.classList.remove("hidden");
+    });
+  }
+
+  if (custForgotForm) {
+    custForgotForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!custForgotMsg) return;
+      custForgotMsg.classList.add("hidden");
+      custForgotMsg.textContent = "";
+
+      const phone = document.getElementById("c-forgot-phone")?.value.trim() || "";
+      const email = document.getElementById("c-forgot-email")?.value.trim() || "";
+      const newPwd = document.getElementById("c-forgot-new-pwd")?.value || "";
+      const confirmPwd = document.getElementById("c-forgot-confirm-pwd")?.value || "";
+      const resetBtn = document.getElementById("c-forgot-btn");
+
+      if (newPwd !== confirmPwd) {
+        custForgotMsg.style.background = "#fee2e2";
+        custForgotMsg.style.color = "#991b1b";
+        custForgotMsg.style.border = "1px solid #fca5a5";
+        custForgotMsg.textContent = "Dili pareho ang bag-ong password ug ang confirmation password.";
+        custForgotMsg.classList.remove("hidden");
+        return;
+      }
+
+      resetBtn.disabled = true;
+      resetBtn.textContent = "Ginasusi ug gina-save...";
+
+      try {
+        const res = await fetch("/api/customer/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: phone,
+            email: email,
+            new_password: newPwd,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to reset password.");
+
+        custForgotMsg.style.background = "#dcfce7";
+        custForgotMsg.style.color = "#166534";
+        custForgotMsg.style.border = "1px solid #86efac";
+        custForgotMsg.innerHTML = "✅ <strong>Malampuson!</strong> " + (data.message || "Na-reset na ang imong password.") + "<br><small>Ibalik na tika sa Log In...</small>";
+        custForgotMsg.classList.remove("hidden");
+
+        const loginPhoneInput = document.getElementById("c-login-phone");
+        if (loginPhoneInput) loginPhoneInput.value = phone;
+
+        setTimeout(() => {
+          custForgotForm.classList.add("hidden");
+          if (custTabBar) custTabBar.classList.remove("hidden");
+          if (loginForm) loginForm.classList.remove("hidden");
+          custForgotMsg.classList.add("hidden");
+          const loginPwd = document.getElementById("c-login-pwd");
+          if (loginPwd) loginPwd.focus();
+        }, 1800);
+      } catch (err) {
+        custForgotMsg.style.background = "#fee2e2";
+        custForgotMsg.style.color = "#991b1b";
+        custForgotMsg.style.border = "1px solid #fca5a5";
+        custForgotMsg.textContent = err.message;
+        custForgotMsg.classList.remove("hidden");
+      } finally {
+        resetBtn.disabled = false;
+        resetBtn.textContent = "I-save ang Bag-ong Password →";
+      }
     });
   }
 

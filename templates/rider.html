@@ -19,7 +19,12 @@
         <input type="tel" id="login-phone" name="phone" required placeholder="e.g. 0917 123 4567">
       </div>
       <div class="form-group">
-        <label for="login-password">Password *</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <label for="login-password" style="margin:0;">Password *</label>
+          <button type="button" id="switch-to-forgot-btn" class="text-btn" style="font-size:0.8rem;color:#0284c7;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;">
+            Nakalimot sa Password?
+          </button>
+        </div>
         <input type="password" id="login-password" name="password" required placeholder="Enter your password">
       </div>
 
@@ -107,6 +112,44 @@
 
       <div style="text-align:center;margin-top:14px;">
         <button type="button" id="switch-to-login-btn" class="text-btn">&larr; Back to Log In</button>
+      </div>
+    </form>
+
+    <!-- Forgot Password Form (hidden initially) -->
+    <form id="rider-forgot-form" class="hidden" style="margin-top:1.5rem;">
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#166534;line-height:1.45;">
+        <strong>🔑 Reset Rider Password:</strong><br>
+        Ibutang ang imong rehistradong <strong>Mobile Number</strong> ug ang imong <strong>Plate Number</strong> o <strong>Driver's License Number</strong> aron ma-verify ang imong pagka-rider ug maka-set og bag-ong password.
+      </div>
+
+      <div class="form-group">
+        <label for="forgot-phone">Registered Mobile Phone Number *</label>
+        <input type="tel" id="forgot-phone" required placeholder="e.g. 0917 123 4567">
+      </div>
+
+      <div class="form-group">
+        <label for="forgot-identifier">Plate Number O Driver's License Number *</label>
+        <input type="text" id="forgot-identifier" required placeholder="e.g. 123-XYZ o K01-12-123456" style="text-transform:uppercase;">
+      </div>
+
+      <div class="form-group">
+        <label for="forgot-new-pwd">Bag-ong Password (min. 6 characters) *</label>
+        <input type="password" id="forgot-new-pwd" required minlength="6" placeholder="Choose a new password">
+      </div>
+
+      <div class="form-group">
+        <label for="forgot-confirm-pwd">I-kumpirma ang Bag-ong Password *</label>
+        <input type="password" id="forgot-confirm-pwd" required minlength="6" placeholder="Re-type new password">
+      </div>
+
+      <div id="forgot-status-msg" class="hidden" style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;"></div>
+
+      <button type="submit" id="rider-reset-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:8px;">
+        I-save ang Bag-ong Password &rarr;
+      </button>
+
+      <div style="text-align:center;margin-top:14px;">
+        <button type="button" id="switch-forgot-to-login-btn" class="text-btn">&larr; Balik sa Log In</button>
       </div>
     </form>
   </div>

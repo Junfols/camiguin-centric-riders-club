@@ -978,6 +978,105 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         del_404 = self.client.post(f"/api/admin/customers/{c_id}/delete")
         self.assertEqual(del_404.status_code, 404)
 
+    def test_forgot_password_and_admin_reset_flow(self):
+        # 1. Setup Rider for forgot-password tests
+        r_id = self._create_active_rider(name="Rider Forgot Test", phone="09175551234", bike_model="Yamaha Aerox")
+        from db import get_connection
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute("UPDATE riders SET plate_number = '789-CCRC', license_no = 'D01-99-123456' WHERE id = ?", (r_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Rider Forgot Password - Wrong plate/license
+        bad_rider_fp = self.client.post(
+            "/api/rider/forgot-password",
+            json={"phone": "09175551234", "identifier": "WRONGPLATE", "new_password": "newriderpwd123"},
+        )
+        self.assertEqual(bad_rider_fp.status_code, 400)
+
+        # Rider Forgot Password - Short password
+        short_rider_fp = self.client.post(
+            "/api/rider/forgot-password",
+            json={"phone": "09175551234", "identifier": "789-CCRC", "new_password": "123"},
+        )
+        self.assertEqual(short_rider_fp.status_code, 400)
+
+        # Rider Forgot Password - Valid with Plate Number
+        ok_rider_fp = self.client.post(
+            "/api/rider/forgot-password",
+            json={"phone": "09175551234", "identifier": "789CCRC", "new_password": "newriderpwd123"},
+        )
+        self.assertEqual(ok_rider_fp.status_code, 200)
+        self.assertTrue(ok_rider_fp.get_json()["success"])
+
+        # Rider can now login with new password
+        rider_login_resp = self.client.post(
+            "/api/rider/login",
+            json={"phone": "09175551234", "password": "newriderpwd123"},
+        )
+        self.assertEqual(rider_login_resp.status_code, 200)
+
+        # Rider Forgot Password - Valid with Driver's License
+        ok_rider_license_fp = self.client.post(
+            "/api/rider/forgot-password",
+            json={"phone": "09175551234", "identifier": "D01-99-123456", "new_password": "licenseriderpwd456"},
+        )
+        self.assertEqual(ok_rider_license_fp.status_code, 200)
+
+        # 2. Setup Customer for forgot-password tests
+        c_id = self._create_customer(name="Customer Forgot Test", phone="09187778899", password="initialpass123")
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute("UPDATE customers SET email = 'customer.test@gmail.com' WHERE id = ?", (c_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Customer Forgot Password - Wrong email
+        bad_cust_fp = self.client.post(
+            "/api/customer/forgot-password",
+            json={"phone": "09187778899", "email": "wrongemail@gmail.com", "new_password": "newcustpwd123"},
+        )
+        self.assertEqual(bad_cust_fp.status_code, 400)
+
+        # Customer Forgot Password - Valid email
+        ok_cust_fp = self.client.post(
+            "/api/customer/forgot-password",
+            json={"phone": "09187778899", "email": "customer.test@gmail.com", "new_password": "newcustpwd123"},
+        )
+        self.assertEqual(ok_cust_fp.status_code, 200)
+        self.assertTrue(ok_cust_fp.get_json()["success"])
+
+        # Customer can now login with new password
+        cust_login_resp = self.client.post(
+            "/api/customer/login",
+            json={"phone": "09187778899", "password": "newcustpwd123"},
+        )
+        self.assertEqual(cust_login_resp.status_code, 200)
+
+        # 3. Admin Reset Password Endpoints
+        # Unauthorized check
+        admin_unauth = self.client.post(f"/api/admin/riders/{r_id}/reset-password", json={"new_password": "adminpwd123"})
+        self.assertEqual(admin_unauth.status_code, 403)
+
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+
+        admin_rider_reset = self.client.post(f"/api/admin/riders/{r_id}/reset-password", json={"new_password": "adminridernew123"})
+        self.assertEqual(admin_rider_reset.status_code, 200)
+
+        admin_cust_reset = self.client.post(f"/api/admin/customers/{c_id}/reset-password", json={"new_password": "admincustnew123"})
+        self.assertEqual(admin_cust_reset.status_code, 200)
+
+        # Both login successfully with admin-reset passwords
+        r_after_admin = self.client.post("/api/rider/login", json={"phone": "09175551234", "password": "adminridernew123"})
+        self.assertEqual(r_after_admin.status_code, 200)
+
+        c_after_admin = self.client.post("/api/customer/login", json={"phone": "09187778899", "password": "admincustnew123"})
+        self.assertEqual(c_after_admin.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
