@@ -253,7 +253,40 @@
         </div>
       </div>
 
-      <div class="map-canvas-container" style="position:relative;">
+      <div class="map-canvas-container" id="map-canvas-container" style="position:relative;">
+        <!-- Fullscreen Topbar (Visible only when fullscreen) -->
+        <div class="map-fullscreen-topbar">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-weight:700;font-size:0.92rem;">🗺️ Camiguin Live Island Map</span>
+            <div class="map-mode-toggle" style="margin:0;">
+              <button type="button" class="btn-sm active fs-mode-btn" data-target-mode="pickup">🟢 Set Pickup</button>
+              <button type="button" class="btn-sm fs-mode-btn" data-target-mode="dropoff">🏁 Set Dropoff</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="map-layer-pill">
+              <button type="button" class="layer-pill-btn active" data-layer-target="street">🗺️ Kalsada</button>
+              <button type="button" class="layer-pill-btn" data-layer-target="satellite">🛰️ Satellite</button>
+            </div>
+            <button type="button" class="btn-locate-me map-float-btn" style="background:#0284c7;border-color:#0284c7;">🎯 Akong GPS</button>
+            <button type="button" class="btn-fullscreen-toggle map-float-btn" style="background:#ef4444;border-color:#ef4444;">✕ Close</button>
+          </div>
+        </div>
+
+        <!-- Floating Quick Controls (Top-Right on map) -->
+        <div class="map-floating-bar">
+          <div class="map-layer-pill">
+            <button type="button" class="layer-pill-btn active" data-layer-target="street" title="Standard Road Map">🗺️ Kalsada</button>
+            <button type="button" class="layer-pill-btn" data-layer-target="satellite" title="Photorealistic Satellite Aerial View">🛰️ Satellite</button>
+          </div>
+          <button type="button" class="map-float-btn btn-locate-me" title="Gamita ang imong kasamtangang GPS lokasyon">
+            <span>🎯</span> Akong Lokasyon
+          </button>
+          <button type="button" class="map-float-btn btn-fullscreen-toggle" title="Padak-a ang mapa para sa cellphone">
+            <span>⛶</span> Padak-a
+          </button>
+        </div>
+
         <div id="booking-map" class="booking-map-clean" style="height: 520px; width: 100%; border-radius: 16px; z-index: 1;"></div>
         <div id="map-toast-pill" class="map-toast-pill hidden"></div>
       </div>
