@@ -135,6 +135,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "bulky_order_fee": settings.get("bulky_order_fee", "20"),
                 "hinterland_fee": settings.get("hinterland_fee", "30"),
             },
+            "db_backend": getattr(conn, "backend", "sqlite"),
             "year": datetime.now().year,
         }
 
