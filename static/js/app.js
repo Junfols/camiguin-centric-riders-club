@@ -48,6 +48,17 @@
   const closeMatrixBtn = document.getElementById("close-matrix-btn");
   const fareMatrixModal = document.getElementById("fare-matrix-modal");
 
+  // HTML Entity Escaper for Safe Popups & Badges
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   // Camiguin Master Places Directory (126+ Locations)
   let CAMIGUIN_PLACES = [
   {
@@ -1776,7 +1787,12 @@
   // Pin on Map Handlers ("mudiritso dayun pag pin ang map")
   // "THEN PAG CLICK NAKO SA PIN MAP MUADTO SA SA SAKTO NGA GE PIN MAP"
   if (locateDropoffGpsBtn) {
-    locateDropoffGpsBtn.addEventListener("click", () => {
+    const handleLocateDropoffClick = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
       targetModeButtons.forEach((b) =>
         b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff")
       );
@@ -1793,10 +1809,10 @@
         targetLat = found.lat;
         targetLng = found.lng;
         displayLabel = found.name;
-        dropoffInput.value = found.name;
-        dropoffLatInput.value = found.lat;
-        dropoffLngInput.value = found.lng;
-      } else if (dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
+        if (dropoffInput) dropoffInput.value = found.name;
+        if (dropoffLatInput) dropoffLatInput.value = found.lat;
+        if (dropoffLngInput) dropoffLngInput.value = found.lng;
+      } else if (dropoffLatInput && dropoffLngInput && dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
         targetLat = parseFloat(dropoffLatInput.value);
         targetLng = parseFloat(dropoffLngInput.value);
         displayLabel = currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`;
@@ -1814,12 +1830,7 @@
       setDropoffPoint(targetLat, targetLng, displayLabel);
       if (dropoffMarker) {
         dropoffMarker.setLatLng([targetLat, targetLng]);
-        dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
-      }
-
-      if (map) {
-        map.invalidateSize();
-        map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
+        dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
       }
 
       const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
@@ -1827,14 +1838,32 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
+      if (map) {
+        setTimeout(() => {
+          map.invalidateSize();
+          map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
+          if (dropoffMarker) {
+            dropoffMarker.openPopup();
+          }
+        }, 60);
+      }
+
       showMapToast(`🏁 Naa sa Mapa ang Drop-off: ${displayLabel}`);
       updateRouteLine();
       recalculateFare();
-    });
+    };
+
+    locateDropoffGpsBtn.addEventListener("click", handleLocateDropoffClick);
+    locateDropoffGpsBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   }
 
   if (pinPickupMapBtn) {
-    pinPickupMapBtn.addEventListener("click", () => {
+    const handlePinPickupClick = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
       targetModeButtons.forEach((b) =>
         b.classList.toggle("active", b.getAttribute("data-target-mode") === "pickup")
       );
@@ -1850,10 +1879,10 @@
         targetLat = found.lat;
         targetLng = found.lng;
         displayLabel = found.name;
-        pickupInput.value = found.name;
-        pickupLatInput.value = found.lat;
-        pickupLngInput.value = found.lng;
-      } else if (pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
+        if (pickupInput) pickupInput.value = found.name;
+        if (pickupLatInput) pickupLatInput.value = found.lat;
+        if (pickupLngInput) pickupLngInput.value = found.lng;
+      } else if (pickupLatInput && pickupLngInput && pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
         targetLat = parseFloat(pickupLatInput.value);
         targetLng = parseFloat(pickupLngInput.value);
         displayLabel = currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`;
@@ -1871,12 +1900,7 @@
       setPickupPoint(targetLat, targetLng, displayLabel);
       if (pickupMarker) {
         pickupMarker.setLatLng([targetLat, targetLng]);
-        pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
-      }
-
-      if (map) {
-        map.invalidateSize();
-        map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
+        pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
       }
 
       const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
@@ -1884,10 +1908,23 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
+      if (map) {
+        setTimeout(() => {
+          map.invalidateSize();
+          map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
+          if (pickupMarker) {
+            pickupMarker.openPopup();
+          }
+        }, 60);
+      }
+
       showMapToast(`🟢 Naa sa Mapa ang Pickup: ${displayLabel}`);
       updateRouteLine();
       recalculateFare();
-    });
+    };
+
+    pinPickupMapBtn.addEventListener("click", handlePinPickupClick);
+    pinPickupMapBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   }
 
   // Autocomplete Dropdown Search & Instant Pinning
@@ -2509,12 +2546,22 @@
     });
   }
 
-  // Default initial points in Mambajao
-  window.addEventListener("DOMContentLoaded", () => {
+  // Default initial points in Mambajao & Map Boot
+  function bootBookingMap() {
     initMap();
-    setPickupPoint(9.2483, 124.6975, "Mambajao Public Market");
-    setDropoffPoint(9.2553, 124.6468, "Paras Beach Resort (Yumbing)");
-  });
+    if (!pickupLatInput.value || !pickupLngInput.value) {
+      setPickupPoint(9.2483, 124.6975, "Mambajao Public Market");
+    }
+    if (!dropoffLatInput.value || !dropoffLngInput.value) {
+      setDropoffPoint(9.2488, 124.6980, "Jollibee Camiguin, Mambajao");
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootBookingMap);
+  } else {
+    bootBookingMap();
+  }
 
   // Booking Form Submission
   if (bookingForm) {
