@@ -133,6 +133,33 @@
       </div>
     </div>
 
+    <!-- Upcoming Advance Trip Reminder Banner (Minutes Before Alert) -->
+    <div id="advance-reminder-banner" class="card hidden" style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.8rem;">⏰</span>
+          <div>
+            <strong id="reminder-banner-title" style="color:#b91c1c;font-size:1rem;display:block;">🚨 UPCOMING ADVANCE TRIP REMINDER!</strong>
+            <span id="reminder-banner-sub" style="font-size:0.86rem;color:#7f1d1d;display:block;margin-top:2px;">Pickup in 20 minutes!</span>
+          </div>
+        </div>
+        <button type="button" id="reminder-start-btn" class="btn btn-primary btn-sm" style="background:#dc2626;border-color:#dc2626;white-space:nowrap;padding:8px 14px;font-weight:700;">
+          Start Trip Now 🛵
+        </button>
+      </div>
+    </div>
+
+    <!-- My Reserved Advance Bookings Card -->
+    <div id="rider-scheduled-card" class="card hidden" style="margin-bottom:1.2rem;border:2px solid #bfdbfe;background:#f8fafc;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 style="margin:0;font-size:1.05rem;color:#1e40af;display:flex;align-items:center;gap:6px;">
+          <span>📅</span> My Reserved Advance Bookings
+        </h3>
+        <span id="rider-scheduled-count" class="badge" style="background:#1d4ed8;color:white;font-weight:700;">0</span>
+      </div>
+      <div id="rider-scheduled-list" style="display:grid;gap:10px;"></div>
+    </div>
+
     <!-- Active Job (if currently handling one) -->
     <div id="rider-active-job-box" class="card active-job-card hidden">
       <div class="active-job-head">
@@ -339,5 +366,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=20"></script>
+<script src="/static/js/rider.js?v=21"></script>
 {% endblock %}

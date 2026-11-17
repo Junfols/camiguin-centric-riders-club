@@ -41,6 +41,7 @@ from db import (
     get_connection,
     get_online_riders,
     get_rider_active_job,
+    get_rider_scheduled_jobs,
     get_rider_by_id,
     get_rider_by_phone,
     get_settings,
@@ -823,10 +824,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         rider_id = session.get("rider_id") or request.args.get("rider_id")
         if not rider_id:
-            return jsonify({"job": None})
+            return jsonify({"job": None, "scheduled_jobs": []})
 
         job = get_rider_active_job(conn, int(rider_id))
-        return jsonify({"job": job})
+        scheduled_jobs = get_rider_scheduled_jobs(conn, int(rider_id))
+        return jsonify({"job": job, "scheduled_jobs": scheduled_jobs})
 
     @app.post("/api/bookings/<int:booking_id>/accept")
     def rider_accept_booking(booking_id: int):
@@ -840,9 +842,23 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not rider or rider.get("status") != "active":
             return jsonify({"error": "Your rider account is pending approval or suspended."}), 403
 
+        target_booking = get_booking_by_id(conn, booking_id)
+        if not target_booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        target_sched = (target_booking.get("scheduled_at") or "").strip()
+        is_target_advance = False
+        if target_sched:
+            try:
+                diff_m = (datetime.fromisoformat(target_sched) - datetime.now()).total_seconds() / 60
+                if diff_m > 30:
+                    is_target_advance = True
+            except Exception:
+                pass
+
         # Check if rider already has an active ongoing job
         active = get_rider_active_job(conn, int(rider_id))
-        if active and active["id"] != booking_id:
+        if active and active["id"] != booking_id and not is_target_advance:
             return jsonify({"error": "You already have an active ongoing trip that must be completed first."}), 400
 
         claimed = accept_booking(conn, booking_id, int(rider_id))
@@ -852,7 +868,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         conn.commit()
         updated_job = get_booking_by_id(conn, booking_id)
-        return jsonify({"success": True, "message": "Booking accepted successfully!", "job": updated_job})
+        return jsonify({
+            "success": True,
+            "message": "Booking accepted successfully!",
+            "job": updated_job,
+            "is_advance": is_target_advance,
+        })
+
+    @app.post("/api/bookings/<int:booking_id>/start-now")
+    def rider_start_scheduled_job(booking_id: int):
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        rider_id = session.get("rider_id") or data.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        booking = get_booking_by_id(conn, booking_id)
+        if not booking or booking.get("rider_id") != int(rider_id):
+            return jsonify({"error": "Booking not found or not assigned to you."}), 404
+        update_booking_status(conn, booking_id, "in_progress")
+        conn.commit()
+        return jsonify({"success": True, "job": get_booking_by_id(conn, booking_id)})
 
     @app.post("/api/bookings/<int:booking_id>/status")
     def update_job_status(booking_id: int):

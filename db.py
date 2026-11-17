@@ -11,7 +11,7 @@ import os
 import secrets
 import sqlite3
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 from urllib.parse import urlencode, urlparse
 
@@ -3345,16 +3345,78 @@ def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str,
 
 
 def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, Any] | None:
-    row = conn.execute(
+    """
+    Returns the rider's immediate active trip:
+    1. Any trip with status = 'in_progress'
+    2. Any on-demand trip with status = 'accepted' (scheduled_at is empty)
+    3. Any advance trip with status = 'accepted' where pickup time is due soon (<= 30 mins)
+    """
+    rows = conn.execute(
         """
         SELECT * FROM bookings
         WHERE rider_id = ? AND status IN ('accepted', 'in_progress')
         ORDER BY id DESC
-        LIMIT 1
         """,
         (rider_id,),
-    ).fetchone()
-    return dict(row) if row else None
+    ).fetchall()
+
+    if not rows:
+        return None
+
+    # First priority: in_progress job is always the immediate active job
+    for r in rows:
+        if r["status"] == "in_progress":
+            return dict(r)
+
+    now = datetime.now()
+    # Second priority: on-demand job (no schedule) or scheduled job due within 30 mins
+    for r in rows:
+        if r["status"] == "accepted":
+            sched_str = (r.get("scheduled_at") or "").strip()
+            if not sched_str:
+                return dict(r)
+            try:
+                sched_dt = datetime.fromisoformat(sched_str)
+                mins_left = (sched_dt - now).total_seconds() / 60
+                if mins_left <= 30:
+                    d = dict(r)
+                    d["minutes_left"] = max(0, int(mins_left))
+                    return d
+            except Exception:
+                return dict(r)
+
+    return None
+
+
+def get_rider_scheduled_jobs(conn: DatabaseConnection, rider_id: int) -> list[dict[str, Any]]:
+    """
+    Returns future advance reservations for this rider.
+    Includes minutes_left and is_due_soon flags so the rider UI can trigger notifications.
+    """
+    rows = conn.execute(
+        """
+        SELECT * FROM bookings
+        WHERE rider_id = ? AND status = 'accepted' AND scheduled_at IS NOT NULL AND scheduled_at != ''
+        ORDER BY scheduled_at ASC
+        """,
+        (rider_id,),
+    ).fetchall()
+
+    now = datetime.now()
+    results = []
+    for r in rows:
+        d = dict(r)
+        sched_str = (d.get("scheduled_at") or "").strip()
+        try:
+            sched_dt = datetime.fromisoformat(sched_str)
+            mins_left = (sched_dt - now).total_seconds() / 60
+            d["minutes_left"] = int(mins_left)
+            d["is_due_soon"] = mins_left <= 30
+        except Exception:
+            d["minutes_left"] = None
+            d["is_due_soon"] = False
+        results.append(d)
+    return results
 
 
 def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> bool:

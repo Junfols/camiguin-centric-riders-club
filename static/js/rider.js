@@ -44,6 +44,7 @@
   let knownJobIds = new Set();
   let pollInterval = null;
   let gpsWatchId = null;
+  let lastReminderChimeTime = 0;
 
   const STORAGE_KEY = "ccrc_rider_session";
 
@@ -306,7 +307,7 @@
       if (onlineToggle.checked) {
         fetchAvailableJobs();
         fetchCoRiders();
-        if (activeJob) checkActiveJob();
+        checkActiveJob();
       }
     }, 3500);
   }
@@ -316,6 +317,9 @@
     onlineToggle.addEventListener("change", async () => {
       const isOnline = onlineToggle.checked;
       updateOnlineBadge(isOnline);
+      if (isOnline && "Notification" in window && Notification.permission === "default") {
+        try { Notification.requestPermission(); } catch(_) {}
+      }
       try {
         await fetch("/api/rider/status", {
           method: "POST",
@@ -324,6 +328,7 @@
         });
         if (isOnline) {
           fetchAvailableJobs();
+          checkActiveJob();
         } else {
           jobsFeedList.innerHTML = `<div class="empty-state">You are currently OFFLINE. Turn the switch above ON to receive booking requests in Camiguin.</div>`;
           jobsCountPill.textContent = "0";
@@ -402,6 +407,10 @@
       const res = await fetch(`/api/rider/active-job?rider_id=${currentRider.id}`);
       const data = await res.json();
       activeJob = data.job;
+      const scheduledJobs = data.scheduled_jobs || [];
+
+      // Render Scheduled Jobs Card & Reminder
+      renderScheduledJobs(scheduledJobs);
 
       if (!activeJob) {
         activeJobBox.classList.add("hidden");
@@ -457,6 +466,123 @@
       }
     } catch (_) {}
   }
+
+  function renderScheduledJobs(jobs) {
+    const card = document.getElementById("rider-scheduled-card");
+    const countEl = document.getElementById("rider-scheduled-count");
+    const listEl = document.getElementById("rider-scheduled-list");
+    const banner = document.getElementById("advance-reminder-banner");
+    const bannerTitle = document.getElementById("reminder-banner-title");
+    const bannerSub = document.getElementById("reminder-banner-sub");
+    const bannerBtn = document.getElementById("reminder-start-btn");
+
+    if (!card || !listEl) return;
+
+    if (!jobs || !jobs.length) {
+      card.classList.add("hidden");
+      if (banner) banner.classList.add("hidden");
+      return;
+    }
+
+    card.classList.remove("hidden");
+    if (countEl) countEl.textContent = jobs.length;
+
+    let dueSoonJob = null;
+    listEl.innerHTML = jobs.map(j => {
+      let timeStr = j.scheduled_at;
+      try {
+        timeStr = new Date(j.scheduled_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      } catch(_) {}
+
+      const mins = j.minutes_left;
+      let countdownBadge = "";
+      if (mins !== null && mins !== undefined) {
+        if (mins <= 0) {
+          countdownBadge = `<span style="background:#dc2626;color:white;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:700;">🚨 DUE NOW</span>`;
+          dueSoonJob = j;
+        } else if (mins <= 30) {
+          countdownBadge = `<span style="background:#ea580c;color:white;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:700;">⏰ Due in ${mins} mins</span>`;
+          if (!dueSoonJob) dueSoonJob = j;
+        } else {
+          const hours = Math.floor(mins / 60);
+          const remMins = mins % 60;
+          countdownBadge = `<span style="background:#0284c7;color:white;padding:2px 8px;border-radius:10px;font-size:0.75rem;">📅 in ${hours > 0 ? hours + 'h ' : ''}${remMins}m</span>`;
+        }
+      }
+
+      return `
+        <div style="background:white;padding:12px;border:1px solid #cbd5e1;border-radius:10px;display:grid;gap:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong style="font-family:monospace;font-size:0.95rem;">${escapeHtml(j.booking_code)}</strong>
+              <span class="badge badge-accent" style="font-size:0.75rem;margin-left:4px;">${escapeHtml(j.service_type.toUpperCase())}</span>
+            </div>
+            ${countdownBadge}
+          </div>
+          <div style="font-size:0.84rem;color:#334155;">
+            <div>📅 <strong>Pickup Time:</strong> ${timeStr}</div>
+            <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
+            <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
+            <div>👤 <strong>Passenger:</strong> ${escapeHtml(j.customer_name)} (${escapeHtml(j.customer_phone)})</div>
+            <div style="font-weight:700;color:var(--primary);margin-top:2px;">Fare: ₱${Math.round(j.fare_amount)}</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <a href="tel:${escapeHtml(j.customer_phone)}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">📞 Call</a>
+            <a href="sms:${escapeHtml(j.customer_phone)}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">💬 SMS</a>
+            <button type="button" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;margin-left:auto;" onclick="startScheduledJobNow(${j.id})">
+              🚀 Start Trip Now
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Trigger Notification & Alarm if any job is due within 30 minutes!
+    if (dueSoonJob && banner) {
+      banner.classList.remove("hidden");
+      if (bannerTitle) bannerTitle.textContent = `🚨 UPCOMING ADVANCE TRIP: ${dueSoonJob.booking_code}!`;
+      if (bannerSub) bannerSub.textContent = `Pickup at ${dueSoonJob.pickup_address} ${dueSoonJob.minutes_left > 0 ? `in ~${dueSoonJob.minutes_left} minutes!` : 'NOW!'} Customer: ${dueSoonJob.customer_name}`;
+      if (bannerBtn) bannerBtn.onclick = () => startScheduledJobNow(dueSoonJob.id);
+
+      // Sound chime every 4 minutes if due soon
+      const nowTs = Date.now();
+      if (nowTs - lastReminderChimeTime > 240000) {
+        lastReminderChimeTime = nowTs;
+        if (window.playDispatchChime) window.playDispatchChime();
+        if (navigator.vibrate) try { navigator.vibrate([300, 150, 300, 150, 500]); } catch(_) {}
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(`CCRC Reminder: Advance Trip in ${dueSoonJob.minutes_left} mins!`, {
+              body: `${dueSoonJob.booking_code} pickup at ${dueSoonJob.pickup_address} for ${dueSoonJob.customer_name}`,
+              icon: "/static/icons/logo.png"
+            });
+          } catch(_) {}
+        }
+      }
+    } else if (banner) {
+      banner.classList.add("hidden");
+    }
+  }
+
+  window.startScheduledJobNow = async function(bookingId) {
+    if (!currentRider) return;
+    if (!confirm("Are you ready to activate this scheduled trip now?")) return;
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/start-now`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rider_id: currentRider.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        checkActiveJob();
+      } else {
+        alert(data.error || "Could not activate trip.");
+      }
+    } catch (_) {
+      alert("Network error activating trip.");
+    }
+  };
 
   // Step Progress Actions
   if (jobInProgressBtn) {
