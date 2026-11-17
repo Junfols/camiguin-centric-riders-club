@@ -99,6 +99,13 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Login failed");
 
+        if (data.pending) {
+          alert(data.message || "Registration submitted! Your application is now PENDING APPROVAL by the Club Admin.");
+          // Switch to login tab
+          registerForm.classList.add("hidden");
+          loginForm.classList.remove("hidden");
+          return;
+        }
         setStoredRider(data.rider);
         initRiderSession(data.rider);
       } catch (err) {
@@ -111,6 +118,55 @@
     });
   }
 
+
+  // Photo Upload & Client-side Auto-Compression
+  let currentAvatarBase64 = "";
+  const regPhotoInput = document.getElementById("reg-photo");
+  const photoPreviewImg = document.getElementById("photo-preview-img");
+  const photoPlaceholderIcon = document.getElementById("photo-placeholder-icon");
+
+  if (regPhotoInput) {
+    regPhotoInput.addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          const maxDim = 500;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          currentAvatarBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+          if (photoPreviewImg) {
+            photoPreviewImg.src = currentAvatarBase64;
+            photoPreviewImg.classList.remove("hidden");
+          }
+          if (photoPlaceholderIcon) {
+            photoPlaceholderIcon.classList.add("hidden");
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Register Handler
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
@@ -118,13 +174,28 @@
       registerErrorMsg.classList.add("hidden");
       registerErrorMsg.textContent = "";
 
+      const licenseVal = (document.getElementById("reg-license") ? document.getElementById("reg-license").value.trim().toUpperCase() : "");
+      if (!licenseVal) {
+        registerErrorMsg.textContent = "Please enter your Driver's License Number.";
+        registerErrorMsg.classList.remove("hidden");
+        return;
+      }
+
+      if (!currentAvatarBase64) {
+        registerErrorMsg.textContent = "Please upload a clear profile picture (face photo).";
+        registerErrorMsg.classList.remove("hidden");
+        return;
+      }
+
       const payload = {
         name: document.getElementById("reg-name").value.trim(),
         phone: document.getElementById("reg-phone").value.trim(),
+        license_no: licenseVal,
         bike_model: document.getElementById("reg-bike").value.trim(),
         plate_number: document.getElementById("reg-plate").value.trim(),
         municipality: document.getElementById("reg-mun").value,
         password: document.getElementById("reg-password").value,
+        avatar_base64: currentAvatarBase64,
       };
 
       const btn = document.getElementById("rider-register-btn");
@@ -152,25 +223,71 @@
     });
   }
 
-  // Logout
+  // Unified Logout Handler
+  async function handleRiderLogout() {
+    if (confirm("Are you sure you want to log out of your Rider Account?")) {
+      setStoredRider(null);
+      document.documentElement.classList.remove("is-rider-session");
+      document.body.classList.remove("rider-logged-in");
+      if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+      if (pollInterval) clearInterval(pollInterval);
+      try {
+        await fetch("/api/rider/logout", { method: "POST" });
+      } catch (_) {}
+      window.location.href = "/";
+    }
+  }
+
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      if (confirm("Are you sure you want to log out?")) {
-        setStoredRider(null);
-        if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
-        if (pollInterval) clearInterval(pollInterval);
-        location.reload();
-      }
-    });
+    logoutBtn.addEventListener("click", handleRiderLogout);
+  }
+  const bottomNavLogout = document.getElementById("bottom-nav-rider-logout");
+  if (bottomNavLogout) {
+    bottomNavLogout.addEventListener("click", handleRiderLogout);
+  }
+  const headerNavLogout = document.getElementById("header-rider-logout-btn");
+  if (headerNavLogout) {
+    headerNavLogout.addEventListener("click", handleRiderLogout);
+  }
+  const bottomRiderRefresh = document.getElementById("bottom-rider-refresh-btn");
+  if (bottomRiderRefresh) {
+    bottomRiderRefresh.addEventListener("click", fetchAvailableJobs);
   }
 
   function initRiderSession(rider) {
     currentRider = rider;
+    document.documentElement.classList.add("is-rider-session");
+    document.body.classList.add("rider-logged-in");
+
+    // Strictly hide "Book a Ride" from nav & header when rider is logged in
+    document.querySelectorAll(".nav-book-item, #nav-book-link, #bottom-nav-book").forEach((el) => {
+      el.style.display = "none";
+    });
+
+    const bLogout = document.getElementById("bottom-nav-rider-logout");
+    if (bLogout) bLogout.classList.remove("hidden");
+    const hLogout = document.getElementById("header-rider-logout-btn");
+    if (hLogout) hLogout.classList.remove("hidden");
+
     authSection.classList.add("hidden");
     dashSection.classList.remove("hidden");
 
     dashRiderName.textContent = rider.name;
     dashRiderBike.textContent = `${rider.bike_model} • Plate: ${rider.plate_number} • ${rider.municipality}`;
+
+    const dashLicense = document.getElementById("dash-rider-license");
+    if (dashLicense) {
+      dashLicense.textContent = rider.license_no ? `License: ${rider.license_no}` : "";
+    }
+    const dashAvatar = document.getElementById("dash-rider-avatar-img");
+    if (dashAvatar) {
+      if (rider.avatar_url) {
+        dashAvatar.src = rider.avatar_url;
+        dashAvatar.classList.remove("hidden");
+      } else {
+        dashAvatar.classList.add("hidden");
+      }
+    }
 
     // Online switch state
     onlineToggle.checked = rider.is_online === 1;
@@ -182,11 +299,13 @@
     // Check active job and start polling available jobs
     checkActiveJob();
     fetchAvailableJobs();
+    fetchCoRiders();
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
       if (onlineToggle.checked) {
         fetchAvailableJobs();
+        fetchCoRiders();
         if (activeJob) checkActiveJob();
       }
     }, 3500);
@@ -286,8 +405,10 @@
 
       if (!activeJob) {
         activeJobBox.classList.add("hidden");
+        resetRiderChat(null);
         return;
       }
+      resetRiderChat(activeJob);
 
       activeJobBox.classList.remove("hidden");
       activeJobCode.textContent = activeJob.booking_code;
@@ -486,6 +607,345 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Rider Live Chat with Customer
+  // ---------------------------------------------------------------------------
+  const riderChatBox = document.getElementById("rider-chat-messages-box");
+  const riderChatForm = document.getElementById("rider-chat-form");
+  const riderChatInput = document.getElementById("rider-chat-input-field");
+  const riderChatCustName = document.getElementById("rider-chat-cust-name");
+  const riderChatEmptyHint = document.getElementById("rider-chat-empty-hint");
+  const riderCannedBtns = document.querySelectorAll("#rider-canned-replies .canned-btn");
+  let riderLastMessageId = 0;
+  let riderChatPollTimer = null;
+  let currentActiveJobId = null;
+
+  function playRiderBeep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+      if ("vibrate" in navigator) {
+        navigator.vibrate([100, 60, 100]);
+      }
+    } catch (_) {}
+  }
+
+  function appendRiderChatMessage(msg, isSelf) {
+    if (riderChatEmptyHint) riderChatEmptyHint.style.display = "none";
+
+    const wrap = document.createElement("div");
+    wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
+
+    const sender = isSelf ? "You (Rider)" : (msg.sender_name || "Customer");
+    const roleIcon = isSelf ? "🛵" : "👤";
+    const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
+
+    wrap.innerHTML = `
+      <span class="chat-sender-label">${roleIcon} ${escapeHtml(sender)}</span>
+      <div class="chat-bubble">
+        ${escapeHtml(msg.message)}
+        <span class="chat-time">${timeStr}</span>
+      </div>
+    `;
+
+    riderChatBox.appendChild(wrap);
+    riderChatBox.scrollTop = riderChatBox.scrollHeight;
+  }
+
+  async function pollRiderChat() {
+    if (!activeJob) return;
+    try {
+      const res = await fetch(`/api/chat/${activeJob.id}/messages?after=${riderLastMessageId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.messages && data.messages.length > 0) {
+        let hasIncomingFromCustomer = false;
+        for (const msg of data.messages) {
+          if (msg.id > riderLastMessageId) {
+            riderLastMessageId = msg.id;
+            const isSelf = (msg.sender_role === "rider");
+            appendRiderChatMessage(msg, isSelf);
+            if (!isSelf) hasIncomingFromCustomer = true;
+          }
+        }
+        if (hasIncomingFromCustomer) {
+          playRiderBeep();
+        }
+      }
+    } catch (_) {}
+  }
+
+  async function sendRiderMessage(text) {
+    if (!text || !text.trim() || !activeJob) return;
+    const msgText = text.trim();
+    if (riderChatInput) riderChatInput.value = "";
+
+    try {
+      const res = await fetch(`/api/chat/${activeJob.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_role: "rider",
+          sender_name: currentRider ? currentRider.name : "Kuya Rider",
+          message: msgText,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.message) {
+          if (data.message.id > riderLastMessageId) {
+            riderLastMessageId = data.message.id;
+            appendRiderChatMessage(data.message, true);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (riderChatForm) {
+    riderChatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (riderChatInput) sendRiderMessage(riderChatInput.value);
+    });
+  }
+
+  riderCannedBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const msg = btn.getAttribute("data-msg");
+      if (msg) sendRiderMessage(msg);
+    });
+  });
+
+  function resetRiderChat(job) {
+    if (!job) {
+      if (riderChatPollTimer) clearInterval(riderChatPollTimer);
+      return;
+    }
+    if (currentActiveJobId !== job.id) {
+      currentActiveJobId = job.id;
+      riderLastMessageId = 0;
+      if (riderChatBox) riderChatBox.innerHTML = "";
+      if (riderChatEmptyHint) {
+        riderChatEmptyHint.style.display = "block";
+        riderChatBox.appendChild(riderChatEmptyHint);
+      }
+      if (riderChatCustName) riderChatCustName.textContent = job.customer_name || "Passenger";
+    }
+    pollRiderChat();
+    if (!riderChatPollTimer) {
+      riderChatPollTimer = setInterval(pollRiderChat, 2500);
+    }
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Fellow Online Riders (Kauban nga Online) Roster & Radar Map
+  // ---------------------------------------------------------------------------
+  const coRidersList = document.getElementById("co-riders-list");
+  const coRidersCountPill = document.getElementById("co-riders-count-pill");
+  const toggleRadarMapBtn = document.getElementById("toggle-radar-map-btn");
+  const radarMapContainer = document.getElementById("radar-map-container");
+  const radarMapEl = document.getElementById("co-riders-radar-map");
+
+  let radarMap = null;
+  let radarMarkers = {};
+
+  let radarStreetLayer = null;
+  let radarSatGroup = null;
+  let radarCurrentLayer = "street";
+
+  function initRadarMap() {
+    if (!radarMapEl || radarMap || typeof L === "undefined") return;
+    const CAMIGUIN_BOUNDS = [
+      [9.0500, 124.5800],
+      [9.2900, 124.8300]
+    ];
+
+    radarMap = L.map(radarMapEl, {
+      minZoom: 11,
+      maxZoom: 19,
+      maxBounds: CAMIGUIN_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      bounceAtZoomLimits: true
+    }).fitBounds(CAMIGUIN_BOUNDS);
+
+    radarStreetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    });
+
+    const satImagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri',
+    });
+    const satLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      pane: "overlayPane",
+    });
+    radarSatGroup = L.layerGroup([satImagery, satLabels]);
+
+    radarStreetLayer.addTo(radarMap);
+
+    // Radar Layer Switcher Buttons
+    document.querySelectorAll("[data-radar-layer]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const layerType = btn.getAttribute("data-radar-layer");
+        if (layerType === radarCurrentLayer) return;
+        if (layerType === "satellite") {
+          radarMap.removeLayer(radarStreetLayer);
+          radarSatGroup.addTo(radarMap);
+          radarCurrentLayer = "satellite";
+        } else {
+          radarMap.removeLayer(radarSatGroup);
+          radarStreetLayer.addTo(radarMap);
+          radarCurrentLayer = "street";
+        }
+        document.querySelectorAll("[data-radar-layer]").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-radar-layer") === layerType);
+        });
+      });
+    });
+
+    // Radar Recenter Button
+    const recenterBtn = document.getElementById("radar-recenter-btn");
+    if (recenterBtn) {
+      recenterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (radarMap) {
+          if (currentRider && currentRider.last_lat && currentRider.last_lng) {
+            radarMap.flyTo([currentRider.last_lat, currentRider.last_lng], 14, { duration: 1.0 });
+          } else {
+            radarMap.flyTo([9.2000, 124.7200], 11, { duration: 1.0 });
+          }
+        }
+      });
+    }
+  }
+
+  if (toggleRadarMapBtn && radarMapContainer) {
+    toggleRadarMapBtn.addEventListener("click", () => {
+      const isHidden = radarMapContainer.classList.contains("hidden");
+      if (isHidden) {
+        radarMapContainer.classList.remove("hidden");
+        toggleRadarMapBtn.textContent = "✕ Close Map";
+        initRadarMap();
+        setTimeout(() => {
+          if (radarMap) radarMap.invalidateSize();
+        }, 150);
+      } else {
+        radarMapContainer.classList.add("hidden");
+        toggleRadarMapBtn.textContent = "🗺️ Radar Map";
+      }
+    });
+  }
+
+  async function fetchCoRiders() {
+    if (!currentRider) return;
+    try {
+      const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = data.co_riders || [];
+
+      if (coRidersCountPill) {
+        coRidersCountPill.textContent = `${list.length} Online`;
+      }
+
+      if (!coRidersList) return;
+
+      if (list.length === 0) {
+        coRidersList.innerHTML = `
+          <div class="empty-state" style="padding:1rem;">
+            <span class="text-muted">Ikaw pa lang ang online rider karon. Paabota ang imong mga kauban!</span>
+          </div>
+        `;
+        return;
+      }
+
+      coRidersList.innerHTML = list.map((r) => {
+        const isSelf = r.is_self;
+        const avatarHtml = r.avatar_url
+          ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
+          : `<div class="co-rider-avatar-placeholder">🛵</div>`;
+
+        const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">Ikaw</span>` : '';
+        const town = escapeHtml(r.municipality || 'Camiguin');
+        const phoneBtn = (!isSelf && r.phone)
+          ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Tawag</a>`
+          : '';
+
+        return `
+          <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
+            ${avatarHtml}
+            <div class="co-rider-info">
+              <div class="co-rider-name-row">
+                <span class="co-rider-name">${escapeHtml(r.name)}</span>
+                ${selfBadge}
+              </div>
+              <div class="co-rider-sub">
+                🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
+              </div>
+              <span class="co-rider-town">📍 ${town}</span>
+            </div>
+            <div class="co-rider-actions">
+              ${phoneBtn}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Update Radar Map Pins if map initialized
+      if (radarMap) {
+        const activeIds = new Set();
+        list.forEach((r) => {
+          if (r.last_lat && r.last_lng) {
+            activeIds.add(r.id);
+            const isSelf = r.is_self;
+            const iconHtml = isSelf
+              ? `<div style="background:#f97316;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🛵</div>`
+              : `<div style="background:#16a34a;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🟢</div>`;
+
+            const customIcon = L.divIcon({
+              className: "co-rider-radar-pin",
+              html: iconHtml,
+              iconSize: [34, 34],
+              iconAnchor: [17, 17],
+            });
+
+            if (!radarMarkers[r.id]) {
+              radarMarkers[r.id] = L.marker([r.last_lat, r.last_lng], { icon: customIcon })
+                .addTo(radarMap)
+                .bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality)}`);
+            } else {
+              radarMarkers[r.id].setLatLng([r.last_lat, r.last_lng]);
+            }
+          }
+        });
+
+        // Remove old markers
+        Object.keys(radarMarkers).forEach((id) => {
+          if (!activeIds.has(parseInt(id))) {
+            radarMap.removeLayer(radarMarkers[id]);
+            delete radarMarkers[id];
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   // On Load: Check stored session

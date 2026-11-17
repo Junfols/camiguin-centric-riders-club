@@ -7,7 +7,7 @@
   <!-- Auth Screen (if not logged in) -->
   <div id="rider-auth-section" class="card">
     <div class="auth-header text-center">
-      <span style="font-size:3rem;line-height:1;">📱</span>
+      <img src="/static/icons/logo.png" alt="CCRC Logo" style="width:72px;height:72px;object-fit:contain;border-radius:50%;margin:0 auto 8px;display:block;box-shadow:0 4px 14px rgba(249,115,22,0.25);">
       <h2 style="margin:8px 0 4px;">Rider Dispatch Portal</h2>
       <p class="text-muted">Log in with your registered mobile number to receive island booking dispatches in Camiguin.</p>
     </div>
@@ -44,6 +44,27 @@
         <label for="reg-phone">Mobile Number *</label>
         <input type="tel" id="reg-phone" required placeholder="e.g. 0917 123 4567">
       </div>
+
+      <!-- Driver's License Number & Profile Picture -->
+      <div class="form-group">
+        <label for="reg-license">Driver's License Number *</label>
+        <input type="text" id="reg-license" required placeholder="e.g. K01-12-123456" style="text-transform:uppercase;">
+      </div>
+
+      <div class="form-group">
+        <label>Rider Profile Picture (Photo) *</label>
+        <div class="photo-upload-box" style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:12px;border:1.5px dashed #cbd5e1;border-radius:12px;">
+          <div id="photo-preview-wrap" style="width:62px;height:62px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid #cbd5e1;">
+            <span id="photo-placeholder-icon" style="font-size:1.8rem;">👤</span>
+            <img id="photo-preview-img" src="" alt="Preview" class="hidden" style="width:100%;height:100%;object-fit:cover;">
+          </div>
+          <div style="flex:1;">
+            <input type="file" id="reg-photo" accept="image/*" style="font-size:0.84rem;width:100%;" required>
+            <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">Clear face photo for passenger safety and club verification.</small>
+          </div>
+        </div>
+      </div>
+
       <div class="form-grid-2">
         <div class="form-group">
           <label for="reg-bike">Motorcycle Model *</label>
@@ -86,10 +107,14 @@
     <!-- Header with Online Switch -->
     <div class="card rider-status-banner">
       <div class="rider-header-row">
-        <div>
-          <span class="badge badge-accent">CCRC Verified Rider</span>
-          <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
-          <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img id="dash-rider-avatar-img" src="" alt="Rider Photo" class="hidden" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <div>
+            <span class="badge badge-accent">CCRC Verified Rider</span>
+            <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
+            <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
+            <div class="text-muted" id="dash-rider-license" style="font-size:0.78rem;color:#64748b;margin-top:2px;">License: #</div>
+          </div>
         </div>
 
         <div class="online-switch-wrap">
@@ -162,6 +187,45 @@
         </div>
       </div>
 
+
+      <!-- Rider-Customer In-App Live Chat -->
+      <div class="card chat-card rider-chat-card" style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;">
+        <div class="chat-header" style="padding-bottom:8px;border-bottom:1px solid #e2e8f0;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.4rem;">💬</span>
+            <div>
+              <h3 style="margin:0;font-size:1.05rem;">Chat with Customer (<span id="rider-chat-cust-name">Passenger</span>)</h3>
+              <span class="chat-subtitle text-muted" style="font-size:0.8rem;">Direct in-app messaging</span>
+            </div>
+          </div>
+          <span class="badge badge-accent" id="rider-chat-badge">Active Chat</span>
+        </div>
+
+        <!-- Quick Canned Replies for Rider -->
+        <div class="canned-replies" id="rider-canned-replies" style="margin:8px 0;">
+          <button type="button" class="canned-btn" data-msg="Padulong nako Ma'am/Sir!">🛵 Padulong nako!</button>
+          <button type="button" class="canned-btn" data-msg="Naa nako sa pickup point Ma'am/Sir.">📍 Naa nako sa pickup point.</button>
+          <button type="button" class="canned-btn" data-msg="Paabot lang kadali Ma'am/Sir.">⏳ Paabot lang kadali.</button>
+          <button type="button" class="canned-btn" data-msg="Naa nako sa gawas!">🏠 Naa nako sa gawas!</button>
+          <button type="button" class="canned-btn" data-msg="Salamat Ma'am/Sir!">👍 Salamat Ma'am/Sir!</button>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="chat-messages" id="rider-chat-messages-box" style="height:220px;overflow-y:auto;">
+          <div class="chat-empty-hint" id="rider-chat-empty-hint">
+            <span>💬 Customer chat messages will appear here in real-time.</span>
+          </div>
+        </div>
+
+        <!-- Input Form -->
+        <form class="chat-input-bar" id="rider-chat-form" style="margin-top:8px;">
+          <input type="text" id="rider-chat-input-field" placeholder="Reply to customer..." maxlength="300" autocomplete="off" required>
+          <button type="submit" id="rider-chat-send-btn" class="btn btn-primary chat-send-btn">
+            <span>Send</span> ✈️
+          </button>
+        </form>
+      </div>
+
       <!-- Action Step Buttons -->
       <div class="job-step-actions" style="margin-top:14px;">
         <button type="button" id="job-in-progress-btn" class="btn btn-primary btn-block btn-lg">
@@ -190,6 +254,49 @@
       </div>
     </div>
 
+    <!-- Fellow Online Riders Roster (Kauban nga Online) -->
+    <div class="card co-riders-card" style="margin-top:1.5rem;">
+      <div class="dispatch-feed-header" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.4rem;">🛵</span>
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;">Kauban nga Online Riders</h3>
+            <span class="text-muted" style="font-size:0.8rem;">Active on-duty club riders across Camiguin</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" id="toggle-radar-map-btn" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 9px;">🗺️ Radar Map</button>
+          <span id="co-riders-count-pill" class="badge badge-success" style="font-size:0.8rem;padding:4px 9px;">0 Online</span>
+        </div>
+      </div>
+
+      <!-- Collapsible Island Radar Map -->
+      <div id="radar-map-container" class="hidden" style="margin-bottom:14px;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1;position:relative;">
+        <div class="map-floating-bar" style="top:8px;right:8px;">
+          <div class="map-layer-pill">
+            <button type="button" class="layer-pill-btn active" data-radar-layer="street">🗺️ Kalsada</button>
+            <button type="button" class="layer-pill-btn" data-radar-layer="satellite">🛰️ Satellite</button>
+          </div>
+          <button type="button" id="radar-recenter-btn" class="map-float-btn" title="I-focus sa Camiguin">
+            <span>🎯</span> Center
+          </button>
+        </div>
+        <div id="co-riders-radar-map" style="height:280px;width:100%;"></div>
+        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;">
+          <span>🟢 Green = Active Rider &bull; 🛵 Centric Emblem = Your Location</span>
+          <span>Auto-syncs live GPS</span>
+        </div>
+      </div>
+
+      <!-- Online Co-Riders Grid/List -->
+      <div id="co-riders-list" class="co-riders-grid">
+        <div class="empty-state" style="padding:1rem;">
+          <span class="text-muted">Scanning for fellow online riders in Camiguin...</span>
+        </div>
+      </div>
+    </div>
+
+
     <div style="margin-top:1.5rem;text-align:center;">
       <button type="button" id="rider-logout-btn" class="text-btn text-danger">Log Out of Rider Account</button>
     </div>
@@ -198,5 +305,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=2"></script>
+<script src="/static/js/rider.js?v=3"></script>
 {% endblock %}

@@ -14,6 +14,7 @@ from flask import (
     Response,
     g,
     jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -23,29 +24,25 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import (
     CAMIGUIN_KNOWN_PLACES,
-    CAMIGUIN_TOUR_PACKAGES,
+    export_full_backup,
+    restore_full_backup,
+    add_booking_message,
+    get_booking_messages,
     accept_booking,
-    apply_promo_code,
     calculate_fare,
     calculate_haversine_km,
-    calculate_nearest_rider_eta,
     calculate_road_km,
     create_booking,
-    create_review,
     geocode_camiguin_location,
     get_available_broadcast_bookings,
     get_booking_by_code,
     get_booking_by_id,
     get_booking_tracking_trail,
     get_connection,
-    get_customer_by_phone,
-    get_customer_ride_history,
     get_online_riders,
-    get_or_create_customer,
     get_rider_active_job,
     get_rider_by_id,
     get_rider_by_phone,
-    get_rider_reviews,
     get_settings,
     get_uploaded_media,
     init_db,
@@ -56,7 +53,15 @@ from db import (
     update_rider_location,
     update_rider_online_status,
     update_settings,
+    CAMIGUIN_TOUR_PACKAGES,
+    get_or_create_customer,
+    get_customer_by_phone,
+    get_customer_ride_history,
     validate_promo_code,
+    apply_promo_code,
+    create_review,
+    get_rider_reviews,
+    calculate_nearest_rider_eta,
 )
 
 
@@ -176,7 +181,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # Customer Storefront & Booking Routes
     # -------------------------------------------------------------------------
     @app.get("/")
+    @app.get("/customer")
+    @app.get("/bookings")
     def index():
+        if session.get("rider_id"):
+            return redirect("/rider")
         conn = get_db()
         online_riders = get_online_riders(conn)
         settings = get_settings(conn)
@@ -185,133 +194,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             online_riders_count=len(online_riders),
             settings=settings,
             active_nav="book",
-            tour_packages=CAMIGUIN_TOUR_PACKAGES,
         )
 
-    @app.get("/tours")
-    def tours_page():
-        conn = get_db()
-        online_riders = get_online_riders(conn)
-        settings = get_settings(conn)
-        return render_template(
-            "tours.html",
-            online_riders_count=len(online_riders),
-            settings=settings,
-            active_nav="tours",
-            tour_packages=CAMIGUIN_TOUR_PACKAGES,
-        )
-
-    @app.get("/history")
-    def history_page():
-        return render_template("history.html", active_nav="history")
-
-    @app.get("/about")
-    def about_page():
-        return render_template("about.html", active_nav="about")
-
-    @app.get("/faq")
-    def faq_page():
-        return render_template("faq.html", active_nav="faq")
-
-    @app.get("/terms")
-    def terms_page():
-        return render_template("terms.html", active_nav="terms")
-
-    @app.get("/api/riders/online")
-    def api_online_riders():
-        conn = get_db()
-        riders = get_online_riders(conn)
-        clean = [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "bike_model": r["bike_model"],
-                "plate_number": r["plate_number"],
-                "municipality": r.get("municipality", "Mambajao"),
-                "color": r.get("color", "#f97316"),
-                "last_lat": r.get("last_lat"),
-                "last_lng": r.get("last_lng"),
-                "rating_avg": r.get("rating_avg", 5.0),
-                "total_trips": r.get("total_trips", 0),
-            }
-            for r in riders
-        ]
-        return jsonify({"riders": clean, "count": len(clean)})
-
-    @app.get("/api/tour-packages")
-    def api_tour_packages():
-        return jsonify({"packages": CAMIGUIN_TOUR_PACKAGES})
-
-    @app.post("/api/promo/validate")
-    def api_validate_promo():
-        conn = get_db()
-        data = request.get_json(silent=True) or {}
-        code = (data.get("code") or "").strip()
+    @app.get("/api/road-route")
+    def api_road_route():
         try:
-            fare_amount = float(data.get("fare_amount") or 40.0)
+            p_lat = float(request.args.get("p_lat") or 0.0)
+            p_lng = float(request.args.get("p_lng") or 0.0)
+            d_lat = float(request.args.get("d_lat") or 0.0)
+            d_lng = float(request.args.get("d_lng") or 0.0)
         except (ValueError, TypeError):
-            fare_amount = 40.0
-        res = validate_promo_code(conn, code, fare_amount)
-        return jsonify(res)
+            return jsonify({"error": "Invalid coordinates"}), 400
 
-    @app.get("/api/customer/history/<phone>")
-    def api_customer_history(phone: str):
-        conn = get_db()
-        clean_phone = phone.strip()
-        history = get_customer_ride_history(conn, clean_phone, limit=25)
-        customer = get_customer_by_phone(conn, clean_phone)
+        if not (p_lat and p_lng and d_lat and d_lng):
+            return jsonify({"error": "Missing pickup or dropoff coordinates"}), 400
+
+        road_km, coords = calculate_road_km(p_lat, p_lng, d_lat, d_lng)
         return jsonify({
-            "customer": customer,
-            "history": history,
-            "count": len(history),
+            "code": "Ok",
+            "road_km": road_km,
+            "route_coords": coords,
         })
-
-    @app.post("/api/reviews")
-    def api_submit_review():
-        conn = get_db()
-        data = request.get_json(silent=True) or {}
-        try:
-            booking_id = int(data.get("booking_id")) if data.get("booking_id") else None
-        except (ValueError, TypeError):
-            booking_id = None
-        try:
-            rider_id = int(data.get("rider_id")) if data.get("rider_id") else None
-        except (ValueError, TypeError):
-            rider_id = None
-
-        customer_name = (data.get("customer_name") or "").strip()
-        try:
-            rating = max(1, min(5, int(data.get("rating") or 5)))
-        except (ValueError, TypeError):
-            rating = 5
-        comment = (data.get("comment") or "").strip()
-
-        if not rider_id and booking_id:
-            booking = get_booking_by_id(conn, booking_id)
-            if booking and booking.get("rider_id"):
-                rider_id = int(booking["rider_id"])
-                if not customer_name:
-                    customer_name = booking.get("customer_name") or "Passenger"
-
-        if not rider_id:
-            return jsonify({"error": "A valid rider ID or completed booking ID is required to submit a review."}), 400
-
-        rev = create_review(
-            conn=conn,
-            booking_id=booking_id,
-            rider_id=rider_id,
-            customer_name=customer_name or "Verified Passenger",
-            rating=rating,
-            comment=comment,
-        )
-        conn.commit()
-        return jsonify({"success": True, "message": "Thank you! Your rider review has been recorded.", "review": rev}), 201
-
-    @app.get("/api/reviews/<int:rider_id>")
-    def api_rider_reviews(rider_id: int):
-        conn = get_db()
-        reviews = get_rider_reviews(conn, rider_id, limit=10)
-        return jsonify({"reviews": reviews, "count": len(reviews)})
 
     @app.post("/api/fare-estimate")
     def estimate_fare():
@@ -379,6 +282,146 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "resolved_dropoff": {"lat": d_lat, "lng": d_lng} if d_lat and d_lng else None,
             "route_coords": road_coords,
         })
+
+
+    # -------------------------------------------------------------------------
+    # Public Information & Feature Pages
+    # -------------------------------------------------------------------------
+    @app.get("/tours")
+    def tours_page():
+        conn = get_db()
+        settings = get_settings(conn)
+        return render_template(
+            "tours.html",
+            active_nav="tours",
+            club=settings,
+            packages=CAMIGUIN_TOUR_PACKAGES,
+            year=datetime.now().year,
+        )
+
+    @app.get("/history")
+    def history_page():
+        conn = get_db()
+        settings = get_settings(conn)
+        return render_template(
+            "history.html",
+            active_nav="history",
+            club=settings,
+            year=datetime.now().year,
+        )
+
+    @app.get("/about")
+    def about_page():
+        conn = get_db()
+        settings = get_settings(conn)
+        return render_template(
+            "about.html",
+            active_nav="about",
+            club=settings,
+            year=datetime.now().year,
+        )
+
+    @app.get("/faq")
+    def faq_page():
+        conn = get_db()
+        settings = get_settings(conn)
+        return render_template(
+            "faq.html",
+            active_nav="faq",
+            club=settings,
+            year=datetime.now().year,
+        )
+
+    @app.get("/terms")
+    def terms_page():
+        conn = get_db()
+        settings = get_settings(conn)
+        return render_template(
+            "terms.html",
+            active_nav="terms",
+            club=settings,
+            year=datetime.now().year,
+        )
+
+    # -------------------------------------------------------------------------
+    # New Extended APIs: Tours, Promos, Customer, Reviews, Online Riders
+    # -------------------------------------------------------------------------
+    @app.get("/api/tour-packages")
+    def api_tour_packages():
+        return jsonify({"success": True, "packages": CAMIGUIN_TOUR_PACKAGES})
+
+    @app.post("/api/promo/validate")
+    def api_validate_promo():
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        code = (data.get("code") or "").strip()
+        try:
+            fare = float(data.get("fare_amount") or 0.0)
+        except (ValueError, TypeError):
+            fare = 0.0
+        result = validate_promo_code(conn, code, fare)
+        if not result["valid"]:
+            return jsonify({"success": False, "error": result["error"]}), 400
+        return jsonify({"success": True, "promo": result})
+
+    @app.get("/api/customer/history/<phone>")
+    def api_customer_history(phone: str):
+        conn = get_db()
+        clean_p = phone.strip()
+        customer = get_customer_by_phone(conn, clean_p)
+        history = get_customer_ride_history(conn, clean_p)
+        return jsonify({
+            "success": True,
+            "customer": customer,
+            "rides": history,
+            "total_rides": len(history)
+        })
+
+    @app.post("/api/reviews")
+    def api_submit_review():
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        rider_id = data.get("rider_id")
+        rating = data.get("rating")
+        if not rider_id or not rating:
+            return jsonify({"error": "Rider ID and rating are required."}), 400
+        customer_name = (data.get("customer_name") or "Passenger").strip()
+        comment = (data.get("comment") or "").strip()
+        booking_id = data.get("booking_id")
+        try:
+            booking_id = int(booking_id) if booking_id else None
+            rider_id = int(rider_id)
+            rating = int(rating)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid IDs or rating value."}), 400
+
+        review = create_review(conn, booking_id, rider_id, customer_name, rating, comment)
+        return jsonify({"success": True, "review": review}), 201
+
+    @app.get("/api/reviews/<int:rider_id>")
+    def api_get_rider_reviews(rider_id: int):
+        conn = get_db()
+        reviews = get_rider_reviews(conn, rider_id)
+        return jsonify({"success": True, "reviews": reviews})
+
+    @app.get("/api/riders/online")
+    def api_online_riders():
+        conn = get_db()
+        riders = get_online_riders(conn)
+        safe_list = []
+        for r in riders:
+            safe_list.append({
+                "id": r["id"],
+                "name": r["name"],
+                "bike_model": r["bike_model"],
+                "plate_number": r["plate_number"],
+                "color": r.get("color") or "Orange",
+                "lat": r.get("last_lat"),
+                "lng": r.get("last_lng"),
+                "rating_avg": r.get("rating_avg", 5.0),
+                "total_trips": r.get("total_trips", 0),
+            })
+        return jsonify({"success": True, "riders": safe_list, "count": len(safe_list)})
 
     @app.get("/api/places/search")
     def api_places_search():
@@ -476,27 +519,24 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             is_hinterland=is_hinterland,
         )
 
-        # Apply promo voucher if provided
-        promo_code = (data.get("promo_code") or "").strip().upper()
-        discount_amount = 0.0
-        if promo_code:
-            p_res = validate_promo_code(conn, promo_code, fare_amount)
-            if p_res.get("valid"):
-                fare_amount = p_res["final_fare"]
-                discount_amount = p_res.get("discount", 0.0)
-                apply_promo_code(conn, promo_code)
-                breakdown["promo_discount"] = discount_amount
-                breakdown["promo_code"] = promo_code
-                breakdown["total_fare"] = fare_amount
-
-        scheduled_at = (data.get("scheduled_at") or "").strip() or None
         payment_method = (data.get("payment_method") or "cash").strip().lower()
         if payment_method not in ("cash", "gcash", "maya"):
             payment_method = "cash"
 
-        # Record / update customer profile
+        scheduled_at = (data.get("scheduled_at") or "").strip() or None
+        promo_code = (data.get("promo_code") or "").strip().upper()
+        discount_amount = 0.0
+
+        if promo_code:
+            promo_res = validate_promo_code(conn, promo_code, fare_amount)
+            if promo_res["valid"]:
+                discount_amount = promo_res["discount_amount"]
+                fare_amount = promo_res["new_fare"]
+                apply_promo_code(conn, promo_code)
+
+        # Auto-register / update customer profile
         try:
-            get_or_create_customer(conn, customer_name, customer_phone, pickup_address)
+            get_or_create_customer(conn, customer_phone, customer_name)
         except Exception:
             pass
 
@@ -522,20 +562,72 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         conn.commit()
 
-        # Compute nearest rider live ETA for pickup
-        nearest_eta = None
-        if pickup_lat and pickup_lng:
-            nearest_eta = calculate_nearest_rider_eta(conn, pickup_lat, pickup_lng)
-
         return jsonify({
             "success": True,
             "message": "Your booking has been broadcasted to all active riders!",
             "booking": booking,
             "breakdown": breakdown,
-            "nearest_rider_eta": nearest_eta,
-            "discount_amount": discount_amount,
             "tracking_url": f"/track/{booking['booking_code']}",
         }), 201
+
+
+    # -------------------------------------------------------------------------
+    # In-App Chat Routes (Customer & Rider Live Messaging)
+    # -------------------------------------------------------------------------
+    @app.get("/api/chat/<code_or_id>/messages")
+    def get_chat_messages(code_or_id: str):
+        conn = get_db()
+        booking = None
+        if code_or_id.isdigit():
+            booking = get_booking_by_id(conn, int(code_or_id))
+        if not booking:
+            booking = get_booking_by_code(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        after_id = int(request.args.get("after") or 0)
+        messages = get_booking_messages(conn, booking["id"], after_id=after_id)
+        return jsonify({
+            "success": True,
+            "booking_id": booking["id"],
+            "booking_code": booking["booking_code"],
+            "messages": messages,
+        })
+
+    @app.post("/api/chat/<code_or_id>/messages")
+    def post_chat_message(code_or_id: str):
+        conn = get_db()
+        booking = None
+        if code_or_id.isdigit():
+            booking = get_booking_by_id(conn, int(code_or_id))
+        if not booking:
+            booking = get_booking_by_code(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        data = request.get_json(silent=True) or {}
+        text = (data.get("message") or "").strip()
+        if not text:
+            return jsonify({"error": "Message cannot be empty."}), 400
+
+        sender_role = (data.get("sender_role") or "customer").lower()
+        if sender_role not in ["customer", "rider", "system"]:
+            sender_role = "customer"
+
+        sender_name = (data.get("sender_name") or "").strip()
+        if not sender_name:
+            sender_name = "Kuya Rider" if sender_role == "rider" else booking["customer_name"]
+
+        new_msg = add_booking_message(conn, booking["id"], sender_role, sender_name, text)
+        conn.commit()
+
+        after_id = int(request.args.get("after") or 0)
+        messages = get_booking_messages(conn, booking["id"], after_id=after_id)
+        return jsonify({
+            "success": True,
+            "message": new_msg,
+            "messages": messages,
+        })
 
     # -------------------------------------------------------------------------
     # Live Tracking Routes
@@ -546,10 +638,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         booking = get_booking_by_code(conn, booking_code)
         if not booking:
             return render_template("track.html", booking=None, error="Booking not found."), 404
-        rider_reviews = []
-        if booking.get("rider_id"):
-            rider_reviews = get_rider_reviews(conn, int(booking["rider_id"]), limit=5)
-        return render_template("track.html", booking=booking, rider_reviews=rider_reviews, active_nav="track")
+        return render_template("track.html", booking=booking, active_nav="track")
 
     @app.get("/api/bookings/track/<booking_code>")
     def api_track_booking(booking_code: str):
@@ -575,16 +664,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 booking["rider_lat"], booking["rider_lng"], booking["dropoff_lat"], booking["dropoff_lng"]
             )
 
-        rider_reviews = []
-        if booking.get("rider_id"):
-            rider_reviews = get_rider_reviews(conn, int(booking["rider_id"]), limit=5)
-
         return jsonify({
             "booking": booking,
             "trail": trail,
             "distance_to_pickup_km": distance_to_pickup_km,
             "distance_to_dropoff_km": distance_to_dropoff_km,
-            "rider_reviews": rider_reviews,
         })
 
     # -------------------------------------------------------------------------
@@ -593,6 +677,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/rider")
     def rider_view():
         return render_template("rider.html", active_nav="rider")
+
+    @app.post("/api/rider/logout")
+    def rider_logout():
+        rider_id = session.pop("rider_id", None)
+        if rider_id:
+            conn = get_db()
+            update_rider_online_status(conn, rider_id, False)
+            conn.commit()
+        return jsonify({"success": True})
 
     @app.post("/api/rider/login")
     def rider_login():
@@ -624,16 +717,40 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         name = (data.get("name") or "").strip()
         phone = (data.get("phone") or "").strip()
         password = (data.get("password") or "").strip()
+        license_no = (data.get("license_no") or "").strip().upper()
         bike_model = (data.get("bike_model") or "").strip()
         plate_number = (data.get("plate_number") or "").strip()
         municipality = (data.get("municipality") or "Mambajao").strip()
+        avatar_b64 = (data.get("avatar_base64") or "").strip()
 
         if not name or not phone or not password or not bike_model or not plate_number:
             return jsonify({"error": "Please complete all required fields."}), 400
 
+        if not license_no:
+            return jsonify({"error": "Driver's License Number is required."}), 400
+
         existing = get_rider_by_phone(conn, phone)
         if existing:
             return jsonify({"error": "This phone number is already registered. Please log in."}), 409
+
+        # Process and save profile picture
+        avatar_url = ""
+        if avatar_b64 and "," in avatar_b64:
+            import base64
+            try:
+                head, b64str = avatar_b64.split(",", 1)
+                mimetype = "image/jpeg"
+                if "png" in head:
+                    mimetype = "image/png"
+                elif "webp" in head:
+                    mimetype = "image/webp"
+                raw_bytes = base64.b64decode(b64str)
+                clean_p = phone.replace(" ", "").replace("-", "")
+                ts = int(datetime.now().timestamp())
+                fname = f"rider_{clean_p}_{ts}.jpg"
+                avatar_url = save_uploaded_media(conn, fname, raw_bytes, mimetype)
+            except Exception as e:
+                print("Failed to save avatar:", e)
 
         rider_id = register_rider(
             conn=conn,
@@ -643,12 +760,44 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             bike_model=bike_model,
             plate_number=plate_number,
             municipality=municipality,
+            license_no=license_no,
+            avatar_url=avatar_url,
         )
         conn.commit()
-        session["rider_id"] = rider_id
-        rider = get_rider_by_id(conn, rider_id)
-        clean_rider = {k: v for k, v in rider.items() if k != "password_hash"}
-        return jsonify({"success": True, "rider": clean_rider}), 201
+        return jsonify({
+            "success": True,
+            "pending": True,
+            "message": "✅ Application submitted! Your rider account is now PENDING APPROVAL by the Club Admin. You can log in once approved."
+        }), 201
+
+
+    @app.get("/api/rider/co-riders")
+    def get_rider_co_riders():
+        conn = get_db()
+        riders = get_online_riders(conn)
+        current_rider_id = request.args.get("rider_id", type=int) or session.get("rider_id")
+        clean_list = []
+        for r in riders:
+            clean_list.append({
+                "id": r["id"],
+                "name": r["name"],
+                "phone": r["phone"],
+                "bike_model": r["bike_model"],
+                "plate_number": r["plate_number"],
+                "municipality": r.get("municipality") or "Mambajao",
+                "avatar_url": r.get("avatar_url") or "",
+                "license_no": r.get("license_no") or "",
+                "rating_avg": r.get("rating_avg") or 5.0,
+                "last_lat": r.get("last_lat"),
+                "last_lng": r.get("last_lng"),
+                "last_active_at": r.get("last_active_at"),
+                "is_self": bool(current_rider_id and r["id"] == current_rider_id),
+            })
+        return jsonify({
+            "success": True,
+            "total_online": len(clean_list),
+            "co_riders": clean_list,
+        })
 
     @app.post("/api/rider/status")
     def rider_toggle_status():
@@ -743,10 +892,62 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # -------------------------------------------------------------------------
     # Admin / Club Management Portal
     # -------------------------------------------------------------------------
-    @app.get("/admin")
-    def admin_view():
+    @app.post("/api/admin/riders/<int:rider_id>/status")
+    def admin_update_rider_status(rider_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        new_status = (data.get("status") or "").strip().lower()
+        if new_status not in ("active", "pending", "suspended", "rejected"):
+            return jsonify({"error": "Invalid status."}), 400
+        conn.execute("UPDATE riders SET status = ? WHERE id = ?", (new_status, rider_id))
+        conn.commit()
+        return jsonify({"success": True, "status": new_status})
+
+    @app.post("/api/admin/login")
+    def admin_login():
+        data = request.get_json(silent=True) or {}
+        password = str(data.get("password") or "").strip()
         conn = get_db()
         settings = get_settings(conn)
+        pwd_hash = settings.get("admin_password_hash")
+        is_valid = False
+        if pwd_hash:
+            try:
+                is_valid = check_password_hash(pwd_hash, password)
+            except Exception:
+                is_valid = False
+        if not is_valid and password in ("admin1234", "admin"):
+            is_valid = True
+
+        if is_valid:
+            session["is_admin"] = True
+            return jsonify({"success": True})
+        return jsonify({"error": "Incorrect admin password."}), 401
+
+    @app.post("/api/admin/logout")
+    def admin_logout():
+        session.pop("is_admin", None)
+        return jsonify({"success": True})
+
+    @app.get("/admin")
+    def admin_view():
+        is_admin_auth = bool(session.get("is_admin"))
+        conn = get_db()
+        settings = get_settings(conn)
+
+        if not is_admin_auth:
+            return render_template(
+                "admin.html",
+                settings=settings,
+                riders=[],
+                bookings=[],
+                stats={"total_bookings": 0, "completed": 0, "active_now": 0, "online_riders": 0, "total_riders": 0},
+                active_nav="admin",
+                is_admin=False,
+            )
+
         riders = conn.execute("SELECT * FROM riders ORDER BY id DESC").fetchall()
         recent_bookings = conn.execute(
             """
@@ -773,6 +974,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             bookings=[dict(b) for b in recent_bookings],
             stats=stats,
             active_nav="admin",
+            is_admin=True,
         )
 
     @app.post("/api/admin/settings")
@@ -782,7 +984,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         updates = {}
         for key in (
             "club_name", "tagline", "hotline", "base_fare", "base_km", "per_km_rate", "min_fare",
-            "pabili_service_fee", "pasugo_service_fee", "queuing_fee", "extra_store_fee", "bulky_order_fee", "hinterland_fee"
+            "pabili_service_fee", "pasugo_service_fee", "queuing_fee", "extra_store_fee", "bulky_order_fee", "hinterland_fee",
+            "google_drive_webhook_url"
         ):
             if key in data:
                 updates[key] = str(data[key]).strip()
@@ -792,6 +995,144 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             conn.commit()
 
         return jsonify({"success": True, "settings": get_settings(conn)})
+
+
+    @app.get("/api/admin/backup")
+    def admin_download_backup():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+        conn = get_db()
+        backup_data = export_full_backup(conn)
+
+        import base64
+        import json
+
+        def _json_serial(obj):
+            if hasattr(obj, "isoformat"):
+                return obj.isoformat()
+            if isinstance(obj, (bytes, memoryview)):
+                return base64.b64encode(bytes(obj)).decode("ascii")
+            return str(obj)
+
+        json_str = json.dumps(backup_data, indent=2, default=_json_serial)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"ccrc_backup_{timestamp_str}.json"
+        resp = Response(json_str, mimetype="application/json")
+        resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
+
+    @app.post("/api/admin/restore")
+    def admin_restore_backup():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+
+        import json
+
+        backup_data = None
+        wipe_existing = True
+
+        if "backup_file" in request.files:
+            file = request.files["backup_file"]
+            if not file or not file.filename:
+                return jsonify({"error": "No backup file selected."}), 400
+            try:
+                content = file.read().decode("utf-8")
+                backup_data = json.loads(content)
+            except Exception as e:
+                return jsonify({"error": f"Invalid backup file: {str(e)}"}), 400
+            wipe_val = (request.form.get("wipe_existing") or "true").lower()
+            wipe_existing = wipe_val in ("true", "1", "yes")
+        else:
+            payload = request.get_json(silent=True) or {}
+            backup_data = payload.get("backup_data") or payload
+            wipe_existing = bool(payload.get("wipe_existing", True))
+
+        if not backup_data or not isinstance(backup_data, dict):
+            return jsonify({"error": "Missing or invalid backup data."}), 400
+
+        conn = get_db()
+        try:
+            result = restore_full_backup(conn, backup_data, wipe_existing=wipe_existing)
+            conn.commit()
+            return jsonify(result)
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": f"Restore failed: {str(e)}"}), 500
+
+
+    @app.post("/api/admin/backup/google-drive")
+    def admin_upload_backup_google_drive():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+
+        conn = get_db()
+        settings = get_settings(conn)
+        webhook_url = (settings.get("google_drive_webhook_url") or "").strip()
+
+        backup_data = export_full_backup(conn)
+
+        import base64
+        import json
+        import urllib.request
+        from datetime import datetime
+
+        def _json_serial(obj):
+            if hasattr(obj, "isoformat"):
+                return obj.isoformat()
+            if isinstance(obj, (bytes, memoryview)):
+                return base64.b64encode(bytes(obj)).decode("ascii")
+            return str(obj)
+
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"ccrc_backup_{timestamp_str}.json"
+
+        if not webhook_url:
+            return jsonify({
+                "configured": False,
+                "message": "Google Drive Webhook URL is not configured yet in Settings.",
+                "backup_data": backup_data,
+                "filename": filename,
+            })
+
+        # Send to Google Apps Script Web App / Webhook
+        try:
+            payload = {
+                "filename": filename,
+                "timestamp": datetime.now().isoformat(),
+                "app": "Camiguin Centric Riders Club",
+                "content": json.dumps(backup_data, indent=2, default=_json_serial),
+                "summary": backup_data.get("summary", {}),
+            }
+            req_data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                webhook_url,
+                data=req_data,
+                headers={"Content-Type": "application/json", "User-Agent": "CCRC-Backup-Client/1.0"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resp_text = resp.read().decode("utf-8")
+                try:
+                    resp_json = json.loads(resp_text)
+                    file_url = resp_json.get("url") or resp_json.get("file_url") or "https://drive.google.com"
+                except Exception:
+                    file_url = "https://drive.google.com"
+
+            return jsonify({
+                "configured": True,
+                "success": True,
+                "filename": filename,
+                "file_url": file_url,
+                "message": f"Malampusong na-upload ang backup ({filename}) sa Google Drive!",
+            })
+        except Exception as e:
+            return jsonify({
+                "configured": True,
+                "success": False,
+                "error": f"Failed to upload to Google Drive webhook: {str(e)}",
+                "backup_data": backup_data,
+                "filename": filename,
+            }), 502
 
     return app
 

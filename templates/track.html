@@ -30,58 +30,70 @@
       <span class="booking-code-pill">{{ booking.booking_code }}</span>
     </div>
 
-    <!-- Live Status Stepper -->
-    <div class="status-stepper" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin:1rem 0 0.5rem;text-align:center;">
-      <div id="step-broadcast" class="step-item {% if booking.status in ('broadcast','accepted','in_progress','completed') %}active{% endif %}" style="padding:6px 2px;border-bottom:3px solid {% if booking.status in ('broadcast','accepted','in_progress','completed') %}#ea580c{% else %}#cbd5e1{% endif %};">
-        <span style="font-size:0.9rem;display:block;">📡</span>
-        <small style="font-size:0.72rem;font-weight:700;">Broadcast</small>
-      </div>
-      <div id="step-accepted" class="step-item {% if booking.status in ('accepted','in_progress','completed') %}active{% endif %}" style="padding:6px 2px;border-bottom:3px solid {% if booking.status in ('accepted','in_progress','completed') %}#ea580c{% else %}#cbd5e1{% endif %};">
-        <span style="font-size:0.9rem;display:block;">🛵</span>
-        <small style="font-size:0.72rem;font-weight:700;">Accepted</small>
-      </div>
-      <div id="step-transit" class="step-item {% if booking.status in ('in_progress','completed') %}active{% endif %}" style="padding:6px 2px;border-bottom:3px solid {% if booking.status in ('in_progress','completed') %}#ea580c{% else %}#cbd5e1{% endif %};">
-        <span style="font-size:0.9rem;display:block;">🚀</span>
-        <small style="font-size:0.72rem;font-weight:700;">In Transit</small>
-      </div>
-      <div id="step-complete" class="step-item {% if booking.status == 'completed' %}active{% endif %}" style="padding:6px 2px;border-bottom:3px solid {% if booking.status == 'completed' %}#16a34a{% else %}#cbd5e1{% endif %};">
-        <span style="font-size:0.9rem;display:block;">🏁</span>
-        <small style="font-size:0.72rem;font-weight:700;">Completed</small>
-      </div>
-    </div>
-
     <h1 style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
       {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
     </h1>
     <div class="text-muted" style="font-size:0.86rem;">
-      Fare: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Distance: <strong>{{ booking.estimated_km }} km</strong> &bull; Payment: <strong style="text-transform:capitalize;">{{ booking.payment_method or 'Cash' }}</strong>
-      {% if booking.promo_code %}
-        &bull; Promo: <span class="badge badge-accent" style="font-size:0.75rem;">{{ booking.promo_code }} (-₱{{ '{:,.0f}'.format(booking.discount_amount) }})</span>
-      {% endif %}
-      {% if booking.scheduled_at %}
-        &bull; 📅 Scheduled: <strong>{{ booking.scheduled_at }}</strong>
-      {% endif %}
+      Fare: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Distance: <strong>{{ booking.estimated_km }} km</strong>
       {% if booking.estimated_budget and booking.estimated_budget > 0 %}
         &bull; Shopping Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
       {% endif %}
+      {% if booking.payment_method %}
+        &bull; Payment: <strong style="text-transform:uppercase;">{{ booking.payment_method }}</strong>
+      {% endif %}
     </div>
 
-    <!-- Safety & Sharing Actions Bar -->
-    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
-      <button type="button" id="share-ride-btn" class="btn btn-sm btn-outline" style="flex:1;min-width:140px;font-weight:600;">
-        📤 Share Live GPS
+    <!-- Safety & Quick Action Toolbar -->
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button type="button" id="share-gps-btn" class="btn-sm" style="background:#0284c7;color:white;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+        <span>🔗</span> Share Live GPS
       </button>
-      <button type="button" id="sos-btn" class="btn btn-sm btn-danger" style="flex:1;min-width:140px;font-weight:700;background:#dc2626;border-color:#dc2626;color:#fff;">
-        🆘 Emergency / SOS
+      <button type="button" id="open-sos-btn" class="btn-sm" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+        <span>🚨</span> Emergency SOS
       </button>
-      <button type="button" id="print-receipt-btn" class="btn btn-sm btn-outline" style="flex:1;min-width:120px;font-weight:600;">
-        🧾 View Receipt
+      <button type="button" id="view-receipt-btn" class="btn-sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+        <span>🧾</span> View Receipt
       </button>
     </div>
   </div>
 
+  <!-- Visual Ride Progress Stepper -->
+  <div class="card" style="padding:16px;margin-bottom:1rem;border-radius:14px;">
+    <div class="stepper-horizontal" style="display:flex;justify-content:space-between;position:relative;text-align:center;">
+      <div class="step-item {% if booking.status in ['broadcast', 'accepted', 'in_progress', 'completed'] %}active{% endif %}" id="step-broadcast" style="flex:1;">
+        <div style="font-size:1.3rem;">📡</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">1. Broadcast</small>
+      </div>
+      <div class="step-item {% if booking.status in ['accepted', 'in_progress', 'completed'] %}active{% endif %}" id="step-accepted" style="flex:1;">
+        <div style="font-size:1.3rem;">🛵</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">2. Accepted</small>
+      </div>
+      <div class="step-item {% if booking.status in ['in_progress', 'completed'] %}active{% endif %}" id="step-transit" style="flex:1;">
+        <div style="font-size:1.3rem;">🚀</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">3. In Transit</small>
+      </div>
+      <div class="step-item {% if booking.status == 'completed' %}active{% endif %}" id="step-completed" style="flex:1;">
+        <div style="font-size:1.3rem;">🏁</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">4. Completed</small>
+      </div>
+    </div>
+  </div>
+
   <!-- Interactive Live GPS Map -->
-  <div class="card" style="padding:10px;margin-bottom:1rem;border-radius:14px;overflow:hidden;">
+  <div class="card map-canvas-container" id="tracking-map-container" style="padding:10px;margin-bottom:1rem;border-radius:14px;overflow:hidden;position:relative;">
+    <!-- Floating Quick Controls on Tracking Map -->
+    <div class="map-floating-bar" style="top:18px;right:18px;">
+      <div class="map-layer-pill">
+        <button type="button" class="layer-pill-btn active" data-track-layer="street">🗺️ Kalsada</button>
+        <button type="button" class="layer-pill-btn" data-track-layer="satellite">🛰️ Satellite</button>
+      </div>
+      <button type="button" id="track-recenter-btn" class="map-float-btn" title="I-focus sa lokasyon sa Rider">
+        <span>🎯</span> I-focus sa Rider
+      </button>
+      <button type="button" id="track-fullscreen-btn" class="map-float-btn" title="Padak-a ang Mapa">
+        <span>⛶</span>
+      </button>
+    </div>
     <div id="tracking-map" style="height: 380px; width: 100%; border-radius: 10px; z-index: 1;"></div>
     <div class="tracking-legend" style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px 0;font-size:0.78rem;">
       <div>
@@ -98,7 +110,13 @@
   <!-- Assigned Rider Info Card -->
   <div id="assigned-rider-card" class="card rider-info-card {% if not booking.rider_id %}hidden{% endif %}">
     <div class="rider-card-top">
-      <div class="rider-avatar" id="rider-avatar">{{ (booking.rider_name or 'R')[:1] }}</div>
+      <div class="rider-avatar" id="rider-avatar">
+        {% if booking.rider_avatar %}
+          <img src="{{ booking.rider_avatar }}" alt="{{ booking.rider_name }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+        {% else %}
+          {{ (booking.rider_name or 'R')[:1] }}
+        {% endif %}
+      </div>
       <div class="rider-meta">
         <h3 id="rider-name" style="margin:0;">{{ booking.rider_name or 'Club Rider' }}</h3>
         <div class="text-muted" id="rider-bike-text" style="font-size:0.85rem;">
@@ -120,8 +138,145 @@
     </div>
   </div>
 
-  <!-- Trip Details Card -->
-  <div class="card" style="margin-top:1rem;">
+
+  <!-- Live In-App Chat with Assigned Rider -->
+  <div class="card chat-card" id="chat-section">
+    <div class="chat-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.4rem;">💬</span>
+        <div>
+          <h3 style="margin:0;font-size:1.05rem;">Live Chat with Rider</h3>
+          <span class="chat-subtitle text-muted" id="chat-rider-status-text" style="font-size:0.8rem;">
+            Direct in-app messaging with {{ booking.rider_name or 'your assigned driver' }}
+          </span>
+        </div>
+      </div>
+      <span class="badge badge-success" id="chat-online-badge">Online</span>
+    </div>
+
+    <!-- Quick Canned Replies for Customer -->
+    <div class="canned-replies" id="customer-canned-replies">
+      <button type="button" class="canned-btn" data-msg="Asa na dapit Kuya?">📍 Asa na dapit Kuya?</button>
+      <button type="button" class="canned-btn" data-msg="Diri ra ko sa gawas naghulat Kuya.">🏠 Diri ra ko sa gawas naghulat.</button>
+      <button type="button" class="canned-btn" data-msg="Salamat Kuya!">👍 Salamat Kuya!</button>
+      <button type="button" class="canned-btn" data-msg="Palihug ko pag-abot Kuya.">🛵 Palihug ko pag-abot.</button>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="chat-messages" id="chat-messages-box">
+      <div class="chat-empty-hint" id="chat-empty-hint">
+        <span>💬 Start chatting with your rider for directions, landmarks, or special requests.</span>
+      </div>
+    </div>
+
+    <!-- Input Form -->
+    <form class="chat-input-bar" id="chat-form">
+      <input type="text" id="chat-input-field" placeholder="Type a message to rider..." maxlength="300" autocomplete="off" required>
+      <button type="submit" id="chat-send-btn" class="btn btn-primary chat-send-btn" title="Send message">
+        <span>Send</span> ✈️
+      </button>
+    </form>
+  </div>
+
+  <!-- Review Submission Box (When Completed) -->
+  <div id="review-submission-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;border:2px solid #fed7aa;background:#fffaf5;">
+    <div style="text-align:center;padding:10px 0;">
+      <span style="font-size:2rem;">⭐</span>
+      <h3 style="margin:6px 0 2px;">Rate Your Island Rider</h3>
+      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
+
+      <form id="track-review-form">
+        <input type="hidden" id="review-rider-id" value="{{ booking.rider_id or '' }}">
+        <input type="hidden" id="review-booking-id" value="{{ booking.id }}">
+        <div class="star-rating-select" style="display:flex;justify-content:center;gap:8px;font-size:2rem;cursor:pointer;margin-bottom:12px;" id="star-picker">
+          <span class="star-item" data-value="1">★</span>
+          <span class="star-item" data-value="2">★</span>
+          <span class="star-item" data-value="3">★</span>
+          <span class="star-item" data-value="4">★</span>
+          <span class="star-item" data-value="5" style="color:#f59e0b;">★</span>
+        </div>
+        <input type="hidden" id="selected-rating" value="5">
+
+        <textarea id="review-comment" rows="2" placeholder="Write a compliment or feedback (optional)..." style="width:100%;max-width:480px;margin:0 auto;display:block;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;"></textarea>
+
+        <button type="submit" id="submit-review-btn" class="btn btn-primary" style="margin-top:10px;padding:8px 24px;">
+          Submit 5-Star Rating &rarr;
+        </button>
+        <div id="review-feedback-msg" class="hidden" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Emergency / SOS Modal -->
+  <div id="sos-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-md">
+      <div class="modal-header" style="background:#fee2e2;border-bottom:1px solid #fecaca;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;color:#b91c1c;font-size:1.15rem;display:flex;align-items:center;gap:6px;">
+          <span>🚨</span> Island Emergency Hotlines
+        </h3>
+        <button type="button" id="close-sos-btn" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#991b1b;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px 18px;">
+        <p style="font-size:0.88rem;color:#475569;margin-top:0;">
+          If you are in danger or require medical/police assistance on Camiguin island, contact these hotlines immediately:
+        </p>
+        <ul style="list-style:none;padding:0;margin:12px 0;display:grid;gap:10px;">
+          <li style="padding:10px 14px;background:#fef2f2;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>Camiguin General Hospital (CGH)</strong>
+              <small style="display:block;color:#64748b;">Mambajao Hospital Emergency</small>
+            </div>
+            <a href="tel:0883871026" class="btn btn-sm btn-primary">📞 Call</a>
+          </li>
+          <li style="padding:10px 14px;background:#fef2f2;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>PNP Mambajao Police Station</strong>
+              <small style="display:block;color:#64748b;">Emergency Police Response</small>
+            </div>
+            <a href="tel:09985986877" class="btn btn-sm btn-primary">📞 Call</a>
+          </li>
+          <li style="padding:10px 14px;background:#fef2f2;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>CCRC Island Dispatch Center</strong>
+              <small style="display:block;color:#64748b;">Club Manager &amp; Dispatcher</small>
+            </div>
+            <a href="tel:09170001122" class="btn btn-sm btn-primary">📞 Call</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Digital Receipt Modal -->
+  <div id="receipt-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-md">
+      <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+        <h3 style="margin:0;font-size:1.1rem;">🧾 Digital Ride Receipt</h3>
+        <button type="button" id="close-receipt-btn" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:18px;">
+        <div style="text-align:center;border-bottom:1px dashed #cbd5e1;padding-bottom:12px;margin-bottom:12px;">
+          <h2 style="margin:0;font-size:1.2rem;color:var(--primary);">CAMIGUIN CENTRIC RIDERS CLUB</h2>
+          <small class="text-muted">Verified Island Transport &bull; Official Island Tariff</small>
+        </div>
+        <div style="font-size:0.88rem;display:grid;gap:6px;">
+          <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong>{{ booking.booking_code }}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span>{{ booking.customer_name }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Service:</span><span style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span>{{ booking.estimated_km }} km</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
+          {% if booking.promo_code %}
+          <div style="display:flex;justify-content:space-between;color:#16a34a;"><span>Voucher ({{ booking.promo_code }}):</span><span>-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span></div>
+          {% endif %}
+          <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;border-top:2px solid #1e293b;padding-top:8px;margin-top:6px;">
+            <span>Total Fare:</span>
+            <span>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</span>
+          </div>
+        </div>
+        <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
     <h3 style="margin-top:0;font-size:1.05rem;">Trip Details &amp; Summary</h3>
     <div class="trip-details-list">
       <div class="trip-detail-item">
@@ -146,143 +301,6 @@
         <span class="detail-label">Customer:</span>
         <span>{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
       </div>
-      <div class="trip-detail-item">
-        <span class="detail-label">Payment Method:</span>
-        <strong style="text-transform:uppercase;">{{ booking.payment_method or 'Cash' }}</strong>
-      </div>
-    </div>
-  </div>
-
-  <!-- Post-Trip Rating & Review Card -->
-  <div id="review-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;background:#f0fdf4;border:1px solid #bbf7d0;">
-    <div class="card-head" style="margin-bottom:12px;">
-      <h3 style="margin:0 0 4px;color:#166534;font-size:1.15rem;">⭐ Rate Your Island Rider</h3>
-      <p class="text-muted" style="margin:0;font-size:0.86rem;">
-        Your feedback helps keep Camiguin Centric Riders Club safe, courteous, and top-rated!
-      </p>
-    </div>
-
-    <form id="rating-form">
-      <div class="star-rating-selector" style="display:flex;gap:8px;font-size:2rem;cursor:pointer;color:#cbd5e1;margin-bottom:10px;">
-        <span class="star-btn" data-star="1">★</span>
-        <span class="star-btn" data-star="2">★</span>
-        <span class="star-btn" data-star="3">★</span>
-        <span class="star-btn" data-star="4">★</span>
-        <span class="star-btn" data-star="5" style="color:#f59e0b;">★</span>
-      </div>
-      <input type="hidden" id="selected-star-val" value="5">
-
-      <div class="form-group" style="margin-bottom:10px;">
-        <textarea id="review-comment-input" rows="2" placeholder="Write a compliment, note, or review for {{ booking.rider_name or 'your rider' }} (Optional)..." style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;"></textarea>
-      </div>
-
-      <button type="submit" id="submit-review-btn" class="btn btn-primary btn-block" style="background:#16a34a;border-color:#16a34a;font-weight:700;">
-        Submit Rider Review &rarr;
-      </button>
-    </form>
-    <div id="review-success-msg" class="hidden" style="text-align:center;color:#15803d;font-weight:700;margin-top:10px;font-size:0.95rem;">
-      🎉 Salamat kaayo! Your review has been saved to the rider's profile.
-    </div>
-  </div>
-
-  <!-- Rider Reviews Box -->
-  {% if rider_reviews and rider_reviews|length > 0 %}
-  <div class="card" style="margin-top:1rem;">
-    <h3 style="margin-top:0;font-size:1.05rem;">Recent Community Reviews for {{ booking.rider_name }}</h3>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      {% for rev in rider_reviews %}
-      <div style="background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #f1f5f9;font-size:0.84rem;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
-          <strong>{{ rev.customer_name }}</strong>
-          <span style="color:#f59e0b;">{{ '★' * rev.rating }}</span>
-        </div>
-        {% if rev.comment %}
-        <p style="margin:0;color:#475569;font-style:italic;">&ldquo;{{ rev.comment }}&rdquo;</p>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- SOS Emergency Modal -->
-  <div id="sos-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="modal-card modal-md">
-      <div style="text-align:center;margin-bottom:14px;">
-        <span style="font-size:2.8rem;line-height:1;">🚨</span>
-        <h2 style="color:#dc2626;margin:6px 0 2px;">Emergency Assistance (SOS)</h2>
-        <p class="text-muted" style="font-size:0.86rem;margin:0;">
-          Need immediate help or emergency contact while on your trip?
-        </p>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <a href="tel:{{ club.hotline }}" class="btn btn-primary btn-block" style="text-align:center;font-weight:700;">
-          📞 Call CCRC Dispatch Hotline ({{ club.hotline }})
-        </a>
-        <a href="tel:09177063464" class="btn btn-outline btn-block" style="text-align:center;">
-          🏥 Call Camiguin General Hospital (CGH)
-        </a>
-        <a href="tel:911" class="btn btn-danger btn-block" style="text-align:center;background:#dc2626;color:#fff;font-weight:700;">
-          🚨 Call National Emergency Hotline (911)
-        </a>
-        <button type="button" id="close-sos-btn" class="btn btn-outline btn-block" style="margin-top:6px;">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Official Trip Receipt Modal -->
-  <div id="receipt-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="modal-card modal-md">
-      <div style="text-align:center;border-bottom:1px dashed #cbd5e1;padding-bottom:12px;margin-bottom:12px;">
-        <span style="font-size:2.2rem;line-height:1;">🛵</span>
-        <h3 style="margin:4px 0 0;">{{ club.name }}</h3>
-        <small class="text-muted">Official Island Ride &amp; Courier Receipt</small>
-        <div style="font-family:monospace;font-weight:700;margin-top:6px;">{{ booking.booking_code }}</div>
-      </div>
-
-      <div style="font-size:0.85rem;line-height:1.7;color:#334155;">
-        <div style="display:flex;justify-content:space-between;">
-          <span class="text-muted">Date &amp; Time:</span>
-          <span>{{ booking.created_at }}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;">
-          <span class="text-muted">Passenger:</span>
-          <span>{{ booking.customer_name }}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;">
-          <span class="text-muted">Rider / Bike:</span>
-          <span>{{ booking.rider_name or 'Club Member' }} ({{ booking.rider_plate or 'CCRC' }})</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;">
-          <span class="text-muted">Distance:</span>
-          <span>{{ booking.estimated_km }} km (Kalsada Mismo)</span>
-        </div>
-        <hr style="border:none;border-top:1px dashed #cbd5e1;margin:8px 0;">
-        <div>🟢 <strong>From:</strong> {{ booking.pickup_address }}</div>
-        <div>🏁 <strong>To:</strong> {{ booking.dropoff_address }}</div>
-        {% if booking.promo_code %}
-        <div style="display:flex;justify-content:space-between;color:#16a34a;margin-top:4px;">
-          <span>Voucher Discount ({{ booking.promo_code }}):</span>
-          <strong>-₱{{ '{:,.0f}'.format(booking.discount_amount) }}</strong>
-        </div>
-        {% endif %}
-        <hr style="border:none;border-top:1px dashed #cbd5e1;margin:8px 0;">
-        <div style="display:flex;justify-content:space-between;font-size:1.1rem;margin-top:4px;">
-          <strong>Total Paid ({{ booking.payment_method|upper }}):</strong>
-          <strong style="color:var(--primary);">₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button type="button" onclick="window.print()" class="btn btn-primary" style="flex:1;">
-          🖨️ Print / Save PDF
-        </button>
-        <button type="button" id="close-receipt-btn" class="btn btn-outline" style="flex:1;">
-          Close
-        </button>
-      </div>
     </div>
   </div>
 
@@ -295,6 +313,6 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=2"></script>
+<script src="/static/js/track.js?v=4"></script>
 {% endif %}
 {% endblock %}
