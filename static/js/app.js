@@ -1774,6 +1774,7 @@
   }
 
   // Pin on Map Handlers ("mudiritso dayun pag pin ang map")
+  // "THEN PAG CLICK NAKO SA PIN MAP MUADTO SA SA SAKTO NGA GE PIN MAP"
   if (locateDropoffGpsBtn) {
     locateDropoffGpsBtn.addEventListener("click", () => {
       targetModeButtons.forEach((b) =>
@@ -1785,37 +1786,50 @@
       const found = currentVal ? matchCamiguinPlace(currentVal) : null;
       let targetLat = null;
       let targetLng = null;
+      let displayLabel = "";
 
+      // Prioritize exact coordinates from input match or stored coordinates
       if (found) {
         targetLat = found.lat;
         targetLng = found.lng;
-      } else if (dropoffLatInput.value && dropoffLngInput.value) {
+        displayLabel = found.name;
+        dropoffInput.value = found.name;
+        dropoffLatInput.value = found.lat;
+        dropoffLngInput.value = found.lng;
+      } else if (dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
         targetLat = parseFloat(dropoffLatInput.value);
         targetLng = parseFloat(dropoffLngInput.value);
+        displayLabel = currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`;
       } else if (map) {
         const c = map.getCenter();
         targetLat = parseFloat(c.lat.toFixed(5));
         targetLng = parseFloat(c.lng.toFixed(5));
+        displayLabel = currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`;
       } else {
-        targetLat = 9.2189;
-        targetLng = 124.7560;
+        targetLat = 9.2488;
+        targetLng = 124.6980;
+        displayLabel = "Jollibee Camiguin, Mambajao";
       }
 
-      const displayLabel = found ? found.name : (currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`);
       setDropoffPoint(targetLat, targetLng, displayLabel);
       if (dropoffMarker) {
+        dropoffMarker.setLatLng([targetLat, targetLng]);
         dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
       }
+
       if (map) {
+        map.invalidateSize();
         map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
       }
 
-      const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
-      if (mapCard) {
-        mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
+      if (mapContainer) {
+        mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast(`🏁 Drop-off Na-pin sa: ${displayLabel}`);
+      showMapToast(`🏁 Naa sa Mapa ang Drop-off: ${displayLabel}`);
+      updateRouteLine();
+      recalculateFare();
     });
   }
 
@@ -1830,34 +1844,49 @@
       const found = currentVal ? matchCamiguinPlace(currentVal) : null;
       let targetLat = null;
       let targetLng = null;
+      let displayLabel = "";
 
       if (found) {
         targetLat = found.lat;
         targetLng = found.lng;
-      } else if (pickupLatInput.value && pickupLngInput.value) {
+        displayLabel = found.name;
+        pickupInput.value = found.name;
+        pickupLatInput.value = found.lat;
+        pickupLngInput.value = found.lng;
+      } else if (pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
         targetLat = parseFloat(pickupLatInput.value);
         targetLng = parseFloat(pickupLngInput.value);
+        displayLabel = currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`;
       } else if (map) {
         const c = map.getCenter();
         targetLat = parseFloat(c.lat.toFixed(5));
         targetLng = parseFloat(c.lng.toFixed(5));
+        displayLabel = currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`;
       } else {
         targetLat = 9.2483;
         targetLng = 124.6975;
+        displayLabel = "Mambajao Public Market";
       }
 
-      const displayLabel = found ? found.name : (currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`);
       setPickupPoint(targetLat, targetLng, displayLabel);
+      if (pickupMarker) {
+        pickupMarker.setLatLng([targetLat, targetLng]);
+        pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
+      }
+
       if (map) {
-        map.flyTo([targetLat, targetLng], 15, { duration: 0.8 });
+        map.invalidateSize();
+        map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
       }
 
-      const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
-      if (mapCard) {
-        mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
+      if (mapContainer) {
+        mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast(`🟢 Pickup Pinned: ${displayLabel}`);
+      showMapToast(`🟢 Naa sa Mapa ang Pickup: ${displayLabel}`);
+      updateRouteLine();
+      recalculateFare();
     });
   }
 
@@ -2405,7 +2434,8 @@
     } catch (_) {}
   }
 
-  // Quick Landmark Chips
+  // Quick Landmark Chips (Popular Destinations)
+  // "DAPAT PAG CLICK NAKO SA POPULAR DESTINATION MO AUTO INPUT SA DROP OFF"
   if (landmarkChips) {
     landmarkChips.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip-pill, .chip-btn");
@@ -2415,31 +2445,40 @@
       const lng = parseFloat(chip.getAttribute("data-lng"));
       if (!lat || !lng) return;
 
-      if (currentTargetMode === "pickup") {
-        pickupLatInput.value = lat;
-        pickupLngInput.value = lng;
-        setPickupPoint(lat, lng, name);
-        if (pickupMarker) {
-          pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(name)}`).openPopup();
-        }
-        if (!dropoffLatInput.value) {
-          targetModeButtons.forEach((b) => b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff"));
-          currentTargetMode = "dropoff";
-        }
-      } else {
-        dropoffLatInput.value = lat;
-        dropoffLngInput.value = lng;
-        setDropoffPoint(lat, lng, name);
-        if (dropoffMarker) {
-          dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(name)}`).openPopup();
-        }
+      // 1. Highlight active chip
+      document.querySelectorAll(".chip-pill").forEach((p) => p.classList.remove("active"));
+      chip.classList.add("active");
+
+      // 2. ALWAYS Auto-input directly to DESTINATION / DROP-OFF!
+      if (dropoffInput) dropoffInput.value = name;
+      dropoffLatInput.value = lat;
+      dropoffLngInput.value = lng;
+      setDropoffPoint(lat, lng, name);
+
+      // 3. Switch target mode buttons to Dropoff (Red Pin active)
+      targetModeButtons.forEach((b) =>
+        b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff")
+      );
+      currentTargetMode = "dropoff";
+
+      // 4. Update marker & popup
+      if (dropoffMarker) {
+        dropoffMarker.setLatLng([lat, lng]);
+        dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(name)}`).openPopup();
       }
 
+      // 5. Instantly fly map right to the pinned destination (Zoom 16)
       if (map) {
         map.flyTo([lat, lng], 16, { duration: 0.8 });
       }
 
-      showMapToast(`${currentTargetMode === "pickup" ? "🟢 Pickup" : "🏁 Drop-off"} Na-pin sa: ${name}`);
+      // 6. Smoothly scroll map into view so user immediately sees the pin
+      const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
+      if (mapContainer) {
+        mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      showMapToast(`🏁 Drop-off Na-set: ${name}`);
       updateRouteLine();
       recalculateFare();
     });
