@@ -2816,11 +2816,37 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             phone TEXT NOT NULL UNIQUE,
             name TEXT NOT NULL,
+            password_hash TEXT DEFAULT '',
             email TEXT DEFAULT '',
+            barangay TEXT DEFAULT '',
+            is_verified INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'active',
             total_rides INTEGER DEFAULT 0,
+            total_spent REAL DEFAULT 0.0,
             saved_notes TEXT DEFAULT '',
             created_at TEXT NOT NULL,
             last_active_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_code TEXT NOT NULL UNIQUE,
+            booking_id INTEGER NOT NULL,
+            booking_code TEXT NOT NULL,
+            customer_phone TEXT NOT NULL,
+            customer_name TEXT NOT NULL,
+            rider_id INTEGER DEFAULT NULL,
+            rider_name TEXT DEFAULT '',
+            service_type TEXT NOT NULL,
+            amount REAL NOT NULL,
+            payment_method TEXT NOT NULL DEFAULT 'cash',
+            status TEXT NOT NULL DEFAULT 'completed',
+            notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
         )
         """
     )
@@ -2851,6 +2877,8 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer_phone)")
     # Migrations for new columns on bookings
     for col_def in [
         ("scheduled_at", "TEXT DEFAULT NULL"),
@@ -2860,6 +2888,19 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN {col_def[0]} {col_def[1]}")
+        except Exception:
+            pass
+
+    # Migrations for customers table
+    for col_def in [
+        ("password_hash", "TEXT DEFAULT ''"),
+        ("barangay", "TEXT DEFAULT ''"),
+        ("is_verified", "INTEGER DEFAULT 0"),
+        ("status", "TEXT DEFAULT 'active'"),
+        ("total_spent", "REAL DEFAULT 0.0"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE customers ADD COLUMN {col_def[0]} {col_def[1]}")
         except Exception:
             pass
 
@@ -2975,11 +3016,36 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             id SERIAL PRIMARY KEY,
             phone VARCHAR(32) NOT NULL UNIQUE,
             name VARCHAR(120) NOT NULL,
+            password_hash VARCHAR(255) DEFAULT '',
             email VARCHAR(120) DEFAULT '',
+            barangay VARCHAR(120) DEFAULT '',
+            is_verified INTEGER DEFAULT 0,
+            status VARCHAR(32) DEFAULT 'active',
             total_rides INTEGER DEFAULT 0,
+            total_spent REAL DEFAULT 0.0,
             saved_notes TEXT DEFAULT '',
             created_at TIMESTAMPTZ NOT NULL,
             last_active_at TIMESTAMPTZ NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS transactions (
+            id SERIAL PRIMARY KEY,
+            transaction_code VARCHAR(64) NOT NULL UNIQUE,
+            booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+            booking_code VARCHAR(32) NOT NULL,
+            customer_phone VARCHAR(32) NOT NULL,
+            customer_name VARCHAR(120) NOT NULL,
+            rider_id INTEGER DEFAULT NULL,
+            rider_name VARCHAR(120) DEFAULT '',
+            service_type VARCHAR(32) NOT NULL,
+            amount REAL NOT NULL,
+            payment_method VARCHAR(32) NOT NULL DEFAULT 'cash',
+            status VARCHAR(32) NOT NULL DEFAULT 'completed',
+            notes TEXT DEFAULT '',
+            created_at VARCHAR(32) NOT NULL
         )
         """
     )
@@ -3010,6 +3076,21 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer_phone)")
+
+    # PostgreSQL migrations
+    for col_def in [
+        ("password_hash", "VARCHAR(255) DEFAULT ''"),
+        ("barangay", "VARCHAR(120) DEFAULT ''"),
+        ("is_verified", "INTEGER DEFAULT 0"),
+        ("status", "VARCHAR(32) DEFAULT 'active'"),
+        ("total_spent", "REAL DEFAULT 0.0"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
+        except Exception:
+            pass
 
 
 def _seed_initial_data(conn: DatabaseConnection) -> None:
@@ -3135,6 +3216,66 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
                     p,
                 )
     except Exception as e:
+        pass
+
+    # Starter verified customers
+    try:
+        existing_custs = conn.execute("SELECT COUNT(*) AS c FROM customers").fetchone()
+        if not existing_custs or existing_custs["c"] == 0:
+            now_iso = datetime.now().isoformat(timespec="seconds")
+            sample_customers = [
+                ("09170001122", "Maria Santos", generate_password_hash("pass1234"), "Agoho, Mambajao", 1, "active", 5, 420.0, now_iso, now_iso),
+                ("09180003344", "Juan Dela Cruz", generate_password_hash("pass1234"), "Benoni, Mahinog", 1, "active", 2, 180.0, now_iso, now_iso),
+            ]
+            for c in sample_customers:
+                conn.execute(
+                    """
+                    INSERT INTO customers (phone, name, password_hash, barangay, is_verified, status, total_rides, total_spent, created_at, last_active_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    c,
+                )
+    except Exception:
+        pass
+
+    # Backfill transactions for existing bookings if transactions table is empty
+    try:
+        existing_txns = conn.execute("SELECT COUNT(*) AS c FROM transactions").fetchone()
+        if not existing_txns or existing_txns["c"] == 0:
+            now_iso = datetime.now().isoformat(timespec="seconds")
+            bookings_rows = conn.execute("SELECT * FROM bookings ORDER BY id ASC").fetchall()
+            for b in bookings_rows:
+                r_id = b.get("rider_id")
+                r_name = ""
+                if r_id:
+                    rider_row = conn.execute("SELECT name FROM riders WHERE id = ?", (r_id,)).fetchone()
+                    if rider_row:
+                        r_name = rider_row["name"]
+                t_code = f"TXN-{b['booking_code']}"
+                conn.execute(
+                    """
+                    INSERT INTO transactions (
+                        transaction_code, booking_id, booking_code, customer_phone, customer_name,
+                        rider_id, rider_name, service_type, amount, payment_method, status, notes, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        t_code,
+                        b["id"],
+                        b["booking_code"],
+                        b["customer_phone"],
+                        b["customer_name"],
+                        r_id,
+                        r_name,
+                        b["service_type"],
+                        float(b.get("fare_amount", 50.0)),
+                        b.get("payment_method", "cash"),
+                        b.get("status", "completed"),
+                        f"Booking {b['booking_code']}",
+                        b.get("created_at", now_iso),
+                    ),
+                )
+    except Exception:
         pass
 
 
@@ -3295,7 +3436,13 @@ def create_booking(
             now,
         ),
     )
-    return get_booking_by_id(conn, booking_id)
+    booking = get_booking_by_id(conn, booking_id)
+    if booking:
+        try:
+            record_transaction(conn, booking, status="broadcast", notes=f"{service_type.upper()} booking created")
+        except Exception:
+            pass
+    return booking
 
 
 def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, Any] | None:
@@ -3305,9 +3452,13 @@ def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, An
                r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-               r.avatar_url AS rider_avatar, r.license_no AS rider_license
+               r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(c.is_verified, 0) AS customer_verified,
+               COALESCE(c.total_rides, 0) AS customer_total_rides,
+               COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
+        LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE b.id = ?
         """,
         (booking_id,),
@@ -3322,9 +3473,13 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
                r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-               r.avatar_url AS rider_avatar, r.license_no AS rider_license
+               r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(c.is_verified, 0) AS customer_verified,
+               COALESCE(c.total_rides, 0) AS customer_total_rides,
+               COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
+        LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE UPPER(b.booking_code) = ?
         """,
         (booking_code.strip().upper(),),
@@ -3335,9 +3490,14 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
 def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT * FROM bookings
-        WHERE status = 'broadcast' AND rider_id IS NULL
-        ORDER BY id DESC
+        SELECT b.*,
+               COALESCE(c.is_verified, 0) AS customer_verified,
+               COALESCE(c.total_rides, 0) AS customer_total_rides,
+               COALESCE(c.barangay, '') AS customer_barangay
+        FROM bookings b
+        LEFT JOIN customers c ON b.customer_phone = c.phone
+        WHERE b.status = 'broadcast' AND b.rider_id IS NULL
+        ORDER BY b.id DESC
         LIMIT 20
         """
     ).fetchall()
@@ -3362,9 +3522,14 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
     """
     rows = conn.execute(
         """
-        SELECT * FROM bookings
-        WHERE rider_id = ? AND status IN ('accepted', 'in_progress')
-        ORDER BY id DESC
+        SELECT b.*,
+               COALESCE(c.is_verified, 0) AS customer_verified,
+               COALESCE(c.total_rides, 0) AS customer_total_rides,
+               COALESCE(c.barangay, '') AS customer_barangay
+        FROM bookings b
+        LEFT JOIN customers c ON b.customer_phone = c.phone
+        WHERE b.rider_id = ? AND b.status IN ('accepted', 'in_progress')
+        ORDER BY b.id DESC
         """,
         (rider_id,),
     ).fetchall()
@@ -3471,6 +3636,13 @@ def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> 
     )
     # Check if row was updated
     rowcount = cur.rowcount if hasattr(cur, "rowcount") else 0
+    if rowcount > 0:
+        try:
+            b = get_booking_by_id(conn, booking_id)
+            if b:
+                record_transaction(conn, b, status="accepted", notes=f"Accepted by rider #{rider_id}")
+        except Exception:
+            pass
     return rowcount > 0
 
 
@@ -3491,6 +3663,17 @@ def update_booking_status(conn: DatabaseConnection, booking_id: int, new_status:
 
     params = [new_status] + extra_params + [booking_id]
     conn.execute(f"UPDATE bookings SET status = ?{extra_col} WHERE id = ?", tuple(params))
+
+    # Synchronize transaction and customer stats
+    try:
+        b = get_booking_by_id(conn, booking_id)
+        if b:
+            record_transaction(conn, b, status=new_status, notes=f"Trip status: {new_status}")
+            if new_status == "completed":
+                update_customer_stats(conn, b.get("customer_phone", ""), b.get("fare_amount", 0.0))
+    except Exception:
+        pass
+
     return True
 
 
@@ -4048,7 +4231,7 @@ def restore_full_backup(
 
 
 # -------------------------------------------------------------------------
-# Customer Profiles & History
+# Customer Profiles, Verification & History
 # -------------------------------------------------------------------------
 def get_or_create_customer(conn: DatabaseConnection, phone: str, name: str = "") -> dict[str, Any]:
     phone = (phone or "").strip()
@@ -4060,19 +4243,118 @@ def get_or_create_customer(conn: DatabaseConnection, phone: str, name: str = "")
             conn.execute("UPDATE customers SET name = ?, last_active_at = ? WHERE phone = ?", (name, now_iso, phone))
         else:
             conn.execute("UPDATE customers SET last_active_at = ? WHERE phone = ?", (now_iso, phone))
-        return conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+        return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
     
     conn.execute(
         """
-        INSERT INTO customers (phone, name, email, total_rides, saved_notes, created_at, last_active_at)
-        VALUES (?, ?, '', 0, '', ?, ?)
+        INSERT INTO customers (phone, name, email, is_verified, status, total_rides, total_spent, saved_notes, created_at, last_active_at)
+        VALUES (?, ?, '', 0, 'active', 0, 0.0, '', ?, ?)
         """,
         (phone, name or "Camiguin Passenger", now_iso, now_iso)
     )
-    return conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+    return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
+
+def register_customer(
+    conn: DatabaseConnection,
+    name: str,
+    phone: str,
+    password: str = "",
+    barangay: str = "",
+    email: str = "",
+) -> dict[str, Any]:
+    phone = (phone or "").strip()
+    name = (name or "").strip()
+    barangay = (barangay or "").strip()
+    email = (email or "").strip().lower()
+    pwd_hash = generate_password_hash(password) if password else ""
+    is_verified = 1 if password else 0
+    now_iso = datetime.now().isoformat(timespec="seconds")
+
+    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+    if row:
+        conn.execute(
+            """
+            UPDATE customers
+            SET name = COALESCE(NULLIF(?, ''), name),
+                password_hash = CASE WHEN ? != '' THEN ? ELSE password_hash END,
+                barangay = COALESCE(NULLIF(?, ''), barangay),
+                email = COALESCE(NULLIF(?, ''), email),
+                is_verified = CASE WHEN ? != '' THEN 1 ELSE is_verified END,
+                last_active_at = ?
+            WHERE phone = ?
+            """,
+            (name, password, pwd_hash, barangay, email, password, now_iso, phone),
+        )
+        return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
+
+    conn.execute(
+        """
+        INSERT INTO customers (
+            phone, name, password_hash, email, barangay, is_verified, status,
+            total_rides, total_spent, saved_notes, created_at, last_active_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 0, 0.0, '', ?, ?)
+        """,
+        (phone, name or "Camiguin Passenger", pwd_hash, email, barangay, is_verified, now_iso, now_iso),
+    )
+    return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
+
+def authenticate_customer(conn: DatabaseConnection, phone: str, password: str) -> dict[str, Any] | None:
+    phone = (phone or "").strip()
+    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+    if not row:
+        return None
+    r_dict = dict(row)
+    pwd_hash = r_dict.get("password_hash") or ""
+    if not pwd_hash or not check_password_hash(pwd_hash, password):
+        return None
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    conn.execute("UPDATE customers SET last_active_at = ? WHERE id = ?", (now_iso, r_dict["id"]))
+    return r_dict
+
+def toggle_customer_verify(conn: DatabaseConnection, customer_id: int) -> dict[str, Any] | None:
+    row = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if not row:
+        return None
+    r_dict = dict(row)
+    new_verified = 0 if r_dict.get("is_verified", 0) else 1
+    conn.execute("UPDATE customers SET is_verified = ? WHERE id = ?", (new_verified, customer_id))
+    updated = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    return dict(updated) if updated else None
 
 def get_customer_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
-    return conn.execute("SELECT * FROM customers WHERE phone = ?", (phone.strip(),)).fetchone()
+    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone.strip(),)).fetchone()
+    return dict(row) if row else None
+
+def get_all_customers(conn: DatabaseConnection) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT * FROM customers
+        ORDER BY is_verified DESC, total_rides DESC, id DESC
+        """
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+def update_customer_stats(conn: DatabaseConnection, customer_phone: str, fare_amount: float) -> None:
+    if not customer_phone:
+        return
+    phone = customer_phone.strip()
+    try:
+        fare = float(fare_amount or 0.0)
+    except (ValueError, TypeError):
+        fare = 0.0
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+    if row:
+        conn.execute(
+            """
+            UPDATE customers
+            SET total_rides = total_rides + 1,
+                total_spent = total_spent + ?,
+                last_active_at = ?
+            WHERE phone = ?
+            """,
+            (fare, now_iso, phone),
+        )
 
 def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int = 15) -> list[dict[str, Any]]:
     return conn.execute(
@@ -4086,6 +4368,176 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
         """,
         (phone.strip(),)
     ).fetchall()
+
+
+# -------------------------------------------------------------------------
+# Transactions & Financial Ledger Engine
+# -------------------------------------------------------------------------
+def generate_transaction_code(booking_code: str = "") -> str:
+    if booking_code:
+        return f"TXN-{booking_code}"
+    now_str = datetime.now().strftime("%Y%m%d")
+    rnd = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"TXN-{now_str}-{rnd}"
+
+def record_transaction(
+    conn: DatabaseConnection,
+    booking: dict[str, Any],
+    status: str = "completed",
+    notes: str = "",
+) -> dict[str, Any]:
+    booking_id = booking["id"]
+    booking_code = booking.get("booking_code", "")
+    customer_phone = booking.get("customer_phone", "")
+    customer_name = booking.get("customer_name", "")
+    rider_id = booking.get("rider_id")
+    rider_name = booking.get("rider_name", "")
+    if not rider_name and rider_id:
+        r = conn.execute("SELECT name FROM riders WHERE id = ?", (rider_id,)).fetchone()
+        if r:
+            rider_name = r["name"]
+    service_type = booking.get("service_type", "ride")
+    try:
+        amount = float(booking.get("fare_amount", 0.0))
+    except (ValueError, TypeError):
+        amount = 0.0
+    payment_method = booking.get("payment_method", "cash")
+    now_iso = datetime.now().isoformat(timespec="seconds")
+
+    existing = conn.execute("SELECT * FROM transactions WHERE booking_id = ?", (booking_id,)).fetchone()
+    if existing:
+        conn.execute(
+            """
+            UPDATE transactions
+            SET rider_id = COALESCE(?, rider_id),
+                rider_name = CASE WHEN ? != '' THEN ? ELSE rider_name END,
+                amount = ?,
+                payment_method = ?,
+                status = ?,
+                notes = CASE WHEN ? != '' THEN ? ELSE notes END
+            WHERE booking_id = ?
+            """,
+            (rider_id, rider_name, rider_name, amount, payment_method, status, notes, notes, booking_id),
+        )
+        row = conn.execute("SELECT * FROM transactions WHERE booking_id = ?", (booking_id,)).fetchone()
+        return dict(row) if row else {}
+
+    txn_code = generate_transaction_code(booking_code)
+    conn.execute(
+        """
+        INSERT INTO transactions (
+            transaction_code, booking_id, booking_code, customer_phone, customer_name,
+            rider_id, rider_name, service_type, amount, payment_method, status, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            txn_code,
+            booking_id,
+            booking_code,
+            customer_phone,
+            customer_name,
+            rider_id,
+            rider_name,
+            service_type,
+            amount,
+            payment_method,
+            status,
+            notes,
+            now_iso,
+        ),
+    )
+    row = conn.execute("SELECT * FROM transactions WHERE booking_id = ?", (booking_id,)).fetchone()
+    return dict(row) if row else {}
+
+def get_all_transactions(conn: DatabaseConnection, limit: int = 200, status_filter: str = "") -> list[dict[str, Any]]:
+    if status_filter:
+        rows = conn.execute(
+            """
+            SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+            FROM transactions t
+            LEFT JOIN customers c ON t.customer_phone = c.phone
+            WHERE t.status = ?
+            ORDER BY t.id DESC
+            LIMIT ?
+            """,
+            (status_filter, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+            FROM transactions t
+            LEFT JOIN customers c ON t.customer_phone = c.phone
+            ORDER BY t.id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+def get_rider_transactions(conn: DatabaseConnection, rider_id: int, limit: int = 50) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+        FROM transactions t
+        LEFT JOIN customers c ON t.customer_phone = c.phone
+        WHERE t.rider_id = ?
+        ORDER BY t.id DESC
+        LIMIT ?
+        """,
+        (rider_id, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+def get_customer_transactions(conn: DatabaseConnection, customer_phone: str, limit: int = 50) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+        FROM transactions t
+        LEFT JOIN customers c ON t.customer_phone = c.phone
+        WHERE t.customer_phone = ?
+        ORDER BY t.id DESC
+        LIMIT ?
+        """,
+        (customer_phone.strip(), limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+def get_financial_summary(conn: DatabaseConnection) -> dict[str, Any]:
+    row_total = conn.execute(
+        """
+        SELECT COUNT(*) AS total_txns,
+               COALESCE(SUM(amount), 0) AS total_revenue,
+               COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END), 0) AS cash_revenue,
+               COALESCE(SUM(CASE WHEN payment_method != 'cash' THEN amount ELSE 0 END), 0) AS digital_revenue
+        FROM transactions
+        WHERE status = 'completed'
+        """
+    ).fetchone()
+    row_all = conn.execute(
+        """
+        SELECT COUNT(*) AS all_txns,
+               COALESCE(SUM(amount), 0) AS gross_volume
+        FROM transactions
+        """
+    ).fetchone()
+    cust_stats = conn.execute(
+        """
+        SELECT COUNT(*) AS total_customers,
+               COALESCE(SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END), 0) AS verified_customers
+        FROM customers
+        """
+    ).fetchone()
+    return {
+        "total_transactions": row_total["total_txns"] if row_total else 0,
+        "all_transactions": row_all["all_txns"] if row_all else 0,
+        "total_revenue": float(row_total["total_revenue"] if row_total else 0.0),
+        "gross_volume": float(row_all["gross_volume"] if row_all else 0.0),
+        "cash_revenue": float(row_total["cash_revenue"] if row_total else 0.0),
+        "digital_revenue": float(row_total["digital_revenue"] if row_total else 0.0),
+        "total_customers": cust_stats["total_customers"] if cust_stats else 0,
+        "verified_customers": cust_stats["verified_customers"] if cust_stats else 0,
+    }
 
 # -------------------------------------------------------------------------
 # Promo Codes Engine

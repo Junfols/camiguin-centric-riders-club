@@ -133,6 +133,26 @@
       </div>
     </div>
 
+    <!-- Rider Financial Summary & Transactions Card -->
+    <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Today's Completed Earnings</span>
+          <div id="rider-today-earnings" style="font-size:1.6rem;font-weight:800;color:#4ade80;">₱0.00</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">All-Time Earnings</span>
+          <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
+        <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
+        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
+          📜 View Transactions Ledger
+        </button>
+      </div>
+    </div>
+
     <!-- Upcoming Advance Trip Reminder Banner (Minutes Before Alert) -->
     <div id="advance-reminder-banner" class="card hidden" style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:14px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
@@ -212,6 +232,7 @@
           <div>
             <strong style="font-size:0.85rem;">Customer:</strong>
             <div id="active-job-customer" class="loc-text">Customer Name</div>
+            <div id="active-job-customer-badge" style="margin:4px 0;"></div>
             <a id="active-job-call-btn" href="#" class="btn btn-sm btn-primary nav-map-btn">
               📞 Call Customer
             </a>
@@ -360,6 +381,21 @@
         </div>
       </div>
       <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rider Transactions History Modal -->
+<div id="rider-transactions-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-card modal-md" style="max-height:85vh;overflow-y:auto;background:#ffffff;border-radius:14px;">
+    <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+      <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+        <span>💰</span> My Earnings &amp; Transactions
+      </h3>
+      <button type="button" id="close-rider-txns-btn" onclick="document.getElementById('rider-transactions-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+    </div>
+    <div id="rider-txns-modal-body" style="padding:18px;font-size:0.85rem;">
+      <div class="text-muted" style="text-align:center;padding:20px;">Loading your transactions...</div>
     </div>
   </div>
 </div>

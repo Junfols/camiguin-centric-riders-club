@@ -302,7 +302,14 @@
 
         <!-- Customer Contact Details (Clean Modern Grid) -->
         <div class="customer-info-card">
-          <div class="section-badge-title">👤 Passenger / Sender Information</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+            <div class="section-badge-title">👤 Passenger / Sender Information</div>
+            <div id="booking-cust-auth-badge" class="hidden">
+              <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.75rem;font-weight:700;padding:3px 8px;border-radius:10px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;">
+                🛡️ Verified CCRC Account ✓
+              </span>
+            </div>
+          </div>
           <div class="form-grid-2" style="margin-top:10px;">
             <div class="form-group">
               <label for="customer-name">Your Full Name *</label>
@@ -311,6 +318,35 @@
             <div class="form-group">
               <label for="customer-phone">Mobile / WhatsApp Number *</label>
               <input type="tel" id="customer-phone" name="customer_phone" required placeholder="0917 123 4567">
+            </div>
+          </div>
+
+          <!-- Quick 1-Click Secure Registration During Booking -->
+          <div id="booking-register-option" style="margin-top:10px;border-top:1px dashed #e2e8f0;padding-top:8px;">
+            <label style="font-size:0.82rem;font-weight:600;color:#1d4ed8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none;">
+              <input type="checkbox" id="reg-during-booking-toggle" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
+              <span>🔒 I-secure ug i-verify kini nga phone number gamit ang Password (Legit Passenger Badge 🛡️)</span>
+            </label>
+            <div id="reg-during-booking-fields" class="hidden" style="margin-top:8px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+              <div style="font-size:0.8rem;color:#15803d;margin-bottom:8px;font-weight:600;">
+                ✓ Walay bogus o prank booking: Ang rehistradong customer adunay <strong>Verified Badge 🛡️</strong> nga makita sa tanang riders.
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="reg-booking-pwd" style="font-size:0.8rem;font-weight:600;color:#334155;">Paghimo og Password (min. 6 characters) *</label>
+                  <input type="password" id="reg-booking-pwd" placeholder="Enter password to secure account" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;">
+                </div>
+                <div class="form-group">
+                  <label for="reg-booking-mun" style="font-size:0.8rem;font-weight:600;color:#334155;">Camiguin Town / Municipality</label>
+                  <select id="reg-booking-mun" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;background:white;">
+                    <option value="Mambajao">Mambajao</option>
+                    <option value="Catarman">Catarman</option>
+                    <option value="Mahinog">Mahinog</option>
+                    <option value="Sagay">Sagay</option>
+                    <option value="Guinsiliban">Guinsiliban</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </div>

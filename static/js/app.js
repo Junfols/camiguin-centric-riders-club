@@ -3509,6 +3509,14 @@
         promo_code: (document.getElementById("promo-code-input")?.value || "").trim().toUpperCase(),
       };
 
+      const regToggle = document.getElementById("reg-during-booking-toggle");
+      const regPwd = document.getElementById("reg-booking-pwd");
+      const regMun = document.getElementById("reg-booking-mun");
+      if (regToggle && regToggle.checked && regPwd && regPwd.value.trim()) {
+        payload.customer_password = regPwd.value.trim();
+        payload.customer_barangay = regMun ? regMun.value : "";
+      }
+
       try {
         const res = await fetch("/api/bookings", {
           method: "POST",
@@ -3525,6 +3533,14 @@
           localStorage.setItem("ccrc_active_booking", b.booking_code);
           if (payload.customer_phone) localStorage.setItem("ccrc_customer_phone", payload.customer_phone);
           if (payload.customer_name) localStorage.setItem("ccrc_customer_name", payload.customer_name);
+          if (payload.customer_password) {
+            localStorage.setItem("ccrc_customer_session", JSON.stringify({
+              name: payload.customer_name,
+              phone: payload.customer_phone,
+              barangay: payload.customer_barangay,
+              is_verified: 1,
+            }));
+          }
         } catch (_) {}
 
         updateActiveTripNavLinks(b.booking_code);
@@ -3792,4 +3808,212 @@
   // Check active booking immediately on load and poll every 6s
   checkCustomerActiveBooking();
   setInterval(checkCustomerActiveBooking, 6000);
+
+  // ---------------------------------------------------------------------------
+  // Customer Authentication & Legit Verification Controller
+  // ---------------------------------------------------------------------------
+  const customerAuthBtn = document.getElementById("customer-auth-btn");
+  const customerAuthBtnText = document.getElementById("customer-auth-btn-text");
+  const customerAuthModal = document.getElementById("customer-auth-modal");
+  const unauthedView = document.getElementById("cust-auth-unauthed-view");
+  const authedView = document.getElementById("cust-auth-authed-view");
+  const tabLogin = document.getElementById("cust-tab-login");
+  const tabRegister = document.getElementById("cust-tab-register");
+  const loginForm = document.getElementById("cust-login-form");
+  const registerForm = document.getElementById("cust-register-form");
+  const regDuringToggle = document.getElementById("reg-during-booking-toggle");
+  const regDuringFields = document.getElementById("reg-during-booking-fields");
+
+  if (regDuringToggle && regDuringFields) {
+    regDuringToggle.addEventListener("change", () => {
+      if (regDuringToggle.checked) {
+        regDuringFields.classList.remove("hidden");
+      } else {
+        regDuringFields.classList.add("hidden");
+      }
+    });
+  }
+
+  function getStoredCustomer() {
+    try {
+      const raw = localStorage.getItem("ccrc_customer_session");
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setStoredCustomer(cust) {
+    try {
+      if (cust) {
+        localStorage.setItem("ccrc_customer_session", JSON.stringify(cust));
+        if (cust.phone) localStorage.setItem("ccrc_customer_phone", cust.phone);
+        if (cust.name) localStorage.setItem("ccrc_customer_name", cust.name);
+      } else {
+        localStorage.removeItem("ccrc_customer_session");
+      }
+    } catch (_) {}
+    updateCustomerAuthUI();
+  }
+
+  function updateCustomerAuthUI() {
+    const cust = getStoredCustomer();
+    const custBadge = document.getElementById("booking-cust-auth-badge");
+    const regOption = document.getElementById("booking-register-option");
+    const nameInput = document.getElementById("customer-name");
+    const phoneInput = document.getElementById("customer-phone");
+
+    if (cust && cust.phone) {
+      if (customerAuthBtnText) customerAuthBtnText.textContent = cust.name ? cust.name.split(" ")[0] + " ✓" : "Account ✓";
+      if (custBadge) custBadge.classList.remove("hidden");
+      if (regOption) regOption.classList.add("hidden");
+
+      if (nameInput && !nameInput.value) nameInput.value = cust.name || "";
+      if (phoneInput && !phoneInput.value) phoneInput.value = cust.phone || "";
+
+      if (unauthedView) unauthedView.classList.add("hidden");
+      if (authedView) {
+        authedView.classList.remove("hidden");
+        const pName = document.getElementById("c-profile-name");
+        const pPhone = document.getElementById("c-profile-phone");
+        const pRides = document.getElementById("c-profile-rides");
+        const pSpent = document.getElementById("c-profile-spent");
+        if (pName) pName.textContent = cust.name || "Customer";
+        if (pPhone) pPhone.textContent = cust.phone || "";
+        if (pRides) pRides.textContent = cust.total_rides || 0;
+        if (pSpent) pSpent.textContent = `₱${Number(cust.total_spent || 0).toFixed(2)}`;
+      }
+    } else {
+      if (customerAuthBtnText) customerAuthBtnText.textContent = "Sign In";
+      if (custBadge) custBadge.classList.add("hidden");
+      if (regOption) regOption.classList.remove("hidden");
+      if (unauthedView) unauthedView.classList.remove("hidden");
+      if (authedView) authedView.classList.add("hidden");
+    }
+  }
+
+  // Open Customer Modal
+  if (customerAuthBtn && customerAuthModal) {
+    customerAuthBtn.addEventListener("click", () => {
+      updateCustomerAuthUI();
+      customerAuthModal.classList.remove("hidden");
+    });
+  }
+
+  // Tab switching
+  if (tabLogin && tabRegister && loginForm && registerForm) {
+    tabLogin.addEventListener("click", () => {
+      tabLogin.style.borderBottom = "3px solid var(--primary)";
+      tabLogin.style.color = "var(--primary)";
+      tabLogin.style.fontWeight = "700";
+      tabRegister.style.borderBottom = "3px solid transparent";
+      tabRegister.style.color = "#64748b";
+      tabRegister.style.fontWeight = "600";
+      loginForm.classList.remove("hidden");
+      registerForm.classList.add("hidden");
+    });
+
+    tabRegister.addEventListener("click", () => {
+      tabRegister.style.borderBottom = "3px solid var(--primary)";
+      tabRegister.style.color = "var(--primary)";
+      tabRegister.style.fontWeight = "700";
+      tabLogin.style.borderBottom = "3px solid transparent";
+      tabLogin.style.color = "#64748b";
+      tabLogin.style.fontWeight = "600";
+      registerForm.classList.remove("hidden");
+      loginForm.classList.add("hidden");
+    });
+  }
+
+  // Handle Customer Login
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById("c-login-err");
+      if (errEl) errEl.classList.add("hidden");
+      const phone = document.getElementById("c-login-phone")?.value.trim();
+      const password = document.getElementById("c-login-pwd")?.value;
+      const btn = document.getElementById("c-login-btn");
+      btn.disabled = true;
+      btn.textContent = "Logging in...";
+
+      try {
+        const res = await fetch("/api/customer/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+
+        setStoredCustomer(data.customer);
+        if (customerAuthModal) customerAuthModal.classList.add("hidden");
+        alert(`Welcome back, ${data.customer.name}! Your account is verified.`);
+      } catch (err) {
+        if (errEl) {
+          errEl.textContent = err.message;
+          errEl.classList.remove("hidden");
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Log In to CCRC →";
+      }
+    });
+  }
+
+  // Handle Customer Register
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById("c-reg-err");
+      if (errEl) errEl.classList.add("hidden");
+      const name = document.getElementById("c-reg-name")?.value.trim();
+      const phone = document.getElementById("c-reg-phone")?.value.trim();
+      const barangay = document.getElementById("c-reg-barangay")?.value;
+      const password = document.getElementById("c-reg-pwd")?.value;
+      const btn = document.getElementById("c-reg-btn");
+      btn.disabled = true;
+      btn.textContent = "Registering...";
+
+      try {
+        const res = await fetch("/api/customer/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone, barangay, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Registration failed");
+
+        setStoredCustomer(data.customer);
+        if (customerAuthModal) customerAuthModal.classList.add("hidden");
+        alert(`Congratulations ${data.customer.name}! You are now a Verified CCRC Passenger (🛡️ Verified Badge).`);
+      } catch (err) {
+        if (errEl) {
+          errEl.textContent = err.message;
+          errEl.classList.remove("hidden");
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Register & Get Verified Badge 🛡️";
+      }
+    });
+  }
+
+  // Customer Logout
+  const custLogoutBtn = document.getElementById("c-profile-logout-btn");
+  if (custLogoutBtn) {
+    custLogoutBtn.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to log out of your customer account?")) {
+        try {
+          await fetch("/api/customer/logout", { method: "POST" });
+        } catch (_) {}
+        setStoredCustomer(null);
+        if (customerAuthModal) customerAuthModal.classList.add("hidden");
+        window.location.reload();
+      }
+    });
+  }
+
+  // Initialize customer session check on load
+  updateCustomerAuthUI();
 })();

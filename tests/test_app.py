@@ -536,6 +536,117 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn(code, idx_resp.get_data(as_text=True))
         self.assertIn("Active Island Trip Detected", idx_resp.get_data(as_text=True))
 
+    def test_customer_registration_and_login(self):
+        # 1. Register a new customer
+        reg_resp = self.client.post(
+            "/api/customer/register",
+            json={
+                "name": "Maria Test Santos",
+                "phone": "09179998877",
+                "barangay": "Agoho, Mambajao",
+                "password": "secretpassword123",
+            },
+        )
+        self.assertEqual(reg_resp.status_code, 200)
+        data = reg_resp.get_json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["customer"]["is_verified"], 1)
+
+        # 2. Check /api/customer/me
+        me_resp = self.client.get("/api/customer/me")
+        self.assertEqual(me_resp.status_code, 200)
+        self.assertTrue(me_resp.get_json()["logged_in"])
+        self.assertEqual(me_resp.get_json()["customer"]["phone"], "09179998877")
+
+        # 3. Customer logout
+        logout_resp = self.client.post("/api/customer/logout")
+        self.assertEqual(logout_resp.status_code, 200)
+
+        # 4. Log in with registered credentials
+        login_resp = self.client.post(
+            "/api/customer/login",
+            json={
+                "phone": "09179998877",
+                "password": "secretpassword123",
+            },
+        )
+        self.assertEqual(login_resp.status_code, 200)
+        self.assertTrue(login_resp.get_json()["success"])
+
+        # 5. Invalid password attempt
+        bad_login = self.client.post(
+            "/api/customer/login",
+            json={
+                "phone": "09179998877",
+                "password": "wrongpassword",
+            },
+        )
+        self.assertEqual(bad_login.status_code, 401)
+
+    def test_transactions_ledger_for_customer_rider_and_admin(self):
+        # 1. Create a booking with instant customer verification
+        book_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Verified Passenger",
+                "customer_phone": "09181112233",
+                "customer_password": "mypassword123",
+                "customer_barangay": "Yumbing, Catarman",
+                "service_type": "pahatud",
+                "pickup_address": "Yumbing, Catarman",
+                "dropoff_address": "Mambajao Public Market",
+            },
+        )
+        self.assertEqual(book_resp.status_code, 201)
+        b = book_resp.get_json()["booking"]
+        b_id = b["id"]
+        b_code = b["booking_code"]
+
+        # Verify broadcast booking contains customer verification badge info
+        avail_resp = self.client.get("/api/rider/available-jobs")
+        self.assertEqual(avail_resp.status_code, 200)
+        jobs = avail_resp.get_json()["jobs"]
+        matching = [j for j in jobs if j["id"] == b_id]
+        self.assertTrue(len(matching) > 0)
+        self.assertEqual(matching[0]["customer_verified"], 1)
+
+        # 2. Rider accepts booking
+        accept_resp = self.client.post(f"/api/bookings/{b_id}/accept", json={"rider_id": 1})
+        self.assertEqual(accept_resp.status_code, 200)
+
+        # 3. Rider completes booking
+        comp_resp = self.client.post(f"/api/bookings/{b_id}/status", json={"status": "completed"})
+        self.assertEqual(comp_resp.status_code, 200)
+
+        # 4. Check rider transactions endpoint
+        rider_txns_resp = self.client.get("/api/rider/transactions?rider_id=1")
+        self.assertEqual(rider_txns_resp.status_code, 200)
+        tx_data = rider_txns_resp.get_json()
+        self.assertTrue(tx_data["success"])
+        self.assertTrue(tx_data["today_earnings"] > 0)
+        matching_tx = [t for t in tx_data["transactions"] if t["booking_code"] == b_code]
+        self.assertTrue(len(matching_tx) > 0)
+        self.assertEqual(matching_tx[0]["status"], "completed")
+
+        # 5. Check Admin transactions view
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+
+        admin_page = self.client.get("/admin")
+        self.assertEqual(admin_page.status_code, 200)
+        admin_html = admin_page.get_data(as_text=True)
+        self.assertIn("Master Transactions Ledger", admin_html)
+        self.assertIn(b_code, admin_html)
+        self.assertIn("Registered Customers Directory", admin_html)
+
+        # 6. Admin toggle customer verify
+        cust_list_resp = self.client.get("/api/admin/transactions")
+        self.assertEqual(cust_list_resp.status_code, 200)
+
+        toggle_resp = self.client.post("/api/admin/customers/1/toggle-verify")
+        self.assertEqual(toggle_resp.status_code, 200)
+        self.assertTrue(toggle_resp.get_json()["success"])
+
 
 if __name__ == "__main__":
     unittest.main()

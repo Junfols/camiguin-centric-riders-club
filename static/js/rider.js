@@ -301,6 +301,7 @@
     checkActiveJob();
     fetchAvailableJobs();
     fetchCoRiders();
+    loadRiderTransactions();
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
@@ -416,6 +417,16 @@
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
     if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
     if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
+    const custBadgeEl = document.getElementById("active-job-customer-badge");
+    if (custBadgeEl) {
+      if (job.customer_verified) {
+        custBadgeEl.innerHTML = `<span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;">🛡️ Verified Passenger ✓ ${job.customer_total_rides > 0 ? `(${job.customer_total_rides} completed trips)` : ''}</span>`;
+      } else if (job.customer_total_rides > 0) {
+        custBadgeEl.innerHTML = `<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.75rem;padding:2px 8px;border-radius:10px;">👍 Repeat Passenger (${job.customer_total_rides} rides)</span>`;
+      } else {
+        custBadgeEl.innerHTML = `<span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.75rem;padding:2px 8px;border-radius:10px;">👤 First-Time Passenger</span>`;
+      }
+    }
     if (activeJobCallBtn) activeJobCallBtn.href = `tel:${job.customer_phone}`;
 
     // Scheduled badge or Ongoing badge
@@ -648,6 +659,7 @@
           activeJob = null;
           activeJobBox.classList.add("hidden");
           fetchAvailableJobs();
+          loadRiderTransactions();
         }
       } catch (_) {}
       jobCompleteBtn.disabled = false;
@@ -686,6 +698,61 @@
         promoRow?.classList.add("hidden");
       }
       riderReceiptModal.classList.remove("hidden");
+    });
+  }
+
+  // Rider Transactions & Earnings Ledger
+  async function loadRiderTransactions() {
+    if (!currentRider) return;
+    try {
+      const res = await fetch(`/api/rider/transactions?rider_id=${currentRider.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const todayEl = document.getElementById("rider-today-earnings");
+      const alltimeEl = document.getElementById("rider-alltime-earnings");
+      const countEl = document.getElementById("rider-txns-count");
+
+      if (todayEl) todayEl.textContent = `₱${data.today_earnings.toFixed(2)}`;
+      if (alltimeEl) alltimeEl.textContent = `₱${data.all_time_earnings.toFixed(2)}`;
+      if (countEl) countEl.textContent = data.total_transactions;
+
+      const bodyEl = document.getElementById("rider-txns-modal-body");
+      if (bodyEl) {
+        if (!data.transactions.length) {
+          bodyEl.innerHTML = `<div class="text-muted" style="text-align:center;padding:24px;">No completed transactions recorded yet.<br>Complete trips to build your earnings record!</div>`;
+          return;
+        }
+        bodyEl.innerHTML = `
+          <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">
+            <div><strong>Today:</strong> <span style="color:#16a34a;font-weight:700;">₱${data.today_earnings.toFixed(2)}</span></div>
+            <div class="text-muted"><strong>Total:</strong> ₱${data.all_time_earnings.toFixed(2)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${data.transactions.map(t => `
+              <div style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="font-weight:700;color:#0f172a;">${escapeHtml(t.booking_code)} &bull; ${escapeHtml(t.service_type.toUpperCase())}</div>
+                  <div class="text-muted" style="font-size:0.78rem;">Passenger: ${escapeHtml(t.customer_name)} ${t.customer_verified ? '🛡️✓' : ''}</div>
+                  <div class="text-muted" style="font-size:0.75rem;">${t.created_at ? t.created_at.slice(0, 16).replace('T', ' ') : ''} &bull; <span style="text-transform:uppercase;">${escapeHtml(t.payment_method || 'CASH')}</span></div>
+                </div>
+                <div style="text-align:right;">
+                  <strong style="color:var(--primary);font-size:1.05rem;">₱${Math.round(t.amount)}</strong>
+                  <div><span class="badge ${t.status === 'completed' ? 'badge-success' : 'badge-warning'}" style="font-size:0.7rem;">${escapeHtml(t.status)}</span></div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+    } catch (_) {}
+  }
+
+  const openRiderTxnsBtn = document.getElementById("open-rider-txns-btn");
+  const riderTxnsModal = document.getElementById("rider-transactions-modal");
+  if (openRiderTxnsBtn && riderTxnsModal) {
+    openRiderTxnsBtn.addEventListener("click", () => {
+      loadRiderTransactions();
+      riderTxnsModal.classList.remove("hidden");
     });
   }
 
@@ -740,8 +807,23 @@
                 ${j.item_notes ? `<div style="margin-top:4px;color:#64748b;font-size:0.82rem;">🛒 <em>&ldquo;${escapeHtml(j.item_notes)}&rdquo;</em></div>` : ""}
                 ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Advance Cash: ₱${j.estimated_budget}</div>` : ""}
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-                <span class="text-muted" style="font-size:0.8rem;">👤 ${escapeHtml(j.customer_name)}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;">
+                <div>
+                  <div class="text-muted" style="font-size:0.82rem;font-weight:600;">👤 ${escapeHtml(j.customer_name)}</div>
+                  ${j.customer_verified ? `
+                    <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;margin-top:2px;">
+                      🛡️ Verified Passenger ✓ ${j.customer_total_rides > 0 ? `(${j.customer_total_rides} completed)` : ''}
+                    </span>
+                  ` : (j.customer_total_rides > 0 ? `
+                    <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.72rem;padding:2px 6px;border-radius:8px;margin-top:2px;">
+                      👍 Repeat Passenger (${j.customer_total_rides} rides)
+                    </span>
+                  ` : `
+                    <span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.72rem;padding:2px 6px;border-radius:8px;margin-top:2px;">
+                      👤 First-Time Passenger
+                    </span>
+                  `)}
+                </div>
                 <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
                   Accept This Booking 🛵
                 </button>

@@ -57,8 +57,17 @@ from db import (
     update_settings,
     CAMIGUIN_TOUR_PACKAGES,
     get_or_create_customer,
+    register_customer,
+    authenticate_customer,
+    toggle_customer_verify,
+    get_all_customers,
     get_customer_by_phone,
     get_customer_ride_history,
+    record_transaction,
+    get_all_transactions,
+    get_rider_transactions,
+    get_customer_transactions,
+    get_financial_summary,
     validate_promo_code,
     apply_promo_code,
     create_review,
@@ -417,6 +426,74 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         session.pop("active_booking_code", None)
         return jsonify({"active": False, "booking": None})
 
+    # -------------------------------------------------------------------------
+    # Customer Authentication & Legit Verification Routes
+    # -------------------------------------------------------------------------
+    @app.post("/api/customer/register")
+    def api_customer_register():
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip()
+        phone = (data.get("phone") or "").strip()
+        password = (data.get("password") or "").strip()
+        barangay = (data.get("barangay") or "").strip()
+        email = (data.get("email") or "").strip()
+
+        if not name:
+            return jsonify({"success": False, "error": "Please enter your full name."}), 400
+        if not phone or len(phone) < 7:
+            return jsonify({"success": False, "error": "Please provide a valid Philippine phone number."}), 400
+        if not password or len(password) < 6:
+            return jsonify({"success": False, "error": "Password must be at least 6 characters long."}), 400
+
+        try:
+            cust = register_customer(conn, name=name, phone=phone, password=password, barangay=barangay, email=email)
+            conn.commit()
+            session["customer_phone"] = cust["phone"]
+            session["customer_name"] = cust["name"]
+            session["customer_id"] = cust["id"]
+            return jsonify({"success": True, "message": "Account registered and verified!", "customer": cust})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.post("/api/customer/login")
+    def api_customer_login():
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        phone = (data.get("phone") or "").strip()
+        password = (data.get("password") or "").strip()
+
+        if not phone or not password:
+            return jsonify({"success": False, "error": "Please enter both phone number and password."}), 400
+
+        cust = authenticate_customer(conn, phone, password)
+        if not cust:
+            return jsonify({"success": False, "error": "Incorrect phone number or password. If you have not registered a password yet, please register."}), 401
+
+        conn.commit()
+        session["customer_phone"] = cust["phone"]
+        session["customer_name"] = cust["name"]
+        session["customer_id"] = cust["id"]
+        return jsonify({"success": True, "message": "Successfully logged in!", "customer": cust})
+
+    @app.post("/api/customer/logout")
+    def api_customer_logout():
+        session.pop("customer_phone", None)
+        session.pop("customer_name", None)
+        session.pop("customer_id", None)
+        return jsonify({"success": True, "message": "Logged out successfully."})
+
+    @app.get("/api/customer/me")
+    def api_customer_me():
+        conn = get_db()
+        phone = (request.args.get("phone") or session.get("customer_phone") or "").strip()
+        if not phone:
+            return jsonify({"logged_in": False, "customer": None})
+        cust = get_customer_by_phone(conn, phone)
+        if not cust:
+            return jsonify({"logged_in": False, "customer": None})
+        return jsonify({"logged_in": True, "customer": cust})
+
     @app.get("/api/customer/history/<phone>")
     def api_customer_history(phone: str):
         conn = get_db()
@@ -589,10 +666,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 apply_promo_code(conn, promo_code)
 
         # Auto-register / update customer profile
-        try:
-            get_or_create_customer(conn, customer_phone, customer_name)
-        except Exception:
-            pass
+        customer_password = (data.get("customer_password") or "").strip()
+        customer_barangay = (data.get("customer_barangay") or "").strip()
+        if customer_password or customer_barangay:
+            try:
+                cust = register_customer(conn, customer_name, customer_phone, customer_password, customer_barangay)
+                session["customer_id"] = cust["id"]
+            except Exception:
+                pass
+        else:
+            try:
+                get_or_create_customer(conn, customer_phone, customer_name)
+            except Exception:
+                pass
 
         booking = create_booking(
             conn=conn,
@@ -997,6 +1083,39 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn.commit()
         return jsonify({"success": True, "lat": lat, "lng": lng})
 
+    @app.get("/api/rider/transactions")
+    def api_rider_transactions():
+        conn = get_db()
+        rider_id_val = request.args.get("rider_id") or session.get("rider_id")
+        if not rider_id_val:
+            return jsonify({"success": False, "error": "Rider ID is required."}), 400
+        try:
+            r_id = int(rider_id_val)
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid Rider ID."}), 400
+
+        txns = get_rider_transactions(conn, r_id, limit=50)
+        now_pht_str = get_now_pht().strftime("%Y-%m-%d")
+
+        today_earnings = sum(
+            float(t["amount"])
+            for t in txns
+            if t["status"] == "completed" and str(t["created_at"]).startswith(now_pht_str)
+        )
+        all_time_earnings = sum(
+            float(t["amount"])
+            for t in txns
+            if t["status"] == "completed"
+        )
+        return jsonify({
+            "success": True,
+            "rider_id": r_id,
+            "transactions": txns,
+            "today_earnings": today_earnings,
+            "all_time_earnings": all_time_earnings,
+            "total_transactions": len(txns),
+        })
+
     # -------------------------------------------------------------------------
     # Admin / Club Management Portal
     # -------------------------------------------------------------------------
@@ -1051,7 +1170,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 settings=settings,
                 riders=[],
                 bookings=[],
-                stats={"total_bookings": 0, "completed": 0, "active_now": 0, "online_riders": 0, "total_riders": 0},
+                transactions=[],
+                customers=[],
+                fin_summary={"total_transactions": 0, "total_revenue": 0.0, "cash_revenue": 0.0, "digital_revenue": 0.0, "total_customers": 0, "verified_customers": 0},
+                stats={"total_bookings": 0, "completed": 0, "active_now": 0, "online_riders": 0, "total_riders": 0, "total_revenue": 0.0, "total_transactions": 0, "verified_customers": 0, "total_customers": 0},
                 active_nav="admin",
                 is_admin=False,
             )
@@ -1059,13 +1181,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         riders = conn.execute("SELECT * FROM riders ORDER BY id DESC").fetchall()
         recent_bookings = conn.execute(
             """
-            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike
+            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike,
+                   COALESCE(c.is_verified, 0) AS customer_verified
             FROM bookings b
             LEFT JOIN riders r ON r.id = b.rider_id
+            LEFT JOIN customers c ON b.customer_phone = c.phone
             ORDER BY b.id DESC
             LIMIT 50
             """
         ).fetchall()
+        transactions = get_all_transactions(conn, limit=200)
+        customers = get_all_customers(conn)
+        fin_summary = get_financial_summary(conn)
 
         stats = {
             "total_bookings": len(recent_bookings),
@@ -1073,6 +1200,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "active_now": sum(1 for b in recent_bookings if b["status"] in ("broadcast", "accepted", "in_progress")),
             "online_riders": sum(1 for r in riders if r["is_online"] == 1 and r["status"] == "active"),
             "total_riders": len(riders),
+            "total_revenue": fin_summary["total_revenue"],
+            "total_transactions": fin_summary["all_transactions"],
+            "verified_customers": fin_summary["verified_customers"],
+            "total_customers": fin_summary["total_customers"],
         }
 
         return render_template(
@@ -1080,10 +1211,33 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             settings=settings,
             riders=[dict(r) for r in riders],
             bookings=[dict(b) for b in recent_bookings],
+            transactions=transactions,
+            customers=customers,
+            fin_summary=fin_summary,
             stats=stats,
             active_nav="admin",
             is_admin=True,
         )
+
+    @app.post("/api/admin/customers/<int:customer_id>/toggle-verify")
+    def admin_toggle_customer_verify(customer_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        cust = toggle_customer_verify(conn, customer_id)
+        if not cust:
+            return jsonify({"error": "Customer not found."}), 404
+        conn.commit()
+        return jsonify({"success": True, "customer": cust})
+
+    @app.get("/api/admin/transactions")
+    def admin_get_transactions():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        status_filter = (request.args.get("status") or "").strip()
+        txns = get_all_transactions(conn, limit=200, status_filter=status_filter)
+        return jsonify({"success": True, "transactions": txns})
 
     @app.post("/api/admin/settings")
     def admin_save_settings():

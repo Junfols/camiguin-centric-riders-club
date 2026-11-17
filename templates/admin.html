@@ -34,7 +34,7 @@
   </div>
 
   <!-- KPI Metrics Grid -->
-  <div class="kpi-grid">
+  <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;">
     <div class="kpi-card">
       <span class="kpi-label">Riders Online Now</span>
       <div class="kpi-val" style="color:#16a34a;">{{ stats.online_riders }}</div>
@@ -54,11 +54,25 @@
     </div>
 
     <div class="kpi-card">
-      <span class="kpi-label">Total Recorded Bookings</span>
-      <div class="kpi-val">{{ stats.total_bookings }}</div>
-      <small class="text-muted">In system database</small>
+      <span class="kpi-label">Total Island Revenue</span>
+      <div class="kpi-val" style="color:#059669;">₱{{ "%.2f"|format(stats.total_revenue or 0) }}</div>
+      <small class="text-muted">Cash: ₱{{ "%.0f"|format(fin_summary.cash_revenue or 0) }} | Digital: ₱{{ "%.0f"|format(fin_summary.digital_revenue or 0) }}</small>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Total Transactions</span>
+      <div class="kpi-val" style="color:#6366f1;">{{ stats.total_transactions or 0 }}</div>
+      <small class="text-muted">Database ledger records</small>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Verified Customers</span>
+      <div class="kpi-val" style="color:#0d9488;">{{ stats.verified_customers or 0 }}</div>
+      <small class="text-muted">of {{ stats.total_customers or 0 }} registered passengers</small>
     </div>
   </div>
+
+
 
   <!-- 2-Column Grid: Settings & Recent Bookings -->
   <div class="admin-grid-2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;margin-top:1.5rem;">
@@ -197,6 +211,8 @@
     </div>
   </div>
 
+
+
   <!-- System Data Backup & Restore Card -->
   <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px;">
@@ -274,6 +290,8 @@
     </div>
   </div>
 
+
+
   <!-- Recent Bookings Table -->
   <div class="card" style="margin-top:1.5rem;">
     <h3 style="margin-top:0;">Recent Island Bookings (Latest 50)</h3>
@@ -294,7 +312,7 @@
         <tbody>
           {% for b in bookings %}
           <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.code }}</td>
+            <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.booking_code or b.code }}</td>
             <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
             <td style="padding:8px;">
               {% if b.status == 'completed' %}
@@ -310,14 +328,19 @@
               {% endif %}
             </td>
             <td style="padding:8px;">
-              <strong>{{ b.customer_name }}</strong><br>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <strong>{{ b.customer_name }}</strong>
+                {% if b.customer_verified %}
+                  <span title="Verified Legit Passenger" style="color:#16a34a;font-size:0.85rem;">🛡️✓</span>
+                {% endif %}
+              </div>
               <a href="tel:{{ b.customer_phone }}" class="text-muted">{{ b.customer_phone }}</a>
             </td>
             <td style="padding:8px;">
-              <small><strong>From:</strong> {{ b.pickup_location }}</small><br>
-              <small><strong>To:</strong> {{ b.dropoff_location }}</small>
+              <small><strong>From:</strong> {{ b.pickup_address or b.pickup_location }}</small><br>
+              <small><strong>To:</strong> {{ b.dropoff_address or b.dropoff_location }}</small>
             </td>
-            <td style="padding:8px;font-weight:700;color:var(--primary);">₱{{ "%.2f"|format(b.estimated_fare|float) }}</td>
+            <td style="padding:8px;font-weight:700;color:var(--primary);">₱{{ "%.2f"|format((b.fare_amount or b.estimated_fare or 0)|float) }}</td>
             <td style="padding:8px;">
               {% if b.rider_name %}
                 <strong>{{ b.rider_name }}</strong><br>
@@ -327,7 +350,7 @@
               {% endif %}
             </td>
             <td style="padding:8px;">
-              <a href="/track/{{ b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
+              <a href="/track/{{ b.booking_code or b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
             </td>
           </tr>
           {% else %}
@@ -337,6 +360,192 @@
       </table>
     </div>
   </div>
+
+  <!-- Master Financial Transactions Ledger -->
+  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+      <div>
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+          <span>💳</span> Master Transactions Ledger ({{ transactions|length }})
+        </h3>
+        <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem;">
+          Recorded financial transactions between verified passengers and club riders.
+        </p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="txn-search-input" placeholder="Search customer, rider, txn code..." onkeyup="filterTransactionsTable()" style="padding:6px 12px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;min-width:220px;">
+        <select id="txn-status-filter" onchange="filterTransactionsTable()" style="padding:6px 10px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;background:white;">
+          <option value="">All Statuses</option>
+          <option value="completed">Completed</option>
+          <option value="in_progress">In Progress</option>
+          <option value="accepted">Accepted</option>
+          <option value="broadcast">Broadcast</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="max-height:480px;overflow-y:auto;">
+      <table id="admin-transactions-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
+            <th style="padding:8px;">Txn Code</th>
+            <th style="padding:8px;">Date / Time</th>
+            <th style="padding:8px;">Passenger</th>
+            <th style="padding:8px;">Assigned Rider</th>
+            <th style="padding:8px;">Service</th>
+            <th style="padding:8px;">Fare Amount</th>
+            <th style="padding:8px;">Payment</th>
+            <th style="padding:8px;">Status</th>
+            <th style="padding:8px;">Trip Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr class="txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }}" style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;font-family:monospace;font-weight:700;color:#0284c7;">
+              {{ t.transaction_code }}
+            </td>
+            <td style="padding:8px;font-size:0.8rem;white-space:nowrap;color:#64748b;">
+              {{ t.created_at[:16].replace('T', ' ') if t.created_at else 'N/A' }}
+            </td>
+            <td style="padding:8px;">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <strong>{{ t.customer_name }}</strong>
+                {% if t.customer_verified %}
+                  <span title="Verified Legit Passenger" style="color:#16a34a;font-size:0.85rem;">🛡️✓</span>
+                {% endif %}
+              </div>
+              <small class="text-muted"><a href="tel:{{ t.customer_phone }}" style="color:#64748b;text-decoration:none;">{{ t.customer_phone }}</a></small>
+            </td>
+            <td style="padding:8px;">
+              {% if t.rider_name %}
+                <strong>{{ t.rider_name }}</strong>
+              {% elif t.rider_id %}
+                <span>Rider #{{ t.rider_id }}</span>
+              {% else %}
+                <span class="text-muted">Unassigned</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;">
+              <span class="badge badge-accent" style="text-transform:uppercase;font-size:0.75rem;">{{ t.service_type }}</span>
+            </td>
+            <td style="padding:8px;font-weight:700;color:var(--primary);font-size:0.95rem;">
+              ₱{{ "%.2f"|format(t.amount|float) }}
+            </td>
+            <td style="padding:8px;">
+              <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-size:0.75rem;text-transform:uppercase;">
+                {{ t.payment_method or 'CASH' }}
+              </span>
+            </td>
+            <td style="padding:8px;">
+              {% if t.status == 'completed' %}
+                <span class="badge badge-success" style="font-size:0.75rem;">Completed</span>
+              {% elif t.status == 'in_progress' %}
+                <span class="badge badge-primary" style="font-size:0.75rem;">In Transit</span>
+              {% elif t.status == 'accepted' %}
+                <span class="badge" style="background:#0284c7;color:white;font-size:0.75rem;">Accepted</span>
+              {% elif t.status == 'broadcast' %}
+                <span class="badge badge-warning" style="font-size:0.75rem;">Pending</span>
+              {% else %}
+                <span class="badge" style="font-size:0.75rem;">{{ t.status }}</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;white-space:nowrap;">
+              <a href="/track/{{ t.booking_code }}" target="_blank" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 8px;">
+                {{ t.booking_code }} 📍
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="text-muted" style="padding:16px;text-align:center;">No transactions recorded in database yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Registered Customers Directory -->
+  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+      <div>
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+          <span>👥</span> Registered Customers Directory ({{ customers|length }})
+        </h3>
+        <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem;">
+          Verified and registered passengers in Camiguin Island with transaction history and bogus prevention status.
+        </p>
+      </div>
+      <input type="text" id="cust-search-input" placeholder="Search customer name, phone, barangay..." onkeyup="filterCustomersTable()" style="padding:6px 12px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;min-width:240px;">
+    </div>
+
+    <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
+      <table id="admin-customers-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
+            <th style="padding:8px;">Verification Status</th>
+            <th style="padding:8px;">Passenger Name</th>
+            <th style="padding:8px;">Phone Number</th>
+            <th style="padding:8px;">Barangay / Town</th>
+            <th style="padding:8px;">Completed Rides</th>
+            <th style="padding:8px;">Total Spent</th>
+            <th style="padding:8px;">Last Active</th>
+            <th style="padding:8px;">Admin Legit Verification</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in customers %}
+          <tr class="cust-row" data-search="{{ c.name }} {{ c.phone }} {{ c.barangay }}" style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">
+              {% if c.is_verified %}
+                <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+                  🛡️ Verified Legit ✓
+                </span>
+              {% else %}
+                <span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;">
+                  ⚠️ Unverified Passenger
+                </span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;">
+              <strong>{{ c.name }}</strong>
+            </td>
+            <td style="padding:8px;">
+              <a href="tel:{{ c.phone }}" style="color:#0284c7;text-decoration:none;font-weight:600;">{{ c.phone }}</a>
+            </td>
+            <td style="padding:8px;">
+              {{ c.barangay or 'Camiguin' }}
+            </td>
+            <td style="padding:8px;font-weight:600;text-align:center;">
+              {{ c.total_rides or 0 }}
+            </td>
+            <td style="padding:8px;font-weight:700;color:var(--primary);">
+              ₱{{ "%.2f"|format(c.total_spent|float if c.total_spent else 0.0) }}
+            </td>
+            <td style="padding:8px;font-size:0.8rem;color:#64748b;white-space:nowrap;">
+              {{ c.last_active_at[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
+            </td>
+            <td style="padding:8px;white-space:nowrap;">
+              {% if c.is_verified %}
+                <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;" onclick="toggleCustomerVerify({{ c.id }})">
+                  Revoke Verification
+                </button>
+              {% else %}
+                <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;" onclick="toggleCustomerVerify({{ c.id }})">
+                  Mark as Verified Legit ✓
+                </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No registered customers in database yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
   {% endif %}
 </div>
 
@@ -379,6 +588,8 @@
       <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
     </div>
   </div>
+
+
 </div>
 {% endblock %}
 
@@ -401,6 +612,45 @@
     } catch (err) {
       alert("Error: " + err.message);
     }
+  };
+
+  // Admin Toggle Customer Verification Handler
+  window.toggleCustomerVerify = async function(customerId) {
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}/toggle-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update customer verification status.");
+      window.location.reload();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  // Transactions Filter
+  window.filterTransactionsTable = function() {
+    const search = (document.getElementById("txn-search-input")?.value || "").toLowerCase();
+    const status = (document.getElementById("txn-status-filter")?.value || "").toLowerCase();
+    const rows = document.querySelectorAll(".txn-row");
+    rows.forEach(r => {
+      const rowSearch = (r.getAttribute("data-search") || "").toLowerCase();
+      const rowStatus = (r.getAttribute("data-status") || "").toLowerCase();
+      const matchesSearch = !search || rowSearch.includes(search);
+      const matchesStatus = !status || rowStatus === status;
+      r.style.display = (matchesSearch && matchesStatus) ? "" : "none";
+    });
+  };
+
+  // Customers Filter
+  window.filterCustomersTable = function() {
+    const search = (document.getElementById("cust-search-input")?.value || "").toLowerCase();
+    const rows = document.querySelectorAll(".cust-row");
+    rows.forEach(r => {
+      const rowSearch = (r.getAttribute("data-search") || "").toLowerCase();
+      r.style.display = (!search || rowSearch.includes(search)) ? "" : "none";
+    });
   };
 
   // Admin Login Handler

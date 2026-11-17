@@ -95,7 +95,10 @@
         {% endif %}
       </nav>
 
-      <div class="header-actions">
+      <div class="header-actions" style="display:flex;align-items:center;gap:8px;">
+        <button type="button" id="customer-auth-btn" class="btn btn-outline btn-sm" style="font-size:0.8rem;padding:6px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;border-color:#cbd5e1;background:#ffffff;">
+          <span>👤</span> <span id="customer-auth-btn-text">Sign In</span>
+        </button>
         <button type="button" id="install-app-btn" class="btn btn-install" title="Install App on Phone">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3v12"/>
@@ -312,6 +315,112 @@
       });
     }
   </script>
+
+  <!-- Customer Account / Legit Verification Modal -->
+  <div id="customer-auth-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+    <div class="modal-card modal-md" style="max-height:85vh;overflow-y:auto;background:#ffffff;border-radius:14px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
+      <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+        <h3 id="cust-modal-title" style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>👤</span> Passenger Account
+        </h3>
+        <button type="button" id="close-cust-auth-modal-btn" onclick="document.getElementById('customer-auth-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+      </div>
+
+      <!-- State 1: Not Logged In Tabs (Login vs Register) -->
+      <div id="cust-auth-unauthed-view" style="padding:18px;">
+        <div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
+          <button type="button" id="cust-tab-login" class="btn" style="flex:1;border:none;border-bottom:3px solid var(--primary);border-radius:0;background:none;font-weight:700;padding:8px;color:var(--primary);">
+            Log In
+          </button>
+          <button type="button" id="cust-tab-register" class="btn" style="flex:1;border:none;border-bottom:3px solid transparent;border-radius:0;background:none;font-weight:600;padding:8px;color:#64748b;">
+            Register (Legit Badge 🛡️)
+          </button>
+        </div>
+
+        <!-- Tab Form: Login -->
+        <form id="cust-login-form">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="c-login-phone" style="font-size:0.85rem;font-weight:600;">Phone Number *</label>
+            <input type="tel" id="c-login-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="c-login-pwd" style="font-size:0.85rem;font-weight:600;">Password *</label>
+            <input type="password" id="c-login-pwd" name="password" required placeholder="Enter your password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div id="c-login-err" class="alert-error hidden" style="margin-bottom:10px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
+          <button type="submit" id="c-login-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;">
+            Log In to CCRC &rarr;
+          </button>
+        </form>
+
+        <!-- Tab Form: Register -->
+        <form id="cust-register-form" class="hidden">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-name" style="font-size:0.85rem;font-weight:600;">Full Name *</label>
+            <input type="text" id="c-reg-name" name="name" required placeholder="e.g. Maria Santos" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-phone" style="font-size:0.85rem;font-weight:600;">Philippine Mobile Number *</label>
+            <input type="tel" id="c-reg-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-barangay" style="font-size:0.85rem;font-weight:600;">Camiguin Municipality / Barangay</label>
+            <select id="c-reg-barangay" name="barangay" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;">
+              <option value="Mambajao">Mambajao</option>
+              <option value="Catarman">Catarman</option>
+              <option value="Mahinog">Mahinog</option>
+              <option value="Sagay">Sagay</option>
+              <option value="Guinsiliban">Guinsiliban</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="c-reg-pwd" style="font-size:0.85rem;font-weight:600;">Create Password (min. 6 characters) *</label>
+            <input type="password" id="c-reg-pwd" name="password" required minlength="6" placeholder="Choose a password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div id="c-reg-err" class="alert-error hidden" style="margin-bottom:10px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
+          <button type="submit" id="c-reg-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;background:#16a34a;border-color:#16a34a;">
+            Register &amp; Get Verified Badge 🛡️
+          </button>
+        </form>
+      </div>
+
+      <!-- State 2: Logged In Customer Profile View -->
+      <div id="cust-auth-authed-view" class="hidden" style="padding:18px;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="width:56px;height:56px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;margin-bottom:8px;">
+            👤
+          </div>
+          <h3 id="c-profile-name" style="margin:0 0 4px;font-size:1.2rem;">Customer Name</h3>
+          <div id="c-profile-phone" class="text-muted" style="font-size:0.9rem;">0917 000 0000</div>
+          <div id="c-profile-badge" style="margin-top:6px;">
+            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:12px;border:1px solid #86efac;">
+              🛡️ Verified CCRC Passenger Account ✓
+            </span>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;">
+          <div>
+            <span style="font-size:0.75rem;color:#64748b;text-transform:uppercase;">Completed Trips</span>
+            <div id="c-profile-rides" style="font-size:1.3rem;font-weight:700;color:#0f172a;">0</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem;color:#64748b;text-transform:uppercase;">Total Spent</span>
+            <div id="c-profile-spent" style="font-size:1.3rem;font-weight:700;color:var(--primary);">₱0.00</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a href="/history" class="btn btn-outline btn-block" style="text-align:center;padding:10px;font-weight:600;text-decoration:none;">
+            📜 View My Past Bookings &amp; Receipts
+          </a>
+          <button type="button" id="c-profile-logout-btn" class="btn btn-block" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:10px;font-weight:600;cursor:pointer;">
+            🚪 Log Out of Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   {% block scripts %}{% endblock %}
   <!-- Secret 10-Tap on 🛵 Logo Icon to Unlock Admin -->
