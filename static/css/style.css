@@ -2285,3 +2285,303 @@ body.rider-logged-in .nav-rider-logged-item {
   font-size: 0.86rem;
   margin: 10px 0;
 }
+
+
+/* ==========================================================================
+   Camiguin CRC Ultra Map Enhancements:
+   Satellite Hybrid View, 3D Rider Marker, GPS Beacon & Fullscreen Expander
+   ========================================================================== */
+
+/* Map Floating Action Bar */
+.map-floating-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+
+.map-layer-pill {
+  display: inline-flex;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 3px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.layer-pill-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.layer-pill-btn:hover {
+  color: #ffffff;
+}
+
+.layer-pill-btn.active {
+  background: #f97316;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.4);
+}
+
+.map-float-btn {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.map-float-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+.map-float-btn:active {
+  transform: translateY(0);
+}
+
+/* Fullscreen Map Styles */
+.map-canvas-container.is-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #0f172a;
+}
+
+.map-canvas-container.is-fullscreen #booking-map,
+.map-canvas-container.is-fullscreen #tracking-map {
+  height: 100vh !important;
+  width: 100vw !important;
+  border-radius: 0 !important;
+}
+
+.map-fullscreen-topbar {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 1001;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 8px 12px;
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.map-canvas-container.is-fullscreen .map-fullscreen-topbar {
+  display: flex !important;
+}
+
+/* 3D Animated Motorcycle Rider Marker */
+.ccrc-rider-3d-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.rider-3d-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rider-radar-pulse {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2.5px solid #f97316;
+  animation: riderRadarRipple 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes riderRadarRipple {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.rider-heading-cone {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  pointer-events: none;
+}
+
+.rider-heading-cone::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 11px solid #f97316;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+.rider-3d-avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.45), 0 2px 4px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.rider-3d-avatar:hover {
+  transform: scale(1.1);
+}
+
+.rider-speed-badge {
+  position: absolute;
+  bottom: -10px;
+  background: #0f172a;
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+
+/* User GPS Beacon (Blue pulsing dot) */
+.user-gps-beacon {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gps-pulse-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: rgba(2, 132, 199, 0.25);
+  border: 1.5px solid #0284c7;
+  animation: gpsPulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes gpsPulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.gps-dot {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #0284c7;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+/* Enhanced Map Pins */
+.custom-pin-enhanced {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: grab;
+}
+
+.custom-pin-enhanced:active {
+  cursor: grabbing;
+}
+
+.custom-pin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 11px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  border: 2px solid #ffffff;
+}
+
+.custom-pin-badge.pin-pickup {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+.custom-pin-badge.pin-dropoff {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.custom-pin-arrow {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  margin-top: -1px;
+}
+
+.pin-pickup + .custom-pin-arrow {
+  border-top: 8px solid #15803d;
+}
+
+.pin-dropoff + .custom-pin-arrow {
+  border-top: 8px solid #b91c1c;
+}
