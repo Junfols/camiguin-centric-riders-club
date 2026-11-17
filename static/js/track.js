@@ -37,13 +37,19 @@
   function initMap() {
     if (!mapEl || typeof L === "undefined") return;
 
+    const CAMIGUIN_BOUNDS = [
+      [9.0500, 124.5800],
+      [9.2900, 124.8300]
+    ];
+
     map = L.map(mapEl, {
       zoomControl: true,
-      maxBounds: [
-        [8.90, 124.40],
-        [9.50, 125.05]
-      ]
-    }).setView([9.2000, 124.7200], 12);
+      minZoom: 11,
+      maxZoom: 19,
+      maxBounds: CAMIGUIN_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      bounceAtZoomLimits: true
+    }).fitBounds(CAMIGUIN_BOUNDS);
 
     // 1. Street Layer
     streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
