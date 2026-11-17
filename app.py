@@ -468,12 +468,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 elif "webp" in head:
                     mimetype = "image/webp"
                 raw_bytes = base64.b64decode(b64str)
-                clean_p = phone.replace(" ", "").replace("-", "")
+                safe_p = "".join(c for c in phone if c.isalnum()) or "cust"
                 ts = int(datetime.now().timestamp())
-                fname = f"cust_{clean_p}_{ts}.jpg"
+                fname = f"cust_{safe_p}_{ts}.jpg"
                 avatar_url = save_uploaded_media(conn, fname, raw_bytes, mimetype)
             except Exception as e:
                 print("Failed to save customer avatar:", e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                if len(avatar_b64) < 120000:
+                    avatar_url = avatar_b64
 
         try:
             cust = register_customer(conn, name=name, phone=phone, password=password, barangay=barangay, email=email, avatar_url=avatar_url)
@@ -485,6 +491,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             session["customer_avatar"] = clean_cust.get("avatar_url", "")
             return jsonify({"success": True, "message": "Account registered and verified!", "customer": clean_cust})
         except Exception as e:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             return jsonify({"success": False, "error": str(e)}), 500
 
     @app.post("/api/customer/login")

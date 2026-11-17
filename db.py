@@ -2709,33 +2709,59 @@ def get_connection(db_path: str = "riders_club.db") -> DatabaseConnection:
 def init_db(conn: DatabaseConnection) -> None:
     if conn.backend == "postgresql":
         _create_postgres_schema(conn)
+        for migration in [
+            "ALTER TABLE riders ADD COLUMN IF NOT EXISTS license_no VARCHAR(64) DEFAULT ''",
+            "ALTER TABLE riders ADD COLUMN IF NOT EXISTS email VARCHAR(160) DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS email VARCHAR(120) DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS barangay VARCHAR(120) DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_verified INTEGER DEFAULT 0",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'active'",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS total_spent REAL DEFAULT 0.0",
+        ]:
+            try:
+                conn.execute(migration)
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
     else:
         _create_sqlite_schema(conn)
-    try:
-        conn.execute("ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        conn.execute("ALTER TABLE riders ADD COLUMN email TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        conn.execute("ALTER TABLE customers ADD COLUMN avatar_url TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        conn.execute("ALTER TABLE customers ADD COLUMN email TEXT DEFAULT ''")
-    except Exception:
-        pass
+        for migration in [
+            "ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''",
+            "ALTER TABLE riders ADD COLUMN email TEXT DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN avatar_url TEXT DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN email TEXT DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN password_hash TEXT DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN barangay TEXT DEFAULT ''",
+            "ALTER TABLE customers ADD COLUMN is_verified INTEGER DEFAULT 0",
+            "ALTER TABLE customers ADD COLUMN status TEXT DEFAULT 'active'",
+            "ALTER TABLE customers ADD COLUMN total_spent REAL DEFAULT 0.0",
+        ]:
+            try:
+                conn.execute(migration)
+            except Exception:
+                pass
+
     # Purge any legacy starter/demo records from database
     try:
         conn.execute("DELETE FROM riders WHERE phone IN ('09171234501', '09171234502', '09171234503')")
     except Exception:
-        pass
+        if conn.backend == "postgresql":
+            try:
+                conn.rollback()
+            except Exception:
+                pass
     try:
         conn.execute("DELETE FROM customers WHERE phone IN ('09170001122', '09180003344')")
     except Exception:
-        pass
+        if conn.backend == "postgresql":
+            try:
+                conn.rollback()
+            except Exception:
+                pass
     _seed_initial_data(conn)
     conn.commit()
 
@@ -4343,7 +4369,12 @@ def register_customer(
         """,
         (clean_phone, name or "Camiguin Passenger", pwd_hash, email, avatar_url, barangay, is_verified, now_iso, now_iso),
     )
-    return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (clean_phone,)).fetchone())
+    row = conn.execute("SELECT * FROM customers WHERE phone = ? ORDER BY id DESC LIMIT 1", (clean_phone,)).fetchone()
+    if not row:
+        row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+    if row:
+        return dict(row)
+    return {"id": 0, "name": name, "phone": clean_phone, "email": email, "is_verified": is_verified, "avatar_url": avatar_url}
 
 def authenticate_customer(conn: DatabaseConnection, phone: str, password: str) -> dict[str, Any] | None:
     row = get_customer_by_phone(conn, phone)

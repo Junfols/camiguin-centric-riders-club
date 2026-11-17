@@ -4315,11 +4315,27 @@
 
   function handleCustPhotoFile(file) {
     if (!file) return;
+    if (cPhotoStatus) {
+      cPhotoStatus.textContent = "⏳ Gi-proseso ang litrato...";
+      cPhotoStatus.style.color = "#0284c7";
+    }
     const reader = new FileReader();
+    reader.onerror = function() {
+      if (cPhotoStatus) {
+        cPhotoStatus.textContent = "⚠️ Dili mabasa ang file.";
+        cPhotoStatus.style.color = "#dc2626";
+      }
+    };
     reader.onload = function(e) {
       const img = new Image();
+      img.onerror = function() {
+        if (cPhotoStatus) {
+          cPhotoStatus.textContent = "⚠️ Dili mabasa ang litrato. Palihug pagpili og JPG o PNG.";
+          cPhotoStatus.style.color = "#dc2626";
+        }
+      };
       img.onload = function() {
-        const maxDim = 500;
+        const maxDim = 480;
         let w = img.width;
         let h = img.height;
         if (w > maxDim || h > maxDim) {
@@ -4336,7 +4352,7 @@
         canvas.height = h;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
-        currentCustAvatarBase64 = canvas.toDataURL("image/jpeg", 0.85);
+        currentCustAvatarBase64 = canvas.toDataURL("image/jpeg", 0.82);
 
         if (cPhotoImg) {
           cPhotoImg.src = currentCustAvatarBase64;
@@ -4346,7 +4362,7 @@
           cPhotoPlaceholder.classList.add("hidden");
         }
         if (cPhotoStatus) {
-          cPhotoStatus.textContent = "✓ Litrato napili (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
+          cPhotoStatus.textContent = "✓ Litrato andam na (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
           cPhotoStatus.style.color = "#16a34a";
         }
       };
@@ -4410,15 +4426,28 @@
             avatar_base64: currentCustAvatarBase64,
           }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Registration failed");
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (_) {
+          throw new Error(
+            res.status === 502 || res.status === 503
+              ? "Ang server nag-restart pa sa Render. Palihug sulayi pag-usab human sa pipila ka segundo."
+              : `Server error (${res.status}). Palihug sulayi pag-usab.`
+          );
+        }
+        if (!res.ok) throw new Error(data.error || "Registration failed. Palihug sulayi pag-usab.");
 
         setStoredCustomer(data.customer);
         if (customerAuthModal) customerAuthModal.classList.add("hidden");
         alert(`Congratulations ${data.customer.name}! You are now a Verified CCRC Passenger (🛡️ Verified Badge).`);
       } catch (err) {
         if (errEl) {
-          errEl.textContent = err.message;
+          let msg = err.message || "";
+          if (msg.toLowerCase().includes("fetch")) {
+            msg = "Dili ma-konekta sa server (Failed to fetch). Posible nga nag-deploy o nag-restart pa ang server sa Render. Palihug hulata og pipila ka segundo unya i-click pag-usab.";
+          }
+          errEl.textContent = msg;
           errEl.classList.remove("hidden");
         }
       } finally {
