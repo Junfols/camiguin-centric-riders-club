@@ -297,6 +297,7 @@
       const payload = {
         name: document.getElementById("reg-name").value.trim(),
         phone: document.getElementById("reg-phone").value.trim(),
+        email: (document.getElementById("reg-email") ? document.getElementById("reg-email").value.trim().toLowerCase() : ""),
         license_no: licenseVal,
         bike_model: document.getElementById("reg-bike").value.trim(),
         plate_number: document.getElementById("reg-plate").value.trim(),

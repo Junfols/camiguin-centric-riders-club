@@ -2716,6 +2716,10 @@ def init_db(conn: DatabaseConnection) -> None:
     except Exception:
         pass
     try:
+        conn.execute("ALTER TABLE riders ADD COLUMN email TEXT DEFAULT ''")
+    except Exception:
+        pass
+    try:
         conn.execute("ALTER TABLE customers ADD COLUMN avatar_url TEXT DEFAULT ''")
     except Exception:
         pass
@@ -2758,6 +2762,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             color TEXT DEFAULT '#f97316',
             license_no TEXT DEFAULT '',
             avatar_url TEXT DEFAULT '',
+            email TEXT DEFAULT '',
             status TEXT DEFAULT 'active', -- active, pending, suspended
             is_online INTEGER DEFAULT 0,
             last_lat REAL DEFAULT NULL,
@@ -2964,6 +2969,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             color VARCHAR(32) DEFAULT '#f97316',
             license_no VARCHAR(64) DEFAULT '',
             avatar_url TEXT DEFAULT '',
+            email VARCHAR(160) DEFAULT '',
             status VARCHAR(32) DEFAULT 'active',
             is_online INTEGER DEFAULT 0,
             last_lat DOUBLE PRECISION DEFAULT NULL,
@@ -3263,18 +3269,53 @@ def normalize_ph_phone(phone: str) -> str:
     return digits or str(phone).strip().replace(" ", "").replace("-", "")
 
 
-def get_rider_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
-    clean = normalize_ph_phone(phone)
-    row = conn.execute("SELECT * FROM riders WHERE phone = ? OR phone = ?", (clean, phone.strip().replace(" ", "").replace("-", ""))).fetchone()
-    if not row:
-        digits = "".join(filter(str.isdigit, str(phone)))
-        if len(digits) >= 10:
-            last10 = digits[-10:]
-            row = conn.execute(
-                "SELECT * FROM riders WHERE phone = ? OR phone = ? OR phone LIKE ? ORDER BY id DESC LIMIT 1",
-                (f"0{last10}", f"+63{last10}", f"%{last10}"),
-            ).fetchone()
-    return dict(row) if row else None
+def get_rider_by_phone(conn: DatabaseConnection, identifier: str) -> dict[str, Any] | None:
+    """Finds a rider by phone number, email address, or plate number."""
+    if not identifier:
+        return None
+    ident = str(identifier).strip()
+
+    # 1. Search by email if it looks like an email or as direct match
+    if "@" in ident:
+        row = conn.execute("SELECT * FROM riders WHERE LOWER(TRIM(email)) = LOWER(?)", (ident,)).fetchone()
+        if row:
+            return dict(row)
+
+    clean = normalize_ph_phone(ident)
+    unspaced = ident.replace(" ", "").replace("-", "")
+
+    # 2. Search by phone or email
+    row = conn.execute(
+        "SELECT * FROM riders WHERE phone = ? OR phone = ? OR LOWER(TRIM(email)) = LOWER(?)",
+        (clean, unspaced, ident.lower())
+    ).fetchone()
+    if row:
+        return dict(row)
+
+    # 3. Match last 10 digits of phone
+    digits = "".join(filter(str.isdigit, ident))
+    if len(digits) >= 10:
+        last10 = digits[-10:]
+        row = conn.execute(
+            "SELECT * FROM riders WHERE phone = ? OR phone = ? OR phone LIKE ? ORDER BY id DESC LIMIT 1",
+            (f"0{last10}", f"+63{last10}", f"%{last10}"),
+        ).fetchone()
+        if row:
+            return dict(row)
+
+    # 4. Search by plate number
+    clean_plate = unspaced.upper()
+    if len(clean_plate) >= 4:
+        row = conn.execute(
+            "SELECT * FROM riders WHERE UPPER(REPLACE(REPLACE(plate_number, ' ', ''), '-', '')) = ? ORDER BY id DESC LIMIT 1",
+            (clean_plate,)
+        ).fetchone()
+        if row:
+            return dict(row)
+
+    return None
+
+get_rider_by_phone_or_email = get_rider_by_phone
 
 
 def register_rider(
@@ -3287,18 +3328,20 @@ def register_rider(
     municipality: str = "Mambajao",
     license_no: str = "",
     avatar_url: str = "",
+    email: str = "",
 ) -> int:
     clean_phone = normalize_ph_phone(phone)
     pwd_hash = generate_password_hash(password)
     now = datetime.now().isoformat(timespec="seconds")
+    clean_email = email.strip().lower()
     return conn.insert_returning_id(
         """
         INSERT INTO riders (
             name, phone, password_hash, bike_model, plate_number,
-            municipality, license_no, avatar_url, status, is_online, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
+            municipality, license_no, avatar_url, email, status, is_online, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
         """,
-        (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), now),
+        (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), clean_email, now),
     )
 
 
@@ -4342,18 +4385,43 @@ def update_customer_password(conn: DatabaseConnection, customer_id: int, new_pas
     conn.commit()
     return True
 
-def get_customer_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
-    clean_p = normalize_ph_phone(phone)
-    row = conn.execute("SELECT * FROM customers WHERE phone = ? OR phone = ?", (clean_p, phone.strip())).fetchone()
-    if not row:
-        digits = "".join(filter(str.isdigit, str(phone)))
-        if len(digits) >= 10:
-            last10 = digits[-10:]
-            row = conn.execute(
-                "SELECT * FROM customers WHERE phone = ? OR phone = ? OR phone LIKE ? ORDER BY id DESC LIMIT 1",
-                (f"0{last10}", f"+63{last10}", f"%{last10}")
-            ).fetchone()
-    return dict(row) if row else None
+def get_customer_by_phone(conn: DatabaseConnection, identifier: str) -> dict[str, Any] | None:
+    """Finds a customer by phone number or email address."""
+    if not identifier:
+        return None
+    ident = str(identifier).strip()
+
+    # 1. Search by email if it looks like an email or direct match
+    if "@" in ident:
+        row = conn.execute("SELECT * FROM customers WHERE LOWER(TRIM(email)) = LOWER(?)", (ident,)).fetchone()
+        if row:
+            return dict(row)
+
+    clean_p = normalize_ph_phone(ident)
+    unspaced = ident.replace(" ", "").replace("-", "")
+
+    # 2. Search by phone or email
+    row = conn.execute(
+        "SELECT * FROM customers WHERE phone = ? OR phone = ? OR LOWER(TRIM(email)) = LOWER(?)",
+        (clean_p, unspaced, ident.lower())
+    ).fetchone()
+    if row:
+        return dict(row)
+
+    # 3. Match last 10 digits
+    digits = "".join(filter(str.isdigit, ident))
+    if len(digits) >= 10:
+        last10 = digits[-10:]
+        row = conn.execute(
+            "SELECT * FROM customers WHERE phone = ? OR phone = ? OR phone LIKE ? ORDER BY id DESC LIMIT 1",
+            (f"0{last10}", f"+63{last10}", f"%{last10}")
+        ).fetchone()
+        if row:
+            return dict(row)
+
+    return None
+
+get_customer_by_phone_or_email = get_customer_by_phone
 
 def get_all_customers(conn: DatabaseConnection) -> list[dict[str, Any]]:
     rows = conn.execute(
@@ -4388,6 +4456,11 @@ def update_customer_stats(conn: DatabaseConnection, customer_phone: str, fare_am
 
 def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int = 15) -> list[dict[str, Any]]:
     clean_p = phone.strip()
+    if "@" in clean_p:
+        cust = get_customer_by_phone(conn, clean_p)
+        if cust and cust.get("phone"):
+            clean_p = cust["phone"]
+
     digits = "".join(filter(str.isdigit, clean_p))
     last10 = digits[-10:] if len(digits) >= 10 else digits
 

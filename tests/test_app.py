@@ -1077,6 +1077,87 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         c_after_admin = self.client.post("/api/customer/login", json={"phone": "09187778899", "password": "admincustnew123"})
         self.assertEqual(c_after_admin.status_code, 200)
 
+    def test_login_with_phone_or_email_for_customer_and_rider(self):
+        from db import get_connection
+        # 1. Customer registration with email and phone
+        c_reg = self.client.post(
+            "/api/customer/register",
+            json={
+                "name": "Liza Soberano",
+                "phone": "09201234567",
+                "email": "liza.soberano@gmail.com",
+                "password": "secretcust123",
+            },
+        )
+        self.assertIn(c_reg.status_code, (200, 201))
+
+        # Login using exact phone
+        res1 = self.client.post("/api/customer/login", json={"phone": "09201234567", "password": "secretcust123"})
+        self.assertEqual(res1.status_code, 200)
+        self.assertEqual(res1.get_json()["customer"]["name"], "Liza Soberano")
+
+        # Login using email in the phone field
+        res2 = self.client.post("/api/customer/login", json={"phone": "liza.soberano@gmail.com", "password": "secretcust123"})
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(res2.get_json()["customer"]["phone"], "09201234567")
+
+        # Login using case-insensitive email
+        res3 = self.client.post("/api/customer/login", json={"phone": "LIZA.SOBERANO@GMAIL.COM", "password": "secretcust123"})
+        self.assertEqual(res3.status_code, 200)
+
+        # Login using formatted phone (+63 920 123 4567)
+        res4 = self.client.post("/api/customer/login", json={"phone": "+63 920 123 4567", "password": "secretcust123"})
+        self.assertEqual(res4.status_code, 200)
+
+        # Customer history lookup via email
+        res_hist = self.client.get("/api/customer/history/liza.soberano@gmail.com")
+        self.assertEqual(res_hist.status_code, 200)
+        self.assertEqual(res_hist.get_json()["customer"]["phone"], "09201234567")
+
+        # 2. Rider registration with email and phone
+        r_reg = self.client.post(
+            "/api/rider/register",
+            json={
+                "name": "Pedro Penduko",
+                "phone": "09281234567",
+                "email": "pedro.rider@gmail.com",
+                "password": "ridersecret123",
+                "bike_model": "Honda Click 125",
+                "plate_number": "MC-9988",
+                "license_no": "P02-88-123456",
+                "municipality": "Mambajao",
+                "avatar_base64": "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
+            },
+        )
+        self.assertIn(r_reg.status_code, (200, 201))
+        r_id = r_reg.get_json()["rider"]["id"]
+
+        # Approve rider via DB so login succeeds
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute("UPDATE riders SET status = 'active' WHERE id = ?", (r_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Login rider with phone
+        r_login_phone = self.client.post("/api/rider/login", json={"phone": "09281234567", "password": "ridersecret123"})
+        self.assertEqual(r_login_phone.status_code, 200)
+        self.assertEqual(r_login_phone.get_json()["rider"]["name"], "Pedro Penduko")
+
+        # Login rider with email in phone field
+        r_login_email = self.client.post("/api/rider/login", json={"phone": "pedro.rider@gmail.com", "password": "ridersecret123"})
+        self.assertEqual(r_login_email.status_code, 200)
+        self.assertEqual(r_login_email.get_json()["rider"]["id"], r_id)
+
+        # Login rider with case-insensitive email
+        r_login_email_upper = self.client.post("/api/rider/login", json={"phone": "PEDRO.RIDER@GMAIL.COM", "password": "ridersecret123"})
+        self.assertEqual(r_login_email_upper.status_code, 200)
+
+        # Login rider with plate number
+        r_login_plate = self.client.post("/api/rider/login", json={"phone": "MC-9988", "password": "ridersecret123"})
+        self.assertEqual(r_login_plate.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

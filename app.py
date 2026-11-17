@@ -491,15 +491,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def api_customer_login():
         conn = get_db()
         data = request.get_json(silent=True) or {}
-        phone = (data.get("phone") or "").strip()
+        identifier = (data.get("phone") or data.get("email") or data.get("identifier") or "").strip()
         password = (data.get("password") or "").strip()
 
-        if not phone or not password:
-            return jsonify({"success": False, "error": "Please enter both phone number and password."}), 400
+        if not identifier or not password:
+            return jsonify({"success": False, "error": "Palihug ibutang ang imong Phone Number o Email ug Password."}), 400
 
-        cust = authenticate_customer(conn, phone, password)
+        cust = authenticate_customer(conn, identifier, password)
         if not cust:
-            return jsonify({"success": False, "error": "Incorrect phone number or password. If you have not registered a password yet, please register."}), 401
+            return jsonify({"success": False, "error": "Incorrect phone number/email or password. Palihug susiha ang imong phone number/email ug password."}), 401
 
         conn.commit()
         session["customer_phone"] = cust["phone"]
@@ -939,15 +939,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def rider_login():
         conn = get_db()
         data = request.get_json(silent=True) or {}
-        phone = (data.get("phone") or "").strip()
+        identifier = (data.get("phone") or data.get("email") or data.get("identifier") or "").strip()
         password = (data.get("password") or "").strip()
 
-        rider = get_rider_by_phone(conn, phone)
+        if not identifier or not password:
+            return jsonify({"error": "Palihug ibutang ang imong Mobile Phone Number o Email ug Password."}), 400
+
+        rider = get_rider_by_phone(conn, identifier)
         if not rider:
-            return jsonify({"error": "Rider phone number not found."}), 404
+            return jsonify({"error": "Wala makit-i ang rider account nga adunay maong Phone Number o Email. Palihug pagsusi o pag-register."}), 404
 
         if not check_password_hash(rider["password_hash"], password):
-            return jsonify({"error": "Incorrect password."}), 401
+            return jsonify({"error": "Incorrect password. Sayop ang imong password."}), 401
 
         status = (rider.get("status") or "").lower()
         if status == "pending":
@@ -1013,6 +1016,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
         phone = (data.get("phone") or "").strip()
+        email = (data.get("email") or "").strip().lower()
         password = (data.get("password") or "").strip()
         license_no = (data.get("license_no") or "").strip().upper()
         bike_model = (data.get("bike_model") or "").strip()
@@ -1029,6 +1033,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         existing = get_rider_by_phone(conn, phone)
         if existing:
             return jsonify({"error": "This phone number is already registered. Please log in."}), 409
+
+        if email:
+            existing_email = get_rider_by_phone(conn, email)
+            if existing_email:
+                return jsonify({"error": "This email address is already registered as a rider. Please log in."}), 409
 
         # Process and save profile picture
         avatar_url = ""
@@ -1059,6 +1068,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             municipality=municipality,
             license_no=license_no,
             avatar_url=avatar_url,
+            email=email,
         )
         conn.commit()
 
