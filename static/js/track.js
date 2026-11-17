@@ -149,12 +149,12 @@
       ).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
-      // Fetch actual road path from OSRM
-      fetch(`https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`)
+      // Fetch actual road path from backend road engine
+      fetch(`/api/road-route?p_lat=${pLat}&p_lng=${pLng}&d_lat=${dLat}&d_lng=${dLng}`)
         .then((r) => r.json())
         .then((data) => {
-          if (data && data.code === "Ok" && data.routes && data.routes.length > 0) {
-            const roadCoords = data.routes[0].geometry.coordinates.map((pt) => [pt[1], pt[0]]);
+          if (data && data.code === "Ok" && data.route_coords && data.route_coords.length > 0) {
+            const roadCoords = data.route_coords.map((pt) => [pt[1], pt[0]]);
             if (routeLine) map.removeLayer(routeLine);
             routeLine = L.polyline(roadCoords, {
               color: "#ea580c",
