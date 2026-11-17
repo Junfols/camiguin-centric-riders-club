@@ -501,6 +501,41 @@
     });
   }
 
+  // Rider View Receipt Listener
+  const riderViewReceiptBtn = document.getElementById("rider-view-receipt-btn");
+  const riderReceiptModal = document.getElementById("rider-receipt-modal");
+  if (riderViewReceiptBtn && riderReceiptModal) {
+    riderViewReceiptBtn.addEventListener("click", () => {
+      if (!activeJob) {
+        alert("No active trip found.");
+        return;
+      }
+      const codeEl = document.getElementById("r-modal-code");
+      const custEl = document.getElementById("r-modal-customer");
+      const srvEl = document.getElementById("r-modal-service");
+      const kmEl = document.getElementById("r-modal-km");
+      const payEl = document.getElementById("r-modal-payment");
+      const totEl = document.getElementById("r-modal-total");
+
+      if (codeEl) codeEl.textContent = activeJob.booking_code || "CCRC-0000";
+      if (custEl) custEl.textContent = `${activeJob.customer_name || ''} (${activeJob.customer_phone || ''})`;
+      if (srvEl) srvEl.textContent = (activeJob.service_type || "pahatud").toUpperCase();
+      if (kmEl) kmEl.textContent = `${activeJob.estimated_km || 0} km`;
+      if (payEl) payEl.textContent = (activeJob.payment_method || "CASH").toUpperCase();
+      if (totEl) totEl.textContent = `₱${Number(activeJob.fare_amount || 0).toLocaleString()}`;
+      
+      const promoRow = document.getElementById("r-modal-promo-row");
+      const promoDiscount = document.getElementById("r-modal-discount");
+      if (activeJob.discount_amount && activeJob.discount_amount > 0) {
+        if (promoDiscount) promoDiscount.textContent = `-₱${activeJob.discount_amount}`;
+        promoRow?.classList.remove("hidden");
+      } else {
+        promoRow?.classList.add("hidden");
+      }
+      riderReceiptModal.classList.remove("hidden");
+    });
+  }
+
   // Available Jobs Polling & Sound Chime Alert
   async function fetchAvailableJobs() {
     if (!onlineToggle.checked) return;
