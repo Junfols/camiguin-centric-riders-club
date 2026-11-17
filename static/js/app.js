@@ -505,6 +505,31 @@
     "full_address": "Baylao, Mambajao"
   },
   {
+    "name": "Moonflower Garden and Restaurant, Baylao",
+    "cat": "food",
+    "keywords": [
+      "moonflower",
+      "moonflower garden",
+      "moonflower restaurant",
+      "moonflower garden and restaurant",
+      "moonflower gardern and restaurant",
+      "moonflower gardern",
+      "moonflower baylao",
+      "moonflower garden baylao",
+      "baylao moonflower",
+      "baylao restaurant",
+      "ice cream",
+      "restaurant baylao",
+      "food",
+      "resto",
+      "restaurant"
+    ],
+    "lat": 9.25057,
+    "lng": 124.7011,
+    "mun": "Mambajao",
+    "full_address": "Baylao, Mambajao, Camiguin"
+  },
+  {
     "name": "Samuel Restaurant, Mambajao",
     "cat": "food",
     "keywords": [
