@@ -19,6 +19,17 @@
   const dropoffInput = document.getElementById("dropoff-address");
   const dropoffLatInput = document.getElementById("dropoff-lat");
   const dropoffLngInput = document.getElementById("dropoff-lng");
+  const clearPickupBtn = document.getElementById("clear-pickup-btn");
+  const clearDropoffBtn = document.getElementById("clear-dropoff-btn");
+
+  function updateClearBtn(inputEl, btnEl) {
+    if (!btnEl) return;
+    if (inputEl && inputEl.value && inputEl.value.trim().length > 0) {
+      btnEl.classList.remove("hidden");
+    } else {
+      btnEl.classList.add("hidden");
+    }
+  }
   const budgetGroup = document.getElementById("budget-group");
   const notesLabel = document.getElementById("notes-label");
   const fareDisplay = document.getElementById("fare-display");
@@ -1753,19 +1764,85 @@
   let typeTimer = null;
   if (pickupInput) {
     pickupInput.addEventListener("input", () => {
+      updateClearBtn(pickupInput, clearPickupBtn);
       clearTimeout(typeTimer);
       typeTimer = setTimeout(() => handleTypedAddress(true), 250);
     });
-    pickupInput.addEventListener("change", () => handleTypedAddress(true));
+    pickupInput.addEventListener("change", () => {
+      updateClearBtn(pickupInput, clearPickupBtn);
+      handleTypedAddress(true);
+    });
   }
 
   if (dropoffInput) {
     dropoffInput.addEventListener("input", () => {
+      updateClearBtn(dropoffInput, clearDropoffBtn);
       clearTimeout(typeTimer);
       typeTimer = setTimeout(() => handleTypedAddress(false), 250);
     });
-    dropoffInput.addEventListener("change", () => handleTypedAddress(false));
+    dropoffInput.addEventListener("change", () => {
+      updateClearBtn(dropoffInput, clearDropoffBtn);
+      handleTypedAddress(false);
+    });
   }
+  // Clear 'X' Button Handlers for Pickup and Drop-off
+  if (clearPickupBtn) {
+    clearPickupBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (pickupInput) pickupInput.value = "";
+      if (pickupLatInput) pickupLatInput.value = "";
+      if (pickupLngInput) pickupLngInput.value = "";
+      if (pickupSuggestions) {
+        pickupSuggestions.innerHTML = "";
+        pickupSuggestions.classList.add("hidden");
+      }
+      if (pickupMarker && map) {
+        map.removeLayer(pickupMarker);
+        pickupMarker = null;
+      }
+      if (routeLine && map) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      currentRoadKm = null;
+      updateClearBtn(pickupInput, clearPickupBtn);
+      if (pickupInput) pickupInput.focus();
+      updateRouteLine();
+      recalculateFare();
+      showMapToast("Pickup na-erase na.");
+    });
+  }
+
+  if (clearDropoffBtn) {
+    clearDropoffBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dropoffInput) dropoffInput.value = "";
+      if (dropoffLatInput) dropoffLatInput.value = "";
+      if (dropoffLngInput) dropoffLngInput.value = "";
+      if (dropoffSuggestions) {
+        dropoffSuggestions.innerHTML = "";
+        dropoffSuggestions.classList.add("hidden");
+      }
+      document.querySelectorAll(".chip-pill").forEach((p) => p.classList.remove("active"));
+      if (dropoffMarker && map) {
+        map.removeLayer(dropoffMarker);
+        dropoffMarker = null;
+      }
+      if (routeLine && map) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      currentRoadKm = null;
+      updateClearBtn(dropoffInput, clearDropoffBtn);
+      if (dropoffInput) dropoffInput.focus();
+      updateRouteLine();
+      recalculateFare();
+      showMapToast("Drop-off na-erase na.");
+    });
+  }
+
 
   // Matrix Modal Controls
   if (openMatrixBtn && fareMatrixModal) {
@@ -2262,6 +2339,7 @@
     pickupLatInput.value = lat;
     pickupLngInput.value = lng;
     if (label) pickupInput.value = label;
+    updateClearBtn(pickupInput, clearPickupBtn);
 
     if (!pickupMarker) {
       const greenIcon = L.divIcon({
@@ -2297,6 +2375,7 @@
     dropoffLatInput.value = lat;
     dropoffLngInput.value = lng;
     if (label) dropoffInput.value = label;
+    updateClearBtn(dropoffInput, clearDropoffBtn);
 
     if (!dropoffMarker) {
       const redIcon = L.divIcon({
@@ -2403,6 +2482,17 @@
     const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
     const isBulky = budgetVal >= 2000;
     const roadKmToSend = typeof overrideRoadKm === "number" ? overrideRoadKm : currentRoadKm;
+
+    if (!pLat || !pLng || !dLat || !dLng) {
+      if (routeLine && map) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      currentRoadKm = null;
+      if (fareDisplay) fareDisplay.textContent = "40";
+      if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Pilia ang Lokasyon)";
+      return;
+    }
 
     try {
       const res = await fetch("/api/fare-estimate", {
@@ -2543,15 +2633,18 @@
     });
   }
 
-  // Default initial points in Mambajao & Map Boot
+  // Clean Map Boot - Inputs start 100% BLANK as requested!
   function bootBookingMap() {
     initMap();
-    if (!pickupLatInput.value || !pickupLngInput.value) {
-      setPickupPoint(9.25319, 124.71660, "Mambajao Public Market");
-    }
-    if (!dropoffLatInput.value || !dropoffLngInput.value) {
-      setDropoffPoint(9.24971, 124.71667, "Jollibee Camiguin, Mambajao");
-    }
+    if (pickupInput) pickupInput.value = "";
+    if (dropoffInput) dropoffInput.value = "";
+    if (pickupLatInput) pickupLatInput.value = "";
+    if (pickupLngInput) pickupLngInput.value = "";
+    if (dropoffLatInput) dropoffLatInput.value = "";
+    if (dropoffLngInput) dropoffLngInput.value = "";
+    updateClearBtn(pickupInput, clearPickupBtn);
+    updateClearBtn(dropoffInput, clearDropoffBtn);
+    recalculateFare();
   }
 
   if (document.readyState === "loading") {
