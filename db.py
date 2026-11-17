@@ -2471,8 +2471,8 @@ def calculate_road_km(
 
     # Try external OSRM mirrors with short timeout
     endpoints = [
-        f"http://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}?overview=full&geometries=geojson",
         f"https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}?overview=full&geometries=geojson",
+        f"http://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}?overview=full&geometries=geojson",
     ]
 
     import ssl
@@ -2485,12 +2485,12 @@ def calculate_road_km(
             req = urllib.request.Request(
                 ep,
                 headers={
-                    "User-Agent": "Mozilla/5.0",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) CamiguinCentricRiders/1.0",
                     "Accept": "application/json",
                 },
             )
             ctx = unverified_ctx if ep.startswith("https") else None
-            with urllib.request.urlopen(req, context=ctx, timeout=2.0) as resp:
+            with urllib.request.urlopen(req, context=ctx, timeout=3.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("code") == "Ok" and data.get("routes"):
                     meters = data["routes"][0]["distance"]
