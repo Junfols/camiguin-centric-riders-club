@@ -187,6 +187,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             active_nav="book",
         )
 
+    @app.get("/api/road-route")
+    def api_road_route():
+        try:
+            p_lat = float(request.args.get("p_lat") or 0.0)
+            p_lng = float(request.args.get("p_lng") or 0.0)
+            d_lat = float(request.args.get("d_lat") or 0.0)
+            d_lng = float(request.args.get("d_lng") or 0.0)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid coordinates"}), 400
+
+        if not (p_lat and p_lng and d_lat and d_lng):
+            return jsonify({"error": "Missing pickup or dropoff coordinates"}), 400
+
+        road_km, coords = calculate_road_km(p_lat, p_lng, d_lat, d_lng)
+        return jsonify({
+            "code": "Ok",
+            "road_km": road_km,
+            "route_coords": coords,
+        })
+
     @app.post("/api/fare-estimate")
     def estimate_fare():
         conn = get_db()
