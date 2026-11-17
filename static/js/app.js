@@ -2339,45 +2339,42 @@
     const dLng = parseFloat(dropoffLngInput.value);
 
     if (pLat && pLng && dLat && dLng) {
-      if (routeLine) map.removeLayer(routeLine);
-
-      // 1. Initial dashed connecting line as immediate feedback
-      routeLine = L.polyline([[pLat, pLng], [dLat, dLng]], {
-        color: "#f97316",
-        weight: 3,
-        dashArray: "4, 6",
-        opacity: 0.5,
-      }).addTo(map);
-      map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-
-      // 2. Query OSRM to get the actual road path ("kalsada mismo kung asa ni agi")
       if (osrmAbortCtrl) {
         osrmAbortCtrl.abort();
       }
       osrmAbortCtrl = new AbortController();
 
       try {
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
-        const res = await fetch(osrmUrl, { signal: osrmAbortCtrl.signal });
+        // Query backend proxy to get exact road routing ("kalsada mismo kung asa ni agi")
+        const routeUrl = `/api/road-route?p_lat=${pLat}&p_lng=${pLng}&d_lat=${dLat}&d_lng=${dLng}`;
+        const res = await fetch(routeUrl, { signal: osrmAbortCtrl.signal });
         if (res.ok) {
-          const osrmData = await res.json();
-          if (osrmData && osrmData.code === "Ok" && osrmData.routes && osrmData.routes.length > 0) {
-            const bestRoute = osrmData.routes[0];
-            const roadCoords = bestRoute.geometry.coordinates.map((coord) => [coord[1], coord[0]]);
-            const roadMeters = bestRoute.distance;
-            const roadKmVal = parseFloat((roadMeters / 1000.0).toFixed(2));
+          const routeData = await res.json();
+          if (routeData && routeData.road_km) {
+            const roadKmVal = parseFloat(routeData.road_km.toFixed(2));
             currentRoadKm = roadKmVal;
 
             if (routeLine) map.removeLayer(routeLine);
-            // Draw real road polyline snapping to Camiguin highway and local streets
-            routeLine = L.polyline(roadCoords, {
-              color: "#ea580c",
-              weight: 5,
-              opacity: 0.95,
-              lineCap: "round",
-              lineJoin: "round",
-            }).addTo(map);
-            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+            if (routeData.route_coords && routeData.route_coords.length > 0) {
+              const roadCoords = routeData.route_coords.map((coord) => [coord[1], coord[0]]);
+              // Draw real road polyline snapping directly to Camiguin road network & streets!
+              routeLine = L.polyline(roadCoords, {
+                color: "#ea580c",
+                weight: 5,
+                opacity: 0.95,
+                lineCap: "round",
+                lineJoin: "round",
+              }).addTo(map);
+              map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+            } else {
+              routeLine = L.polyline([[pLat, pLng], [dLat, dLng]], {
+                color: "#ea580c",
+                weight: 4,
+                opacity: 0.85,
+              }).addTo(map);
+              map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+            }
 
             // Recalculate fare using the exact road distance
             recalculateFare(roadKmVal);
@@ -2386,7 +2383,7 @@
         }
       } catch (err) {
         if (err.name !== "AbortError") {
-          console.log("OSRM client fallback to server road engine");
+          console.log("Route query error:", err);
         }
       }
     }
@@ -2429,7 +2426,7 @@
       const data = await res.json();
       if (data && data.fare_amount) {
         if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
-        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Road Distance)`;
+        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Kalsada / Road Distance)`;
 
         // If backend resolved coordinates that were missing, update markers & inputs
         let hasNewCoords = false;
