@@ -1202,8 +1202,47 @@ input:focus, select:focus, textarea:focus {
   position: relative;
 }
 
+
+.input-clear-btn {
+  background: #e2e8f0;
+  color: #64748b;
+  border: none;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0 4px;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.input-clear-btn:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+  transform: scale(1.1);
+}
+.input-clear-btn:active {
+  transform: scale(0.95);
+  background: #ef4444;
+  color: #ffffff;
+}
+.input-clear-btn.hidden {
+  display: none !important;
+}
+
 .route-field-wrap input {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
   border: none;
   background: transparent;
   padding: 6px 0;
