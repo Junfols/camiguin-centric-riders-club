@@ -749,6 +749,64 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn(code, t_html)
         self.assertIn("Universal Header Auth Sync", t_html)
 
+    def test_customer_and_rider_registration_and_login_flow(self):
+        # 1. Customer registration with spaced phone
+        c_reg = self.client.post(
+            "/api/customer/register",
+            json={
+                "name": "Maria Test",
+                "phone": "0917 999 8888",
+                "password": "secretpassword",
+                "barangay": "Mambajao",
+            },
+        )
+        self.assertEqual(c_reg.status_code, 200)
+        c_data = c_reg.get_json()
+        self.assertTrue(c_data["success"])
+        self.assertEqual(c_data["customer"]["phone"], "09179998888")
+
+        # Customer login with unspaced phone
+        c_login = self.client.post(
+            "/api/customer/login",
+            json={
+                "phone": "09179998888",
+                "password": "secretpassword",
+            },
+        )
+        self.assertEqual(c_login.status_code, 200)
+        self.assertTrue(c_login.get_json()["success"])
+
+        # 2. Rider registration returns active rider and logs in
+        r_reg = self.client.post(
+            "/api/rider/register",
+            json={
+                "name": "Rider AutoActive",
+                "phone": "0918 555 4444",
+                "password": "ridersecret",
+                "license_no": "A01-99-888888",
+                "bike_model": "Suzuki Raider 150",
+                "plate_number": "777-XYZ",
+                "municipality": "Mambajao",
+            },
+        )
+        self.assertEqual(r_reg.status_code, 201)
+        r_data = r_reg.get_json()
+        self.assertTrue(r_data["success"])
+        self.assertIn("rider", r_data)
+        self.assertEqual(r_data["rider"]["status"], "active")
+        self.assertEqual(r_data["rider"]["phone"], "09185554444")
+
+        # Rider login works smoothly
+        r_login = self.client.post(
+            "/api/rider/login",
+            json={
+                "phone": "09185554444",
+                "password": "ridersecret",
+            },
+        )
+        self.assertEqual(r_login.status_code, 200)
+        self.assertTrue(r_login.get_json()["success"])
+
 
 if __name__ == "__main__":
     unittest.main()

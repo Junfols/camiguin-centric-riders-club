@@ -2715,6 +2715,10 @@ def init_db(conn: DatabaseConnection) -> None:
         conn.execute("ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''")
     except Exception:
         pass
+    try:
+        conn.execute("UPDATE riders SET status = 'active' WHERE status = 'pending'")
+    except Exception:
+        pass
     _seed_initial_data(conn)
     conn.commit()
 
@@ -3321,9 +3325,31 @@ def get_rider_by_id(conn: DatabaseConnection, rider_id: int) -> dict[str, Any] |
     return dict(row) if row else None
 
 
+def normalize_ph_phone(phone: str) -> str:
+    """Normalizes any Philippine phone number variation into clean standard 09XXXXXXXXX format."""
+    if not phone:
+        return ""
+    digits = "".join(filter(str.isdigit, str(phone)))
+    if len(digits) == 10 and digits.startswith("9"):
+        return f"0{digits}"
+    if len(digits) == 12 and digits.startswith("639"):
+        return f"0{digits[2:]}"
+    if len(digits) == 11 and digits.startswith("09"):
+        return digits
+    return digits or str(phone).strip().replace(" ", "").replace("-", "")
+
+
 def get_rider_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
-    clean = phone.strip().replace(" ", "").replace("-", "")
-    row = conn.execute("SELECT * FROM riders WHERE phone = ?", (clean,)).fetchone()
+    clean = normalize_ph_phone(phone)
+    row = conn.execute("SELECT * FROM riders WHERE phone = ? OR phone = ?", (clean, phone.strip().replace(" ", "").replace("-", ""))).fetchone()
+    if not row:
+        digits = "".join(filter(str.isdigit, str(phone)))
+        if len(digits) >= 10:
+            last10 = digits[-10:]
+            row = conn.execute(
+                "SELECT * FROM riders WHERE phone = ? OR phone = ? OR phone LIKE ? ORDER BY id DESC LIMIT 1",
+                (f"0{last10}", f"+63{last10}", f"%{last10}"),
+            ).fetchone()
     return dict(row) if row else None
 
 
@@ -3338,7 +3364,7 @@ def register_rider(
     license_no: str = "",
     avatar_url: str = "",
 ) -> int:
-    clean_phone = phone.strip().replace(" ", "").replace("-", "")
+    clean_phone = normalize_ph_phone(phone)
     pwd_hash = generate_password_hash(password)
     now = datetime.now().isoformat(timespec="seconds")
     return conn.insert_returning_id(
@@ -3346,7 +3372,7 @@ def register_rider(
         INSERT INTO riders (
             name, phone, password_hash, bike_model, plate_number,
             municipality, license_no, avatar_url, status, is_online, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 1, ?)
         """,
         (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), now),
     )
@@ -4280,7 +4306,7 @@ def register_customer(
     barangay: str = "",
     email: str = "",
 ) -> dict[str, Any]:
-    phone = (phone or "").strip()
+    clean_phone = normalize_ph_phone(phone)
     name = (name or "").strip()
     barangay = (barangay or "").strip()
     email = (email or "").strip().lower()
@@ -4288,22 +4314,23 @@ def register_customer(
     is_verified = 1 if password else 0
     now_iso = datetime.now().isoformat(timespec="seconds")
 
-    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
-    if row:
+    cust = get_customer_by_phone(conn, clean_phone)
+    if cust:
         conn.execute(
             """
             UPDATE customers
             SET name = COALESCE(NULLIF(?, ''), name),
+                phone = ?,
                 password_hash = CASE WHEN ? != '' THEN ? ELSE password_hash END,
                 barangay = COALESCE(NULLIF(?, ''), barangay),
                 email = COALESCE(NULLIF(?, ''), email),
                 is_verified = CASE WHEN ? != '' THEN 1 ELSE is_verified END,
                 last_active_at = ?
-            WHERE phone = ?
+            WHERE id = ?
             """,
-            (name, password, pwd_hash, barangay, email, password, now_iso, phone),
+            (name, clean_phone, password, pwd_hash, barangay, email, password, now_iso, cust["id"]),
         )
-        return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
+        return dict(conn.execute("SELECT * FROM customers WHERE id = ?", (cust["id"],)).fetchone())
 
     conn.execute(
         """
@@ -4312,13 +4339,12 @@ def register_customer(
             total_rides, total_spent, saved_notes, created_at, last_active_at
         ) VALUES (?, ?, ?, ?, ?, ?, 'active', 0, 0.0, '', ?, ?)
         """,
-        (phone, name or "Camiguin Passenger", pwd_hash, email, barangay, is_verified, now_iso, now_iso),
+        (clean_phone, name or "Camiguin Passenger", pwd_hash, email, barangay, is_verified, now_iso, now_iso),
     )
-    return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
+    return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (clean_phone,)).fetchone())
 
 def authenticate_customer(conn: DatabaseConnection, phone: str, password: str) -> dict[str, Any] | None:
-    phone = (phone or "").strip()
-    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
+    row = get_customer_by_phone(conn, phone)
     if not row:
         return None
     r_dict = dict(row)
@@ -4340,10 +4366,10 @@ def toggle_customer_verify(conn: DatabaseConnection, customer_id: int) -> dict[s
     return dict(updated) if updated else None
 
 def get_customer_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
-    clean_p = phone.strip()
-    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (clean_p,)).fetchone()
+    clean_p = normalize_ph_phone(phone)
+    row = conn.execute("SELECT * FROM customers WHERE phone = ? OR phone = ?", (clean_p, phone.strip())).fetchone()
     if not row:
-        digits = "".join(filter(str.isdigit, clean_p))
+        digits = "".join(filter(str.isdigit, str(phone)))
         if len(digits) >= 10:
             last10 = digits[-10:]
             row = conn.execute(

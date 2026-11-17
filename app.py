@@ -933,11 +933,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             license_no=license_no,
             avatar_url=avatar_url,
         )
+        update_rider_online_status(conn, rider_id, True)
         conn.commit()
+
+        rider = get_rider_by_id(conn, rider_id)
+        session["rider_id"] = rider["id"]
+        clean_rider = {k: v for k, v in rider.items() if k != "password_hash"}
+        clean_rider["is_online"] = 1
+
         return jsonify({
             "success": True,
-            "pending": True,
-            "message": "✅ Application submitted! Your rider account is now PENDING APPROVAL by the Club Admin. You can log in once approved."
+            "rider": clean_rider,
+            "message": f"✅ Congratulations {name}! Your CCRC Rider account is now registered and active."
         }), 201
 
 

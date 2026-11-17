@@ -16,11 +16,11 @@
     <form id="rider-login-form" style="margin-top:1.5rem;">
       <div class="form-group">
         <label for="login-phone">Mobile Phone Number *</label>
-        <input type="tel" id="login-phone" name="phone" required placeholder="e.g. 09171234501" value="09171234501">
+        <input type="tel" id="login-phone" name="phone" required placeholder="e.g. 0917 123 4567">
       </div>
       <div class="form-group">
         <label for="login-password">Password *</label>
-        <input type="password" id="login-password" name="password" required placeholder="Enter password" value="rider1234">
+        <input type="password" id="login-password" name="password" required placeholder="Enter your password">
       </div>
 
       <div id="login-error-msg" class="alert-error hidden"></div>
@@ -28,6 +28,12 @@
       <button type="submit" id="rider-login-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:10px;">
         Log In as Rider &rarr;
       </button>
+
+      <div style="text-align:center;margin-top:12px;">
+        <button type="button" onclick="document.getElementById('login-phone').value='09171234501';document.getElementById('login-password').value='rider1234';" class="text-btn" style="font-size:0.8rem;color:#64748b;text-decoration:underline;cursor:pointer;">
+          Use Demo Rider: Kuya Jun (09171234501)
+        </button>
+      </div>
 
       <div style="text-align:center;margin-top:14px;">
         <button type="button" id="switch-to-register-btn" class="text-btn">New Rider? Register Here</button>
@@ -402,5 +408,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=25"></script>
+<script src="/static/js/rider.js?v=26"></script>
 {% endblock %}
