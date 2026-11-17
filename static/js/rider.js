@@ -582,6 +582,8 @@
               <div class="job-route-preview">
                 <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
                 <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
+                ${j.scheduled_at ? `<div style="background:#eff6ff;color:#1d4ed8;padding:4px 8px;border-radius:6px;font-size:0.8rem;font-weight:700;margin-top:6px;">📅 Scheduled Pickup: ${new Date(j.scheduled_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>` : ""}
+                ${j.payment_method ? `<div style="font-size:0.78rem;color:#475569;margin-top:2px;">💳 Payment: <strong style="text-transform:uppercase;">${escapeHtml(j.payment_method)}</strong></div>` : ""}
                 ${j.item_notes ? `<div style="margin-top:4px;color:#64748b;font-size:0.82rem;">🛒 <em>&ldquo;${escapeHtml(j.item_notes)}&rdquo;</em></div>` : ""}
                 ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Advance Cash: ₱${j.estimated_budget}</div>` : ""}
               </div>
