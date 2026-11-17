@@ -45,8 +45,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "supermarket",
             "grocery"
         ],
-        "lat": 9.2475,
-        "lng": 124.6995,
+        "lat": 9.2492,
+        "lng": 124.7175,
         "mun": "Mambajao"
     },
     {
@@ -59,8 +59,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "supermarket",
             "grocery"
         ],
-        "lat": 9.2482,
-        "lng": 124.6978,
+        "lat": 9.2518,
+        "lng": 124.7167,
         "mun": "Mambajao"
     },
     {
@@ -73,8 +73,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "grocery",
             "supply"
         ],
-        "lat": 9.248,
-        "lng": 124.6976,
+        "lat": 9.2516,
+        "lng": 124.7166,
         "mun": "Mambajao"
     },
     {
@@ -85,8 +85,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "prince",
             "hypermart"
         ],
-        "lat": 9.2465,
-        "lng": 124.701,
+        "lat": 9.2495,
+        "lng": 124.718,
         "mun": "Mambajao"
     },
     {
@@ -99,8 +99,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "seven eleven",
             "convenience store"
         ],
-        "lat": 9.2487,
-        "lng": 124.6979,
+        "lat": 9.2505,
+        "lng": 124.7165,
         "mun": "Mambajao"
     },
     {
@@ -126,8 +126,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "tambal",
             "drugstore"
         ],
-        "lat": 9.2525,
-        "lng": 124.7164,
+        "lat": 9.25249,
+        "lng": 124.71641,
         "mun": "Mambajao"
     },
     {
@@ -140,8 +140,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "botika",
             "tambal"
         ],
-        "lat": 9.2486,
-        "lng": 124.6977,
+        "lat": 9.252,
+        "lng": 124.7165,
         "mun": "Mambajao"
     },
     {
@@ -154,8 +154,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "panaderia",
             "tinapay"
         ],
-        "lat": 9.2484,
-        "lng": 124.6974,
+        "lat": 9.251,
+        "lng": 124.7166,
         "mun": "Mambajao"
     },
     {
@@ -167,8 +167,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "manok",
             "lechon manok"
         ],
-        "lat": 9.2485,
-        "lng": 124.6982,
+        "lat": 9.2508,
+        "lng": 124.7167,
         "mun": "Mambajao"
     },
     {
@@ -179,8 +179,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "andok",
             "litson manok"
         ],
-        "lat": 9.2489,
-        "lng": 124.6985,
+        "lat": 9.2506,
+        "lng": 124.7168,
         "mun": "Mambajao"
     },
     {
@@ -191,8 +191,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "donuts",
             "dunkin donuts"
         ],
-        "lat": 9.2483,
-        "lng": 124.6981,
+        "lat": 9.2502,
+        "lng": 124.7166,
         "mun": "Mambajao"
     },
     {
@@ -208,8 +208,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "karne",
             "utanon"
         ],
-        "lat": 9.2483,
-        "lng": 124.6975,
+        "lat": 9.25319,
+        "lng": 124.7166,
         "mun": "Mambajao"
     },
     {
@@ -272,8 +272,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "chickenjoy",
             "burger"
         ],
-        "lat": 9.2488,
-        "lng": 124.698,
+        "lat": 9.24971,
+        "lng": 124.71667,
         "mun": "Mambajao"
     },
     {
@@ -285,8 +285,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "resto bar",
             "kaonan"
         ],
-        "lat": 9.2498,
-        "lng": 124.7005,
+        "lat": 9.2499,
+        "lng": 124.7182,
         "mun": "Mambajao"
     },
     {
@@ -349,8 +349,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "chicken bbq",
             "inasal"
         ],
-        "lat": 9.2492,
-        "lng": 124.699,
+        "lat": 9.2496,
+        "lng": 124.7172,
         "mun": "Mambajao"
     },
     {
@@ -362,8 +362,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "provincial capitol",
             "governor"
         ],
-        "lat": 9.251,
-        "lng": 124.704,
+        "lat": 9.24417,
+        "lng": 124.72725,
         "mun": "Mambajao"
     },
     {
@@ -376,8 +376,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "munisipyo",
             "mayor"
         ],
-        "lat": 9.2485,
-        "lng": 124.6972,
+        "lat": 9.2515,
+        "lng": 124.7168,
         "mun": "Mambajao"
     },
     {
@@ -391,8 +391,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "emergency",
             "pagamutan"
         ],
-        "lat": 9.2495,
-        "lng": 124.702,
+        "lat": 9.24847,
+        "lng": 124.72159,
         "mun": "Mambajao"
     },
     {
@@ -464,8 +464,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "fcc",
             "fatima"
         ],
-        "lat": 9.2478,
-        "lng": 124.6965,
+        "lat": 9.2522,
+        "lng": 124.7145,
         "mun": "Mambajao"
     },
     {
@@ -478,8 +478,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "police station",
             "istasyon"
         ],
-        "lat": 9.2505,
-        "lng": 124.703,
+        "lat": 9.2489,
+        "lng": 124.7225,
         "mun": "Mambajao"
     },
     {
@@ -978,8 +978,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "centro mambajao",
             "mambajao proper"
         ],
-        "lat": 9.2483,
-        "lng": 124.6975,
+        "lat": 9.25405,
+        "lng": 124.71636,
         "mun": "Mambajao"
     },
     {
