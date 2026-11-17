@@ -48,7 +48,6 @@
         <a href="/about" class="nav-link {% if active_nav == 'about' %}active{% endif %}">About ℹ️</a>
         <a href="/faq" class="nav-link {% if active_nav == 'faq' %}active{% endif %}">FAQ ❓</a>
         <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}">Rider Dispatch 📱</a>
-        <a href="/admin" class="nav-link {% if active_nav == 'admin' %}active{% endif %}">Club Admin ⚙️</a>
       </nav>
 
       <div class="header-actions">
@@ -85,10 +84,6 @@
     <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}">
       <span class="bottom-nav-icon">📱</span>
       <span>Riders</span>
-    </a>
-    <a href="/admin" class="bottom-nav-item {% if active_nav == 'admin' %}active{% endif %}">
-      <span class="bottom-nav-icon">⚙️</span>
-      <span>Admin</span>
     </a>
   </nav>
 
@@ -231,6 +226,41 @@
         deferredPrompt = null;
       });
     }
+  </script>
+
+  <!-- Secret 10-Tap Logo Easter Egg for Club Admin -->
+  <script>
+    (function() {
+      let logoTaps = 0;
+      let tapResetTimer = null;
+      const logoEl = document.querySelector(".brand-logo-wrap");
+      if (logoEl) {
+        logoEl.style.cursor = "pointer";
+        logoEl.style.userSelect = "none";
+        logoEl.style.touchAction = "manipulation";
+        logoEl.setAttribute("title", "Camiguin Centric Riders");
+
+        logoEl.addEventListener("click", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          logoTaps++;
+          clearTimeout(tapResetTimer);
+
+          tapResetTimer = setTimeout(() => {
+            if (logoTaps === 1 && window.location.pathname !== "/") {
+              window.location.href = "/";
+            }
+            logoTaps = 0;
+          }, 1500);
+
+          if (logoTaps >= 10) {
+            logoTaps = 0;
+            clearTimeout(tapResetTimer);
+            window.location.href = "/admin";
+          }
+        });
+      }
+    })();
   </script>
 
   {% block scripts %}{% endblock %}
