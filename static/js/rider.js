@@ -770,12 +770,18 @@
 
   function initRadarMap() {
     if (!radarMapEl || radarMap || typeof L === "undefined") return;
+    const CAMIGUIN_BOUNDS = [
+      [9.0500, 124.5800],
+      [9.2900, 124.8300]
+    ];
+
     radarMap = L.map(radarMapEl, {
-      maxBounds: [
-        [8.90, 124.40],
-        [9.50, 125.05]
-      ]
-    }).setView([9.2000, 124.7200], 11);
+      minZoom: 11,
+      maxZoom: 19,
+      maxBounds: CAMIGUIN_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      bounceAtZoomLimits: true
+    }).fitBounds(CAMIGUIN_BOUNDS);
 
     radarStreetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
