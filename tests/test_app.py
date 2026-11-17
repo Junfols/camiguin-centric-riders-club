@@ -19,7 +19,31 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.client = self.app.test_client()
 
     def tearDown(self):
-        self.temp_dir.cleanup()
+        try:
+            self.temp_dir.cleanup()
+        except Exception:
+            pass
+
+    def _create_active_rider(self, name="Test Rider Jun", phone="09171112233", bike_model="Honda Click 125i"):
+        from db import get_connection, register_rider
+        conn = get_connection(self.db_path)
+        try:
+            rid = register_rider(conn, name=name, phone=phone, password="password123", bike_model=bike_model, plate_number="CCRC-99")
+            conn.execute("UPDATE riders SET status = 'active', is_online = 1 WHERE id = ?", (rid,))
+            conn.commit()
+            return rid
+        finally:
+            conn.close()
+
+    def _create_customer(self, name="Registered Passenger Maria", phone="09183334455", password="custpassword123"):
+        from db import get_connection, register_customer
+        conn = get_connection(self.db_path)
+        try:
+            c = register_customer(conn, name=name, phone=phone, password=password)
+            conn.commit()
+            return c["id"]
+        finally:
+            conn.close()
 
     def test_pwa_endpoints(self):
         # 1. Manifest
@@ -205,6 +229,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Roast Chicken", pabili_booking["item_notes"])
 
     def test_rider_flow_dispatch_atomic_accept_and_gps_tracking(self):
+        # Setup 2 active riders
+        r1_id = self._create_active_rider(name="Kuya Jun (President)", phone="09171110001", bike_model="Honda Click 125i")
+        r2_id = self._create_active_rider(name="Kuya Mark (VP Operations)", phone="09171110002", bike_model="Yamaha NMAX 155")
+
         # 1. Create a broadcast booking
         create_resp = self.client.post(
             "/api/bookings",
@@ -231,18 +259,18 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         jobs = feed_resp.get_json()["jobs"]
         self.assertTrue(any(j["id"] == booking_id for j in jobs))
 
-        # 3. Rider 1 (Kuya Jun, ID 1) accepts the booking atomically
+        # 3. Rider 1 accepts the booking atomically
         accept_resp = self.client.post(
             f"/api/bookings/{booking_id}/accept",
-            json={"rider_id": 1},
+            json={"rider_id": r1_id},
         )
         self.assertEqual(accept_resp.status_code, 200)
         self.assertTrue(accept_resp.get_json()["success"])
 
-        # 4. Rider 2 (Kuya Mark, ID 2) tries to accept same booking -> should receive 409 Conflict
+        # 4. Rider 2 tries to accept same booking -> should receive 409 Conflict
         second_accept = self.client.post(
             f"/api/bookings/{booking_id}/accept",
-            json={"rider_id": 2},
+            json={"rider_id": r2_id},
         )
         self.assertEqual(second_accept.status_code, 409)
         self.assertIn("already been claimed", second_accept.get_json()["error"])
@@ -251,7 +279,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         gps_resp = self.client.post(
             "/api/rider/location",
             json={
-                "rider_id": 1,
+                "rider_id": r1_id,
                 "lat": 9.1500,
                 "lng": 124.7800,
                 "speed": 35.0,
@@ -362,13 +390,33 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(log_resp.get_json()["rider"]["is_online"], 1)
 
     def test_admin_view_and_settings(self):
+        r_id = self._create_active_rider(name="Registered Rider Cardo", phone="09173334455")
+        c_id = self._create_customer(name="Registered Passenger Maria", phone="09183334455")
+
         with self.client.session_transaction() as sess:
             sess["is_admin"] = True
         admin_resp = self.client.get("/admin")
         self.assertEqual(admin_resp.status_code, 200)
         html = admin_resp.get_data(as_text=True)
         self.assertIn("Club Dispatch &amp; Admin Panel", html)
-        self.assertIn("Kuya Jun", html)
+        self.assertIn("Registered Rider Cardo", html)
+        self.assertIn("Registered Passenger Maria", html)
+
+        # Test Admin Delete Rider
+        del_rider_resp = self.client.post(f"/api/admin/riders/{r_id}/delete")
+        self.assertEqual(del_rider_resp.status_code, 200)
+        self.assertTrue(del_rider_resp.get_json()["success"])
+
+        # Test Admin Delete Customer
+        del_cust_resp = self.client.post(f"/api/admin/customers/{c_id}/delete")
+        self.assertEqual(del_cust_resp.status_code, 200)
+        self.assertTrue(del_cust_resp.get_json()["success"])
+
+        # Verify they are gone from database
+        admin_resp2 = self.client.get("/admin")
+        html2 = admin_resp2.get_data(as_text=True)
+        self.assertNotIn("Registered Rider Cardo", html2)
+        self.assertNotIn("Registered Passenger Maria", html2)
 
         # Update settings
         set_resp = self.client.post(
@@ -512,6 +560,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(booking["scheduled_at"], "2026-11-20T08:30:00")
 
     def test_tour_packages_and_reviews_api(self):
+        r_id = self._create_active_rider(name="Review Rider Jun", phone="09177771122")
         tours_resp = self.client.get("/api/tour-packages")
         self.assertEqual(tours_resp.status_code, 200)
         packages = tours_resp.get_json()["packages"]
@@ -521,7 +570,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         rev_resp = self.client.post(
             "/api/reviews",
             json={
-                "rider_id": 1,
+                "rider_id": r_id,
                 "rating": 5,
                 "customer_name": "Tourist Juan",
                 "comment": "Very safe and scenic ride around Camiguin!",
@@ -617,6 +666,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(bad_login.status_code, 401)
 
     def test_transactions_ledger_for_customer_rider_and_admin(self):
+        r_id = self._create_active_rider(name="Ledger Rider Cardo", phone="09176662233")
+
         # 1. Create a booking with instant customer verification
         book_resp = self.client.post(
             "/api/bookings",
@@ -644,7 +695,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(matching[0]["customer_verified"], 1)
 
         # 2. Rider accepts booking
-        accept_resp = self.client.post(f"/api/bookings/{b_id}/accept", json={"rider_id": 1})
+        accept_resp = self.client.post(f"/api/bookings/{b_id}/accept", json={"rider_id": r_id})
         self.assertEqual(accept_resp.status_code, 200)
 
         # 3. Rider completes booking
@@ -652,7 +703,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(comp_resp.status_code, 200)
 
         # 4. Check rider transactions endpoint
-        rider_txns_resp = self.client.get("/api/rider/transactions?rider_id=1")
+        rider_txns_resp = self.client.get(f"/api/rider/transactions?rider_id={r_id}")
         self.assertEqual(rider_txns_resp.status_code, 200)
         tx_data = rider_txns_resp.get_json()
         self.assertTrue(tx_data["success"])
@@ -879,6 +930,53 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(r_login.status_code, 200)
         self.assertTrue(r_login.get_json()["success"])
         self.assertEqual(r_login.get_json()["rider"]["status"], "active")
+
+    def test_customer_avatar_display_and_admin_delete_protection(self):
+        # 1. Register customer with avatar photo
+        sample_b64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+        reg_resp = self.client.post(
+            "/api/customer/register",
+            json={
+                "name": "Maria Clara Santos",
+                "phone": "0917 888 7766",
+                "email": "maria.clara@gmail.com",
+                "password": "mariapassword123",
+                "barangay": "Agoho, Mambajao",
+                "avatar_base64": sample_b64,
+            },
+        )
+        self.assertEqual(reg_resp.status_code, 200)
+        c_data = reg_resp.get_json()["customer"]
+        c_id = c_data["id"]
+        self.assertTrue(bool(c_data["avatar_url"]))
+        self.assertIn("/media/", c_data["avatar_url"])
+
+        # 2. Check customer profile session has avatar
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess["customer_phone"], "09178887766")
+            self.assertEqual(sess["customer_avatar"], c_data["avatar_url"])
+
+        # 3. Non-admin cannot delete customer or rider (403 forbidden)
+        rid = self._create_active_rider(name="Protected Rider", phone="09172223344")
+        del_rider_unauth = self.client.post(f"/api/admin/riders/{rid}/delete")
+        self.assertEqual(del_rider_unauth.status_code, 403)
+
+        del_cust_unauth = self.client.post(f"/api/admin/customers/{c_id}/delete")
+        self.assertEqual(del_cust_unauth.status_code, 403)
+
+        # 4. Admin deletes successfully
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+
+        del_rider_ok = self.client.post(f"/api/admin/riders/{rid}/delete")
+        self.assertEqual(del_rider_ok.status_code, 200)
+
+        del_cust_ok = self.client.post(f"/api/admin/customers/{c_id}/delete")
+        self.assertEqual(del_cust_ok.status_code, 200)
+
+        # Deleting non-existent returns 404
+        del_404 = self.client.post(f"/api/admin/customers/{c_id}/delete")
+        self.assertEqual(del_404.status_code, 404)
 
 
 if __name__ == "__main__":

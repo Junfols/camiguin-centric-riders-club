@@ -224,6 +224,7 @@
                 {% else %}
                   <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
                 {% endif %}
+                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="deleteRider({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Delete 🗑️</button>
               </td>
             </tr>
             {% else %}
@@ -532,7 +533,21 @@
               {% endif %}
             </td>
             <td style="padding:8px;">
-              <strong>{{ c.name }}</strong>
+              <div style="display:flex;align-items:center;gap:8px;">
+                {% if c.avatar_url %}
+                  <a href="{{ c.avatar_url }}" target="_blank" title="View Full Passenger Profile Photo">
+                    <img src="{{ c.avatar_url }}" alt="{{ c.name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #0284c7;">
+                  </a>
+                {% else %}
+                  <span style="width:36px;height:36px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
+                {% endif %}
+                <div>
+                  <strong>{{ c.name }}</strong>
+                  {% if c.email %}
+                    <div style="font-size:0.75rem;color:#64748b;">{{ c.email }}</div>
+                  {% endif %}
+                </div>
+              </div>
             </td>
             <td style="padding:8px;">
               <a href="tel:{{ c.phone }}" style="color:#0284c7;text-decoration:none;font-weight:600;">{{ c.phone }}</a>
@@ -559,6 +574,9 @@
                   Mark as Verified Legit ✓
                 </button>
               {% endif %}
+              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;margin-left:6px;" onclick="deleteCustomer({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+                Delete 🗑️
+              </button>
             </td>
           </tr>
           {% else %}
@@ -647,6 +665,44 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update customer verification status.");
+      window.location.reload();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  // Admin Permanent Delete Rider Handler
+  window.deleteRider = async function(riderId, riderName) {
+    if (!confirm(`Sigurado ka ba nga gusto nimo i-delete ang account ni Rider "${riderName}"?\n\nKini permanente ug dili na mabalik.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/riders/${riderId}/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete rider");
+      alert("Rider account successfully deleted.");
+      window.location.reload();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  // Admin Permanent Delete Customer Handler
+  window.deleteCustomer = async function(customerId, customerName) {
+    if (!confirm(`Sigurado ka ba nga gusto nimo i-delete ang customer account ni "${customerName}"?\n\nKini permanente ug dili na mabalik.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete customer");
+      alert("Customer account successfully deleted.");
       window.location.reload();
     } catch (err) {
       alert("Error: " + err.message);

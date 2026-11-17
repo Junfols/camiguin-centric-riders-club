@@ -63,6 +63,8 @@ from db import (
     get_all_customers,
     get_customer_by_phone,
     get_customer_ride_history,
+    delete_rider,
+    delete_customer,
     record_transaction,
     get_all_transactions,
     get_rider_transactions,
@@ -478,6 +480,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             session["customer_phone"] = clean_cust["phone"]
             session["customer_name"] = clean_cust["name"]
             session["customer_id"] = clean_cust["id"]
+            session["customer_avatar"] = clean_cust.get("avatar_url", "")
             return jsonify({"success": True, "message": "Account registered and verified!", "customer": clean_cust})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
@@ -500,6 +503,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         session["customer_phone"] = cust["phone"]
         session["customer_name"] = cust["name"]
         session["customer_id"] = cust["id"]
+        session["customer_avatar"] = cust.get("avatar_url", "")
         return jsonify({"success": True, "message": "Successfully logged in!", "customer": cust})
 
     @app.post("/api/customer/logout")
@@ -507,6 +511,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         session.pop("customer_phone", None)
         session.pop("customer_name", None)
         session.pop("customer_id", None)
+        session.pop("customer_avatar", None)
         return jsonify({"success": True, "message": "Logged out successfully."})
 
     @app.get("/api/customer/me")
@@ -1194,6 +1199,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn.commit()
         return jsonify({"success": True, "status": new_status})
 
+    @app.post("/api/admin/riders/<int:rider_id>/delete")
+    def admin_delete_rider(rider_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        success = delete_rider(conn, rider_id)
+        if not success:
+            return jsonify({"error": "Rider not found or could not be deleted."}), 404
+        return jsonify({"success": True, "message": "Rider account permanently deleted."})
+
     @app.post("/api/admin/login")
     def admin_login():
         data = request.get_json(silent=True) or {}
@@ -1292,6 +1307,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"error": "Customer not found."}), 404
         conn.commit()
         return jsonify({"success": True, "customer": cust})
+
+    @app.post("/api/admin/customers/<int:customer_id>/delete")
+    def admin_delete_customer(customer_id: int):
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        success = delete_customer(conn, customer_id)
+        if not success:
+            return jsonify({"error": "Customer not found or could not be deleted."}), 404
+        return jsonify({"success": True, "message": "Customer account permanently deleted."})
 
     @app.get("/api/admin/transactions")
     def admin_get_transactions():

@@ -2723,6 +2723,15 @@ def init_db(conn: DatabaseConnection) -> None:
         conn.execute("ALTER TABLE customers ADD COLUMN email TEXT DEFAULT ''")
     except Exception:
         pass
+    # Purge any legacy starter/demo records from database
+    try:
+        conn.execute("DELETE FROM riders WHERE phone IN ('09171234501', '09171234502', '09171234503')")
+    except Exception:
+        pass
+    try:
+        conn.execute("DELETE FROM customers WHERE phone IN ('09170001122', '09180003344')")
+    except Exception:
+        pass
     _seed_initial_data(conn)
     conn.commit()
 
@@ -3153,77 +3162,6 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
             if (k == "base_fare" and old_val == "50.0") or (k == "per_km_rate" and old_val == "15.0") or (k == "min_fare" and old_val == "50.0"):
                 conn.execute("UPDATE settings SET value = ? WHERE key = ?", (v, k))
 
-    # Seed starter verified club riders if none exist
-    rider_count = conn.execute("SELECT COUNT(*) AS c FROM riders").fetchone()
-    count = int(rider_count["c"] if isinstance(rider_count, dict) or hasattr(rider_count, "keys") else rider_count[0])
-
-    if count == 0:
-        default_riders = [
-            (
-                "Kuya Jun (President)",
-                "09171234501",
-                generate_password_hash("rider1234"),
-                "Honda Click 125i (Orange)",
-                "CCRC-01",
-                "Mambajao",
-                "#f97316",
-                "active",
-                1,  # online
-                9.2483,
-                124.6975,
-                now,
-                142,
-                5.0,
-                now,
-            ),
-            (
-                "Kuya Mark (VP Operations)",
-                "09171234502",
-                generate_password_hash("rider1234"),
-                "Yamaha NMAX 155 (Blue)",
-                "CCRC-02",
-                "Mahinog / Benoni",
-                "#0284c7",
-                "active",
-                1,  # online
-                9.1306,
-                124.7937,
-                now,
-                98,
-                4.9,
-                now,
-            ),
-            (
-                "Kuya Jerome (Lead Courier)",
-                "09171234503",
-                generate_password_hash("rider1234"),
-                "Honda Beat Fi (Black)",
-                "CCRC-03",
-                "Yumbing / Catarman",
-                "#10b981",
-                "active",
-                1,  # online
-                9.2553,
-                124.6468,
-                now,
-                76,
-                5.0,
-                now,
-            ),
-        ]
-        conn.executemany(
-            """
-            INSERT INTO riders (
-                name, phone, password_hash, bike_model, plate_number, municipality,
-                color, status, is_online, last_lat, last_lng, last_active_at,
-                total_trips, rating_avg, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            default_riders,
-        )
-
-
-
     # Starter promo codes
     try:
         existing_promos = conn.execute("SELECT COUNT(*) AS c FROM promo_codes").fetchone()
@@ -3244,26 +3182,6 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
                     p,
                 )
     except Exception as e:
-        pass
-
-    # Starter verified customers
-    try:
-        existing_custs = conn.execute("SELECT COUNT(*) AS c FROM customers").fetchone()
-        if not existing_custs or existing_custs["c"] == 0:
-            now_iso = datetime.now().isoformat(timespec="seconds")
-            sample_customers = [
-                ("09170001122", "Maria Santos", generate_password_hash("pass1234"), "Agoho, Mambajao", 1, "active", 5, 420.0, now_iso, now_iso),
-                ("09180003344", "Juan Dela Cruz", generate_password_hash("pass1234"), "Benoni, Mahinog", 1, "active", 2, 180.0, now_iso, now_iso),
-            ]
-            for c in sample_customers:
-                conn.execute(
-                    """
-                    INSERT INTO customers (phone, name, password_hash, barangay, is_verified, status, total_rides, total_spent, created_at, last_active_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    c,
-                )
-    except Exception:
         pass
 
     # Backfill transactions for existing bookings if transactions table is empty
@@ -3382,6 +3300,28 @@ def register_rider(
         """,
         (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), now),
     )
+
+
+def delete_rider(conn: DatabaseConnection, rider_id: int) -> bool:
+    """Permanently deletes a rider by ID (Admin-only action). Cleanly updates associated bookings."""
+    row = conn.execute("SELECT id FROM riders WHERE id = ?", (rider_id,)).fetchone()
+    if not row:
+        return False
+    try:
+        conn.execute("UPDATE bookings SET rider_id = NULL WHERE rider_id = ?", (rider_id,))
+    except Exception:
+        pass
+    try:
+        conn.execute("DELETE FROM tracking_logs WHERE rider_id = ?", (rider_id,))
+    except Exception:
+        pass
+    try:
+        conn.execute("DELETE FROM reviews WHERE rider_id = ?", (rider_id,))
+    except Exception:
+        pass
+    conn.execute("DELETE FROM riders WHERE id = ?", (rider_id,))
+    conn.commit()
+    return True
 
 
 def update_rider_online_status(conn: DatabaseConnection, rider_id: int, is_online: bool) -> None:
@@ -4373,6 +4313,15 @@ def toggle_customer_verify(conn: DatabaseConnection, customer_id: int) -> dict[s
     conn.execute("UPDATE customers SET is_verified = ? WHERE id = ?", (new_verified, customer_id))
     updated = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
     return dict(updated) if updated else None
+
+def delete_customer(conn: DatabaseConnection, customer_id: int) -> bool:
+    """Permanently deletes a registered customer by ID (Admin-only action)."""
+    row = conn.execute("SELECT id FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if not row:
+        return False
+    conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+    conn.commit()
+    return True
 
 def get_customer_by_phone(conn: DatabaseConnection, phone: str) -> dict[str, Any] | None:
     clean_p = normalize_ph_phone(phone)

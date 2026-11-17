@@ -119,8 +119,12 @@
 
           <!-- When LOGGED IN: Sign In button disappears! Show Verified Account pill and Logout -->
           <div id="customer-logged-pill" class="{% if not cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:inline-flex;{% else %}display:none;{% endif %}align-items:center;gap:6px;">
-            <button type="button" id="customer-profile-btn" class="btn btn-outline btn-sm" style="font-size:0.8rem;padding:5px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border-color:#86efac;color:#15803d;font-weight:700;cursor:pointer;" title="View Verified Account Profile">
-              <span>🛡️</span> <span id="customer-pill-name">{{ cust_display_name }} ✓</span>
+            <button type="button" id="customer-profile-btn" class="btn btn-outline btn-sm" style="font-size:0.8rem;padding:3px 12px 3px 6px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border-color:#86efac;color:#15803d;font-weight:700;cursor:pointer;" title="View Verified Account Profile">
+              <span id="header-cust-avatar-wrap" style="width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#dcfce7;border:1.5px solid #86efac;flex-shrink:0;">
+                <span id="header-cust-placeholder" style="font-size:12px;">🛡️</span>
+                <img id="header-cust-avatar-img" src="{{ session.get('customer_avatar', '') }}" alt="" class="{% if not session.get('customer_avatar') %}hidden{% endif %}" style="width:100%;height:100%;object-fit:cover;">
+              </span>
+              <span id="customer-pill-name">{{ cust_display_name }} ✓</span>
             </button>
             <button type="button" id="header-cust-logout-btn" class="btn btn-sm btn-outline" title="Log Out of Account" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
               🚪
@@ -451,13 +455,15 @@
       <!-- State 2: Logged In Customer Profile View -->
       <div id="cust-auth-authed-view" class="hidden" style="padding:18px;">
         <div style="text-align:center;margin-bottom:16px;">
-          <div style="width:56px;height:56px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;margin-bottom:8px;">
-            👤
+          <div id="cust-profile-avatar-wrap" style="width:76px;height:76px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 10px;overflow:hidden;border:2.5px solid #0284c7;box-shadow:0 4px 10px -2px rgba(2,132,199,0.25);">
+            <span id="c-profile-avatar-placeholder" style="font-size:2.2rem;">👤</span>
+            <img id="c-profile-avatar-img" src="" alt="Passenger Profile Photo" class="hidden" style="width:100%;height:100%;object-fit:cover;">
           </div>
-          <h3 id="c-profile-name" style="margin:0 0 4px;font-size:1.2rem;">Customer Name</h3>
-          <div id="c-profile-phone" class="text-muted" style="font-size:0.9rem;">0917 000 0000</div>
-          <div id="c-profile-badge" style="margin-top:6px;">
-            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:12px;border:1px solid #86efac;">
+          <h3 id="c-profile-name" style="margin:0 0 4px;font-size:1.25rem;font-weight:700;">Customer Name</h3>
+          <div id="c-profile-phone" class="text-muted" style="font-size:0.9rem;font-weight:600;">0917 000 0000</div>
+          <div id="c-profile-email" style="font-size:0.82rem;color:#0284c7;margin-top:2px;word-break:break-all;"></div>
+          <div id="c-profile-badge" style="margin-top:8px;">
+            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.8rem;font-weight:700;padding:4px 12px;border-radius:12px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;">
               🛡️ Verified CCRC Passenger Account ✓
             </span>
           </div>
@@ -597,6 +603,8 @@
 
         const bottomRiderNav = document.getElementById("bottom-nav-rider");
 
+        const avatarUrl = (customer && customer.avatar_url) || localStorage.getItem("ccrc_customer_avatar");
+
         if (phone) {
           // Customer is signed in: Strictly HIDE Sign In button, SHOW Verified Account pill!
           if (signInBtn) {
@@ -611,6 +619,30 @@
             const shortName = name.split(" ")[0] || "Account";
             pillName.textContent = shortName + " ✓";
           }
+          // Sync header avatar image
+          const headerImg = document.getElementById("header-cust-avatar-img");
+          const headerPlaceholder = document.getElementById("header-cust-placeholder");
+          if (headerImg && avatarUrl) {
+            headerImg.src = avatarUrl;
+            headerImg.classList.remove("hidden");
+            if (headerPlaceholder) headerPlaceholder.classList.add("hidden");
+          } else if (headerPlaceholder) {
+            headerPlaceholder.classList.remove("hidden");
+            if (headerImg) headerImg.classList.add("hidden");
+          }
+
+          // Sync profile modal avatar image
+          const profImg = document.getElementById("c-profile-avatar-img");
+          const profPlaceholder = document.getElementById("c-profile-avatar-placeholder");
+          if (profImg && avatarUrl) {
+            profImg.src = avatarUrl;
+            profImg.classList.remove("hidden");
+            if (profPlaceholder) profPlaceholder.classList.add("hidden");
+          } else if (profPlaceholder) {
+            profPlaceholder.classList.remove("hidden");
+            if (profImg) profImg.classList.add("hidden");
+          }
+
           // Hide bottom-right rider icon when customer is logged in
           if (bottomRiderNav) {
             bottomRiderNav.style.setProperty("display", "none", "important");

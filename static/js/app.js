@@ -3893,8 +3893,12 @@
         localStorage.setItem("ccrc_customer_session", JSON.stringify(cust));
         if (cust.phone) localStorage.setItem("ccrc_customer_phone", cust.phone);
         if (cust.name) localStorage.setItem("ccrc_customer_name", cust.name);
+        if (cust.avatar_url) localStorage.setItem("ccrc_customer_avatar", cust.avatar_url);
       } else {
         localStorage.removeItem("ccrc_customer_session");
+        localStorage.removeItem("ccrc_customer_phone");
+        localStorage.removeItem("ccrc_customer_name");
+        localStorage.removeItem("ccrc_customer_avatar");
       }
     } catch (_) {}
     updateCustomerAuthUI();
@@ -3911,6 +3915,8 @@
     const pillName = document.getElementById("customer-pill-name");
 
     if (cust && cust.phone) {
+      const avatarUrl = cust.avatar_url || localStorage.getItem("ccrc_customer_avatar");
+
       // Hide Sign In button completely!
       if (signInBtn) {
         signInBtn.style.setProperty("display", "none", "important");
@@ -3925,6 +3931,18 @@
       if (custBadge) custBadge.classList.remove("hidden");
       if (regOption) regOption.classList.add("hidden");
 
+      // Header avatar sync
+      const headerAvatarImg = document.getElementById("header-cust-avatar-img");
+      const headerPlaceholder = document.getElementById("header-cust-placeholder");
+      if (headerAvatarImg && avatarUrl) {
+        headerAvatarImg.src = avatarUrl;
+        headerAvatarImg.classList.remove("hidden");
+        if (headerPlaceholder) headerPlaceholder.classList.add("hidden");
+      } else if (headerPlaceholder) {
+        headerPlaceholder.classList.remove("hidden");
+        if (headerAvatarImg) headerAvatarImg.classList.add("hidden");
+      }
+
       if (nameInput && !nameInput.value) nameInput.value = cust.name || "";
       if (phoneInput && !phoneInput.value) phoneInput.value = cust.phone || "";
 
@@ -3933,24 +3951,38 @@
         authedView.classList.remove("hidden");
         const pName = document.getElementById("c-profile-name");
         const pPhone = document.getElementById("c-profile-phone");
+        const pEmail = document.getElementById("c-profile-email");
         const pRides = document.getElementById("c-profile-rides");
         const pSpent = document.getElementById("c-profile-spent");
         if (pName) pName.textContent = cust.name || "Customer";
         if (pPhone) pPhone.textContent = cust.phone || "";
+        if (pEmail && cust.email) pEmail.textContent = cust.email;
         if (pRides) pRides.textContent = cust.total_rides || 0;
         if (pSpent) pSpent.textContent = `₱${Number(cust.total_spent || 0).toFixed(2)}`;
 
         // Customer Avatar in Profile Modal
         const profImg = document.getElementById("c-profile-avatar-img");
         const profPlaceholder = document.getElementById("c-profile-avatar-placeholder");
-        if (profImg && cust.avatar_url) {
-          profImg.src = cust.avatar_url;
+        if (profImg && avatarUrl) {
+          profImg.src = avatarUrl;
           profImg.classList.remove("hidden");
           if (profPlaceholder) profPlaceholder.classList.add("hidden");
         } else if (profPlaceholder) {
           profPlaceholder.classList.remove("hidden");
           if (profImg) profImg.classList.add("hidden");
         }
+      }
+
+      // Customer Avatar in Home Card
+      const homeImg = document.getElementById("cust-home-avatar-img");
+      const homePlaceholder = document.getElementById("cust-home-placeholder");
+      if (homeImg && avatarUrl) {
+        homeImg.src = avatarUrl;
+        homeImg.classList.remove("hidden");
+        if (homePlaceholder) homePlaceholder.classList.add("hidden");
+      } else if (homePlaceholder) {
+        homePlaceholder.classList.remove("hidden");
+        if (homeImg) homeImg.classList.add("hidden");
       }
 
       // Hide bottom-right rider icon when customer is logged in
@@ -4016,6 +4048,18 @@
       if (tripsCountEl) tripsCountEl.textContent = `${totalTrips} ka biyahe`;
       if (spentEl) spentEl.textContent = `₱${totalSpent.toFixed(2)}`;
       if (nameEl) nameEl.textContent = (data.customer && data.customer.name) || cust.name || "Passenger";
+
+      const fetchedAvatar = (data.customer && data.customer.avatar_url) || cust.avatar_url;
+      if (fetchedAvatar) {
+        try { localStorage.setItem("ccrc_customer_avatar", fetchedAvatar); } catch(_) {}
+        const hImg = document.getElementById("cust-home-avatar-img");
+        const hPlaceholder = document.getElementById("cust-home-placeholder");
+        if (hImg) {
+          hImg.src = fetchedAvatar;
+          hImg.classList.remove("hidden");
+          if (hPlaceholder) hPlaceholder.classList.add("hidden");
+        }
+      }
 
       const list = data.history || data.rides || [];
       if (feedEl) {
