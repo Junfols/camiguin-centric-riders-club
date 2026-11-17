@@ -1777,6 +1777,25 @@
   let pickupMarker = null;
   let dropoffMarker = null;
   let routeLine = null;
+  let routeBgLine = null;
+
+  // Safe Leaflet [lat, lng] coordinate normalizer (ensures first number is always latitude ~9.x)
+  function normalizeRouteCoords(coords) {
+    if (!Array.isArray(coords)) return [];
+    return coords
+      .map((pt) => {
+        if (!Array.isArray(pt) || pt.length < 2) return null;
+        const n1 = parseFloat(pt[0]);
+        const n2 = parseFloat(pt[1]);
+        if (isNaN(n1) || isNaN(n2)) return null;
+        // If first is ~124 and second is ~9, flip them to [lat, lng]
+        if (n1 > 50 && n2 < 50) {
+          return [n2, n1];
+        }
+        return [n1, n2];
+      })
+      .filter(Boolean);
+  }
   let currentTargetMode = "pickup"; // 'pickup' or 'dropoff'
 
   // Service Type Switcher
@@ -1892,6 +1911,10 @@
         map.removeLayer(pickupMarker);
         pickupMarker = null;
       }
+      if (routeBgLine && map) {
+        map.removeLayer(routeBgLine);
+        routeBgLine = null;
+      }
       if (routeLine && map) {
         map.removeLayer(routeLine);
         routeLine = null;
@@ -1920,6 +1943,10 @@
       if (dropoffMarker && map) {
         map.removeLayer(dropoffMarker);
         dropoffMarker = null;
+      }
+      if (routeBgLine && map) {
+        map.removeLayer(routeBgLine);
+        routeBgLine = null;
       }
       if (routeLine && map) {
         map.removeLayer(routeLine);
@@ -2545,6 +2572,31 @@
     const dLng = parseFloat(dropoffLngInput.value);
 
     if (pLat && pLng && dLat && dLng) {
+      // 1. Immediately draw instant RED LINE fallback so map is NEVER without a redline!
+      if (routeBgLine) map.removeLayer(routeBgLine);
+      if (routeLine) map.removeLayer(routeLine);
+
+      const immediateCoords = [[pLat, pLng], [dLat, dLng]];
+      routeBgLine = L.polyline(immediateCoords, {
+        color: "#991b1b",
+        weight: 8,
+        opacity: 0.40,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(map);
+
+      routeLine = L.polyline(immediateCoords, {
+        color: "#ef4444", // BOLD VIBRANT RED LINE
+        weight: 5,
+        opacity: 1.0,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(map);
+
+      try {
+        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+      } catch (_) {}
+
       if (osrmAbortCtrl) {
         osrmAbortCtrl.abort();
       }
@@ -2560,25 +2612,35 @@
             const roadKmVal = parseFloat(routeData.road_km.toFixed(2));
             currentRoadKm = roadKmVal;
 
-            if (routeLine) map.removeLayer(routeLine);
-
+            let rawPts = [];
             if (routeData.route_coords && routeData.route_coords.length > 0) {
-              const roadCoords = routeData.route_coords.map((coord) => [coord[1], coord[0]]);
-              // Draw real road polyline snapping directly to Camiguin road network & streets!
-              routeLine = L.polyline(roadCoords, {
-                color: "#ea580c",
-                weight: 5,
-                opacity: 0.95,
+              rawPts = routeData.route_coords;
+            } else {
+              rawPts = [[pLat, pLng], [dLat, dLng]];
+            }
+
+            const cleanRoadCoords = normalizeRouteCoords(rawPts);
+            if (cleanRoadCoords.length >= 2) {
+              if (routeBgLine) map.removeLayer(routeBgLine);
+              if (routeLine) map.removeLayer(routeLine);
+
+              // Bold Red Road Polyline snapping exactly to Camiguin streets & highway
+              routeBgLine = L.polyline(cleanRoadCoords, {
+                color: "#7f1d1d",
+                weight: 9,
+                opacity: 0.45,
                 lineCap: "round",
                 lineJoin: "round",
               }).addTo(map);
-              map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-            } else {
-              routeLine = L.polyline([[pLat, pLng], [dLat, dLng]], {
-                color: "#ea580c",
-                weight: 4,
-                opacity: 0.85,
+
+              routeLine = L.polyline(cleanRoadCoords, {
+                color: "#ef4444", // PURE VIBRANT REDLINE
+                weight: 5,
+                opacity: 1.0,
+                lineCap: "round",
+                lineJoin: "round",
               }).addTo(map);
+
               map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
             }
 
@@ -2592,6 +2654,16 @@
           console.log("Route query error:", err);
         }
       }
+    } else {
+      if (routeBgLine) {
+        map.removeLayer(routeBgLine);
+        routeBgLine = null;
+      }
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      currentRoadKm = null;
     }
 
     recalculateFare();
@@ -2611,6 +2683,10 @@
     const roadKmToSend = typeof overrideRoadKm === "number" ? overrideRoadKm : currentRoadKm;
 
     if (!pLat || !pLng || !dLat || !dLng) {
+      if (routeBgLine && map) {
+        map.removeLayer(routeBgLine);
+        routeBgLine = null;
+      }
       if (routeLine && map) {
         map.removeLayer(routeLine);
         routeLine = null;
@@ -2668,18 +2744,30 @@
           hasNewCoords = true;
         }
 
-        // If backend sent route coordinates (from server-side road engine) and frontend hasn't drawn yet
+        // If backend sent route coordinates and frontend hasn't drawn yet
         if (data.route_coords && data.route_coords.length > 0 && (!currentRoadKm || hasNewCoords)) {
-          const roadCoords = data.route_coords.map((pt) => [pt[1], pt[0]]);
-          if (routeLine) map.removeLayer(routeLine);
-          routeLine = L.polyline(roadCoords, {
-            color: "#ea580c",
-            weight: 5,
-            opacity: 0.95,
-            lineCap: "round",
-            lineJoin: "round",
-          }).addTo(map);
-          map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+          const cleanRoadCoords = normalizeRouteCoords(data.route_coords);
+          if (cleanRoadCoords.length >= 2) {
+            if (routeBgLine) map.removeLayer(routeBgLine);
+            if (routeLine) map.removeLayer(routeLine);
+
+            routeBgLine = L.polyline(cleanRoadCoords, {
+              color: "#7f1d1d",
+              weight: 9,
+              opacity: 0.45,
+              lineCap: "round",
+              lineJoin: "round",
+            }).addTo(map);
+
+            routeLine = L.polyline(cleanRoadCoords, {
+              color: "#ef4444", // BOLD REDLINE
+              weight: 5,
+              opacity: 1.0,
+              lineCap: "round",
+              lineJoin: "round",
+            }).addTo(map);
+            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+          }
         }
       }
     } catch (_) {}
