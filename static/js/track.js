@@ -10,7 +10,16 @@
       localStorage.removeItem("ccrc_active_booking");
     } else {
       localStorage.setItem("ccrc_active_booking", booking.booking_code);
-      if (booking.customer_phone) localStorage.setItem("ccrc_customer_phone", booking.customer_phone);
+      if (booking.customer_phone) {
+        localStorage.setItem("ccrc_customer_phone", booking.customer_phone);
+        if (!localStorage.getItem("ccrc_customer_session")) {
+          localStorage.setItem("ccrc_customer_session", JSON.stringify({
+            phone: booking.customer_phone,
+            name: booking.customer_name || "Passenger",
+            is_verified: booking.customer_verified || 1
+          }));
+        }
+      }
       if (booking.customer_name) localStorage.setItem("ccrc_customer_name", booking.customer_name);
     }
   } catch (_) {}

@@ -260,9 +260,10 @@
     document.documentElement.classList.add("is-rider-session");
     document.body.classList.add("rider-logged-in");
 
-    // Strictly hide "Book a Ride" from nav & header when rider is logged in
-    document.querySelectorAll(".nav-book-item, #nav-book-link, #bottom-nav-book").forEach((el) => {
-      el.style.display = "none";
+    // Strictly hide "Book a Ride" and Customer Sign In from nav & header when rider is logged in
+    document.querySelectorAll(".nav-book-item, #nav-book-link, #bottom-nav-book, #customer-signin-btn, #customer-logged-pill").forEach((el) => {
+      el.style.setProperty("display", "none", "important");
+      el.classList.add("hidden");
     });
 
     const bLogout = document.getElementById("bottom-nav-rider-logout");

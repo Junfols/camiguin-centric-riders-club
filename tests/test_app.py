@@ -721,6 +721,34 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertTrue(act_data["active"])
         self.assertEqual(act_data["booking"]["booking_code"], code)
 
+    def test_header_navigation_role_separation(self):
+        # 1. On /rider, customer-signin-btn must NOT be present
+        r_resp = self.client.get("/rider")
+        self.assertEqual(r_resp.status_code, 200)
+        r_html = r_resp.get_data(as_text=True)
+        self.assertNotIn('id="customer-signin-btn"', r_html)
+        self.assertIn("Rider Hub", r_html)
+
+        # 2. On /track/CODE, tracking page renders cleanly
+        resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Track Passenger",
+                "customer_phone": "09112223344",
+                "service_type": "pahatud",
+                "pickup_address": "Mambajao Port",
+                "dropoff_address": "Agoho",
+            },
+        )
+        self.assertEqual(resp.status_code, 201)
+        code = resp.get_json()["booking"]["booking_code"]
+
+        track_resp = self.client.get(f"/track/{code}")
+        self.assertEqual(track_resp.status_code, 200)
+        t_html = track_resp.get_data(as_text=True)
+        self.assertIn(code, t_html)
+        self.assertIn("Universal Header Auth Sync", t_html)
+
 
 if __name__ == "__main__":
     unittest.main()
