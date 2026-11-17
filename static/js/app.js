@@ -71,8 +71,8 @@
       "supermarket",
       "grocery"
     ],
-    "lat": 9.2475,
-    "lng": 124.6995,
+    "lat": 9.2492,
+    "lng": 124.7175,
     "mun": "Mambajao"
   },
   {
@@ -85,8 +85,8 @@
       "supermarket",
       "grocery"
     ],
-    "lat": 9.2482,
-    "lng": 124.6978,
+    "lat": 9.2518,
+    "lng": 124.7167,
     "mun": "Mambajao"
   },
   {
@@ -99,8 +99,8 @@
       "grocery",
       "supply"
     ],
-    "lat": 9.248,
-    "lng": 124.6976,
+    "lat": 9.2516,
+    "lng": 124.7166,
     "mun": "Mambajao"
   },
   {
@@ -111,8 +111,8 @@
       "prince",
       "hypermart"
     ],
-    "lat": 9.2465,
-    "lng": 124.701,
+    "lat": 9.2495,
+    "lng": 124.718,
     "mun": "Mambajao"
   },
   {
@@ -125,8 +125,8 @@
       "seven eleven",
       "convenience store"
     ],
-    "lat": 9.2487,
-    "lng": 124.6979,
+    "lat": 9.2505,
+    "lng": 124.7165,
     "mun": "Mambajao"
   },
   {
@@ -152,8 +152,8 @@
       "tambal",
       "drugstore"
     ],
-    "lat": 9.2525,
-    "lng": 124.7164,
+    "lat": 9.25249,
+    "lng": 124.71641,
     "mun": "Mambajao"
   },
   {
@@ -166,8 +166,8 @@
       "botika",
       "tambal"
     ],
-    "lat": 9.2486,
-    "lng": 124.6977,
+    "lat": 9.252,
+    "lng": 124.7165,
     "mun": "Mambajao"
   },
   {
@@ -180,8 +180,8 @@
       "panaderia",
       "tinapay"
     ],
-    "lat": 9.2484,
-    "lng": 124.6974,
+    "lat": 9.251,
+    "lng": 124.7166,
     "mun": "Mambajao"
   },
   {
@@ -193,8 +193,8 @@
       "manok",
       "lechon manok"
     ],
-    "lat": 9.2485,
-    "lng": 124.6982,
+    "lat": 9.2508,
+    "lng": 124.7167,
     "mun": "Mambajao"
   },
   {
@@ -205,8 +205,8 @@
       "andok",
       "litson manok"
     ],
-    "lat": 9.2489,
-    "lng": 124.6985,
+    "lat": 9.2506,
+    "lng": 124.7168,
     "mun": "Mambajao"
   },
   {
@@ -217,8 +217,8 @@
       "donuts",
       "dunkin donuts"
     ],
-    "lat": 9.2483,
-    "lng": 124.6981,
+    "lat": 9.2502,
+    "lng": 124.7166,
     "mun": "Mambajao"
   },
   {
@@ -234,8 +234,8 @@
       "karne",
       "utanon"
     ],
-    "lat": 9.2483,
-    "lng": 124.6975,
+    "lat": 9.25319,
+    "lng": 124.7166,
     "mun": "Mambajao"
   },
   {
@@ -298,8 +298,8 @@
       "chickenjoy",
       "burger"
     ],
-    "lat": 9.2488,
-    "lng": 124.698,
+    "lat": 9.24971,
+    "lng": 124.71667,
     "mun": "Mambajao"
   },
   {
@@ -311,8 +311,8 @@
       "resto bar",
       "kaonan"
     ],
-    "lat": 9.2498,
-    "lng": 124.7005,
+    "lat": 9.2499,
+    "lng": 124.7182,
     "mun": "Mambajao"
   },
   {
@@ -375,8 +375,8 @@
       "chicken bbq",
       "inasal"
     ],
-    "lat": 9.2492,
-    "lng": 124.699,
+    "lat": 9.2496,
+    "lng": 124.7172,
     "mun": "Mambajao"
   },
   {
@@ -388,8 +388,8 @@
       "provincial capitol",
       "governor"
     ],
-    "lat": 9.251,
-    "lng": 124.704,
+    "lat": 9.24417,
+    "lng": 124.72725,
     "mun": "Mambajao"
   },
   {
@@ -402,8 +402,8 @@
       "munisipyo",
       "mayor"
     ],
-    "lat": 9.2485,
-    "lng": 124.6972,
+    "lat": 9.2515,
+    "lng": 124.7168,
     "mun": "Mambajao"
   },
   {
@@ -417,8 +417,8 @@
       "emergency",
       "pagamutan"
     ],
-    "lat": 9.2495,
-    "lng": 124.702,
+    "lat": 9.24847,
+    "lng": 124.72159,
     "mun": "Mambajao"
   },
   {
@@ -490,8 +490,8 @@
       "fcc",
       "fatima"
     ],
-    "lat": 9.2478,
-    "lng": 124.6965,
+    "lat": 9.2522,
+    "lng": 124.7145,
     "mun": "Mambajao"
   },
   {
@@ -504,8 +504,8 @@
       "police station",
       "istasyon"
     ],
-    "lat": 9.2505,
-    "lng": 124.703,
+    "lat": 9.2489,
+    "lng": 124.7225,
     "mun": "Mambajao"
   },
   {
@@ -1004,8 +1004,8 @@
       "centro mambajao",
       "mambajao proper"
     ],
-    "lat": 9.2483,
-    "lng": 124.6975,
+    "lat": 9.25405,
+    "lng": 124.71636,
     "mun": "Mambajao"
   },
   {
@@ -1822,8 +1822,8 @@
         targetLng = parseFloat(c.lng.toFixed(5));
         displayLabel = currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`;
       } else {
-        targetLat = 9.2488;
-        targetLng = 124.6980;
+        targetLat = 9.24971;
+        targetLng = 124.71667;
         displayLabel = "Jollibee Camiguin, Mambajao";
       }
 
@@ -1892,8 +1892,8 @@
         targetLng = parseFloat(c.lng.toFixed(5));
         displayLabel = currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`;
       } else {
-        targetLat = 9.2483;
-        targetLng = 124.6975;
+        targetLat = 9.25319;
+        targetLng = 124.71660;
         displayLabel = "Mambajao Public Market";
       }
 
@@ -2550,10 +2550,10 @@
   function bootBookingMap() {
     initMap();
     if (!pickupLatInput.value || !pickupLngInput.value) {
-      setPickupPoint(9.2483, 124.6975, "Mambajao Public Market");
+      setPickupPoint(9.25319, 124.71660, "Mambajao Public Market");
     }
     if (!dropoffLatInput.value || !dropoffLngInput.value) {
-      setDropoffPoint(9.2488, 124.6980, "Jollibee Camiguin, Mambajao");
+      setDropoffPoint(9.24971, 124.71667, "Jollibee Camiguin, Mambajao");
     }
   }
 
