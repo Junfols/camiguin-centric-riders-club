@@ -146,12 +146,14 @@
       const dLat = booking.dropoff_lat;
       const dLng = booking.dropoff_lng;
 
+      // Initial bold red line
+      if (routeLine) map.removeLayer(routeLine);
       routeLine = L.polyline(
         [
           [pLat, pLng],
           [dLat, dLng],
         ],
-        { color: "#f97316", weight: 3, dashArray: "4, 6", opacity: 0.6 }
+        { color: "#ef4444", weight: 5, opacity: 0.9 }
       ).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
@@ -160,12 +162,17 @@
         .then((r) => r.json())
         .then((data) => {
           if (data && data.code === "Ok" && data.route_coords && data.route_coords.length > 0) {
-            const roadCoords = data.route_coords.map((pt) => [pt[1], pt[0]]);
+            const roadCoords = data.route_coords.map((pt) => {
+              const n1 = parseFloat(pt[0]);
+              const n2 = parseFloat(pt[1]);
+              if (n1 > 50 && n2 < 50) return [n2, n1];
+              return [n1, n2];
+            });
             if (routeLine) map.removeLayer(routeLine);
             routeLine = L.polyline(roadCoords, {
-              color: "#ea580c",
+              color: "#ef4444", // BOLD RED LINE
               weight: 5,
-              opacity: 0.95,
+              opacity: 1.0,
               lineCap: "round",
               lineJoin: "round",
             }).addTo(map);
