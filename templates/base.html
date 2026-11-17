@@ -21,7 +21,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <!-- Main Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=20">
+  <link rel="stylesheet" href="/static/css/style.css?v=22">
   <script>
     (function() {
       try {
@@ -84,6 +84,10 @@
           <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;">Log Out 🚪</button>
         {% else %}
           <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
+          <a href="#" id="nav-active-trip-pill" class="nav-link nav-active-trip-pill" style="display:none;color:#ea580c;font-weight:700;align-items:center;gap:6px;">
+            <span class="live-pulse-dot" style="background:#ea580c;box-shadow:0 0 0 3px rgba(234,88,12,0.3);"></span>
+            <span>Live Trip 🛵</span>
+          </a>
           <a href="/tours" class="nav-link {% if active_nav == 'tours' %}active{% endif %}">Island Tours 🏝️</a>
           <a href="/history" class="nav-link {% if active_nav == 'history' %}active{% endif %}">Ride History 📜</a>
           <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}" id="nav-rider-link">Rider Hub 📱</a>
@@ -141,6 +145,10 @@
       <span class="bottom-nav-icon">🛵</span>
       <span>Book</span>
     </a>
+    <a href="#" id="bottom-active-trip-item" class="bottom-nav-item bottom-active-trip" style="display:none;color:#ea580c;font-weight:700;">
+      <span class="bottom-nav-icon" style="position:relative;">🛵<span class="live-pulse-dot" style="position:absolute;top:2px;right:4px;width:7px;height:7px;background:#ea580c;"></span></span>
+      <span>Live Trip</span>
+    </a>
     <a href="/tours" class="bottom-nav-item {% if active_nav == 'tours' %}active{% endif %}">
       <span class="bottom-nav-icon">🏝️</span>
       <span>Tours</span>
@@ -159,6 +167,26 @@
     </a>
   </nav>
   {% endif %}
+
+  <script>
+    (function() {
+      try {
+        const activeCode = localStorage.getItem("ccrc_active_booking");
+        if (activeCode) {
+          const navPill = document.getElementById("nav-active-trip-pill");
+          const bottomPill = document.getElementById("bottom-active-trip-item");
+          if (navPill) {
+            navPill.href = "/track/" + encodeURIComponent(activeCode);
+            navPill.style.display = "inline-flex";
+          }
+          if (bottomPill) {
+            bottomPill.href = "/track/" + encodeURIComponent(activeCode);
+            bottomPill.style.display = "flex";
+          }
+        }
+      } catch(_) {}
+    })();
+  </script>
 
   <!-- Footer: Clean & Professional with JRG IT SOLUTIONS 2026 -->
   <footer class="site-footer" style="padding:2.5rem 1rem 6.5rem;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">

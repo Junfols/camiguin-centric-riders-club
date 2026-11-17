@@ -500,6 +500,42 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         rev = rev_resp.get_json()["review"]
         self.assertEqual(rev["rating"], 5)
 
+    def test_customer_active_booking_retrieval(self):
+        # 1. Customer creates booking
+        book_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Test Passenger",
+                "customer_phone": "09995554433",
+                "service_type": "pahatud",
+                "pickup_address": "Balbagon, Mambajao",
+                "dropoff_address": "Benoni Port",
+            },
+        )
+        self.assertEqual(book_resp.status_code, 201)
+        b = book_resp.get_json()["booking"]
+        code = b["booking_code"]
+
+        # 2. Check active booking via /api/customer/active-booking?code=...
+        act_resp = self.client.get(f"/api/customer/active-booking?code={code}")
+        self.assertEqual(act_resp.status_code, 200)
+        act_data = act_resp.get_json()
+        self.assertTrue(act_data["active"])
+        self.assertEqual(act_data["booking"]["booking_code"], code)
+
+        # 3. Check active booking via customer phone
+        phone_resp = self.client.get(f"/api/customer/active-booking?phone=09995554433")
+        self.assertEqual(phone_resp.status_code, 200)
+        phone_data = phone_resp.get_json()
+        self.assertTrue(phone_data["active"])
+        self.assertEqual(phone_data["booking"]["booking_code"], code)
+
+        # 4. Check index page renders active booking card
+        idx_resp = self.client.get("/")
+        self.assertEqual(idx_resp.status_code, 200)
+        self.assertIn(code, idx_resp.get_data(as_text=True))
+        self.assertIn("Active Island Trip Detected", idx_resp.get_data(as_text=True))
+
 
 if __name__ == "__main__":
     unittest.main()

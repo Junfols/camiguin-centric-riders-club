@@ -4,6 +4,17 @@
   const booking = window.INITIAL_BOOKING;
   if (!booking) return;
 
+  // Persist active booking so customer can always find it if they quit the app
+  try {
+    if (booking.status === "completed" || booking.status === "cancelled") {
+      localStorage.removeItem("ccrc_active_booking");
+    } else {
+      localStorage.setItem("ccrc_active_booking", booking.booking_code);
+      if (booking.customer_phone) localStorage.setItem("ccrc_customer_phone", booking.customer_phone);
+      if (booking.customer_name) localStorage.setItem("ccrc_customer_name", booking.customer_name);
+    }
+  } catch (_) {}
+
   const mapEl = document.getElementById("tracking-map");
   const statusPill = document.getElementById("track-status-pill");
   const assignedRiderCard = document.getElementById("assigned-rider-card");
@@ -246,6 +257,12 @@
       const data = await res.json();
       const b = data.booking;
       if (!b) return;
+
+      if (b.status === "completed" || b.status === "cancelled") {
+        try { localStorage.removeItem("ccrc_active_booking"); } catch (_) {}
+      } else {
+        try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch (_) {}
+      }
 
       // Update status pill
       if (statusPill) {

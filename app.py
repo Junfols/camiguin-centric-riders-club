@@ -190,11 +190,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         online_riders = get_online_riders(conn)
         settings = get_settings(conn)
+
+        active_booking = None
+        code = session.get("active_booking_code")
+        if code:
+            b = get_booking_by_code(conn, code)
+            if b and b.get("status") in ("broadcast", "accepted", "in_progress"):
+                active_booking = b
+            else:
+                session.pop("active_booking_code", None)
+
         return render_template(
             "index.html",
             online_riders_count=len(online_riders),
             settings=settings,
             active_nav="book",
+            active_booking=active_booking,
         )
 
     @app.get("/api/road-route")
@@ -365,6 +376,46 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"success": False, "error": result["error"]}), 400
         return jsonify({"success": True, "promo": result})
 
+    @app.get("/api/customer/active-booking")
+    def api_customer_active_booking():
+        conn = get_db()
+        code = (request.args.get("code") or session.get("active_booking_code") or "").strip()
+        phone = (request.args.get("phone") or session.get("customer_phone") or "").strip()
+        booking = None
+        if code:
+            booking = get_booking_by_code(conn, code)
+        elif phone:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT b.*,
+                       r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
+                       r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
+                       r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+                       r.avatar_url AS rider_avatar
+                FROM bookings b
+                LEFT JOIN riders r ON b.rider_id = r.id
+                WHERE b.customer_phone = ? AND b.status IN ('broadcast', 'accepted', 'in_progress')
+                ORDER BY b.id DESC LIMIT 1
+            """, (phone,))
+            row = cur.fetchone()
+            if row:
+                booking = dict(row)
+
+        if booking and booking.get("status") in ("broadcast", "accepted", "in_progress"):
+            session["active_booking_code"] = booking["booking_code"]
+            return jsonify({
+                "active": True,
+                "booking": booking,
+                "tracking_url": f"/track/{booking['booking_code']}",
+            })
+
+        if booking:
+            session.pop("active_booking_code", None)
+            return jsonify({"active": False, "booking": booking, "status": booking.get("status")})
+
+        session.pop("active_booking_code", None)
+        return jsonify({"active": False, "booking": None})
+
     @app.get("/api/customer/history/<phone>")
     def api_customer_history(phone: str):
         conn = get_db()
@@ -375,6 +426,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "success": True,
             "customer": customer,
             "rides": history,
+            "history": history,
             "total_rides": len(history)
         })
 
@@ -563,6 +615,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         conn.commit()
 
+        session["active_booking_code"] = booking["booking_code"]
+        session["customer_phone"] = booking["customer_phone"]
+        session["customer_name"] = booking["customer_name"]
+
         return jsonify({
             "success": True,
             "message": "Your booking has been broadcasted to all active riders!",
@@ -639,6 +695,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         booking = get_booking_by_code(conn, booking_code)
         if not booking:
             return render_template("track.html", booking=None, error="Booking not found."), 404
+        if booking.get("status") in ("broadcast", "accepted", "in_progress"):
+            session["active_booking_code"] = booking["booking_code"]
+        else:
+            if session.get("active_booking_code") == booking["booking_code"]:
+                session.pop("active_booking_code", None)
         return render_template("track.html", booking=booking, active_nav="track")
 
     @app.get("/api/bookings/track/<booking_code>")

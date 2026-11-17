@@ -3521,9 +3521,23 @@
         }
 
         const b = data.booking;
+        try {
+          localStorage.setItem("ccrc_active_booking", b.booking_code);
+          if (payload.customer_phone) localStorage.setItem("ccrc_customer_phone", payload.customer_phone);
+          if (payload.customer_name) localStorage.setItem("ccrc_customer_name", payload.customer_name);
+        } catch (_) {}
+
+        updateActiveTripNavLinks(b.booking_code);
+        if (typeof window.playDispatchChime === "function") window.playDispatchChime();
+
         if (modalBookingCode) modalBookingCode.textContent = b.booking_code;
         if (modalTrackLink) modalTrackLink.href = data.tracking_url;
         if (successModal) successModal.classList.remove("hidden");
+
+        // Seamless transition to live tracking after 1.5 seconds
+        setTimeout(() => {
+          window.location.href = data.tracking_url;
+        }, 1500);
       } catch (err) {
         if (errorMsg) {
           errorMsg.textContent = err.message;
@@ -3648,4 +3662,134 @@
       }
     } catch (_) {}
   }
+
+  // ---------------------------------------------------------------------------
+  // Customer Active Booking Persistence & Live Banner Tracking
+  // ---------------------------------------------------------------------------
+  function updateActiveTripNavLinks(bookingCode) {
+    const navPill = document.getElementById("nav-active-trip-pill");
+    const bottomPill = document.getElementById("bottom-active-trip-item");
+    if (bookingCode) {
+      const url = `/track/${encodeURIComponent(bookingCode)}`;
+      if (navPill) {
+        navPill.href = url;
+        navPill.style.display = "inline-flex";
+      }
+      if (bottomPill) {
+        bottomPill.href = url;
+        bottomPill.style.display = "flex";
+      }
+    } else {
+      if (navPill) navPill.style.display = "none";
+      if (bottomPill) bottomPill.style.display = "none";
+    }
+  }
+
+  function renderCustomerActiveCard(b) {
+    const card = document.getElementById("customer-active-ride-card");
+    if (!card) return;
+
+    const codeEl = document.getElementById("active-card-code");
+    const badgeEl = document.getElementById("active-card-status-badge");
+    const riderInfoEl = document.getElementById("active-card-rider-info");
+    const riderAvatarEl = document.getElementById("active-card-rider-avatar");
+    const riderNameEl = document.getElementById("active-card-rider-name");
+    const riderBikeEl = document.getElementById("active-card-rider-bike");
+    const callBtnEl = document.getElementById("active-card-call-btn");
+    const pickupEl = document.getElementById("active-card-pickup");
+    const dropoffEl = document.getElementById("active-card-dropoff");
+    const fareEl = document.getElementById("active-card-fare");
+    const trackBtnEl = document.getElementById("active-card-track-btn");
+
+    if (codeEl) codeEl.textContent = b.booking_code;
+    if (pickupEl) pickupEl.textContent = b.pickup_address;
+    if (dropoffEl) dropoffEl.textContent = b.dropoff_address;
+    if (fareEl) fareEl.textContent = `₱${Math.round(b.fare_amount || 0).toLocaleString()}`;
+    if (trackBtnEl) trackBtnEl.href = `/track/${encodeURIComponent(b.booking_code)}`;
+
+    if (badgeEl) {
+      if (b.status === "accepted") {
+        badgeEl.textContent = "🛵 Rider Accepted & Heading to Pickup!";
+        badgeEl.style.background = "#ea580c";
+      } else if (b.status === "in_progress") {
+        badgeEl.textContent = "🚀 In Transit / Heading to Destination!";
+        badgeEl.style.background = "#16a34a";
+      } else {
+        badgeEl.textContent = "⏳ Looking for Available Island Rider...";
+        badgeEl.style.background = "#0284c7";
+      }
+    }
+
+    if (b.rider_id) {
+      if (riderInfoEl) riderInfoEl.classList.remove("hidden");
+      if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
+      if (riderBikeEl) {
+        riderBikeEl.innerHTML = `${b.rider_bike || "Island Express Bike"}${b.rider_plate ? ` &bull; Plate: <strong>${b.rider_plate}</strong>` : ""}`;
+      }
+      if (callBtnEl) {
+        if (b.rider_phone) {
+          callBtnEl.href = `tel:${b.rider_phone}`;
+          callBtnEl.classList.remove("hidden");
+        } else {
+          callBtnEl.classList.add("hidden");
+        }
+      }
+      if (riderAvatarEl) {
+        if (b.rider_avatar) {
+          riderAvatarEl.innerHTML = `<img src="${b.rider_avatar}" alt="Rider" style="width:100%;height:100%;object-fit:cover;">`;
+        } else {
+          riderAvatarEl.textContent = (b.rider_name || "R")[0].toUpperCase();
+        }
+      }
+    } else {
+      if (riderInfoEl) riderInfoEl.classList.add("hidden");
+    }
+
+    card.classList.remove("hidden");
+    updateActiveTripNavLinks(b.booking_code);
+  }
+
+  async function checkCustomerActiveBooking() {
+    let activeCode = null;
+    try {
+      activeCode = localStorage.getItem("ccrc_active_booking");
+    } catch (_) {}
+    if (!activeCode && window.SERVER_ACTIVE_BOOKING) {
+      activeCode = window.SERVER_ACTIVE_BOOKING.booking_code;
+    }
+    let phone = null;
+    try {
+      phone = localStorage.getItem("ccrc_customer_phone");
+    } catch (_) {}
+
+    if (!activeCode && !phone) return;
+
+    let query = "";
+    if (activeCode) query = `code=${encodeURIComponent(activeCode)}`;
+    else if (phone) query = `phone=${encodeURIComponent(phone)}`;
+
+    try {
+      const res = await fetch(`/api/customer/active-booking?${query}`);
+      const data = await res.json();
+      if (data.active && data.booking) {
+        try {
+          localStorage.setItem("ccrc_active_booking", data.booking.booking_code);
+        } catch (_) {}
+        renderCustomerActiveCard(data.booking);
+      } else {
+        if (data.booking && (data.booking.status === "completed" || data.booking.status === "cancelled")) {
+          try {
+            localStorage.removeItem("ccrc_active_booking");
+          } catch (_) {}
+          const card = document.getElementById("customer-active-ride-card");
+          if (card) card.classList.add("hidden");
+          updateActiveTripNavLinks(null);
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Check active booking immediately on load and poll every 6s
+  checkCustomerActiveBooking();
+  setInterval(checkCustomerActiveBooking, 6000);
 })();

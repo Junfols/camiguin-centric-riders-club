@@ -57,9 +57,25 @@
 
   // Auto-fill phone from localStorage if previously booked
   const savedPhone = localStorage.getItem("ccrc_customer_phone");
+  const savedActiveCode = localStorage.getItem("ccrc_active_booking");
+
   if (savedPhone) {
     phoneInput.value = savedPhone;
     loadHistory(savedPhone);
+  } else if (savedActiveCode) {
+    loadActiveOnly(savedActiveCode);
+  }
+
+  async function loadActiveOnly(code) {
+    try {
+      const res = await fetch(`/api/customer/active-booking?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (data.active && data.booking && data.booking.customer_phone) {
+        phoneInput.value = data.booking.customer_phone;
+        localStorage.setItem("ccrc_customer_phone", data.booking.customer_phone);
+        loadHistory(data.booking.customer_phone);
+      }
+    } catch(_) {}
   }
 
   form.addEventListener("submit", (e) => {
@@ -84,7 +100,8 @@
         profileCard.classList.remove("hidden");
       }
 
-      if (!data.history || data.history.length === 0) {
+      const list = data.history || data.rides || [];
+      if (!list || list.length === 0) {
         feed.innerHTML = `
           <div class="empty-state">
             <span style="font-size:2.5rem;display:block;margin-bottom:8px;">🏖️</span>
@@ -96,14 +113,18 @@
       }
 
       let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-      data.history.forEach((b) => {
-        const isCompleted = b.status === 'completed';
+      list.forEach((b) => {
+        const isOngoing = ['broadcast', 'accepted', 'in_progress'].includes(b.status);
+        if (isOngoing) {
+          try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch(_) {}
+        }
         html += `
-          <div class="card" style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;">
+          <div class="card" style="padding:14px;border:${isOngoing ? '2px solid #ea580c;background:#fff7ed;' : '1px solid #e2e8f0;'};border-radius:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <div>
                 <strong style="font-family:monospace;font-size:0.95rem;">${b.booking_code}</strong>
                 <span class="badge badge-accent" style="margin-left:6px;font-size:0.75rem;text-transform:capitalize;">${b.service_type}</span>
+                ${isOngoing ? '<span class="badge" style="background:#ea580c;color:white;margin-left:6px;font-size:0.72rem;font-weight:700;">🟢 ACTIVE NOW</span>' : ''}
               </div>
               <span class="status-pill status-${b.status}" style="font-size:0.75rem;padding:2px 8px;">
                 ${b.status}
@@ -115,16 +136,16 @@
               <div>🏁 <strong>Drop-off:</strong> ${b.dropoff_address}</div>
             </div>
 
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:0.84rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid ${isOngoing ? '#fed7aa' : '#f1f5f9'};font-size:0.84rem;">
               <div>
                 Fare: <strong style="color:var(--primary);font-size:1.05rem;">₱${Number(b.fare_amount).toLocaleString()}</strong>
                 ${b.rider_name ? `<span class="text-muted">&bull; Rider: <strong>${b.rider_name}</strong></span>` : ''}
               </div>
               <div style="display:flex;gap:8px;">
-                <a href="/track/${b.booking_code}" class="btn btn-sm btn-outline" style="padding:3px 8px;font-size:0.78rem;">
-                  Track / Receipt
+                <a href="/track/${b.booking_code}" class="btn btn-sm ${isOngoing ? 'btn-primary' : 'btn-outline'}" style="padding:4px 10px;font-size:0.8rem;font-weight:700;">
+                  ${isOngoing ? '🗺️ Live GPS Tracking &rarr;' : 'Track / Receipt'}
                 </a>
-                <a href="/?pickup=${encodeURIComponent(b.pickup_address)}&dropoff=${encodeURIComponent(b.dropoff_address)}&service=${b.service_type}" class="btn btn-sm btn-primary" style="padding:3px 8px;font-size:0.78rem;">
+                <a href="/?pickup=${encodeURIComponent(b.pickup_address)}&dropoff=${encodeURIComponent(b.dropoff_address)}&service=${b.service_type}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;">
                   Rebook 🛵
                 </a>
               </div>
