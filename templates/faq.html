@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Frequently Asked Questions (FAQ) — {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container page-narrow" style="padding-top:2rem;padding-bottom:3.5rem;">
+  <div class="card" style="padding:2rem;">
+    <div class="text-center" style="margin-bottom:2rem;">
+      <span style="font-size:3rem;line-height:1;">❓</span>
+      <h1 style="font-size:1.8rem;margin:0.5rem 0 0.3rem;">Frequently Asked Questions</h1>
+      <p class="text-muted" style="margin:0;font-size:1rem;">
+        Everything you need to know about island booking, fares, payments, and riding with CCRC.
+      </p>
+    </div>
+
+    <div class="faq-list" style="display:flex;flex-direction:column;gap:1.25rem;">
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">1. How is my fare calculated?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          Fares follow the Official Camiguin CRC Fare Matrix approved for our members:
+          <br>&bull; <strong>1 to 2 km:</strong> ₱40 base fare
+          <br>&bull; <strong>Succeeding km (&gt;2 km):</strong> +₱18 per kilometer
+          <br>Distance is measured along actual road routes (kalsada mismo) using GPS routing, not straight-line distance.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">2. How does the Pabili / Buy For Me errand service work?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          When you select <strong>Buy For Me (🛒 Pabili)</strong>, enter the items you need and your shopping budget. Your assigned rider will go to the store, advance their own cash up to your budget, purchase the items with an official receipt, and deliver them to your doorstep. You reimburse the rider in cash or GCash upon delivery plus the errand meter fee.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">3. What payment methods are accepted?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          We support <strong>💵 Cash on Delivery / Trip</strong>, <strong>📱 GCash QR / Transfer</strong>, and <strong>💳 Maya</strong>. You can choose your preferred payment option when booking.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">4. Can I book an Island Tour package or hourly rider?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          Yes! We offer curated half-day (4-hour) and full-day (8-hour) island tour packages covering White Island, Sunken Cemetery, Katibawasan Falls, Cold Springs, and more. Visit our <a href="/tours" style="color:var(--primary);font-weight:700;">Island Tours page</a> to book with a verified local guide.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">5. Do riders provide safety helmets?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          Yes, passenger safety is mandatory. All CCRC riders provide a sanitized, standard safety helmet for every passenger. Wearing a helmet is strictly required on Camiguin roads.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">6. Can I schedule a ride in advance for ferry arrivals or airport flights?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          Yes! On the booking form, simply select <strong>Schedule for Later</strong> and choose your target date &amp; time (e.g., 5:30 AM pickup for the Benoni morning ferry).
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 6px;font-size:1.05rem;color:#9a3412;">7. What happens if it rains?</h3>
+        <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#334155;">
+          Riders carry standard rain gear and protective parcel bags. During severe weather or tropical depressions, dispatches may pause temporarily for passenger and rider safety.
+        </p>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:2.5rem;">
+      <a href="/" class="btn btn-primary btn-lg" style="display:inline-block;font-weight:700;">
+        Ready to Ride? Book Now &rarr;
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

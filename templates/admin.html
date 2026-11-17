@@ -4,33 +4,9 @@
 
 {% block content %}
 <div class="container page-admin-wrap" style="padding-top:1.5rem;padding-bottom:3rem;">
-  {% if not is_admin %}
-  <!-- Admin Login Screen (Unauthorized riders or customers cannot view admin data) -->
-  <div class="card" style="max-width:440px;margin:3rem auto;padding:2.2rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);">
-    <div style="text-align:center;margin-bottom:1.5rem;">
-      <span style="font-size:3rem;line-height:1;">🔒</span>
-      <h2 style="margin:8px 0 4px;font-size:1.4rem;">Club Admin Verification</h2>
-      <p class="text-muted" style="font-size:0.88rem;">Authorized officers only. Please enter the club admin password to access dispatches and tariff settings.</p>
-    </div>
-    <form id="admin-login-form">
-      <div class="form-group">
-        <label for="admin-pwd">Admin Password *</label>
-        <input type="password" id="admin-pwd" required placeholder="Enter password (default: admin1234)" autofocus>
-      </div>
-      <div id="admin-login-err" class="alert-error hidden" style="margin-bottom:12px;"></div>
-      <button type="submit" class="btn btn-primary btn-block btn-lg">Unlock Admin Dashboard &rarr;</button>
-    </form>
-  </div>
-  {% else %}
-  <!-- Authenticated Admin Control Panel -->
-  <div class="page-head" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
-    <div>
-      <h1 style="margin:0;">Club Dispatch &amp; Admin Panel ⚙️</h1>
-      <p class="text-muted" style="margin:4px 0 0;">Manage active club riders, live dispatches, and island fare matrix configuration.</p>
-    </div>
-    <button type="button" id="admin-logout-btn" class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;font-weight:600;">
-      🚪 Log Out Admin
-    </button>
+  <div class="page-head" style="margin-bottom:1.5rem;">
+    <h1>Club Dispatch &amp; Admin Panel ⚙️</h1>
+    <p class="text-muted">Manage active club riders, live dispatches, and island fare matrix configuration for Camiguin Centric Riders Club.</p>
   </div>
 
   <!-- KPI Metrics Grid -->
@@ -83,300 +59,116 @@
             <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required min="5">
           </div>
           <div class="form-group">
-            <label for="set-min-fare">Minimum Trip Fare (₱) *</label>
-            <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="20">
-          </div>
-        </div>
-
-        <h4 style="margin:16px 0 8px;font-size:0.95rem;">Additional Surcharges (₱)</h4>
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="set-pabili-fee">Pabili / Buy-For-Me Fee</label>
-            <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee }}">
-          </div>
-          <div class="form-group">
-            <label for="set-pasugo-fee">Pasugo / Errand Fee</label>
-            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee }}">
+            <label for="set-min-fare">Minimum Fare (₱) *</label>
+            <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="30">
           </div>
         </div>
 
         <div class="form-grid-2">
           <div class="form-group">
-            <label for="set-queuing-fee">Queuing / Waiting Fee</label>
-            <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee }}">
+            <label for="set-pabili-fee">Pabili Extra Fee (₱)</label>
+            <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee or 20 }}" required min="0">
           </div>
           <div class="form-group">
-            <label for="set-hinterland-fee">Mountain / Trail Surcharge</label>
-            <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee }}">
+            <label for="set-pasugo-fee">Pasugo Extra Fee (₱)</label>
+            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee or 20 }}" required min="0">
           </div>
         </div>
 
-        <h4 style="margin:16px 0 8px;font-size:0.95rem;display:flex;align-items:center;gap:6px;">
-          <span>☁️</span> Google Drive Cloud Backup (Optional)
-        </h4>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="set-queuing-fee">Large Store Queuing Fee (₱)</label>
+            <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee or 30 }}" required min="0">
+          </div>
+          <div class="form-group">
+            <label for="set-hinterland-fee">Hinterland Route Fee (₱)</label>
+            <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee or 30 }}" required min="0">
+          </div>
+        </div>
+
         <div class="form-group">
-          <label for="set-gdrive-webhook">Google Drive Webhook / Apps Script URL</label>
-          <input type="url" id="set-gdrive-webhook" name="google_drive_webhook_url" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec">
-          <small class="text-muted" style="display:block;margin-top:4px;">
-            Awtomatikong i-upload ang backup diretso sa imong Google Drive.
-            <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">Unsaon kini pag-set up? (1 ka minuto) &rarr;</a>
-          </small>
+          <label for="set-hotline">Club Hotline / Dispatch Mobile</label>
+          <input type="text" id="set-hotline" name="hotline" value="{{ settings.hotline }}">
         </div>
 
-        <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
-        <button type="submit" id="save-settings-btn" class="btn btn-primary" style="margin-top:12px;">Save Taripa Settings</button>
+        <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block">Save Fare Matrix Settings</button>
       </form>
     </div>
 
-    <!-- Active Club Riders List -->
+    <!-- Active Club Riders Roster -->
     <div class="card">
-      <h3 style="margin-top:0;">Registered Club Riders ({{ riders|length }})</h3>
-      <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
-        <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:2px solid var(--border);text-align:left;">
-              <th style="padding:6px;">Status</th>
-              <th style="padding:6px;">Rider &amp; Photo</th>
-              <th style="padding:6px;">License No.</th>
-              <th style="padding:6px;">Bike / Plate</th>
-              <th style="padding:6px;">Town</th>
-              <th style="padding:6px;">Admin Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in riders %}
-            <tr style="border-bottom:1px solid var(--border);">
-              <td style="padding:6px;">
-                {% if r.is_online == 1 and r.status == 'active' %}
-                  <span class="badge badge-success" style="font-size:0.75rem;">🟢 Online</span>
-                {% elif r.status == 'pending' %}
-                  <span class="badge badge-warning" style="font-size:0.75rem;">⏳ Pending</span>
-                {% else %}
-                  <span class="badge" style="font-size:0.75rem;background:#94a3b8;color:white;">Offline</span>
-                {% endif %}
-              </td>
-              <td style="padding:6px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  {% if r.avatar_url %}
-                    <a href="{{ r.avatar_url }}" target="_blank" title="View Full Profile Photo">
-                      <img src="{{ r.avatar_url }}" alt="{{ r.name }}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid #cbd5e1;">
-                    </a>
-                  {% else %}
-                    <span style="width:38px;height:38px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
-                  {% endif %}
-                  <div>
-                    <strong>{{ r.name }}</strong>
-                    <div style="font-size:0.78rem;"><a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a></div>
-                  </div>
-                </div>
-              </td>
-              <td style="padding:6px;">
-                <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-family:monospace;font-size:0.8rem;">
-                  {{ r.license_no or 'N/A' }}
-                </span>
-              </td>
-              <td style="padding:6px;">{{ r.bike_model }} <small class="text-muted">({{ r.plate_number }})</small></td>
-              <td style="padding:6px;">{{ r.municipality }}</td>
-              <td style="padding:6px;white-space:nowrap;">
-                {% if r.status == 'pending' %}
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.75rem;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="setRiderStatus({{ r.id }}, 'rejected')">Reject ❌</button>
-                {% elif r.status == 'active' %}
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'suspended')">Deactivate</button>
-                {% else %}
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
-                {% endif %}
-              </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="6" class="text-muted" style="padding:12px;text-align:center;">No riders registered yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <h3 style="margin-top:0;">Official Club Riders Roster ({{ riders|length }})</h3>
+      <div class="riders-table-wrap" style="max-height:360px;overflow-y:auto;">
+        {% for r in riders %}
+        <div class="rider-roster-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:0.86rem;">
+          <div>
+            <strong>{{ r.name }}</strong>
+            <span class="badge {% if r.is_online %}badge-success{% else %}badge-soft{% endif %}" style="font-size:0.7rem;margin-left:4px;">
+              {% if r.is_online %}Online{% else %}Offline{% endif %}
+            </span>
+            <div class="text-muted" style="font-size:0.8rem;">
+              {{ r.bike_model }} &bull; Plate: <strong>{{ r.plate_number }}</strong> &bull; {{ r.phone }}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <strong style="color:var(--primary);">{{ r.total_trips }}</strong> trips
+            <div style="color:#f59e0b;font-size:0.78rem;">★ {{ r.rating_avg }}</div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
 
-  <!-- System Data Backup & Restore Card -->
-  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px;">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
-          <span style="font-size:1.4rem;">💾</span> System Data Backup &amp; Restore
-        </h3>
-        <p class="text-muted" style="margin:4px 0 0;font-size:0.88rem;">
-          I-backup o i-restore ang tanan nga data sa club (Riders, Bookings, Chat Messages, Reviews, Settings, &amp; Media Photos).
-        </p>
-      </div>
-      <span class="badge" style="background:#0284c7;color:#ffffff;font-size:0.75rem;padding:4px 10px;border-radius:12px;">
-        🔒 Admin Restricted Tool
-      </span>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
-      <!-- Export / Download Section -->
-      <div style="padding:1.2rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
-            📥
-          </div>
-          <div>
-            <strong style="font-size:1rem;color:#0f172a;">1-Click Database Backup</strong>
-            <div class="text-muted" style="font-size:0.8rem;">Export complete system snapshot</div>
-          </div>
-        </div>
-        <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
-          I-download ang tibuok kopya sa database lakip ang riders list, registration records, license numbers, active/past trips, chat history, ug custom taripa settings.
-        </p>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <a href="/api/admin/backup" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;text-decoration:none;">
-            <span>⬇️</span> Download Full Backup (.JSON)
-          </a>
-          <button type="button" id="gdrive-backup-btn" class="btn btn-block" onclick="backupToGoogleDrive(event)" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;background:#0f172a;color:#ffffff;border:1px solid #334155;border-radius:var(--radius-md);cursor:pointer;touch-action:manipulation;">
-            <span>☁️</span> I-Save sa Google Drive
-          </button>
-        </div>
-        <div id="gdrive-status-msg" class="hidden" style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
-      </div>
-
-      <!-- Import / Restore Section -->
-      <div style="padding:1.2rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
-            🔄
-          </div>
-          <div>
-            <strong style="font-size:1rem;color:#0f172a;">Restore from Backup File</strong>
-            <div class="text-muted" style="font-size:0.8rem;">I-balik ang database gikan sa na-download nga .json</div>
-          </div>
-        </div>
-
-        <form id="admin-restore-form" enctype="multipart/form-data">
-          <div class="form-group" style="margin-bottom:10px;">
-            <label for="restore-file-input" style="font-size:0.82rem;font-weight:600;color:#334155;">Pilia ang Backup File (.json) *</label>
-            <input type="file" id="restore-file-input" name="backup_file" accept=".json,application/json" required style="font-size:0.85rem;padding:6px;width:100%;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;">
-          </div>
-
-          <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-            <input type="checkbox" id="restore-wipe-mode" name="wipe_existing" value="true" checked style="width:16px;height:16px;accent-color:var(--primary);">
-            <label for="restore-wipe-mode" style="font-size:0.8rem;color:#475569;cursor:pointer;user-select:none;">
-              <strong>Clean Sync</strong> (I-overwrite ug i-synchronize tanan records sumala sa backup)
-            </label>
-          </div>
-
-          <div id="restore-status-msg" class="hidden" style="margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
-
-          <button type="submit" id="restore-submit-btn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#b45309;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <span>⬆️</span> I-restore Kini nga Backup
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Bookings Table -->
+  <!-- Recent Dispatch Bookings Table -->
   <div class="card" style="margin-top:1.5rem;">
-    <h3 style="margin-top:0;">Recent Island Bookings (Latest 50)</h3>
-    <div class="table-wrap" style="max-height:440px;overflow-y:auto;">
-      <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+    <h3 style="margin-top:0;">Live Dispatch Bookings Log</h3>
+    <div class="table-responsive">
+      <table class="admin-table">
         <thead>
-          <tr style="border-bottom:2px solid var(--border);text-align:left;">
-            <th style="padding:8px;">Code</th>
-            <th style="padding:8px;">Service</th>
-            <th style="padding:8px;">Status</th>
-            <th style="padding:8px;">Customer</th>
-            <th style="padding:8px;">Pickup &rarr; Dropoff</th>
-            <th style="padding:8px;">Fare</th>
-            <th style="padding:8px;">Rider</th>
-            <th style="padding:8px;">Live Track</th>
+          <tr>
+            <th>Code</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Pickup / Drop-off</th>
+            <th>Fare</th>
+            <th>Rider</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {% for b in bookings %}
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.code }}</td>
-            <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
-            <td style="padding:8px;">
-              {% if b.status == 'completed' %}
-                <span class="badge badge-success">Completed</span>
-              {% elif b.status == 'in_progress' %}
-                <span class="badge badge-primary">In Transit</span>
-              {% elif b.status == 'accepted' %}
-                <span class="badge" style="background:#0284c7;color:white;">Rider Heading</span>
-              {% elif b.status == 'broadcast' %}
-                <span class="badge badge-warning">Broadcast</span>
-              {% else %}
-                <span class="badge">{{ b.status }}</span>
-              {% endif %}
+          <tr>
+            <td><strong>{{ b.booking_code }}</strong></td>
+            <td><span class="badge badge-accent">{{ b.service_type|capitalize }}</span></td>
+            <td>
+              <span class="status-pill status-{{ b.status }}" style="font-size:0.75rem;padding:2px 8px;">
+                {{ b.status }}
+              </span>
             </td>
-            <td style="padding:8px;">
-              <strong>{{ b.customer_name }}</strong><br>
-              <a href="tel:{{ b.customer_phone }}" class="text-muted">{{ b.customer_phone }}</a>
+            <td>{{ b.customer_name }}<br><small class="text-muted">{{ b.customer_phone }}</small></td>
+            <td>
+              <div style="font-size:0.82rem;">
+                🟢 {{ b.pickup_address }}<br>
+                🏁 {{ b.dropoff_address }}
+              </div>
             </td>
-            <td style="padding:8px;">
-              <small><strong>From:</strong> {{ b.pickup_location }}</small><br>
-              <small><strong>To:</strong> {{ b.dropoff_location }}</small>
-            </td>
-            <td style="padding:8px;font-weight:700;color:var(--primary);">₱{{ "%.2f"|format(b.estimated_fare|float) }}</td>
-            <td style="padding:8px;">
-              {% if b.rider_name %}
-                <strong>{{ b.rider_name }}</strong><br>
-                <small class="text-muted">{{ b.rider_bike }}</small>
-              {% else %}
-                <span class="text-muted">Unassigned</span>
-              {% endif %}
-            </td>
-            <td style="padding:8px;">
-              <a href="/track/{{ b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
+            <td><strong>₱{{ '{:,.0f}'.format(b.fare_amount) }}</strong></td>
+            <td>{{ b.rider_name or '<span class="text-muted">Unassigned</span>'|safe }}</td>
+            <td>
+              <a href="/track/{{ b.booking_code }}" target="_blank" class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:0.75rem;">
+                🗺️ Live GPS
+              </a>
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No bookings recorded yet.</td></tr>
+          <tr>
+            <td colspan="8" class="text-center text-muted" style="padding:20px 0;">No bookings recorded yet.</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
-    </div>
-  </div>
-  {% endif %}
-</div>
-
-<!-- Google Drive Setup Guide Modal -->
-<div id="gdrive-guide-modal" class="modal-backdrop hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem;">
-  <div class="card" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);border-radius:14px;background:#ffffff;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
-        <span>☁️</span> Giya: Libre nga Google Drive Auto-Backup
-      </h3>
-      <button type="button" onclick="closeGdriveGuideModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;">&times;</button>
-    </div>
-    <p style="font-size:0.86rem;color:#475569;margin-bottom:12px;">
-      Gusto ka nga sa matag click nimo ug <strong>"I-Save sa Google Drive"</strong>, awtomatikong mosulod ang file sa imong Google Drive folder nga walay bayad? Sunda kining 3 ka sayon nga lakang:
-    </p>
-    <ol style="font-size:0.84rem;color:#334155;padding-left:1.2rem;line-height:1.5;margin-bottom:14px;">
-      <li style="margin-bottom:8px;">
-        Ablihi ang <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> gamit ang imong Gmail account, unya i-click ang <strong>"New Project"</strong>.
-      </li>
-      <li style="margin-bottom:8px;">
-        I-delete ang sulod sa editor ug i-paste kining mubo nga code:
-        <pre style="background:#0f172a;color:#f8fafc;padding:10px;border-radius:8px;font-size:0.75rem;overflow-x:auto;margin:6px 0;">function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var folder = DriveApp.getRootFolder();
-  var file = folder.createFile(data.filename, data.content, MimeType.PLAIN_TEXT);
-  return ContentService.createTextOutput(JSON.stringify({
-    success: true,
-    file_url: file.getUrl()
-  })).setMimeType(ContentService.MimeType.JSON);
-}</pre>
-      </li>
-      <li style="margin-bottom:8px;">
-        I-click ang <strong>Deploy &gt; New deployment</strong>. Pilia ang <strong>Web app</strong>, ibutang sa <em>Who has access</em>: <strong>Anyone</strong>, unya i-click ang <strong>Deploy</strong>.
-      </li>
-      <li>
-        Kopyaha ang gihatag nga <strong>Web App URL</strong> ug i-paste kini sa kahon sa <strong>Google Drive Webhook / Apps Script URL</strong> dinhi sa Admin Settings, dayon i-save!
-      </li>
-    </ol>
-    <div style="text-align:right;">
-      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
     </div>
   </div>
 </div>
@@ -384,260 +176,42 @@
 
 {% block scripts %}
 <script>
-  // Admin Set Rider Status Handler
-  window.setRiderStatus = async function(riderId, newStatus) {
-    const actionLabel = newStatus === 'active' ? 'APPROVE' : (newStatus === 'rejected' ? 'REJECT' : 'DEACTIVATE');
-    if (!confirm(`Are you sure you want to ${actionLabel} this rider?`)) return;
-    try {
-      const res = await fetch(`/api/admin/riders/${riderId}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update rider status");
-      alert(`Rider status successfully updated to ${newStatus.toUpperCase()}!`);
-      window.location.reload();
-    } catch (err) {
-      alert("Error: " + err.message);
-    }
-  };
-
-  // Admin Login Handler
-  const loginForm = document.getElementById("admin-login-form");
-  if (loginForm) {
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const pwd = document.getElementById("admin-pwd").value;
-      const errEl = document.getElementById("admin-login-err");
-      errEl.classList.add("hidden");
-      try {
-        const res = await fetch("/api/admin/login", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({password: pwd})
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Login failed");
-        window.location.reload();
-      } catch (err) {
-        errEl.textContent = err.message;
-        errEl.classList.remove("hidden");
-      }
-    });
-  }
-
-  // Admin Logout Handler
-  const logoutBtn = document.getElementById("admin-logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-      await fetch("/api/admin/logout", {method: "POST"});
-      window.location.reload();
-    });
-  }
-
-  // Admin Settings Form Handler
   const settingsForm = document.getElementById("admin-settings-form");
   if (settingsForm) {
     settingsForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const formData = new FormData(settingsForm);
-      const payload = Object.fromEntries(formData.entries());
-      const successEl = document.getElementById("settings-save-success");
+      const btn = document.getElementById("save-settings-btn");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      const payload = {
+        base_fare: document.getElementById("set-base-fare").value,
+        base_km: document.getElementById("set-base-km").value,
+        per_km_rate: document.getElementById("set-per-km").value,
+        min_fare: document.getElementById("set-min-fare").value,
+        pabili_service_fee: document.getElementById("set-pabili-fee").value,
+        pasugo_service_fee: document.getElementById("set-pasugo-fee").value,
+        queuing_fee: document.getElementById("set-queuing-fee") ? document.getElementById("set-queuing-fee").value : 30,
+        hinterland_fee: document.getElementById("set-hinterland-fee") ? document.getElementById("set-hinterland-fee").value : 30,
+        hotline: document.getElementById("set-hotline").value,
+      };
+
       try {
         const res = await fetch("/api/admin/settings", {
           method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error("Failed to save settings");
-        successEl.classList.remove("hidden");
-        setTimeout(() => successEl.classList.add("hidden"), 3000);
-      } catch (err) {
-        alert("Error saving settings: " + err.message);
-      }
-    });
-  }
-
-  // Admin Restore Backup Handler
-  const restoreForm = document.getElementById("admin-restore-form");
-  if (restoreForm) {
-    restoreForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById("restore-file-input");
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Palihug pagpili una ug .json backup file nga i-restore!");
-        return;
-      }
-
-      const file = fileInput.files[0];
-      const wipeMode = document.getElementById("restore-wipe-mode").checked;
-      const wipeWarning = wipeMode 
-        ? "⚠️ PAHIBALO: Ang Clean Sync mag-overwrite sa existing database data aron motakdo sa sulod sa backup file.\n\nSigurado ba ka nga gusto nimong i-restore ang: " + file.name + "?"
-        : "Sigurado ba ka nga gusto nimong i-merge/i-restore ang data gikan sa: " + file.name + "?";
-
-      if (!confirm(wipeWarning)) {
-        return;
-      }
-
-      const submitBtn = document.getElementById("restore-submit-btn");
-      const statusMsg = document.getElementById("restore-status-msg");
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = "<span>⏳</span> Gapa-restore sa database... Palihug hulata...";
-      statusMsg.className = "alert-warning";
-      statusMsg.textContent = "Processing backup data transaction. Palihug ayaw i-close ang browser...";
-      statusMsg.classList.remove("hidden");
-
-      try {
-        const formData = new FormData();
-        formData.append("backup_file", file);
-        formData.append("wipe_existing", wipeMode ? "true" : "false");
-
-        const res = await fetch("/api/admin/restore", {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to restore backup.");
-        }
-
-        statusMsg.className = "alert-success";
-        statusMsg.textContent = "✅ " + (data.message || "Database successfully restored!");
-        alert("✅ Malampusong na-restore ang Database!\n\n" + (data.message || ""));
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } catch (err) {
-        statusMsg.className = "alert-error";
-        statusMsg.textContent = "❌ Error: " + err.message;
-        alert("❌ Restore Error: " + err.message);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = "<span>⬆️</span> I-restore Kini nga Backup";
-      }
-    });
-  }
-
-  // Google Drive Guide Modal Handlers
-  window.openGdriveGuideModal = function() {
-    const m = document.getElementById("gdrive-guide-modal");
-    if (m) {
-      m.style.display = "flex";
-      m.classList.remove("hidden");
-    }
-  };
-
-  window.closeGdriveGuideModal = function() {
-    const m = document.getElementById("gdrive-guide-modal");
-    if (m) {
-      m.style.display = "none";
-      m.classList.add("hidden");
-    }
-  };
-
-  // Google Drive Backup Main Function
-  window.backupToGoogleDrive = async function(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const btn = document.getElementById("gdrive-backup-btn");
-    const statusEl = document.getElementById("gdrive-status-msg");
-    if (!btn || !statusEl) {
-      console.error("Button or status container missing");
-      return;
-    }
-
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.style.opacity = "0.75";
-    btn.innerHTML = "<span>⏳</span> Naga-konektar sa Google Drive...";
-    statusEl.className = "alert-warning";
-    statusEl.textContent = "Naga-andam sa database snapshot para sa Google Drive...";
-    statusEl.classList.remove("hidden");
-
-    try {
-      // 1. Try server-side webhook upload
-      let serverData = null;
-      try {
-        const res = await fetch("/api/admin/backup/google-drive", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
         if (res.ok) {
-          serverData = await res.json();
+          alert("Fare matrix and settings saved successfully!");
         }
-      } catch (postErr) {
-        console.warn("Server webhook check bypassed:", postErr);
+      } catch (err) {
+        alert("Error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Fare Matrix Settings";
       }
-
-      if (serverData && serverData.configured && serverData.success) {
-        statusEl.className = "alert-success";
-        statusEl.innerHTML = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} <br><a href="${serverData.file_url}" target="_blank" style="color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;">🔗 Ablihi ang File sa Google Drive &rarr;</a>`;
-        return;
-      }
-
-      // 2. Fetch the backup file blob for mobile share or direct upload
-      const backupBlobRes = await fetch("/api/admin/backup");
-      if (!backupBlobRes.ok) throw new Error("Dili ma-download ang backup gikan sa server.");
-      const blob = await backupBlobRes.blob();
-      const nowStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      const filename = (serverData && serverData.filename) || `ccrc_backup_${nowStr}.json`;
-      const file = new File([blob], filename, { type: "application/json" });
-
-      // 3. Android Mobile: Web Share API (Save to Drive option)
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        statusEl.className = "alert-warning";
-        statusEl.textContent = "📱 Gina-abli ang Android Share Sheet... Pilia ang 'Google Drive' / 'Save to Drive'.";
-        try {
-          await navigator.share({
-            title: "Camiguin Centric Riders Club - Backup",
-            text: "CCRC Database System Backup",
-            files: [file]
-          });
-          statusEl.className = "alert-success";
-          statusEl.textContent = "✅ Malampusong na-share / na-save sa Google Drive!";
-          return;
-        } catch (shareErr) {
-          if (shareErr.name === "AbortError") {
-            statusEl.className = "alert-warning";
-            statusEl.textContent = "Gikanselar ang share dialog. Na-save gihapon ang backup file.";
-          }
-        }
-      }
-
-      // 4. Desktop / Fallback: Download file directly and open Google Drive in new tab
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 1000);
-
-      window.open("https://drive.google.com/drive/my-drive", "_blank");
-
-      statusEl.className = "alert-success";
-      statusEl.innerHTML = `📥 Na-download ang <strong>${filename}</strong> ug naablihan ang <strong>Google Drive</strong> sa bag-ong tab!<br>
-      I-drag &amp; drop o i-upload lang kini ngadto sa imong Google Drive.<br>
-      <small class="text-muted"><a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;">Gusto ka'g 1-click Awtomatikong Cloud Sync? I-set up ang Webhook &rarr;</a></small>`;
-
-    } catch (err) {
-      statusEl.className = "alert-error";
-      statusEl.textContent = "❌ Error: " + err.message;
-    } finally {
-      btn.disabled = false;
-      btn.style.opacity = "1";
-      btn.innerHTML = originalText;
-    }
-  };
-
-  // Add event listener directly to button in addition to inline onclick
-  const gdriveBtn = document.getElementById("gdrive-backup-btn");
-  if (gdriveBtn) {
-    gdriveBtn.addEventListener("click", window.backupToGoogleDrive);
+    });
   }
 </script>
 {% endblock %}

@@ -12,8 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="CentricRiders">
 
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" type="image/png" href="/static/icons/logo.png">
-  <link rel="shortcut icon" href="/static/icons/logo.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
   <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/icon-192.png">
 
   <!-- Leaflet Map CSS & JS -->
@@ -21,72 +20,35 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <!-- Main Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=6">
-  <script>
-    (function() {
-      try {
-        if (localStorage.getItem("ccrc_rider_session")) {
-          document.documentElement.classList.add("is-rider-session");
-        }
-      } catch(_) {}
-    })();
-  </script>
+  <link rel="stylesheet" href="/static/css/style.css?v=2">
   {% block head %}{% endblock %}
 </head>
 <body class="app-body">
-  <!-- App Splash / Loading Screen -->
-  <div id="app-splash-screen" class="app-splash-screen" role="status" aria-label="Loading Application">
-    <div class="splash-inner">
-      <div class="splash-logo-wrap">
-        <img src="/static/icons/logo.png" alt="Camiguin Centric Riders Club Logo" class="splash-logo-img">
-        <div class="splash-pulse-ring"></div>
-      </div>
-      <h1 class="splash-title">CAMIGUIN CENTRIC RIDERS CLUB</h1>
-      <p class="splash-tagline">YOUR SAFETY IS OUR PRIORITY</p>
-
-      <div class="splash-loader-wrap">
-        <div class="splash-loader-bar"></div>
-      </div>
-      <span class="splash-status-text">Connecting to Island Express Riders...</span>
-    </div>
-  </div>
   <div id="offline-banner" class="offline-banner hidden" role="status">
     <span>⚠️ Offline mode — No internet connection detected.</span>
   </div>
 
-  <!-- Header Navigation: Strictly Role-Specific -->
+  <!-- Header Navigation -->
   <header class="site-header">
     <div class="container header-inner">
-      <div class="brand-link" style="display:flex;align-items:center;gap:10px;">
-        <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;cursor:pointer;" title="{{ club.name }}">
-          <img src="/static/icons/logo.png" alt="{{ club.name }}" class="brand-logo-img" style="width:42px;height:42px;object-fit:contain;border-radius:50%;display:block;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+      <a href="/" class="brand-link" aria-label="{{ club.name }} Home">
+        <div class="brand-logo-wrap">
+          <span class="brand-logo-emoji">🛵</span>
         </div>
-        <a href="{% if session.get('rider_id') or active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" style="text-decoration:none;color:inherit;" aria-label="{{ club.name }} Home">
+        <div class="brand-text">
           <span class="brand-name">{{ club.name }}</span>
-          <span class="brand-sub">
-            {% if active_nav == 'rider' %}
-              Rider Dispatch Portal 📱
-            {% elif active_nav == 'admin' %}
-              Club Admin Control Center ⚙️
-            {% else %}
-              Camiguin Island On-Demand Express
-            {% endif %}
-          </span>
-        </a>
-      </div>
+          <span class="brand-sub">Camiguin Island On-Demand Express</span>
+        </div>
+      </a>
 
       <nav class="desktop-nav" aria-label="Main Navigation">
-        {% if active_nav == 'admin' %}
-          <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#1e293b;color:white;border-radius:20px;font-weight:600;">⚙️ Club Admin Mode</span>
-          <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
-        {% elif session.get('rider_id') %}
-          <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
-          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;">Log Out 🚪</button>
-        {% else %}
-          <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
-          <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}" id="nav-rider-link">Rider Hub 📱</a>
-          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger nav-rider-logged-item hidden" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;">Log Out 🚪</button>
-        {% endif %}
+        <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %}">Book a Ride 🛵</a>
+        <a href="/tours" class="nav-link {% if active_nav == 'tours' %}active{% endif %}">Island Tours 🏝️</a>
+        <a href="/history" class="nav-link {% if active_nav == 'history' %}active{% endif %}">Ride History 📜</a>
+        <a href="/about" class="nav-link {% if active_nav == 'about' %}active{% endif %}">About ℹ️</a>
+        <a href="/faq" class="nav-link {% if active_nav == 'faq' %}active{% endif %}">FAQ ❓</a>
+        <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}">Rider Dispatch 📱</a>
+        <a href="/admin" class="nav-link {% if active_nav == 'admin' %}active{% endif %}">Club Admin ⚙️</a>
       </nav>
 
       <div class="header-actions">
@@ -106,60 +68,104 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Mobile Bottom Navigation: Customer & Rider unified (Admin hidden) -->
-  {% if active_nav == 'admin' %}
-  <nav class="bottom-nav" aria-label="Admin Navigation">
-    <a href="/admin" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">⚙️</span>
-      <span>Admin Panel</span>
-    </a>
-    <a href="/" class="bottom-nav-item">
-      <span class="bottom-nav-icon">🏠</span>
-      <span>Exit to App</span>
-    </a>
-  </nav>
-  {% elif session.get('rider_id') %}
-  <nav class="bottom-nav" aria-label="Rider Navigation">
-    <a href="/rider" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">📱</span>
-      <span>Rider Hub</span>
-    </a>
-    <a href="javascript:void(0)" id="bottom-rider-refresh-btn" class="bottom-nav-item">
-      <span class="bottom-nav-icon">🔄</span>
-      <span>Refresh</span>
-    </a>
-    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger">
-      <span class="bottom-nav-icon">🚪</span>
-      <span>Log Out</span>
-    </a>
-  </nav>
-  {% else %}
-  <nav class="bottom-nav" aria-label="App Navigation">
-    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="bottom-nav-book">
+  <!-- Mobile Bottom Navigation -->
+  <nav class="bottom-nav" aria-label="Mobile Navigation">
+    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %}">
       <span class="bottom-nav-icon">🛵</span>
-      <span>Book a Ride</span>
+      <span>Book</span>
     </a>
-    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}" id="bottom-nav-rider">
+    <a href="/tours" class="bottom-nav-item {% if active_nav == 'tours' %}active{% endif %}">
+      <span class="bottom-nav-icon">🏝️</span>
+      <span>Tours</span>
+    </a>
+    <a href="/history" class="bottom-nav-item {% if active_nav == 'history' %}active{% endif %}">
+      <span class="bottom-nav-icon">📜</span>
+      <span>History</span>
+    </a>
+    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}">
       <span class="bottom-nav-icon">📱</span>
-      <span>Rider Hub</span>
+      <span>Riders</span>
     </a>
-    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item nav-rider-logged-item text-danger hidden">
-      <span class="bottom-nav-icon">🚪</span>
-      <span>Log Out</span>
+    <a href="/admin" class="bottom-nav-item {% if active_nav == 'admin' %}active{% endif %}">
+      <span class="bottom-nav-icon">⚙️</span>
+      <span>Admin</span>
     </a>
   </nav>
-  {% endif %}
 
-  <!-- Footer: Clean & Professional with JRG IT SOLUTIONS 2026 -->
-  <footer class="site-footer" style="padding:2.5rem 1rem 6.5rem;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
-    <p>&copy; 2026 Camiguin Centric Riders Club &bull; Safe Island Rides &amp; Deliveries</p>
-    <p style="margin-top:8px;font-size:0.78rem;color:#64748b;letter-spacing:0.3px;">
-      Designed &amp; Developed by <strong>JRG IT SOLUTIONS 2026</strong>
-    </p>
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-grid">
+        <!-- Brand & Mission -->
+        <div class="footer-col footer-brand-col">
+          <div class="footer-brand">
+            <span class="footer-logo">🛵</span>
+            <strong>{{ club.name }}</strong>
+          </div>
+          <p class="footer-desc">
+            Camiguin Island's premier verified habal-habal dispatch &amp; on-demand express courier network. Fast, transparent island tariff, and safe rides for tourists and locals across all 5 municipalities.
+          </p>
+          <div class="footer-badges">
+            <span class="f-badge">✓ Verified Members</span>
+            <span class="f-badge">✓ Official Island Tariff</span>
+            <span class="f-badge">✓ Helmet Provided</span>
+          </div>
+        </div>
+
+        <!-- Municipal Coverage -->
+        <div class="footer-col">
+          <h4>Island Coverage</h4>
+          <ul class="footer-links-list">
+            <li>📍 <strong>Mambajao</strong> (Poblacion, Airport, Ports)</li>
+            <li>📍 <strong>Mahinog</strong> (Benoni Port, Mantigue)</li>
+            <li>📍 <strong>Catarman</strong> (Bonbon, Sunken Cemetery)</li>
+            <li>📍 <strong>Sagay</strong> (Poblacion, Alangilan)</li>
+            <li>📍 <strong>Guinsiliban</strong> (Port, Clam Sanctuary)</li>
+          </ul>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="footer-col">
+          <h4>Explore &amp; Services</h4>
+          <ul class="footer-links-list">
+            <li><a href="/">🛵 Book a Ride / Habal-habal</a></li>
+            <li><a href="/tours">🏝️ Island Tour Packages</a></li>
+            <li><a href="/history">📜 My Past Bookings</a></li>
+            <li><a href="/about">ℹ️ About the Club &amp; Vetting</a></li>
+            <li><a href="/faq">❓ Frequently Asked Questions</a></li>
+            <li><a href="/terms">📋 Passenger Terms &amp; Safety</a></li>
+          </ul>
+        </div>
+
+        <!-- Contact & Emergency -->
+        <div class="footer-col">
+          <h4>Hotline &amp; Dispatch</h4>
+          <div class="footer-contact-box">
+            <div class="footer-phone-highlight">
+              <span style="font-size:1.1rem;">📞</span>
+              <strong>{{ club.hotline }}</strong>
+            </div>
+            <p class="text-muted" style="font-size:0.8rem;margin:6px 0 0;">
+              Active dispatch operations across Camiguin. Available daily 5:00 AM - 10:00 PM.
+            </p>
+            <div style="margin-top:10px;font-size:0.8rem;">
+              <span style="color:#ef4444;font-weight:700;">🚨 Island Emergency:</span>
+              <span>CGH Hospital / 911 / PNP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© {{ year }} {{ club.name }} • Safe Island Rides &amp; Deliveries across Camiguin Island.</p>
+        <p class="footer-credits">Designed &amp; Developed by <strong>JRG IT SOLUTIONS 2026</strong></p>
+      </div>
+    </div>
   </footer>
 
   <!-- Audio Dispatch Chime Generator (Web Audio API) -->
   <script>
+    // Play an attention-grabbing dispatch chime for riders without external mp3 dependency
     window.playDispatchChime = function() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -167,11 +173,12 @@
         const ctx = new AudioCtx();
         const now = ctx.currentTime;
 
+        // Beep 1
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = "sine";
-        osc1.frequency.setValueAtTime(587.33, now);
-        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+        osc1.frequency.setValueAtTime(587.33, now); // D5
+        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
         gain1.gain.setValueAtTime(0.3, now);
         gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
         osc1.connect(gain1);
@@ -179,11 +186,12 @@
         osc1.start(now);
         osc1.stop(now + 0.25);
 
+        // Beep 2 (higher tone)
         const osc2 = ctx.createOscillator();
         const gain2 = ctx.createGain();
         osc2.type = "sine";
-        osc2.frequency.setValueAtTime(880, now + 0.28);
-        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.45);
+        osc2.frequency.setValueAtTime(880, now + 0.28); // A5
+        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.45); // D6
         gain2.gain.setValueAtTime(0.35, now + 0.28);
         gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
         osc2.connect(gain2);
@@ -196,7 +204,7 @@
     };
   </script>
 
-  <!-- PWA Service Worker & Intelligent Install Hide Logic -->
+  <!-- PWA Service Worker Registration -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -204,64 +212,21 @@
       });
     }
 
-    function isAppAlreadyInstalled() {
-      // 1. Running in standalone window / PWA mode
-      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        return true;
-      }
-      // 2. Previously marked installed on this device
-      if (localStorage.getItem("pwa_installed") === "true") {
-        return true;
-      }
-      return false;
-    }
-
     let deferredPrompt;
     const installBtn = document.getElementById("install-app-btn");
-
-    // Immediately hide if already installed
-    if (isAppAlreadyInstalled() && installBtn) {
-      installBtn.style.display = "none";
-      installBtn.classList.remove("visible");
-    }
-
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
-      if (isAppAlreadyInstalled()) {
-        if (installBtn) {
-          installBtn.style.display = "none";
-          installBtn.classList.remove("visible");
-        }
-        return;
-      }
       deferredPrompt = e;
-      if (installBtn) {
-        installBtn.classList.add("visible");
-      }
-    });
-
-    window.addEventListener("appinstalled", () => {
-      localStorage.setItem("pwa_installed", "true");
-      if (installBtn) {
-        installBtn.classList.remove("visible");
-        installBtn.style.display = "none";
-      }
-      deferredPrompt = null;
+      if (installBtn) installBtn.classList.add("visible");
     });
 
     if (installBtn) {
       installBtn.addEventListener("click", async () => {
-        if (!deferredPrompt) {
-          localStorage.setItem("pwa_installed", "true");
-          installBtn.style.display = "none";
-          return;
-        }
+        if (!deferredPrompt) return;
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === "accepted") {
-          localStorage.setItem("pwa_installed", "true");
           installBtn.classList.remove("visible");
-          installBtn.style.display = "none";
         }
         deferredPrompt = null;
       });
@@ -269,80 +234,5 @@
   </script>
 
   {% block scripts %}{% endblock %}
-  <!-- Secret 10-Tap on 🛵 Logo Icon to Unlock Admin -->
-  <script>
-    (function() {
-      let taps = 0;
-      let tapTimer = null;
-      let lastTapTime = 0;
-
-      const logo = document.getElementById("secret-admin-trigger");
-      if (!logo) return;
-
-      function onIconTap(e) {
-        const now = Date.now();
-        if (now - lastTapTime < 60) return; // Debounce rapid ghost triggers
-        lastTapTime = now;
-
-        if (e && e.cancelable) e.preventDefault();
-        if (e && e.stopPropagation) e.stopPropagation();
-
-        taps++;
-        clearTimeout(tapTimer);
-
-        // Visual bounce animation on the 🛵 logo
-        logo.style.transition = "transform 0.08s ease";
-        logo.style.transform = "scale(0.75)";
-        setTimeout(() => {
-          if (logo) logo.style.transform = "";
-        }, 110);
-
-        // Subtle haptic vibration per tap on mobile
-        if (navigator.vibrate) {
-          try { navigator.vibrate(30); } catch(err) {}
-        }
-
-        // When reached exactly 10 taps!
-        if (taps >= 10) {
-          taps = 0;
-          if (navigator.vibrate) {
-            try { navigator.vibrate([100, 50, 150]); } catch(err) {}
-          }
-          window.location.href = "/admin";
-          return;
-        }
-
-        // Rolling timeout: reset after 4.5 seconds of inactivity
-        tapTimer = setTimeout(() => {
-          taps = 0;
-        }, 4500);
-      }
-
-      logo.addEventListener("pointerdown", onIconTap, { passive: false });
-      logo.addEventListener("click", onIconTap, { passive: false });
-    })();
-  </script>
-  <!-- Splash Screen Auto-Dismissal -->
-  <script>
-    (function () {
-      const splash = document.getElementById("app-splash-screen");
-      if (!splash) return;
-
-      function hideSplash() {
-        if (splash.classList.contains("fade-out")) return;
-        splash.classList.add("fade-out");
-        setTimeout(function() {
-          splash.style.display = "none";
-        }, 500);
-      }
-
-      window.addEventListener("load", function() {
-        setTimeout(hideSplash, 650);
-      });
-      setTimeout(hideSplash, 1800);
-      splash.addEventListener("click", hideSplash);
-    })();
-  </script>
 </body>
-
 </html>

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Passenger Terms &amp; Safety Guidelines — {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container page-narrow" style="padding-top:2rem;padding-bottom:3.5rem;">
+  <div class="card" style="padding:2rem;">
+    <div class="text-center" style="margin-bottom:2rem;">
+      <span style="font-size:3rem;line-height:1;">📋</span>
+      <h1 style="font-size:1.8rem;margin:0.5rem 0 0.3rem;">Terms of Service &amp; Safety Guidelines</h1>
+      <p class="text-muted" style="margin:0;font-size:1rem;">
+        Guidelines for safe, fair, and reliable island rides in Camiguin.
+      </p>
+    </div>
+
+    <div style="font-size:0.92rem;line-height:1.7;color:#334155;display:flex;flex-direction:column;gap:1.5rem;">
+      <section>
+        <h3 style="font-size:1.1rem;color:#9a3412;margin-bottom:0.4rem;">1. Passenger Safety Rules</h3>
+        <p style="margin:0;">
+          All passengers must wear the provided safety helmet for the entire duration of the trip as mandated by Philippine law (RA 10054). Motorbikes are licensed for one passenger at a time. Passengers must remain seated properly behind the rider with both feet on footpegs.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="font-size:1.1rem;color:#9a3412;margin-bottom:0.4rem;">2. Transparent Pricing &amp; Surcharges</h3>
+        <p style="margin:0;">
+          All fares adhere to the Official Camiguin CRC Fare Matrix (₱40 for 1-2 km, +₱18/km thereafter). Special fees such as supermarket queuing (+₱30), extra store stops (+₱20), and mountain routes (+₱30) are displayed openly on your screen prior to broadcasting. Riders may not demand any unauthorized fees.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="font-size:1.1rem;color:#9a3412;margin-bottom:0.4rem;">3. Pabili (Shopping &amp; Errand) Reimbursements</h3>
+        <p style="margin:0;">
+          For Buy-For-Me errand bookings, the passenger is responsible for reimbursing the rider in full for the exact purchase amount as printed on the store's official sales invoice or receipt, plus the delivery errand fee.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="font-size:1.1rem;color:#9a3412;margin-bottom:0.4rem;">4. Prohibited Items for Courier / Padala</h3>
+        <p style="margin:0;">
+          The courier service may not be used to transport illegal drugs, hazardous materials, unregistered firearms, flammable chemicals, or fragile oversized cargo that exceeds safe motorcycle balance limits.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="font-size:1.1rem;color:#9a3412;margin-bottom:0.4rem;">5. Cancellations</h3>
+        <p style="margin:0;">
+          You may cancel a broadcasted request anytime before a rider accepts. If you need to cancel after a rider has already travelled towards your pickup location, please notify the rider immediately via phone call or SMS out of courtesy.
+        </p>
+      </section>
+    </div>
+
+    <div style="text-align:center;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid #f1f5f9;">
+      <a href="/" class="btn btn-primary btn-lg" style="display:inline-block;font-weight:700;">
+        I Understand &amp; Agree &rarr; Book a Ride
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

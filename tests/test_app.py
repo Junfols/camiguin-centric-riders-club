@@ -445,6 +445,156 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         all_data = all_resp.get_json()
         self.assertGreater(len(all_data["places"]), 100)
 
+    def test_new_informational_pages(self):
+        # 1. About Page
+        about_resp = self.client.get("/about")
+        self.assertEqual(about_resp.status_code, 200)
+        self.assertIn("About Camiguin Centric Riders Club", about_resp.get_data(as_text=True))
+
+        # 2. FAQ Page
+        faq_resp = self.client.get("/faq")
+        self.assertEqual(faq_resp.status_code, 200)
+        self.assertIn("Frequently Asked Questions", faq_resp.get_data(as_text=True))
+
+        # 3. Terms & Safety Page
+        terms_resp = self.client.get("/terms")
+        self.assertEqual(terms_resp.status_code, 200)
+        self.assertIn("Terms of Service", terms_resp.get_data(as_text=True))
+
+        # 4. History Page
+        hist_resp = self.client.get("/history")
+        self.assertEqual(hist_resp.status_code, 200)
+        self.assertIn("My Past Bookings", hist_resp.get_data(as_text=True))
+
+        # 5. Tour Packages Page
+        tours_resp = self.client.get("/tours")
+        self.assertEqual(tours_resp.status_code, 200)
+        self.assertIn("Camiguin Island Tour Packages", tours_resp.get_data(as_text=True))
+
+    def test_promo_code_validation_and_application(self):
+        # 1. Valid promo code WELCOME20 (20% off with min fare ₱80)
+        # Booking fare = ₱100 -> 20% discount = ₱20 -> final fare ₱80
+        val_resp = self.client.post(
+            "/api/promo/validate",
+            json={"code": "WELCOME20", "fare_amount": 100.0},
+        )
+        self.assertEqual(val_resp.status_code, 200)
+        data = val_resp.get_json()
+        self.assertTrue(data["valid"])
+        self.assertEqual(data["discount"], 20.0)
+        self.assertEqual(data["final_fare"], 80.0)
+
+        # 2. Below minimum fare for WELCOME20 (min fare 80)
+        val_fail = self.client.post(
+            "/api/promo/validate",
+            json={"code": "WELCOME20", "fare_amount": 40.0},
+        )
+        self.assertEqual(val_fail.status_code, 200)
+        self.assertFalse(val_fail.get_json()["valid"])
+
+        # 3. Invalid code
+        val_invalid = self.client.post(
+            "/api/promo/validate",
+            json={"code": "FAKECODE99", "fare_amount": 100.0},
+        )
+        self.assertEqual(val_invalid.status_code, 200)
+        self.assertFalse(val_invalid.get_json()["valid"])
+
+        # 4. Apply promo code directly in booking creation
+        book_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Promo Rider",
+                "customer_phone": "09179998888",
+                "pickup_address": "Balbagon Port",
+                "dropoff_address": "Sunken Cemetery",
+                "road_km": 10.0,  # normally 184 fare
+                "promo_code": "FIRSTRIDE",  # fixed 20 off
+            },
+        )
+        self.assertEqual(book_resp.status_code, 201)
+        b = book_resp.get_json()["booking"]
+        self.assertEqual(b["promo_code"], "FIRSTRIDE")
+        self.assertEqual(b["discount_amount"], 20.0)
+        self.assertEqual(b["fare_amount"], 164.0)
+
+    def test_scheduled_booking_and_payment_methods(self):
+        # Test scheduling a ride for tomorrow with GCash payment
+        sched_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Elena Ferry",
+                "customer_phone": "09191112233",
+                "pickup_address": "Paras Beach Resort",
+                "dropoff_address": "Benoni Port",
+                "payment_method": "gcash",
+                "scheduled_at": "2026-11-18T05:30",
+            },
+        )
+        self.assertEqual(sched_resp.status_code, 201)
+        booking = sched_resp.get_json()["booking"]
+        self.assertEqual(booking["payment_method"], "gcash")
+        self.assertEqual(booking["scheduled_at"], "2026-11-18T05:30")
+
+    def test_customer_accounts_and_ride_history(self):
+        phone = "09175554321"
+        # Create 2 bookings for the same phone
+        for dropoff in ["Katibawasan Falls", "Ardent Hot Spring"]:
+            self.client.post(
+                "/api/bookings",
+                json={
+                    "customer_name": "Loyal Island Visitor",
+                    "customer_phone": phone,
+                    "pickup_address": "Mambajao Market",
+                    "dropoff_address": dropoff,
+                },
+            )
+
+        # Retrieve history
+        hist_resp = self.client.get(f"/api/customer/history/{phone}")
+        self.assertEqual(hist_resp.status_code, 200)
+        data = hist_resp.get_json()
+        self.assertEqual(data["count"], 2)
+        self.assertIsNotNone(data["customer"])
+        self.assertEqual(data["customer"]["name"], "Loyal Island Visitor")
+
+    def test_rider_reviews_and_ratings(self):
+        # Submit a review for rider 1
+        rev_resp = self.client.post(
+            "/api/reviews",
+            json={
+                "rider_id": 1,
+                "customer_name": "Happy Tourist",
+                "rating": 5,
+                "comment": "Very safe driving and knowledgeable about Camiguin!",
+            },
+        )
+        self.assertEqual(rev_resp.status_code, 201)
+        rev_data = rev_resp.get_json()["review"]
+        self.assertEqual(rev_data["rating"], 5)
+
+        # Fetch reviews for rider 1
+        list_resp = self.client.get("/api/reviews/1")
+        self.assertEqual(list_resp.status_code, 200)
+        reviews = list_resp.get_json()["reviews"]
+        self.assertGreaterEqual(len(reviews), 1)
+        self.assertEqual(reviews[0]["comment"], "Very safe driving and knowledgeable about Camiguin!")
+
+    def test_online_riders_and_tour_packages_endpoints(self):
+        # 1. Online riders public endpoint
+        riders_resp = self.client.get("/api/riders/online")
+        self.assertEqual(riders_resp.status_code, 200)
+        r_data = riders_resp.get_json()
+        self.assertIn("riders", r_data)
+        self.assertGreaterEqual(r_data["count"], 1)
+
+        # 2. Tour packages endpoint
+        pkg_resp = self.client.get("/api/tour-packages")
+        self.assertEqual(pkg_resp.status_code, 200)
+        packages = pkg_resp.get_json()["packages"]
+        self.assertEqual(len(packages), 4)
+        self.assertIn("full-day-loop", [p["id"] for p in packages])
+
 
 if __name__ == "__main__":
     unittest.main()

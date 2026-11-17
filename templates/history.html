@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}My Ride History &amp; Receipts — {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container page-narrow" style="padding-top:2rem;padding-bottom:3.5rem;">
+  <div class="card">
+    <div class="card-head text-center">
+      <span style="font-size:2.8rem;line-height:1;">📜</span>
+      <h1 style="font-size:1.6rem;margin:0.5rem 0 0.3rem;">My Past Bookings &amp; Receipts</h1>
+      <p class="text-muted" style="font-size:0.92rem;margin:0;">
+        Enter your mobile number to view your ride history, download receipts, check trip status, or rebook frequent trips.
+      </p>
+    </div>
+
+    <!-- Phone Search Box -->
+    <form id="history-search-form" style="margin-top:1.5rem;display:flex;gap:10px;">
+      <input type="tel" id="history-phone-input" required placeholder="Enter mobile number (e.g. 0917 123 4567)" style="flex:1;">
+      <button type="submit" id="search-history-btn" class="btn btn-primary" style="white-space:nowrap;font-weight:700;">
+        View History &rarr;
+      </button>
+    </form>
+
+    <!-- Customer Profile Summary (hidden initially) -->
+    <div id="customer-profile-card" class="hidden" style="margin-top:1.25rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <span style="font-size:0.8rem;color:#c2410c;font-weight:700;text-transform:uppercase;">CCRC Member Passenger</span>
+          <h3 id="profile-name" style="margin:2px 0 0;font-size:1.15rem;color:#9a3412;">Customer</h3>
+        </div>
+        <div style="text-align:right;">
+          <span id="profile-ride-count" style="font-size:1.4rem;font-weight:800;color:#ea580c;">0</span>
+          <span class="text-muted" style="display:block;font-size:0.75rem;">Total Trips</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Feed -->
+    <div id="history-feed" style="margin-top:1.5rem;">
+      <div class="empty-state">
+        <span style="font-size:2.5rem;display:block;margin-bottom:8px;">🛵</span>
+        Enter your mobile number above to look up your past Camiguin rides and courier parcels.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById("history-search-form");
+  const phoneInput = document.getElementById("history-phone-input");
+  const feed = document.getElementById("history-feed");
+  const profileCard = document.getElementById("customer-profile-card");
+  const profileName = document.getElementById("profile-name");
+  const profileCount = document.getElementById("profile-ride-count");
+
+  // Auto-fill phone from localStorage if previously booked
+  const savedPhone = localStorage.getItem("ccrc_customer_phone");
+  if (savedPhone) {
+    phoneInput.value = savedPhone;
+    loadHistory(savedPhone);
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const phone = phoneInput.value.trim();
+    if (!phone) return;
+    localStorage.setItem("ccrc_customer_phone", phone);
+    loadHistory(phone);
+  });
+
+  async function loadHistory(phone) {
+    feed.innerHTML = '<div class="empty-state">Loading your ride history... ⏳</div>';
+    profileCard.classList.add("hidden");
+
+    try {
+      const res = await fetch(`/api/customer/history/${encodeURIComponent(phone)}`);
+      const data = await res.json();
+
+      if (data.customer) {
+        profileName.textContent = data.customer.name || "Island Passenger";
+        profileCount.textContent = data.customer.ride_count || data.count || 0;
+        profileCard.classList.remove("hidden");
+      }
+
+      if (!data.history || data.history.length === 0) {
+        feed.innerHTML = `
+          <div class="empty-state">
+            <span style="font-size:2.5rem;display:block;margin-bottom:8px;">🏖️</span>
+            No bookings found for <strong>${phone}</strong> yet.<br>
+            <a href="/" class="btn btn-primary" style="margin-top:14px;display:inline-block;">Book Your First Ride &rarr;</a>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+      data.history.forEach((b) => {
+        const isCompleted = b.status === 'completed';
+        html += `
+          <div class="card" style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div>
+                <strong style="font-family:monospace;font-size:0.95rem;">${b.booking_code}</strong>
+                <span class="badge badge-accent" style="margin-left:6px;font-size:0.75rem;text-transform:capitalize;">${b.service_type}</span>
+              </div>
+              <span class="status-pill status-${b.status}" style="font-size:0.75rem;padding:2px 8px;">
+                ${b.status}
+              </span>
+            </div>
+
+            <div style="font-size:0.86rem;color:#334155;line-height:1.5;">
+              <div>🟢 <strong>Pickup:</strong> ${b.pickup_address}</div>
+              <div>🏁 <strong>Drop-off:</strong> ${b.dropoff_address}</div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:0.84rem;">
+              <div>
+                Fare: <strong style="color:var(--primary);font-size:1.05rem;">₱${Number(b.fare_amount).toLocaleString()}</strong>
+                ${b.rider_name ? `<span class="text-muted">&bull; Rider: <strong>${b.rider_name}</strong></span>` : ''}
+              </div>
+              <div style="display:flex;gap:8px;">
+                <a href="/track/${b.booking_code}" class="btn btn-sm btn-outline" style="padding:3px 8px;font-size:0.78rem;">
+                  Track / Receipt
+                </a>
+                <a href="/?pickup=${encodeURIComponent(b.pickup_address)}&dropoff=${encodeURIComponent(b.dropoff_address)}&service=${b.service_type}" class="btn btn-sm btn-primary" style="padding:3px 8px;font-size:0.78rem;">
+                  Rebook 🛵
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      feed.innerHTML = html;
+    } catch (err) {
+      feed.innerHTML = `<div class="empty-state text-danger">Error fetching history: ${err.message}</div>`;
+    }
+  }
+</script>
+{% endblock %}

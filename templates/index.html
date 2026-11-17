@@ -4,140 +4,100 @@
 
 {% block content %}
 <div class="container page-booking-wrap">
-  <!-- Clean Modern App Hero -->
-  <section class="booking-hero-clean">
-    <div class="hero-status-pill">
-      <span class="live-pulse-dot"></span>
-      <span><strong>{{ online_riders_count }}</strong> CCRC Riders Online in Camiguin</span>
+  <!-- Hero Header -->
+  <section class="hero-banner">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="live-dot"></span>
+        <span><strong>{{ online_riders_count }}</strong> Club Riders Online Now</span>
+      </div>
+      <h1 class="hero-title">{{ club.name }}</h1>
+      <p class="hero-subtitle">Passenger Ride-Hailing, Parcel Courier, &amp; Errand Services anywhere in Camiguin Island. Fast, reliable, and verified local riders.</p>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="/tours" class="btn btn-sm btn-outline" style="border-color:#ea580c;color:#ea580c;background:#fff7ed;font-weight:700;">
+          🏝️ Explore Island Tour Packages &rarr;
+        </a>
+        <a href="/history" class="btn btn-sm btn-outline" style="font-weight:600;">
+          📜 My Past Bookings
+        </a>
+      </div>
     </div>
-    <h1 class="booking-hero-title">Where are you heading today?</h1>
-    <p class="booking-hero-sub">Fast, verified on-demand island transport, deliveries &amp; errands across Camiguin Island.</p>
   </section>
 
-  <!-- Main Booking App Layout -->
+  <!-- Booking Form Container -->
   <div class="booking-grid">
-    <!-- Left Column: Modern Card-Based Booking Experience -->
-    <div class="booking-panel-clean">
-      
-      <!-- Service Selection Pills / Cards -->
+    <!-- Left Column: Service Selector & Form -->
+    <div class="card booking-form-card">
+      <div class="card-head">
+        <h2>What service do you need today?</h2>
+        <p class="text-muted">Select an island express service below to schedule your request.</p>
+      </div>
+
+      <!-- Service Selector Tabs -->
       <div class="service-selector-grid" role="tablist">
         <button type="button" class="service-tab-btn active" data-service="pahatud">
           <span class="service-icon">🛵</span>
-          <span class="service-title">Passenger</span>
-          <span class="service-tag">Habal-habal</span>
+          <span class="service-title">Passenger Ride</span>
+          <small class="service-sub">Habal-habal ride-hailing</small>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pasugo">
           <span class="service-icon">📦</span>
-          <span class="service-title">Padala</span>
-          <span class="service-tag">Courier (+₱20)</span>
+          <span class="service-title">Courier &amp; Delivery</span>
+          <small class="service-sub">Parcels, clothes, cargo (+₱20)</small>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabili">
           <span class="service-icon">🛒</span>
-          <span class="service-title">Pabili</span>
-          <span class="service-tag">Errand (+₱20)</span>
+          <span class="service-title">Buy For Me</span>
+          <small class="service-sub">Food, grocery, pharmacy (+₱20)</small>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabayad">
           <span class="service-icon">💼</span>
-          <span class="service-title">Port &amp; Bills</span>
-          <span class="service-tag">Baggage (+₱20)</span>
+          <span class="service-title">Bills &amp; Port Claim</span>
+          <small class="service-sub">Bills, port baggage (+₱20)</small>
         </button>
       </div>
 
       <form id="booking-request-form" class="main-booking-form">
         <input type="hidden" id="service-type-input" name="service_type" value="pahatud">
 
-        <!-- Modern Unified Route Box (Grab / Uber Style Connected Pin) -->
-        <div class="route-box-card">
-          <div class="route-connector-col">
-            <span class="route-dot dot-green"></span>
-            <span class="route-line"></span>
-            <span class="route-dot dot-orange"></span>
-          </div>
+        <!-- 1. Location Details -->
+        <div class="form-section-title">1. Island Locations (Pickup &amp; Destination)</div>
 
-          <div class="route-inputs-col">
-            <!-- Pickup Row -->
-            <div class="route-input-row">
-              <label for="pickup-address" class="route-field-label">PICKUP / MEETING POINT</label>
-              <div class="route-field-wrap">
-                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off" list="camiguin-places-list">
-                <button type="button" id="clear-pickup-btn" class="input-clear-btn hidden" aria-label="Clear pickup" title="Erase text">✕</button>
-                <div class="route-actions-inline">
-                  <button type="button" id="locate-pickup-gps-btn" class="route-mini-btn" title="Use current GPS">📍 My GPS</button>
-                  <button type="button" id="pin-pickup-map-btn" class="route-mini-btn" title="Pin on Map">🗺️ Map</button>
-                </div>
-              </div>
-              <div id="pickup-suggestions" class="places-dropdown hidden"></div>
-              <input type="hidden" id="pickup-lat" name="pickup_lat">
-              <input type="hidden" id="pickup-lng" name="pickup_lng">
-            </div>
-
-            <div class="route-divider"></div>
-
-            <!-- Dropoff Row -->
-            <div class="route-input-row">
-              <label for="dropoff-address" class="route-field-label">DESTINATION / DROP-OFF</label>
-              <div class="route-field-wrap">
-                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off" list="camiguin-places-list">
-                <button type="button" id="clear-dropoff-btn" class="input-clear-btn hidden" aria-label="Clear dropoff" title="Erase text">✕</button>
-                <div class="route-actions-inline">
-                  <button type="button" id="locate-dropoff-gps-btn" class="route-mini-btn" title="Pin on Map">📍 Pin Map</button>
-                </div>
-              </div>
-              <div id="dropoff-suggestions" class="places-dropdown hidden"></div>
-              <input type="hidden" id="dropoff-lat" name="dropoff_lat">
-              <input type="hidden" id="dropoff-lng" name="dropoff_lng">
+        <div class="form-group">
+          <div class="label-row">
+            <label for="pickup-address" id="pickup-label">🟢 Pickup / Store / Meeting Point *</label>
+            <div style="display:flex;gap:8px;">
+              <button type="button" id="locate-pickup-gps-btn" class="text-btn">📍 My GPS</button>
+              <button type="button" id="pin-pickup-map-btn" class="text-btn">📍 Pin on Map</button>
             </div>
           </div>
+          <div class="places-autocomplete-wrap">
+            <input type="text" id="pickup-address" name="pickup_address" required placeholder="Type store, street, building, or barangay (e.g. Baylao, Market, Gaisano)..." autocomplete="off">
+            <div id="pickup-suggestions" class="places-dropdown hidden"></div>
+          </div>
+          <input type="hidden" id="pickup-lat" name="pickup_lat">
+          <input type="hidden" id="pickup-lng" name="pickup_lng">
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <label for="dropoff-address" id="dropoff-label">🏁 Drop-off / Destination Address *</label>
+            <button type="button" id="locate-dropoff-gps-btn" class="text-btn" style="font-weight:700;color:var(--primary);">📍 Pin on Map</button>
+          </div>
+          <div class="places-autocomplete-wrap">
+            <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Type store, street, building, or barangay (e.g. Jollibee, Mercury Drug, Bonbon)..." autocomplete="off">
+            <div id="dropoff-suggestions" class="places-dropdown hidden"></div>
+          </div>
+          <input type="hidden" id="dropoff-lat" name="dropoff_lat">
+          <input type="hidden" id="dropoff-lng" name="dropoff_lng">
         </div>
 
         <datalist id="camiguin-places-list">
-          <!-- Gasolinahan -->
-          <option value="Petron Gas Station Mambajao (Balbagon)">
-          <option value="Petron Gas Station Poblacion Mambajao">
-          <option value="Shell Gas Station Mambajao (Tupsan)">
-          <option value="Phoenix Gas Station Mambajao (Lakas)">
-          <option value="Petron Gas Station Catarman">
-          <option value="Petron Gas Station Mahinog (Benoni)">
-          <!-- Schools -->
-          <option value="Mambajao Central School">
-          <option value="Fatima College of Camiguin (FCC)">
-          <option value="Camiguin Polytechnic State College (CPSC / CSU)">
-          <option value="Camiguin National High School (CNHS)">
-          <option value="Yumbing National High School">
-          <!-- Churches -->
-          <option value="San Nicolas de Tolentino Parish Church, Mambajao">
-          <option value="IFI Parish of the Good Shepherd, Mambajao">
-          <option value="Iglesia Ni Cristo (INC), Mambajao">
-          <option value="San Roque Parish Church, Mahinog">
-          <option value="Our Lady of Mount Carmel Parish Church, Catarman">
-          <option value="Holy Rosary Parish Church, Sagay">
-          <option value="Our Lady of Consolation Parish Church, Guinsiliban">
-          <!-- Restaurants & Cafes -->
-          <option value="Moonflower Garden and Restaurant, Baylao">
-          <option value="Samuel Restaurant, Mambajao (Placido Reyes St)">
-          <option value="Kurma Eco Restaurant & Cafe, Yumbing">
-          <option value="Julie's Bakeshop, Mambajao">
-          <option value="Goldilocks Bakeshop, Mambajao">
-          <option value="CheckPoint Food Park, Mambajao">
-          <option value="Jollibee Camiguin, Mambajao (Burgos St)">
-          <option value="Gaisano Capital Camiguin (Placido Reyes St)">
-          <option value="Placido Reyes Street, Mambajao">
-          <option value="Burgos Street, Mambajao">
-          <option value="Bonifacio Aranas Street, Mambajao">
-          <option value="Plaridel Street, Mambajao">
-          <option value="Rizal Street, Mambajao">
-          <option value="Mabini Street, Mambajao">
-          <option value="Mambajao Public Market">
-          <option value="7-Eleven Mambajao Town Center">
-          <option value="Balbagon Port (FastCat)">
-          <option value="Benoni Passenger Terminal, Mahinog">
-          <option value="Benoni Port / Ferry Wharf, Mahinog">
-          <option value="Boloc-boloc, Mambajao">
-          <option value="Sa-ay Cold Spring, Mambajao">
           <option value="Baylao, Mambajao">
+          <option value="Jollibee Camiguin, Mambajao">
           <option value="Gaisano Capital Camiguin">
           <option value="Davilett Store, Mambajao">
           <option value="Nene Uy Store, Mambajao">
@@ -145,7 +105,6 @@
           <option value="Mambajao Public Market">
           <option value="Mambajao Town Plaza">
           <option value="Balbagon Port (FastCat)">
-          <option value="Benoni Passenger Terminal, Mahinog">
           <option value="Benoni Port / Ferry Wharf, Mahinog">
           <option value="Camiguin Airport">
           <option value="Camiguin General Hospital">
@@ -173,177 +132,202 @@
           <option value="Poblacion Guinsiliban">
         </datalist>
 
-        <!-- Quick Destination Pills -->
-        <div class="landmarks-clean-box">
-          <span class="landmarks-clean-title">Popular Destinations:</span>
-          <div class="landmark-chips-scroll" id="quick-landmark-chips">
-            <button type="button" class="chip-pill" data-name="Jollibee Camiguin, Mambajao" data-lat="9.24971" data-lng="124.71667">🍔 Jollibee Camiguin</button>
-            <button type="button" class="chip-pill" data-name="Gaisano Capital Camiguin (Placido Reyes St)" data-lat="9.25290" data-lng="124.71613">🛒 Gaisano (Placido Reyes St)</button>
-            <button type="button" class="chip-pill" data-name="Benoni Port (Mahinog)" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
-            <button type="button" class="chip-pill" data-name="Balbagon Port (Mambajao)" data-lat="9.2561" data-lng="124.7175">⛴️ Balbagon Port</button>
-            <button type="button" class="chip-pill" data-name="White Island Boat Jump-off" data-lat="9.2538" data-lng="124.6532">🏝️ White Island</button>
-            <button type="button" class="chip-pill" data-name="Paras Beach Resort (Yumbing)" data-lat="9.2553" data-lng="124.6468">🏖️ Paras Beach</button>
-            <button type="button" class="chip-pill" data-name="Camiguin Airport" data-lat="9.2530" data-lng="124.7061">✈️ Airport</button>
-            <button type="button" class="chip-pill" data-name="Mambajao Public Market" data-lat="9.25319" data-lng="124.71660">🏪 Market</button>
-            <button type="button" class="chip-pill" data-name="Katibawasan Falls" data-lat="9.2152" data-lng="124.7188">💧 Katibawasan</button>
-            <button type="button" class="chip-pill" data-name="Sunken Cemetery, Catarman" data-lat="9.2025" data-lng="124.6300">⚓ Sunken Cemetery</button>
+        <!-- Landmark Shortcut Chips -->
+        <div class="landmarks-box">
+          <div class="landmarks-label">Quick Island Destinations (Tap to pin):</div>
+          <div class="landmark-chips" id="quick-landmark-chips">
+            <button type="button" class="chip-btn" data-name="Benoni Port (Mahinog)" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
+            <button type="button" class="chip-btn" data-name="Balbagon Port (Mambajao)" data-lat="9.2561" data-lng="124.7175">⛴️ Balbagon Port</button>
+            <button type="button" class="chip-btn" data-name="Camiguin Airport" data-lat="9.2530" data-lng="124.7061">✈️ Airport</button>
+            <button type="button" class="chip-btn" data-name="Mambajao Public Market" data-lat="9.2483" data-lng="124.6975">🏪 Mambajao Market</button>
+            <button type="button" class="chip-btn" data-name="Paras Beach Resort (Yumbing)" data-lat="9.2553" data-lng="124.6468">🏖️ Paras Beach</button>
+            <button type="button" class="chip-btn" data-name="Balyali Resort (Yumbing)" data-lat="9.2588" data-lng="124.6432">🏖️ Balyali Resort</button>
+            <button type="button" class="chip-btn" data-name="Tongatok Cliff Resort" data-lat="9.2505" data-lng="124.6341">🌅 Tongatok Cliff</button>
+            <button type="button" class="chip-btn" data-name="Lanzones Resort" data-lat="9.2390" data-lng="124.6970">🌴 Lanzones Resort</button>
+            <button type="button" class="chip-btn" data-name="White Island Boat Jump-off" data-lat="9.2538" data-lng="124.6532">🏝️ White Island</button>
+            <button type="button" class="chip-btn" data-name="Katibawasan Falls" data-lat="9.2152" data-lng="124.7188">💧 Katibawasan Falls</button>
           </div>
         </div>
 
-        <!-- Errand & Package Details (Dynamic for Pabili/Pasugo) -->
-        <div id="service-extra-fields" class="service-extra-fields-clean">
-          <div class="section-badge-title">📦 Package / Errand Details</div>
-          <div class="form-group" id="budget-group" style="margin-top:8px;">
-            <label for="estimated-budget">Shopping Cash Budget (₱) <small class="text-muted">(Rider advances cash)</small></label>
-            <input type="number" id="estimated-budget" name="estimated_budget" min="0" step="10" placeholder="e.g. 500">
+        <!-- 2. Service Specific Fields (Pabili / Pasugo Notes) -->
+        <div id="service-extra-fields" class="service-extra-fields">
+          <div class="form-section-title">2. Errand &amp; Package Details</div>
+
+          <div class="form-group" id="budget-group">
+            <label for="estimated-budget">Estimated Shopping Budget (₱) <small class="text-muted">(Rider advances cash upon buying)</small></label>
+            <input type="number" id="estimated-budget" name="estimated_budget" min="0" step="10" placeholder="e.g. 500 (Orders >= ₱2,000 add ₱20 bulky fee)">
           </div>
-          <div class="form-group" style="margin-top:8px;">
-            <label for="item-notes" id="notes-label">Item / Store Description *</label>
-            <textarea id="item-notes" name="item_notes" rows="2" placeholder="List food items, grocery items, store names, or special instructions..."></textarea>
+
+          <div class="form-group">
+            <label for="item-notes" id="notes-label">Shopping List or Item Description *</label>
+            <textarea id="item-notes" name="item_notes" rows="3" placeholder="Enter store names, food orders, medicines, package dimensions, or instructions..."></textarea>
           </div>
         </div>
 
-        <!-- Optional Conditions & Surcharges (Clean Collapsible Accordion) -->
-        <details class="fare-options-accordion">
-          <summary class="fare-options-summary">
-            <span>⚙️ Special Route Options &amp; Additional Stops <small class="text-muted">(Optional)</small></span>
-            <span class="chevron-icon">&darr;</span>
-          </summary>
-          <div class="fare-options-content">
-            <label class="custom-check-row">
+        <!-- 3. Official Matrix Additions & Surcharges -->
+        <div class="fare-options-box" style="margin-top:1.2rem;background:#f8fafc;padding:14px;border-radius:10px;border:1px solid #e2e8f0;">
+          <div class="form-section-title" style="margin-top:0;">3. Fare Additions &amp; Special Conditions</div>
+          
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:0.9rem;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
               <input type="checkbox" id="opt-large-store" name="is_large_store" value="1">
-              <div>
-                <strong>Large Supermarket Queuing (+₱30)</strong>
-                <small class="text-muted">Lining up at Gaisano, Davilett, Nene Uy, etc.</small>
-              </div>
+              <span><strong>Large Store / Supermarket Queuing (+₱30)</strong> <small class="text-muted">(Gaisano, Davilett, Nene Uy, etc.)</small></span>
             </label>
 
-            <div class="custom-select-row">
-              <label for="opt-extra-stores"><strong>Additional Store Stops:</strong></label>
-              <select id="opt-extra-stores" name="extra_stores_count">
-                <option value="0" selected>None (1 Store - ₱0)</option>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <label for="opt-extra-stores" style="margin:0;"><strong>Additional Store Stops:</strong></label>
+              <select id="opt-extra-stores" name="extra_stores_count" style="width:auto;padding:4px 8px;font-size:0.85rem;border-radius:6px;border:1px solid #cbd5e1;">
+                <option value="0" selected>None (1 Store only - ₱0)</option>
                 <option value="1">+1 Extra Store (+₱20)</option>
                 <option value="2">+2 Extra Stores (+₱40)</option>
                 <option value="3">+3 Extra Stores (+₱60)</option>
               </select>
             </div>
 
-            <label class="custom-check-row">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
               <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
-              <div>
-                <strong>Hinterland / Mountain Route (+₱30)</strong>
-                <small class="text-muted">Soro-soro, Highland, Utopia, Binunsaran, Granelandia</small>
-              </div>
+              <span><strong>Hinterland / Mountain Route (+₱30)</strong> <small class="text-muted">(Soro-soro, Highland, Utopia, Binunsaran, Granelandia, Itum Road)</small></span>
             </label>
-          </div>
-        </details>
-
-        <!-- Customer Contact Details (Clean Modern Grid) -->
-        <div class="customer-info-card">
-          <div class="section-badge-title">👤 Passenger / Sender Information</div>
-          <div class="form-grid-2" style="margin-top:10px;">
-            <div class="form-group">
-              <label for="customer-name">Your Full Name *</label>
-              <input type="text" id="customer-name" name="customer_name" required placeholder="e.g. Maria Santos">
-            </div>
-            <div class="form-group">
-              <label for="customer-phone">Mobile / WhatsApp Number *</label>
-              <input type="tel" id="customer-phone" name="customer_phone" required placeholder="0917 123 4567">
-            </div>
           </div>
         </div>
 
-        <!-- Premium Real-Time Fare Display Card -->
-        <div class="fare-estimate-card-clean">
-          <div class="fare-summary-row">
+        <!-- 4. Customer Contact Information -->
+        <div class="form-section-title" style="margin-top:1.2rem;">4. Customer Contact Information</div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="customer-name">Your Full Name *</label>
+            <input type="text" id="customer-name" name="customer_name" required placeholder="e.g. Maria Santos">
+          </div>
+
+          <div class="form-group">
+            <label for="customer-phone">Mobile / WhatsApp Number *</label>
+            <input type="tel" id="customer-phone" name="customer_phone" required placeholder="0917 123 4567">
+          </div>
+        </div>
+
+        <!-- 5. When Do You Need This Ride? -->
+        <div class="form-section-title" style="margin-top:1.2rem;">5. Schedule &amp; Ride Timing</div>
+        <div class="schedule-toggle-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <label class="schedule-radio-card active" id="sched-card-now" style="cursor:pointer;padding:10px;border:1px solid #ea580c;border-radius:10px;background:#fff7ed;display:flex;align-items:center;gap:8px;">
+            <input type="radio" name="timing_mode" value="now" checked style="accent-color:#ea580c;">
             <div>
-              <span class="fare-clean-label">Estimated Fare</span>
-              <div class="fare-clean-number">
-                <span class="peso-sign">₱</span><strong id="fare-display">40</strong>
+              <strong style="font-size:0.88rem;display:block;">🚀 Right Now</strong>
+              <small class="text-muted" style="font-size:0.75rem;">Immediate live dispatch</small>
+            </div>
+          </label>
+          <label class="schedule-radio-card" id="sched-card-later" style="cursor:pointer;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#ffffff;display:flex;align-items:center;gap:8px;">
+            <input type="radio" name="timing_mode" value="scheduled" style="accent-color:#ea580c;">
+            <div>
+              <strong style="font-size:0.88rem;display:block;">📅 Schedule Later</strong>
+              <small class="text-muted" style="font-size:0.75rem;">Ferry / airport / tour</small>
+            </div>
+          </label>
+        </div>
+        <div id="scheduled-datetime-wrap" class="hidden" style="margin-bottom:12px;">
+          <label for="scheduled-at-input" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:4px;">Select Date &amp; Target Pickup Time:</label>
+          <input type="datetime-local" id="scheduled-at-input" name="scheduled_at" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;">
+        </div>
+
+        <!-- 6. Payment Method Selector -->
+        <div class="form-section-title" style="margin-top:1.2rem;">6. Payment Method</div>
+        <div class="payment-method-selector" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:12px;">
+          <label class="payment-option-card active" id="pay-card-cash" style="cursor:pointer;padding:10px 8px;border:1px solid #ea580c;background:#fff7ed;border-radius:10px;text-align:center;">
+            <input type="radio" name="payment_method" value="cash" checked style="accent-color:#ea580c;display:none;">
+            <span style="font-size:1.25rem;display:block;">💵</span>
+            <strong style="font-size:0.82rem;display:block;">Cash</strong>
+            <small class="text-muted" style="font-size:0.72rem;">Pay on drop-off</small>
+          </label>
+          <label class="payment-option-card" id="pay-card-gcash" style="cursor:pointer;padding:10px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:10px;text-align:center;">
+            <input type="radio" name="payment_method" value="gcash" style="accent-color:#ea580c;display:none;">
+            <span style="font-size:1.25rem;display:block;">📱</span>
+            <strong style="font-size:0.82rem;display:block;">GCash</strong>
+            <small class="text-muted" style="font-size:0.72rem;">QR / Send Money</small>
+          </label>
+          <label class="payment-option-card" id="pay-card-maya" style="cursor:pointer;padding:10px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:10px;text-align:center;">
+            <input type="radio" name="payment_method" value="maya" style="accent-color:#ea580c;display:none;">
+            <span style="font-size:1.25rem;display:block;">💳</span>
+            <strong style="font-size:0.82rem;display:block;">Maya</strong>
+            <small class="text-muted" style="font-size:0.72rem;">Digital Wallet</small>
+          </label>
+        </div>
+
+        <!-- 7. Promo Voucher Code -->
+        <div class="promo-box" style="margin-top:1rem;background:#f8fafc;padding:12px 14px;border-radius:10px;border:1px solid #e2e8f0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label for="promo-code-input" style="font-size:0.86rem;font-weight:700;margin:0;">🎁 Have a Promo Voucher?</label>
+            <span style="font-size:0.75rem;color:#16a34a;font-weight:600;">Try: WELCOME20</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="promo-code-input" placeholder="e.g. WELCOME20, FIRSTRIDE" style="text-transform:uppercase;font-weight:700;letter-spacing:0.04em;">
+            <button type="button" id="apply-promo-btn" class="btn btn-outline" style="white-space:nowrap;font-weight:700;padding:6px 14px;">Apply</button>
+          </div>
+          <div id="promo-feedback-msg" class="hidden" style="margin-top:6px;font-size:0.82rem;font-weight:600;"></div>
+        </div>
+
+        <!-- Real-Time Fare Estimate Card -->
+        <div class="fare-estimate-card" style="margin-top:1.25rem;">
+          <div class="fare-estimate-top">
+            <div>
+              <span class="fare-label">Estimated Fare / Delivery Fee:</span>
+              <div class="fare-amount-display">
+                <span class="fare-peso">₱</span><strong id="fare-display">40</strong>
+                <span id="fare-original-strike" class="hidden" style="text-decoration:line-through;color:#94a3b8;font-size:1rem;margin-left:8px;font-weight:500;"></span>
               </div>
             </div>
-            <div class="fare-distance-pill">
-              <span id="fare-km-display">~0.0 km</span>
-              <small class="text-muted">🛣️ Kalsada / Road Route</small>
+            <div class="fare-distance-badge">
+              <span id="fare-km-display">~1.8 km (Road Distance)</span>
+              <small class="text-muted" style="display:block;">Actual Road Distance (Kalsada Mismo)</small>
             </div>
           </div>
 
-          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 kada succeeding road km. Subay gyud sa kalsada!</p>
+          <!-- Nearest Rider ETA Notice -->
+          <div id="nearest-rider-preview" style="margin-top:8px;padding-top:8px;border-top:1px dashed #fed7aa;font-size:0.85rem;display:flex;align-items:center;gap:6px;color:#c2410c;">
+            <span class="live-dot" style="background:#ea580c;"></span>
+            <span>Nearest Rider in Area: <strong>~<span id="preview-eta-mins">3</span> mins</strong> pickup ETA</span>
+          </div>
 
-          <div style="text-align:right;margin-top:4px;">
-            <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.8rem;color:var(--primary);font-weight:600;">
-              📋 View Official Island Tariff Matrix
+          <p class="fare-hint text-muted" id="fare-hint-text" style="margin-top:8px;">Based on actual road routing (kalsada mismo): 1-2 km = ₱40 base, ₱18 per succeeding km. Transparent pricing with zero hidden fees.</p>
+          <div style="margin-top:8px;">
+            <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.85rem;color:var(--primary);text-decoration:underline;">
+              📋 View Official Camiguin CRC Fare Matrix (1 - 30 KMS)
             </button>
           </div>
         </div>
 
-        <div id="form-error-msg" class="alert-error hidden" style="margin-top:12px;"></div>
+        <div id="form-error-msg" class="alert-error hidden"></div>
 
-        <!-- High-Impact CTA Button -->
-        <button type="submit" id="submit-booking-btn" class="btn-broadcast-cta">
-          <span>Broadcast Request to Active Riders 🛵</span>
-          <span class="cta-arrow">&rarr;</span>
+        <button type="submit" id="submit-booking-btn" class="btn btn-primary btn-lg btn-block">
+          Broadcast Booking to Active Riders 🛵 &rarr;
         </button>
       </form>
     </div>
 
-    <!-- Right Column: Clean Interactive Map -->
-    <div class="map-panel-clean">
-      <div class="map-panel-header">
-        <div>
-          <h3 style="margin:0;font-size:1.1rem;font-weight:700;">Camiguin Live Island Map 🗺️</h3>
-          <p class="text-muted" style="margin:2px 0 0;font-size:0.82rem;">Eksklusibo sa Isla sa Camiguin (Strict Island Boundary)</p>
-        </div>
-        <div class="map-mode-toggle" id="map-target-toggle">
-          <button type="button" class="btn-sm active" data-target-mode="pickup">🟢 Set Pickup</button>
-          <button type="button" class="btn-sm" data-target-mode="dropoff">🏁 Set Dropoff</button>
+    <!-- Right Column: Interactive Map -->
+    <div class="card map-column-card">
+      <div class="card-head">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <h3>Camiguin Interactive Map 🗺️</h3>
+            <p class="text-muted">Click the map to set your Pickup or Drop-off point.</p>
+          </div>
+          <div class="map-mode-toggle" id="map-target-toggle">
+            <button type="button" class="btn-sm active" data-target-mode="pickup">Set 🟢 Pickup</button>
+            <button type="button" class="btn-sm" data-target-mode="dropoff">Set 🏁 Dropoff</button>
+          </div>
         </div>
       </div>
 
-      <div class="map-canvas-container" id="map-canvas-container" style="position:relative;">
-        <!-- Fullscreen Topbar (Visible only when fullscreen) -->
-        <div class="map-fullscreen-topbar">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-weight:700;font-size:0.92rem;">🗺️ Camiguin Live Island Map</span>
-            <div class="map-mode-toggle" style="margin:0;">
-              <button type="button" class="btn-sm active fs-mode-btn" data-target-mode="pickup">🟢 Set Pickup</button>
-              <button type="button" class="btn-sm fs-mode-btn" data-target-mode="dropoff">🏁 Set Dropoff</button>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <div class="map-layer-pill">
-              <button type="button" class="layer-pill-btn active" data-layer-target="street">🗺️ Kalsada</button>
-              <button type="button" class="layer-pill-btn" data-layer-target="satellite">🛰️ Satellite</button>
-            </div>
-            <button type="button" class="btn-locate-me map-float-btn" style="background:#0284c7;border-color:#0284c7;">🎯 Akong GPS</button>
-            <button type="button" class="btn-fullscreen-toggle map-float-btn" style="background:#ef4444;border-color:#ef4444;">✕ Close</button>
-          </div>
-        </div>
-
-        <!-- Floating Quick Controls (Top-Right on map) -->
-        <div class="map-floating-bar">
-          <span class="map-island-badge" title="Eksklusibo nga rota sa Isla sa Camiguin lamang">🏝️ Camiguin Island</span>
-          <div class="map-layer-pill">
-            <button type="button" class="layer-pill-btn active" data-layer-target="street" title="Standard Road Map">🗺️ Kalsada</button>
-            <button type="button" class="layer-pill-btn" data-layer-target="satellite" title="Photorealistic Satellite Aerial View">🛰️ Satellite</button>
-          </div>
-          <button type="button" class="map-float-btn btn-locate-me" title="Gamita ang imong kasamtangang GPS lokasyon">
-            <span>🎯</span> Akong Lokasyon
-          </button>
-          <button type="button" class="map-float-btn btn-fullscreen-toggle" title="Padak-a ang mapa para sa cellphone">
-            <span>⛶</span> Padak-a
-          </button>
-        </div>
-
-        <div id="booking-map" class="booking-map-clean" style="height: 520px; width: 100%; border-radius: 16px; z-index: 1;"></div>
+      <div class="map-canvas-container" style="position:relative;">
+        <div id="booking-map" class="booking-map" style="height: 480px; width: 100%; border-radius: 12px; z-index: 1;"></div>
         <div id="map-toast-pill" class="map-toast-pill hidden"></div>
       </div>
 
-      <div class="map-legend-clean">
+      <div class="map-legend-row">
         <span><span class="legend-dot dot-pickup"></span> Pickup</span>
-        <span><span class="legend-dot dot-dropoff"></span> Drop-off</span>
-        <span><span class="legend-route-line"></span> Road Route</span>
-        <span><span class="legend-dot dot-rider"></span> Verified Rider</span>
+        <span><span class="legend-dot dot-dropoff"></span> Dropoff</span>
+        <span><span style="display:inline-block;width:14px;height:4px;background:#ea580c;border-radius:2px;vertical-align:middle;margin-right:4px;"></span> Actual Road Route</span>
+        <span><span class="legend-dot dot-rider"></span> Online Rider</span>
       </div>
     </div>
   </div>
@@ -407,34 +391,52 @@
         </table>
       </div>
 
-      <div style="margin-top:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;font-size:0.88rem;">
-        <h4 style="margin:0 0 6px;color:#c2410c;">Official Surcharges:</h4>
+      <!-- Surcharges Box -->
+      <div style="margin-top:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:0.88rem;">
+        <h4 style="margin:0 0 6px;color:#c2410c;">Additional Surcharges &amp; Conditions:</h4>
         <ul style="margin:0;padding-left:20px;line-height:1.5;">
-          <li><strong>Pasugo / Pabili Service:</strong> Additional ₱20 (Meter + ₱20)</li>
-          <li><strong>Large Store Queuing:</strong> +₱30 when queuing at Gaisano, Davilett, Nene Uy</li>
-          <li><strong>Additional Store Stops:</strong> +₱20 per extra store</li>
-          <li><strong>Bulky Orders (&gt;=₱2,000):</strong> +₱20</li>
-          <li><strong>Hinterland / Mountain Route:</strong> +₱30 in Soro-soro, Highland, Utopia, etc.</li>
+          <li><strong>Pasugo / Pabili Service:</strong> Additional ₱20 (Meter + 20 PHP)</li>
+          <li><strong>Time Consuming / Large Store:</strong> An additional ₱30 plus meter fee when lining up at large stores or supermarkets (Gaisano, Davilett, Nene Uy, etc.)</li>
+          <li><strong>Additional Store Stops:</strong> +₱20 per extra store (excluding food stalls)</li>
+          <li><strong>Bulky Orders:</strong> Orders reaching ₱2,000 budget or heavy items: add ₱20</li>
+          <li><strong>Hinterland / Mountain Route:</strong> +₱30 in Soro-soro, Highland, Utopia, Binunsaran, Granelandia, Itum Road, or any hinterland area</li>
         </ul>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Broadcast Success Modal -->
+<!-- Success Modal -->
 <div id="broadcast-success-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
   <div class="modal-card modal-md text-center">
-    <div class="modal-body" style="padding:2.5rem 1.8rem;">
-      <div class="success-icon-pulse"><img src="/static/icons/logo.png" alt="CCRC" style="width:68px;height:68px;object-fit:contain;border-radius:50%;display:block;margin:0 auto;"></div>
-      <h2 style="margin:12px 0 6px;font-size:1.5rem;">Booking Broadcasted!</h2>
-      <p class="text-muted" style="font-size:0.92rem;">Active riders on Camiguin island are receiving your dispatch chime right now.</p>
+    <div class="modal-body">
+      <div class="success-icon-pulse">🛵</div>
+      <h2 style="margin:6px 0;">Your Booking is Broadcasted!</h2>
+      <p class="text-muted" style="margin:0 0 12px;font-size:0.9rem;">
+        All active riders in Camiguin Centric Riders Club have received your request. Their phones will alert them immediately to accept.
+      </p>
 
-      <div class="booking-code-box" style="margin:1.2rem auto;padding:12px 20px;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:12px;display:inline-block;">
-        <span class="code-label" style="display:block;font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Your Booking Code</span>
-        <strong id="modal-booking-code" class="code-val" style="font-size:1.4rem;font-family:monospace;color:var(--primary);">CCRC-0000-00</strong>
+      <div class="booking-code-box">
+        <span class="code-label">Booking Code:</span>
+        <strong id="modal-booking-code" class="code-val">CCRC-0000-00</strong>
       </div>
 
-      <a id="modal-track-link" href="#" class="btn btn-primary btn-lg btn-block" style="margin-top:14px;padding:14px;border-radius:12px;font-weight:700;">
+      <div id="modal-eta-banner" class="hidden" style="margin-top:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 12px;font-size:0.86rem;color:#c2410c;">
+        ⚡ Estimated Arrival of Nearest Rider: <strong>~<span id="modal-eta-mins">3</span> minutes</strong>
+      </div>
+
+      <div id="modal-summary-box" style="margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:0.85rem;text-align:left;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span class="text-muted">Total Fare:</span>
+          <strong id="modal-summary-fare" style="color:var(--primary);font-size:1.05rem;">₱40</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-muted">Payment:</span>
+          <strong id="modal-summary-pay" style="text-transform:capitalize;">Cash</strong>
+        </div>
+      </div>
+
+      <a id="modal-track-link" href="#" class="btn btn-primary btn-lg btn-block" style="margin-top:14px;font-weight:700;">
         Track Live Rider GPS &amp; Status &rarr;
       </a>
     </div>
@@ -443,5 +445,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/app.js?v=16"></script>
+<script src="/static/js/app.js?v=2"></script>
 {% endblock %}

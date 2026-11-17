@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}About Camiguin Centric Riders Club — {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container page-narrow" style="padding-top:2rem;padding-bottom:3.5rem;">
+  <div class="card" style="padding:2rem;">
+    <div class="text-center" style="margin-bottom:2rem;">
+      <span style="font-size:3rem;line-height:1;">🛵</span>
+      <h1 style="font-size:1.8rem;margin:0.5rem 0 0.3rem;">About Camiguin Centric Riders Club</h1>
+      <p class="text-muted" style="margin:0;font-size:1rem;">
+        The Island's Trusted On-Demand Express Network for Safe Passenger Transport &amp; Delivery Logistics
+      </p>
+    </div>
+
+    <section style="margin-bottom:1.75rem;">
+      <h2 style="font-size:1.25rem;color:#9a3412;margin-bottom:0.5rem;">Our Mission</h2>
+      <p style="font-size:0.95rem;line-height:1.7;color:#334155;">
+        <strong>Camiguin Centric Riders Club (CCRC)</strong> was founded to provide transparent, safe, and dependable on-demand transport across the entire island of Camiguin. Whether you are a local heading to work in Mambajao, a family ordering groceries from Gaisano, or a tourist arriving at Benoni Port catching a sunrise boat to White Island, our riders are ready at a tap of a button.
+      </p>
+    </section>
+
+    <section style="margin-bottom:1.75rem;">
+      <h2 style="font-size:1.25rem;color:#9a3412;margin-bottom:0.5rem;">Strict Rider Vetting &amp; Safety Standards</h2>
+      <p style="font-size:0.95rem;line-height:1.7;color:#334155;">
+        Every active rider in the CCRC network undergoes rigorous screening and verification:
+      </p>
+      <ul style="font-size:0.92rem;line-height:1.8;color:#334155;padding-left:1.4rem;">
+        <li><strong>Valid Professional Driver’s License:</strong> Inspected and verified with the Land Transportation Office (LTO).</li>
+        <li><strong>Police &amp; Barangay Clearances:</strong> Verified good moral standing within their respective Camiguin municipalities.</li>
+        <li><strong>Motorcycle Roadworthiness Inspection:</strong> Regular maintenance checks, working headlights/tail lights, safe tires, and road-ready brakes.</li>
+        <li><strong>Safety Helmets Provided:</strong> Sanitized passenger safety helmets provided on all habal-habal trips.</li>
+        <li><strong>Strict Official Island Tariff:</strong> Zero overcharging. Fares are calculated dynamically based on real road network kilometers (kalsada mismo) and official municipality rates.</li>
+      </ul>
+    </section>
+
+    <section style="margin-bottom:1.75rem;">
+      <h2 style="font-size:1.25rem;color:#9a3412;margin-bottom:0.5rem;">5 Municipalities Island-Wide Coverage</h2>
+      <p style="font-size:0.95rem;line-height:1.7;color:#334155;">
+        Our members are stationed strategically around the island's 64-kilometer circumferential highway:
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-top:10px;">
+        <div style="background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:0.88rem;">
+          <strong>Mambajao</strong><br><span class="text-muted">Capital, Airport, Gaisano, Balbagon</span>
+        </div>
+        <div style="background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:0.88rem;">
+          <strong>Mahinog</strong><br><span class="text-muted">Benoni Ferry Port, Mantigue Island</span>
+        </div>
+        <div style="background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:0.88rem;">
+          <strong>Catarman</strong><br><span class="text-muted">Sunken Cemetery, Church Ruins, Bura</span>
+        </div>
+        <div style="background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:0.88rem;">
+          <strong>Sagay</strong><br><span class="text-muted">South Coast, Alangilan, Agriculture</span>
+        </div>
+        <div style="background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:0.88rem;">
+          <strong>Guinsiliban</strong><br><span class="text-muted">Giant Clam Sanctuary, Port</span>
+        </div>
+      </div>
+    </section>
+
+    <div style="text-align:center;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid #f1f5f9;">
+      <a href="/" class="btn btn-primary btn-lg" style="display:inline-block;font-weight:700;">
+        Book an Island Rider Now &rarr;
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
