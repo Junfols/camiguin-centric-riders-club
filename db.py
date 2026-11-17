@@ -1125,10 +1125,40 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "mun": "Mambajao"
     },
     {
+        "name": "Benoni Passenger Terminal, Mahinog",
+        "cat": "transport",
+        "keywords": [
+            "benoni passenger terminal",
+            "benoni terminal",
+            "passenger terminal",
+            "passenger terminal benoni",
+            "benoni port passenger terminal",
+            "ppa passenger terminal",
+            "ppa benoni",
+            "pantalan passenger terminal",
+            "terminal",
+            "passenger",
+            "benoni port",
+            "pantalan benoni",
+            "ferry terminal",
+            "wharf",
+            "port",
+            "pantalan",
+            "transport"
+        ],
+        "lat": 9.1306,
+        "lng": 124.7937,
+        "mun": "Mahinog",
+        "full_address": "Benoni Port, Mahinog, Camiguin"
+    },
+    {
         "name": "Benoni Port / Ferry Wharf, Mahinog",
         "cat": "transport",
         "keywords": [
             "benoni port",
+            "benoni passenger terminal",
+            "benoni terminal",
+            "passenger terminal",
             "benoni",
             "wharf",
             "port",
