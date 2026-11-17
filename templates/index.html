@@ -63,6 +63,7 @@
               <label for="pickup-address" class="route-field-label">PICKUP / MEETING POINT</label>
               <div class="route-field-wrap">
                 <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off" list="camiguin-places-list">
+                <button type="button" id="clear-pickup-btn" class="input-clear-btn hidden" aria-label="Clear pickup" title="Erase text">✕</button>
                 <div class="route-actions-inline">
                   <button type="button" id="locate-pickup-gps-btn" class="route-mini-btn" title="Use current GPS">📍 My GPS</button>
                   <button type="button" id="pin-pickup-map-btn" class="route-mini-btn" title="Pin on Map">🗺️ Map</button>
@@ -80,6 +81,7 @@
               <label for="dropoff-address" class="route-field-label">DESTINATION / DROP-OFF</label>
               <div class="route-field-wrap">
                 <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off" list="camiguin-places-list">
+                <button type="button" id="clear-dropoff-btn" class="input-clear-btn hidden" aria-label="Clear dropoff" title="Erase text">✕</button>
                 <div class="route-actions-inline">
                   <button type="button" id="locate-dropoff-gps-btn" class="route-mini-btn" title="Pin on Map">📍 Pin Map</button>
                 </div>
@@ -223,7 +225,7 @@
               </div>
             </div>
             <div class="fare-distance-pill">
-              <span id="fare-km-display">~0.8 km</span>
+              <span id="fare-km-display">~0.0 km</span>
               <small class="text-muted">🛣️ Kalsada / Road Route</small>
             </div>
           </div>
@@ -402,5 +404,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/app.js?v=7"></script>
+<script src="/static/js/app.js?v=8"></script>
 {% endblock %}
