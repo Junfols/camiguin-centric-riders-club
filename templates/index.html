@@ -62,7 +62,7 @@
             <div class="route-input-row">
               <label for="pickup-address" class="route-field-label">PICKUP / MEETING POINT</label>
               <div class="route-field-wrap">
-                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off">
+                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off" list="camiguin-places-list">
                 <div class="route-actions-inline">
                   <button type="button" id="locate-pickup-gps-btn" class="route-mini-btn" title="Use current GPS">📍 My GPS</button>
                   <button type="button" id="pin-pickup-map-btn" class="route-mini-btn" title="Pin on Map">🗺️ Map</button>
@@ -79,7 +79,7 @@
             <div class="route-input-row">
               <label for="dropoff-address" class="route-field-label">DESTINATION / DROP-OFF</label>
               <div class="route-field-wrap">
-                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off">
+                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off" list="camiguin-places-list">
                 <div class="route-actions-inline">
                   <button type="button" id="locate-dropoff-gps-btn" class="route-mini-btn" title="Pin on Map">📍 Pin Map</button>
                 </div>
@@ -92,8 +92,13 @@
         </div>
 
         <datalist id="camiguin-places-list">
-          <option value="Baylao, Mambajao">
           <option value="Jollibee Camiguin, Mambajao">
+          <option value="Gaisano Capital Camiguin">
+          <option value="Mambajao Public Market">
+          <option value="7-Eleven Mambajao Town Center">
+          <option value="Balbagon Port (FastCat)">
+          <option value="Benoni Port / Ferry Wharf, Mahinog">
+          <option value="Baylao, Mambajao">
           <option value="Gaisano Capital Camiguin">
           <option value="Davilett Store, Mambajao">
           <option value="Nene Uy Store, Mambajao">
@@ -132,6 +137,8 @@
         <div class="landmarks-clean-box">
           <span class="landmarks-clean-title">Popular Destinations:</span>
           <div class="landmark-chips-scroll" id="quick-landmark-chips">
+            <button type="button" class="chip-pill" data-name="Jollibee Camiguin, Mambajao" data-lat="9.2488" data-lng="124.6980">🍔 Jollibee Camiguin</button>
+            <button type="button" class="chip-pill" data-name="Gaisano Capital Camiguin" data-lat="9.2475" data-lng="124.6995">🛒 Gaisano Capital</button>
             <button type="button" class="chip-pill" data-name="Benoni Port (Mahinog)" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
             <button type="button" class="chip-pill" data-name="Balbagon Port (Mambajao)" data-lat="9.2561" data-lng="124.7175">⛴️ Balbagon Port</button>
             <button type="button" class="chip-pill" data-name="White Island Boat Jump-off" data-lat="9.2538" data-lng="124.6532">🏝️ White Island</button>
