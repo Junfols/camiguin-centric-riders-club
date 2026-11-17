@@ -2431,7 +2431,8 @@ body.rider-logged-in .nav-rider-logged-item {
 }
 
 .map-canvas-container.is-fullscreen #booking-map,
-.map-canvas-container.is-fullscreen #tracking-map {
+.map-canvas-container.is-fullscreen #tracking-map,
+.map-canvas-container.is-fullscreen #rider-job-map {
   height: 100vh !important;
   width: 100vw !important;
   border-radius: 0 !important;

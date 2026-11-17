@@ -481,6 +481,11 @@
 
     function sendLocation(lat, lng, speed, heading) {
       gpsStatusLabel.textContent = `Live GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Active)`;
+      if (currentRider) {
+        currentRider.last_lat = lat;
+        currentRider.last_lng = lng;
+      }
+      updateRiderLiveMarkerOnJobMap(lat, lng, speed, heading);
       fetch("/api/rider/location", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -519,6 +524,11 @@
         (pos) => {
           forceGpsBtn.textContent = "Sync GPS";
           gpsStatusLabel.textContent = `GPS Synced: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+          if (currentRider) {
+            currentRider.last_lat = pos.coords.latitude;
+            currentRider.last_lng = pos.coords.longitude;
+          }
+          updateRiderLiveMarkerOnJobMap(pos.coords.latitude, pos.coords.longitude, pos.coords.speed, pos.coords.heading);
         },
         () => {
           forceGpsBtn.textContent = "Sync GPS";
@@ -528,11 +538,350 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Rider Active Job Interactive Live Map (Pareha sa Customer Track Map)
+  // ---------------------------------------------------------------------------
+  let riderJobMap = null;
+  let riderJobPickupMarker = null;
+  let riderJobDropoffMarker = null;
+  let riderJobRiderMarker = null;
+  let riderJobRouteLine = null;
+  let riderJobStreetLayer = null;
+  let riderJobSatGroup = null;
+  let riderJobCurrentLayer = "street";
+  let lastRiderGpsPos = null;
+  let currentRiderBearing = 0;
+  let currentJobIdOnMap = null;
+
+  function calculateRiderBearing(lat1, lng1, lat2, lng2) {
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const y = Math.sin(dLng) * Math.cos((lat2 * Math.PI) / 180);
+    const x =
+      Math.cos((lat1 * Math.PI) / 180) * Math.sin((lat2 * Math.PI) / 180) -
+      Math.sin((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.cos(dLng);
+    let brng = (Math.atan2(y, x) * 180) / Math.PI;
+    return (brng + 360) % 360;
+  }
+
+  function initRiderJobMap() {
+    const mapEl = document.getElementById("rider-job-map");
+    if (!mapEl || riderJobMap || typeof L === "undefined") return;
+
+    const CAMIGUIN_BOUNDS = [
+      [9.0500, 124.5800],
+      [9.2900, 124.8300]
+    ];
+
+    riderJobMap = L.map(mapEl, {
+      zoomControl: true,
+      minZoom: 11,
+      maxZoom: 19,
+      maxBounds: CAMIGUIN_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      bounceAtZoomLimits: true
+    }).fitBounds(CAMIGUIN_BOUNDS);
+
+    // 1. Street Layer (OpenStreetMap)
+    riderJobStreetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors',
+    });
+
+    // 2. Satellite Layer (Esri World Imagery + Labels)
+    const satImagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri',
+    });
+    const satLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      pane: "overlayPane",
+    });
+    riderJobSatGroup = L.layerGroup([satImagery, satLabels]);
+
+    riderJobStreetLayer.addTo(riderJobMap);
+
+    // Layer Switcher Buttons
+    document.querySelectorAll("[data-rider-job-layer]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const layerType = btn.getAttribute("data-rider-job-layer");
+        if (layerType === riderJobCurrentLayer) return;
+        if (layerType === "satellite") {
+          riderJobMap.removeLayer(riderJobStreetLayer);
+          riderJobSatGroup.addTo(riderJobMap);
+          riderJobCurrentLayer = "satellite";
+        } else {
+          riderJobMap.removeLayer(riderJobSatGroup);
+          riderJobStreetLayer.addTo(riderJobMap);
+          riderJobCurrentLayer = "street";
+        }
+        document.querySelectorAll("[data-rider-job-layer]").forEach((b) => {
+          const isActive = b.getAttribute("data-rider-job-layer") === layerType;
+          b.classList.toggle("active", isActive);
+          if (isActive) {
+            b.style.background = "#f97316";
+            b.style.color = "#fff";
+          } else {
+            b.style.background = "transparent";
+            b.style.color = "#475569";
+          }
+        });
+      });
+    });
+
+    // Recenter GPS Button
+    const recenterBtn = document.getElementById("rider-job-recenter-btn");
+    if (recenterBtn) {
+      recenterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!riderJobMap) return;
+        if (lastRiderGpsPos) {
+          riderJobMap.flyTo([lastRiderGpsPos.lat, lastRiderGpsPos.lng], 16, { duration: 0.8 });
+        } else if (currentRider && currentRider.last_lat && currentRider.last_lng) {
+          riderJobMap.flyTo([currentRider.last_lat, currentRider.last_lng], 16, { duration: 0.8 });
+        } else if (riderJobRouteLine) {
+          riderJobMap.fitBounds(riderJobRouteLine.getBounds(), { padding: [40, 40] });
+        }
+      });
+    }
+
+    // Fit Route Button
+    const fitRouteBtn = document.getElementById("rider-job-fit-route-btn");
+    if (fitRouteBtn) {
+      fitRouteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!riderJobMap) return;
+        if (riderJobRouteLine) {
+          riderJobMap.fitBounds(riderJobRouteLine.getBounds(), { padding: [40, 40] });
+        } else if (activeJob && activeJob.pickup_lat && activeJob.dropoff_lat) {
+          const bounds = L.latLngBounds(
+            [activeJob.pickup_lat, activeJob.pickup_lng],
+            [activeJob.dropoff_lat, activeJob.dropoff_lng]
+          );
+          riderJobMap.fitBounds(bounds, { padding: [40, 40] });
+        }
+      });
+    }
+
+    // Fullscreen Toggle Button
+    const fsBtn = document.getElementById("rider-job-fullscreen-btn");
+    const container = document.getElementById("rider-job-map-container");
+    if (fsBtn && container) {
+      fsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isFs = container.classList.toggle("is-fullscreen");
+        fsBtn.innerHTML = isFs ? "<span>✕</span>" : "<span>⛶</span>";
+        setTimeout(() => {
+          if (riderJobMap) riderJobMap.invalidateSize();
+        }, 200);
+      });
+    }
+  }
+
+  function updateRiderLiveMarkerOnJobMap(lat, lng, speed = 0, serverHeading = 0) {
+    if (!lat || !lng) return;
+    if (!riderJobMap) return;
+
+    if (serverHeading && serverHeading > 0) {
+      currentRiderBearing = Math.round(serverHeading);
+    } else if (lastRiderGpsPos) {
+      const distDelta = Math.hypot(lat - lastRiderGpsPos.lat, lng - lastRiderGpsPos.lng);
+      if (distDelta > 0.00006) {
+        currentRiderBearing = Math.round(calculateRiderBearing(lastRiderGpsPos.lat, lastRiderGpsPos.lng, lat, lng));
+      }
+    }
+    lastRiderGpsPos = { lat, lng, speed, heading: currentRiderBearing };
+
+    const speedDisplay = (speed && speed > 2) ? `${Math.round(speed)} km/h` : '';
+
+    const bikeIcon = L.divIcon({
+      className: "ccrc-rider-3d-marker",
+      html: `
+        <div class="rider-3d-wrap">
+          <div class="rider-radar-pulse"></div>
+          <div class="rider-heading-cone" style="transform: rotate(${currentRiderBearing}deg);"></div>
+          <div class="rider-3d-avatar" title="${escapeHtml(currentRider?.name || 'Ikaw (Rider)')}">
+            <span>🏍️</span>
+          </div>
+          ${speedDisplay ? `<span class="rider-speed-badge">${speedDisplay}</span>` : ''}
+        </div>
+      `,
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
+    });
+
+    if (!riderJobRiderMarker) {
+      riderJobRiderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
+        .addTo(riderJobMap)
+        .bindPopup(`<strong>🛵 ${escapeHtml(currentRider?.name || 'Ikaw (Rider)')}</strong><br>Imong live GPS lokasyon`);
+    } else {
+      riderJobRiderMarker.setIcon(bikeIcon);
+      riderJobRiderMarker.setLatLng([lat, lng]);
+    }
+  }
+
+  function renderJobOnRiderMap(job) {
+    if (!job) {
+      if (riderJobPickupMarker && riderJobMap) { riderJobMap.removeLayer(riderJobPickupMarker); riderJobPickupMarker = null; }
+      if (riderJobDropoffMarker && riderJobMap) { riderJobMap.removeLayer(riderJobDropoffMarker); riderJobDropoffMarker = null; }
+      if (riderJobRouteLine && riderJobMap) { riderJobMap.removeLayer(riderJobRouteLine); riderJobRouteLine = null; }
+      currentJobIdOnMap = null;
+      return;
+    }
+
+    initRiderJobMap();
+    if (!riderJobMap) return;
+
+    // Invalidate map size so tiles load properly
+    setTimeout(() => {
+      if (riderJobMap) riderJobMap.invalidateSize();
+    }, 150);
+
+    const hasNewJob = currentJobIdOnMap !== job.id;
+    currentJobIdOnMap = job.id;
+
+    // Check if coordinates need resolving
+    if ((!job.pickup_lat || !job.dropoff_lat) && (job.pickup_address || job.dropoff_address)) {
+      fetch("/api/fare-estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pickup_address: job.pickup_address,
+          dropoff_address: job.dropoff_address,
+          service_type: job.service_type || "pahatud",
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.resolved_pickup && data.resolved_dropoff) {
+            job.pickup_lat = data.resolved_pickup.lat;
+            job.pickup_lng = data.resolved_pickup.lng;
+            job.dropoff_lat = data.resolved_dropoff.lat;
+            job.dropoff_lng = data.resolved_dropoff.lng;
+            renderJobOnRiderMap(job);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 1. Pickup Pin (Green 🟢)
+    if (job.pickup_lat && job.pickup_lng) {
+      const greenIcon = L.divIcon({
+        className: "custom-pin",
+        html: `<div style="background:#16a34a;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,0.35);border:2.5px solid #fff;">🟢</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      });
+      if (!riderJobPickupMarker) {
+        riderJobPickupMarker = L.marker([job.pickup_lat, job.pickup_lng], { icon: greenIcon })
+          .addTo(riderJobMap)
+          .bindPopup(`<strong>🟢 Pickup / Tindahan:</strong><br>${escapeHtml(job.pickup_address)}`);
+      } else {
+        riderJobPickupMarker.setLatLng([job.pickup_lat, job.pickup_lng]);
+        riderJobPickupMarker.setPopupContent(`<strong>🟢 Pickup / Tindahan:</strong><br>${escapeHtml(job.pickup_address)}`);
+      }
+    }
+
+    // 2. Dropoff Pin (Red 🏁)
+    if (job.dropoff_lat && job.dropoff_lng) {
+      const redIcon = L.divIcon({
+        className: "custom-pin",
+        html: `<div style="background:#dc2626;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,0.35);border:2.5px solid #fff;">🏁</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      });
+      if (!riderJobDropoffMarker) {
+        riderJobDropoffMarker = L.marker([job.dropoff_lat, job.dropoff_lng], { icon: redIcon })
+          .addTo(riderJobMap)
+          .bindPopup(`<strong>🏁 Dropoff / Destinasyon:</strong><br>${escapeHtml(job.dropoff_address)}`);
+      } else {
+        riderJobDropoffMarker.setLatLng([job.dropoff_lat, job.dropoff_lng]);
+        riderJobDropoffMarker.setPopupContent(`<strong>🏁 Dropoff / Destinasyon:</strong><br>${escapeHtml(job.dropoff_address)}`);
+      }
+    }
+
+    // 3. Road Route Polyline (Bold Red Line)
+    if (job.pickup_lat && job.dropoff_lat && (hasNewJob || !riderJobRouteLine)) {
+      const pLat = job.pickup_lat;
+      const pLng = job.pickup_lng;
+      const dLat = job.dropoff_lat;
+      const dLng = job.dropoff_lng;
+
+      // Temporary straight line while fetching road path
+      if (riderJobRouteLine) riderJobMap.removeLayer(riderJobRouteLine);
+      riderJobRouteLine = L.polyline(
+        [
+          [pLat, pLng],
+          [dLat, dLng],
+        ],
+        { color: "#ef4444", weight: 5, opacity: 0.9 }
+      ).addTo(riderJobMap);
+      riderJobMap.fitBounds(riderJobRouteLine.getBounds(), { padding: [40, 40] });
+
+      // Fetch actual road path from backend road engine
+      fetch(`/api/road-route?p_lat=${pLat}&p_lng=${pLng}&d_lat=${dLat}&d_lng=${dLng}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.code === "Ok" && data.route_coords && data.route_coords.length > 0) {
+            const roadCoords = data.route_coords.map((pt) => {
+              const n1 = parseFloat(pt[0]);
+              const n2 = parseFloat(pt[1]);
+              if (n1 > 50 && n2 < 50) return [n2, n1];
+              return [n1, n2];
+            });
+            if (riderJobRouteLine) riderJobMap.removeLayer(riderJobRouteLine);
+            riderJobRouteLine = L.polyline(roadCoords, {
+              color: "#ef4444",
+              weight: 5,
+              opacity: 1.0,
+              lineCap: "round",
+              lineJoin: "round",
+            }).addTo(riderJobMap);
+            riderJobMap.fitBounds(riderJobRouteLine.getBounds(), { padding: [40, 40] });
+          }
+          if (data && data.distance_km) {
+            const distInfo = document.getElementById("rider-job-distance-info");
+            if (distInfo) {
+              const km = Number(data.distance_km).toFixed(1);
+              const mins = Math.max(2, Math.round((data.distance_km / 30) * 60));
+              distInfo.textContent = `📍 ${km} km (~${mins} mins biyahe)`;
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 4. Update Rider live GPS marker if position is already known
+    if (lastRiderGpsPos) {
+      updateRiderLiveMarkerOnJobMap(lastRiderGpsPos.lat, lastRiderGpsPos.lng, lastRiderGpsPos.speed, lastRiderGpsPos.heading);
+    } else if (currentRider && currentRider.last_lat && currentRider.last_lng) {
+      updateRiderLiveMarkerOnJobMap(currentRider.last_lat, currentRider.last_lng, 0, 0);
+    }
+
+    // Prompt immediate GPS fix if available
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (currentRider) {
+            currentRider.last_lat = pos.coords.latitude;
+            currentRider.last_lng = pos.coords.longitude;
+          }
+          updateRiderLiveMarkerOnJobMap(pos.coords.latitude, pos.coords.longitude, pos.coords.speed, pos.coords.heading);
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 5000 }
+      );
+    }
+  }
+
   // Render Active Job Card
   function renderActiveJobCard(job) {
     if (!job) {
       if (activeJobBox) activeJobBox.classList.add("hidden");
       resetRiderChat(null);
+      renderJobOnRiderMap(null);
       return;
     }
     resetRiderChat(job);
@@ -614,6 +963,9 @@
         jobCompleteBtn.classList.remove("hidden");
       }
     }
+
+    // Interactive Live GPS Route Map for Active Job
+    renderJobOnRiderMap(job);
   }
 
   // Check Active Job
@@ -785,6 +1137,7 @@
           alert("✓ Trip successfully marked as Completed! Thank you for your service.");
           activeJob = null;
           activeJobBox.classList.add("hidden");
+          renderJobOnRiderMap(null);
           fetchAvailableJobs();
           loadRiderTransactions();
         }

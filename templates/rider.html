@@ -297,6 +297,38 @@
         </div>
       </div>
 
+      <!-- Interactive Rider Trip Map (Live GPS, Route, Pickup, Dropoff) -->
+      <div class="card map-canvas-container" id="rider-job-map-container" style="padding:10px;margin-top:14px;border-radius:14px;overflow:hidden;position:relative;background:#f8fafc;border:1px solid #cbd5e1;">
+        <!-- Floating Quick Controls on Rider Map -->
+        <div class="map-floating-bar" style="position:absolute;top:18px;right:18px;z-index:1000;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <div class="map-layer-pill" style="display:flex;background:rgba(255,255,255,0.95);border-radius:20px;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,0.15);border:1px solid #cbd5e1;">
+            <button type="button" class="layer-pill-btn active" id="rider-job-layer-street" data-rider-job-layer="street" style="border:none;background:#f97316;color:#fff;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🗺️ Kalsada</button>
+            <button type="button" class="layer-pill-btn" id="rider-job-layer-sat" data-rider-job-layer="satellite" style="border:none;background:transparent;color:#475569;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🛰️ Satellite</button>
+          </div>
+          <button type="button" id="rider-job-recenter-btn" class="map-float-btn" title="I-focus sa Akong Lokasyon" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>🎯</span> Akong GPS
+          </button>
+          <button type="button" id="rider-job-fit-route-btn" class="map-float-btn" title="I-fit ang tibuok ruta" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>🗺️</span> Ruta
+          </button>
+          <button type="button" id="rider-job-fullscreen-btn" class="map-float-btn" title="Padak-a ang Mapa para sa Celpon / Motor" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 9px;font-size:0.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>⛶</span>
+          </button>
+        </div>
+
+        <div id="rider-job-map" style="height:360px;width:100%;border-radius:10px;z-index:1;"></div>
+
+        <div class="tracking-legend" style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px 2px;font-size:0.78rem;color:#334155;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f97316;margin-right:4px;vertical-align:middle;box-shadow:0 0 4px #f97316;"></span> <strong>Ikaw (Rider 🛵)</strong></span>
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#16a34a;margin-right:4px;vertical-align:middle;"></span> <strong>Pickup 🟢</strong></span>
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#dc2626;margin-right:4px;vertical-align:middle;"></span> <strong>Dropoff 🏁</strong></span>
+            <span><span style="display:inline-block;width:18px;height:4px;background:#ef4444;border-radius:2px;margin-right:4px;vertical-align:middle;"></span> <strong>Ruta</strong></span>
+          </div>
+          <span id="rider-job-distance-info" style="font-weight:700;color:#0284c7;font-size:0.82rem;"></span>
+        </div>
+      </div>
+
 
       <!-- Rider-Customer In-App Live Chat -->
       <div class="card chat-card rider-chat-card" style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;">

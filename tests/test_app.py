@@ -1158,6 +1158,16 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         r_login_plate = self.client.post("/api/rider/login", json={"phone": "MC-9988", "password": "ridersecret123"})
         self.assertEqual(r_login_plate.status_code, 200)
 
+    def test_rider_portal_contains_active_job_map(self):
+        resp = self.client.get("/rider")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+        self.assertIn("rider-job-map-container", html)
+        self.assertIn("rider-job-map", html)
+        self.assertIn("data-rider-job-layer", html)
+        self.assertIn("rider-job-recenter-btn", html)
+        self.assertIn("rider-job-fullscreen-btn", html)
+
 
 if __name__ == "__main__":
     unittest.main()
