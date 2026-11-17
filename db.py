@@ -36,6 +36,515 @@ def get_database_url() -> str:
 # -------------------------------------------------------------------------
 CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
     {
+        "name": "Petron Gas Station Mambajao (Balbagon)",
+        "cat": "fuel",
+        "keywords": [
+            "petron",
+            "petron mambajao",
+            "petron balbagon",
+            "gasolinahan",
+            "gas station",
+            "fuel",
+            "gasolina",
+            "tubil"
+        ],
+        "lat": 9.24535,
+        "lng": 124.72986,
+        "mun": "Mambajao",
+        "full_address": "Balbagon Highway, Mambajao"
+    },
+    {
+        "name": "Petron Gas Station Poblacion Mambajao",
+        "cat": "fuel",
+        "keywords": [
+            "petron",
+            "petron poblacion",
+            "gasolinahan",
+            "gas station",
+            "fuel",
+            "gasolina",
+            "tubil"
+        ],
+        "lat": 9.2485,
+        "lng": 124.7185,
+        "mun": "Mambajao",
+        "full_address": "Poblacion Mambajao"
+    },
+    {
+        "name": "Shell Gas Station Mambajao (Tupsan)",
+        "cat": "fuel",
+        "keywords": [
+            "shell",
+            "shell mambajao",
+            "shell tupsan",
+            "gasolinahan",
+            "gas station",
+            "fuel",
+            "gasolina",
+            "tubil"
+        ],
+        "lat": 9.20656,
+        "lng": 124.77516,
+        "mun": "Mambajao",
+        "full_address": "Tupsan Highway, Mambajao"
+    },
+    {
+        "name": "Phoenix Gas Station Mambajao (Lakas)",
+        "cat": "fuel",
+        "keywords": [
+            "phoenix",
+            "phoenix mambajao",
+            "phoenix lakas",
+            "gasolinahan",
+            "gas station",
+            "fuel",
+            "tubil"
+        ],
+        "lat": 9.249,
+        "lng": 124.723,
+        "mun": "Mambajao",
+        "full_address": "Lakas, Poblacion, Mambajao"
+    },
+    {
+        "name": "Petron Gas Station Catarman",
+        "cat": "fuel",
+        "keywords": [
+            "petron catarman",
+            "petron",
+            "gasolinahan catarman",
+            "gas station",
+            "fuel",
+            "tubil"
+        ],
+        "lat": 9.12577,
+        "lng": 124.67342,
+        "mun": "Catarman",
+        "full_address": "Poblacion Catarman"
+    },
+    {
+        "name": "Petron Gas Station Mahinog (Benoni)",
+        "cat": "fuel",
+        "keywords": [
+            "petron mahinog",
+            "petron benoni",
+            "gasolinahan",
+            "gas station",
+            "fuel",
+            "tubil"
+        ],
+        "lat": 9.132,
+        "lng": 124.793,
+        "mun": "Mahinog",
+        "full_address": "Benoni Highway, Mahinog"
+    },
+    {
+        "name": "Highway Fuel Station Agoho",
+        "cat": "fuel",
+        "keywords": [
+            "gasolinahan agoho",
+            "gas station agoho",
+            "gasolinahan",
+            "fuel",
+            "tubil"
+        ],
+        "lat": 9.244,
+        "lng": 124.685,
+        "mun": "Mambajao",
+        "full_address": "Agoho Highway, Mambajao"
+    },
+    {
+        "name": "Mambajao Central School",
+        "cat": "school",
+        "keywords": [
+            "mambajao central school",
+            "central school",
+            "mambajao elementary",
+            "eskwelahan",
+            "school"
+        ],
+        "lat": 9.24931,
+        "lng": 124.71982,
+        "mun": "Mambajao",
+        "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
+    },
+    {
+        "name": "Fatima College of Camiguin (FCC)",
+        "cat": "school",
+        "keywords": [
+            "fatima college",
+            "fcc",
+            "fatima",
+            "fatima college of camiguin",
+            "college",
+            "school"
+        ],
+        "lat": 9.25083,
+        "lng": 124.71408,
+        "mun": "Mambajao",
+        "full_address": "Poblacion Mambajao"
+    },
+    {
+        "name": "Camiguin Polytechnic State College (CPSC / CSU Mambajao)",
+        "cat": "school",
+        "keywords": [
+            "cpsc",
+            "csu",
+            "camiguin state university",
+            "camiguin polytechnic",
+            "college",
+            "school"
+        ],
+        "lat": 9.2472,
+        "lng": 124.7291,
+        "mun": "Mambajao",
+        "full_address": "Balbagon, Mambajao"
+    },
+    {
+        "name": "Camiguin Polytechnic State College (Catarman Campus)",
+        "cat": "school",
+        "keywords": [
+            "cpsc catarman",
+            "csu catarman",
+            "college catarman",
+            "school"
+        ],
+        "lat": 9.11666,
+        "lng": 124.68764,
+        "mun": "Catarman",
+        "full_address": "Catarman"
+    },
+    {
+        "name": "Camiguin National High School (CNHS)",
+        "cat": "school",
+        "keywords": [
+            "cnhs",
+            "camiguin national high school",
+            "camiguin high school",
+            "high school",
+            "school"
+        ],
+        "lat": 9.1295,
+        "lng": 124.67217,
+        "mun": "Catarman",
+        "full_address": "Catarman"
+    },
+    {
+        "name": "Yumbing National High School",
+        "cat": "school",
+        "keywords": [
+            "yumbing high school",
+            "yumbing national high school",
+            "high school",
+            "school"
+        ],
+        "lat": 9.24378,
+        "lng": 124.66394,
+        "mun": "Mambajao",
+        "full_address": "Yumbing, Mambajao"
+    },
+    {
+        "name": "Magting Elementary School",
+        "cat": "school",
+        "keywords": [
+            "magting elementary",
+            "magting school",
+            "school",
+            "elementary"
+        ],
+        "lat": 9.222,
+        "lng": 124.762,
+        "mun": "Mambajao",
+        "full_address": "Magting, Mambajao"
+    },
+    {
+        "name": "Agoho Elementary School",
+        "cat": "school",
+        "keywords": [
+            "agoho elementary",
+            "agoho school",
+            "school",
+            "elementary"
+        ],
+        "lat": 9.245,
+        "lng": 124.662,
+        "mun": "Mambajao",
+        "full_address": "Agoho, Mambajao"
+    },
+    {
+        "name": "Balbagon Elementary School",
+        "cat": "school",
+        "keywords": [
+            "balbagon elementary",
+            "balbagon school",
+            "school",
+            "elementary"
+        ],
+        "lat": 9.243,
+        "lng": 124.738,
+        "mun": "Mambajao",
+        "full_address": "Balbagon, Mambajao"
+    },
+    {
+        "name": "Catarman Central School",
+        "cat": "school",
+        "keywords": [
+            "catarman central school",
+            "catarman elementary",
+            "school"
+        ],
+        "lat": 9.128,
+        "lng": 124.645,
+        "mun": "Catarman",
+        "full_address": "Poblacion Catarman"
+    },
+    {
+        "name": "Mahinog Central School",
+        "cat": "school",
+        "keywords": [
+            "mahinog central school",
+            "mahinog school",
+            "school"
+        ],
+        "lat": 9.153,
+        "lng": 124.785,
+        "mun": "Mahinog",
+        "full_address": "Poblacion Mahinog"
+    },
+    {
+        "name": "Sagay Central School",
+        "cat": "school",
+        "keywords": [
+            "sagay central school",
+            "sagay school",
+            "school"
+        ],
+        "lat": 9.102,
+        "lng": 124.721,
+        "mun": "Sagay",
+        "full_address": "Poblacion Sagay"
+    },
+    {
+        "name": "Guinsiliban Central School",
+        "cat": "school",
+        "keywords": [
+            "guinsiliban central school",
+            "guinsiliban school",
+            "school"
+        ],
+        "lat": 9.094,
+        "lng": 124.778,
+        "mun": "Guinsiliban",
+        "full_address": "Poblacion Guinsiliban"
+    },
+    {
+        "name": "San Nicolas de Tolentino Parish Church, Mambajao",
+        "cat": "church",
+        "keywords": [
+            "san nicolas",
+            "mambajao church",
+            "simbahan sa mambajao",
+            "parish church",
+            "catholic church",
+            "church"
+        ],
+        "lat": 9.2514,
+        "lng": 124.717,
+        "mun": "Mambajao",
+        "full_address": "Poblacion Mambajao"
+    },
+    {
+        "name": "IFI Parish of the Good Shepherd, Mambajao",
+        "cat": "church",
+        "keywords": [
+            "ifi",
+            "ifi church",
+            "good shepherd",
+            "parish of the good shepherd",
+            "aglipayan church",
+            "church"
+        ],
+        "lat": 9.25145,
+        "lng": 124.71702,
+        "mun": "Mambajao",
+        "full_address": "Poblacion Mambajao"
+    },
+    {
+        "name": "Iglesia Ni Cristo (INC), Mambajao",
+        "cat": "church",
+        "keywords": [
+            "inc",
+            "iglesia ni cristo",
+            "iglesia",
+            "church"
+        ],
+        "lat": 9.23866,
+        "lng": 124.65569,
+        "mun": "Mambajao",
+        "full_address": "Mambajao"
+    },
+    {
+        "name": "San Roque Parish Church, Mahinog",
+        "cat": "church",
+        "keywords": [
+            "san roque parish",
+            "mahinog church",
+            "simbahan sa mahinog",
+            "catholic church",
+            "church"
+        ],
+        "lat": 9.1532,
+        "lng": 124.785,
+        "mun": "Mahinog",
+        "full_address": "Poblacion Mahinog"
+    },
+    {
+        "name": "San Antonio de Padua Parish Church, Bonbon",
+        "cat": "church",
+        "keywords": [
+            "san antonio parish",
+            "bonbon church",
+            "catarman church",
+            "church"
+        ],
+        "lat": 9.207,
+        "lng": 124.632,
+        "mun": "Catarman",
+        "full_address": "Bonbon, Catarman"
+    },
+    {
+        "name": "Our Lady of Mount Carmel Parish Church, Catarman",
+        "cat": "church",
+        "keywords": [
+            "catarman parish",
+            "mount carmel church",
+            "simbahan sa catarman",
+            "church"
+        ],
+        "lat": 9.1282,
+        "lng": 124.6448,
+        "mun": "Catarman",
+        "full_address": "Poblacion Catarman"
+    },
+    {
+        "name": "Holy Rosary Parish Church, Sagay",
+        "cat": "church",
+        "keywords": [
+            "sagay parish",
+            "holy rosary church",
+            "simbahan sa sagay",
+            "church"
+        ],
+        "lat": 9.1022,
+        "lng": 124.7212,
+        "mun": "Sagay",
+        "full_address": "Poblacion Sagay"
+    },
+    {
+        "name": "Our Lady of Consolation Parish Church, Guinsiliban",
+        "cat": "church",
+        "keywords": [
+            "guinsiliban parish",
+            "consolation church",
+            "simbahan sa guinsiliban",
+            "church"
+        ],
+        "lat": 9.0942,
+        "lng": 124.7782,
+        "mun": "Guinsiliban",
+        "full_address": "Poblacion Guinsiliban"
+    },
+    {
+        "name": "San Pedro Calungsod Chapel, Baylao",
+        "cat": "church",
+        "keywords": [
+            "baylao chapel",
+            "pedro calungsod",
+            "kapilya sa baylao",
+            "church"
+        ],
+        "lat": 9.2415,
+        "lng": 124.691,
+        "mun": "Mambajao",
+        "full_address": "Baylao, Mambajao"
+    },
+    {
+        "name": "Samuel Restaurant, Mambajao",
+        "cat": "food",
+        "keywords": [
+            "samuel",
+            "samuel restaurant",
+            "placido reyes",
+            "resto",
+            "restaurant",
+            "food"
+        ],
+        "lat": 9.2528,
+        "lng": 124.71574,
+        "mun": "Mambajao",
+        "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+    },
+    {
+        "name": "Kurma Eco Restaurant & Cafe, Yumbing",
+        "cat": "food",
+        "keywords": [
+            "kurma",
+            "kurma cafe",
+            "kurma restaurant",
+            "yumbing",
+            "cafe",
+            "food"
+        ],
+        "lat": 9.24144,
+        "lng": 124.65996,
+        "mun": "Mambajao",
+        "full_address": "Yumbing, Mambajao"
+    },
+    {
+        "name": "Julie's Bakeshop, Mambajao",
+        "cat": "food",
+        "keywords": [
+            "julies",
+            "julies bakeshop",
+            "tinapay",
+            "bakery",
+            "bakeshop"
+        ],
+        "lat": 9.25188,
+        "lng": 124.71615,
+        "mun": "Mambajao",
+        "full_address": "Poblacion Mambajao"
+    },
+    {
+        "name": "Goldilocks Bakeshop, Mambajao",
+        "cat": "food",
+        "keywords": [
+            "goldilocks",
+            "goldilocks mambajao",
+            "cake",
+            "bakeshop",
+            "bakery"
+        ],
+        "lat": 9.2518,
+        "lng": 124.7167,
+        "mun": "Mambajao",
+        "full_address": "Poblacion Mambajao"
+    },
+    {
+        "name": "CheckPoint Food Park, Mambajao",
+        "cat": "food",
+        "keywords": [
+            "checkpoint",
+            "checkpoint food park",
+            "food park",
+            "restaurant",
+            "food"
+        ],
+        "lat": 9.24227,
+        "lng": 124.6634,
+        "mun": "Mambajao",
+        "full_address": "Agoho / Yumbing Highway, Mambajao"
+    },
+    {
         "name": "Gaisano Capital Camiguin (Placido Reyes St)",
         "cat": "supermarket",
         "keywords": [
