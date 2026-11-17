@@ -2175,13 +2175,19 @@
     const mapEl = document.getElementById("booking-map");
     if (!mapEl || typeof L === "undefined") return;
 
+    const CAMIGUIN_BOUNDS = [
+      [9.0500, 124.5800], // Habagatan (Guinsiliban South)
+      [9.2900, 124.8300]  // Amihanan (White Island / Mantigue / Mambajao)
+    ];
+
     map = L.map(mapEl, {
       zoomControl: true,
-      maxBounds: [
-        [8.90, 124.40],
-        [9.50, 125.05]
-      ]
-    }).setView([9.2000, 124.7200], 11);
+      minZoom: 11,               // Dili na maka-zoom out lampas sa Isla sa Camiguin
+      maxZoom: 19,               // Pwede maka-zoom in sa kalsada, eskinita, ug tindahan
+      maxBounds: CAMIGUIN_BOUNDS, // Bounded strictly sulod sa Camiguin
+      maxBoundsViscosity: 1.0,   // Solid lock: Dili ma-drag o ma-pan gawas sa Camiguin
+      bounceAtZoomLimits: true
+    }).fitBounds(CAMIGUIN_BOUNDS);
 
     // 1. Street Layer (OpenStreetMap)
     streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -2252,10 +2258,17 @@
       }
     });
 
-    // Click on map to place pin
+    // Click on map to place pin (Strict Camiguin Island only!)
     map.on("click", (e) => {
       const lat = parseFloat(e.latlng.lat.toFixed(5));
       const lng = parseFloat(e.latlng.lng.toFixed(5));
+
+      // Sulod ra gyud sa Isla sa Camiguin ang pwede ma-pin
+      if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
+        showMapToast("⚠️ Sulod lamang sa Isla sa Camiguin ang pag-pin sa mapa.");
+        return;
+      }
+
       const nearestName = getNearestCamiguinPlace(lat, lng);
 
       if (currentTargetMode === "pickup") {
@@ -2299,6 +2312,11 @@
       (pos) => {
         const lat = parseFloat(pos.coords.latitude.toFixed(5));
         const lng = parseFloat(pos.coords.longitude.toFixed(5));
+
+        if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
+          showMapToast("⚠️ Ang imong GPS naa sa gawas sa Isla sa Camiguin.");
+          return;
+        }
 
         if (userGpsMarker) map.removeLayer(userGpsMarker);
         userGpsMarker = L.marker([lat, lng], {
@@ -2354,8 +2372,13 @@
       pickupMarker = L.marker([lat, lng], { icon: greenIcon, draggable: true }).addTo(map);
       pickupMarker.on("dragend", (e) => {
         const pos = e.target.getLatLng();
-        const nLat = parseFloat(pos.lat.toFixed(5));
-        const nLng = parseFloat(pos.lng.toFixed(5));
+        let nLat = parseFloat(pos.lat.toFixed(5));
+        let nLng = parseFloat(pos.lng.toFixed(5));
+        if (nLat < 9.05) nLat = 9.05;
+        if (nLat > 9.29) nLat = 9.29;
+        if (nLng < 124.58) nLng = 124.58;
+        if (nLng > 124.83) nLng = 124.83;
+        e.target.setLatLng([nLat, nLng]);
         const nPlace = getNearestCamiguinPlace(nLat, nLng);
         const newLabel = nPlace ? `${nPlace} (📍 Pinned)` : `Pinned Pickup (${nLat}, ${nLng})`;
         setPickupPoint(nLat, nLng, newLabel);
@@ -2390,8 +2413,13 @@
       dropoffMarker = L.marker([lat, lng], { icon: redIcon, draggable: true }).addTo(map);
       dropoffMarker.on("dragend", (e) => {
         const pos = e.target.getLatLng();
-        const nLat = parseFloat(pos.lat.toFixed(5));
-        const nLng = parseFloat(pos.lng.toFixed(5));
+        let nLat = parseFloat(pos.lat.toFixed(5));
+        let nLng = parseFloat(pos.lng.toFixed(5));
+        if (nLat < 9.05) nLat = 9.05;
+        if (nLat > 9.29) nLat = 9.29;
+        if (nLng < 124.58) nLng = 124.58;
+        if (nLng > 124.83) nLng = 124.83;
+        e.target.setLatLng([nLat, nLng]);
         const nPlace = getNearestCamiguinPlace(nLat, nLng);
         const newLabel = nPlace ? `${nPlace} (📍 Pinned)` : `Pinned Dropoff (${nLat}, ${nLng})`;
         setDropoffPoint(nLat, nLng, newLabel);
