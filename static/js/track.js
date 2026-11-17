@@ -19,15 +19,93 @@
   let dropoffMarker = null;
   let riderMarker = null;
   let routeLine = null;
+  let streetLayer = null;
+  let satGroup = null;
+  let currentTileLayer = "street";
+  let lastRiderPosition = null;
+  let currentRiderBearing = 0;
+
+  function calculateBearing(lat1, lng1, lat2, lng2) {
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+    const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+              Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+    let brng = Math.atan2(y, x) * 180 / Math.PI;
+    return (brng + 360) % 360;
+  }
 
   function initMap() {
     if (!mapEl || typeof L === "undefined") return;
 
-    map = L.map(mapEl).setView([9.2000, 124.7200], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
+    map = L.map(mapEl, {
+      zoomControl: true,
+      maxBounds: [
+        [8.90, 124.40],
+        [9.50, 125.05]
+      ]
+    }).setView([9.2000, 124.7200], 12);
+
+    // 1. Street Layer
+    streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    });
+
+    // 2. Satellite Hybrid (Esri World Imagery + Places & Boundaries)
+    const satImagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri',
+    });
+    const satLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      pane: "overlayPane",
+    });
+    satGroup = L.layerGroup([satImagery, satLabels]);
+
+    streetLayer.addTo(map);
+
+    // Track Layer Switcher
+    document.querySelectorAll("[data-track-layer]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const layerType = btn.getAttribute("data-track-layer");
+        if (layerType === currentTileLayer) return;
+        if (layerType === "satellite") {
+          map.removeLayer(streetLayer);
+          satGroup.addTo(map);
+          currentTileLayer = "satellite";
+        } else {
+          map.removeLayer(satGroup);
+          streetLayer.addTo(map);
+          currentTileLayer = "street";
+        }
+        document.querySelectorAll("[data-track-layer]").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-track-layer") === layerType);
+        });
+      });
+    });
+
+    // Recenter Button
+    const recenterBtn = document.getElementById("track-recenter-btn");
+    if (recenterBtn) {
+      recenterBtn.addEventListener("click", () => {
+        if (lastRiderPosition && map) {
+          map.flyTo([lastRiderPosition.lat, lastRiderPosition.lng], 15, { duration: 1.0 });
+        } else if (routeLine && map) {
+          map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+        }
+      });
+    }
+
+    // Fullscreen Toggle
+    const fsBtn = document.getElementById("track-fullscreen-btn");
+    const container = document.getElementById("tracking-map-container");
+    if (fsBtn && container) {
+      fsBtn.addEventListener("click", () => {
+        const isFs = container.classList.toggle("is-fullscreen");
+        fsBtn.innerHTML = isFs ? "<span>✕</span>" : "<span>⛶</span>";
+        setTimeout(() => map.invalidateSize(), 200);
+      });
+    }
 
     // Green Pickup Pin
     if (booking.pickup_lat && booking.pickup_lng) {
@@ -97,25 +175,43 @@
     }
   }
 
-  function updateRiderMarker(lat, lng, riderName) {
+  function updateRiderMarker(lat, lng, riderName, speed = 0, serverHeading = 0) {
     if (!map) return;
+
+    if (serverHeading && serverHeading > 0) {
+      currentRiderBearing = Math.round(serverHeading);
+    } else if (lastRiderPosition) {
+      const distDelta = Math.hypot(lat - lastRiderPosition.lat, lng - lastRiderPosition.lng);
+      if (distDelta > 0.00006) {
+        currentRiderBearing = Math.round(calculateBearing(lastRiderPosition.lat, lastRiderPosition.lng, lat, lng));
+      }
+    }
+    lastRiderPosition = { lat, lng };
+
+    const speedDisplay = (speed && speed > 2) ? `${Math.round(speed)} km/h` : '';
+
     const bikeIcon = L.divIcon({
-      className: "rider-pulse-marker",
+      className: "ccrc-rider-3d-marker",
       html: `
-        <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
-          <div style="position:absolute;inset:0;border-radius:50%;background:rgba(249,115,22,0.4);animation:pulse-dot 1.5s infinite;"></div>
-          <div style="position:relative;background:#f97316;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🛵</div>
+        <div class="rider-3d-wrap">
+          <div class="rider-radar-pulse"></div>
+          <div class="rider-heading-cone" style="transform: rotate(${currentRiderBearing}deg);"></div>
+          <div class="rider-3d-avatar" title="${escapeHtml(riderName || 'Club Rider')}">
+            <span>🏍️</span>
+          </div>
+          ${speedDisplay ? `<span class="rider-speed-badge">${speedDisplay}</span>` : ''}
         </div>
       `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
     });
 
     if (!riderMarker) {
       riderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
         .addTo(map)
-        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>Active on trip`);
+        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>Padung sa lokasyon`);
     } else {
+      riderMarker.setIcon(bikeIcon);
       riderMarker.setLatLng([lat, lng]);
     }
   }
@@ -174,7 +270,7 @@
 
       // Update Live GPS coordinates of rider
       if (b.rider_lat && b.rider_lng) {
-        updateRiderMarker(b.rider_lat, b.rider_lng, b.rider_name);
+        updateRiderMarker(b.rider_lat, b.rider_lng, b.rider_name, b.rider_speed || 0, b.rider_heading || 0);
       }
 
       // Update distance indicator
