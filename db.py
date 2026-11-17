@@ -36,18 +36,109 @@ def get_database_url() -> str:
 # -------------------------------------------------------------------------
 CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
     {
-        "name": "Gaisano Capital Camiguin",
+        "name": "Gaisano Capital Camiguin (Placido Reyes St)",
         "cat": "supermarket",
         "keywords": [
             "gaisano",
             "gaisano capital",
+            "placido reyes",
+            "p. reyes",
+            "placido reyes street",
+            "gaisano camiguin",
             "mall",
             "supermarket",
             "grocery"
         ],
-        "lat": 9.2492,
-        "lng": 124.7175,
-        "mun": "Mambajao"
+        "lat": 9.25290,
+        "lng": 124.71613,
+        "mun": "Mambajao",
+        "full_address": "Placido Reyes Street, Mabini, Poblacion, Mambajao"
+    },
+    {
+        "name": "Placido Reyes Street, Mambajao",
+        "cat": "street",
+        "keywords": [
+            "placido reyes",
+            "placido reyes street",
+            "p. reyes",
+            "p. reyes street",
+            "gaisano street",
+            "mambajao street"
+        ],
+        "lat": 9.25258,
+        "lng": 124.71628,
+        "mun": "Mambajao",
+        "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+    },
+    {
+        "name": "Burgos Street, Mambajao",
+        "cat": "street",
+        "keywords": [
+            "burgos",
+            "burgos street",
+            "jollibee street",
+            "burgos st"
+        ],
+        "lat": 9.25058,
+        "lng": 124.71712,
+        "mun": "Mambajao",
+        "full_address": "Burgos Street, Poblacion, Mambajao"
+    },
+    {
+        "name": "Bonifacio Aranas Street, Mambajao",
+        "cat": "street",
+        "keywords": [
+            "bonifacio aranas",
+            "gen aranas",
+            "aranas street",
+            "hospital street",
+            "aranas"
+        ],
+        "lat": 9.24931,
+        "lng": 124.71982,
+        "mun": "Mambajao",
+        "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
+    },
+    {
+        "name": "Plaridel Street, Mambajao",
+        "cat": "street",
+        "keywords": [
+            "plaridel",
+            "plaridel street",
+            "market street",
+            "plaridel st"
+        ],
+        "lat": 9.25411,
+        "lng": 124.71813,
+        "mun": "Mambajao",
+        "full_address": "Plaridel Street, Lagundi, Poblacion, Mambajao"
+    },
+    {
+        "name": "Rizal Street, Mambajao",
+        "cat": "street",
+        "keywords": [
+            "rizal",
+            "rizal street",
+            "j.p. rizal",
+            "rizal st"
+        ],
+        "lat": 9.24673,
+        "lng": 124.71578,
+        "mun": "Mambajao",
+        "full_address": "Rizal Street, Poblacion, Mambajao"
+    },
+    {
+        "name": "Mabini Street, Mambajao",
+        "cat": "street",
+        "keywords": [
+            "mabini",
+            "mabini street",
+            "mabini st"
+        ],
+        "lat": 9.24477,
+        "lng": 124.71328,
+        "mun": "Mambajao",
+        "full_address": "Mabini Street, Poblacion, Mambajao"
     },
     {
         "name": "Davilett Store & Supermarket, Mambajao",
@@ -1684,6 +1775,7 @@ CAMIGUIN_HIGHWAY_WAYPOINTS: list[tuple[float, float, str, float]] = [
     # Mambajao Town Center & Streets
     (9.24971, 124.71667, "Burgos St (Jollibee)", 0.0),
     (9.25150, 124.71680, "Mambajao Town Plaza", 0.25),
+    (9.25290, 124.71613, "Placido Reyes St (Gaisano)", 0.45),
     (9.25319, 124.71660, "Mambajao Public Market", 0.76),
     (9.25405, 124.71636, "Poblacion Mambajao", 0.95),
     (9.24890, 124.72250, "Lakas Mambajao", 1.80),
