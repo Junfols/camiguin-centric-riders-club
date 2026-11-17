@@ -1617,19 +1617,46 @@
   }
 
   function getNearestCamiguinPlace(lat, lng) {
-    let nearest = null;
-    let minDist = Infinity;
+    let nearestLandmark = null;
+    let minLandmarkDist = Infinity;
+    let nearestBrgy = null;
+    let minBrgyDist = Infinity;
+
     for (const p of CAMIGUIN_PLACES) {
       const d = Math.hypot(lat - p.lat, lng - p.lng);
-      if (d < minDist) {
-        minDist = d;
-        nearest = p;
+      const isBrgy = p.cat === "barangay";
+      if (!isBrgy) {
+        if (d < minLandmarkDist) {
+          minLandmarkDist = d;
+          nearestLandmark = p;
+        }
+      } else {
+        if (d < minBrgyDist) {
+          minBrgyDist = d;
+          nearestBrgy = p;
+        }
       }
     }
-    // If within ~2.5km (0.025 degrees), return descriptive name
-    if (nearest && minDist < 0.025) {
-      return nearest.name;
+
+    // 1. If within ~250m (0.0025 deg) of a specific landmark/store (like Jollibee, Market, etc.), prioritize landmark!
+    if (nearestLandmark && minLandmarkDist < 0.0025) {
+      return nearestLandmark.name;
     }
+
+    // 2. If in Poblacion Mambajao core (around 9.246-9.252, 124.694-124.704), prioritize town center / landmarks
+    if (lat >= 9.2460 && lng >= 124.6940 && nearestLandmark && minLandmarkDist < 0.005) {
+      return nearestLandmark.name;
+    }
+
+    // 3. Otherwise barangay within ~700m (0.007 deg)
+    if (nearestBrgy && minBrgyDist < 0.007) {
+      return nearestBrgy.name;
+    }
+
+    if (nearestLandmark && minLandmarkDist < 0.007) {
+      return nearestLandmark.name;
+    }
+
     return null;
   }
 
@@ -1676,7 +1703,7 @@
     }
   });
 
-  // Handle typing inside Pickup and Dropoff inputs
+  // Handle typing inside Pickup and Dropoff inputs with immediate map center & flyTo!
   function handleTypedAddress(isPickup) {
     const input = isPickup ? pickupInput : dropoffInput;
     const text = input.value.trim();
@@ -1686,19 +1713,25 @@
         if (isPickup) {
           pickupLatInput.value = found.lat;
           pickupLngInput.value = found.lng;
-          if (pickupMarker) {
-            pickupMarker.setLatLng([found.lat, found.lng]);
-          } else if (map) {
-            setPickupPoint(found.lat, found.lng, null);
+          setPickupPoint(found.lat, found.lng, found.name);
+          if (map) {
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
           }
+          if (pickupMarker) {
+            pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(found.name)}`).openPopup();
+          }
+          showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
         } else {
           dropoffLatInput.value = found.lat;
           dropoffLngInput.value = found.lng;
-          if (dropoffMarker) {
-            dropoffMarker.setLatLng([found.lat, found.lng]);
-          } else if (map) {
-            setDropoffPoint(found.lat, found.lng, null);
+          setDropoffPoint(found.lat, found.lng, found.name);
+          if (map) {
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
           }
+          if (dropoffMarker) {
+            dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(found.name)}`).openPopup();
+          }
+          showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
         }
         updateRouteLine();
       }
@@ -1770,8 +1803,11 @@
 
       const displayLabel = found ? found.name : (currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`);
       setDropoffPoint(targetLat, targetLng, displayLabel);
+      if (dropoffMarker) {
+        dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
+      }
       if (map) {
-        map.flyTo([targetLat, targetLng], 15, { duration: 0.8 });
+        map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
       }
 
       const mapCard = document.querySelector(".map-column-card") || document.getElementById("booking-map");
@@ -1779,7 +1815,7 @@
         mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast(`🏁 Drop-off Pinned: ${displayLabel}`);
+      showMapToast(`🏁 Drop-off Na-pin sa: ${displayLabel}`);
     });
   }
 
@@ -1916,27 +1952,46 @@
       dropdownEl.classList.remove("hidden");
 
       dropdownEl.querySelectorAll(".places-item").forEach((el, idx) => {
-        el.addEventListener("mousedown", (e) => {
-          e.preventDefault();
+        const handleSelect = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
           const item = items[idx];
           if (!item) return;
 
           inputEl.value = item.name;
           dropdownEl.classList.add("hidden");
 
-          // MUDIRITSO DAYUN PAG PIN ANG MAP!
+          // MUDIRITSO DAYUN PAG PIN ANG MAP SA EXACT PLACE!
           if (isPickup) {
+            pickupLatInput.value = item.lat;
+            pickupLngInput.value = item.lng;
             setPickupPoint(item.lat, item.lng, item.name);
+            if (pickupMarker) {
+              pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(item.name)}`).openPopup();
+            }
           } else {
+            dropoffLatInput.value = item.lat;
+            dropoffLngInput.value = item.lng;
             setDropoffPoint(item.lat, item.lng, item.name);
+            if (dropoffMarker) {
+              dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(item.name)}`).openPopup();
+            }
           }
 
           if (map) {
-            map.flyTo([item.lat, item.lng], 14, { duration: 0.8 });
+            map.flyTo([item.lat, item.lng], 16, { duration: 0.8 });
           }
 
-          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} Pinned: ${item.name}`);
-        });
+          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} Na-pin sa: ${item.name}`);
+          updateRouteLine();
+          recalculateFare();
+        };
+
+        el.addEventListener("pointerdown", handleSelect);
+        el.addEventListener("mousedown", handleSelect);
+        el.addEventListener("click", handleSelect);
       });
     }
 
@@ -1950,7 +2005,7 @@
     });
 
     inputEl.addEventListener("blur", () => {
-      setTimeout(() => dropdownEl.classList.add("hidden"), 200);
+      setTimeout(() => dropdownEl.classList.add("hidden"), 350);
     });
   }
 
@@ -2158,10 +2213,15 @@
         const nLat = parseFloat(pos.lat.toFixed(5));
         const nLng = parseFloat(pos.lng.toFixed(5));
         const nPlace = getNearestCamiguinPlace(nLat, nLng);
-        setPickupPoint(nLat, nLng, nPlace ? `${nPlace} (📍 Pinned)` : `Pinned Pickup (${nLat}, ${nLng})`);
+        const newLabel = nPlace ? `${nPlace} (📍 Pinned)` : `Pinned Pickup (${nLat}, ${nLng})`;
+        setPickupPoint(nLat, nLng, newLabel);
       });
     } else {
       pickupMarker.setLatLng([lat, lng]);
+    }
+
+    if (label) {
+      pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(label)}`);
     }
 
     updateRouteLine();
@@ -2188,10 +2248,15 @@
         const nLat = parseFloat(pos.lat.toFixed(5));
         const nLng = parseFloat(pos.lng.toFixed(5));
         const nPlace = getNearestCamiguinPlace(nLat, nLng);
-        setDropoffPoint(nLat, nLng, nPlace ? `${nPlace} (📍 Pinned)` : `Pinned Dropoff (${nLat}, ${nLng})`);
+        const newLabel = nPlace ? `${nPlace} (📍 Pinned)` : `Pinned Dropoff (${nLat}, ${nLng})`;
+        setDropoffPoint(nLat, nLng, newLabel);
       });
     } else {
       dropoffMarker.setLatLng([lat, lng]);
+    }
+
+    if (label) {
+      dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(label)}`);
     }
 
     updateRouteLine();
@@ -2343,21 +2408,40 @@
   // Quick Landmark Chips
   if (landmarkChips) {
     landmarkChips.addEventListener("click", (e) => {
-      const chip = e.target.closest(".chip-btn");
+      const chip = e.target.closest(".chip-pill, .chip-btn");
       if (!chip) return;
       const name = chip.getAttribute("data-name");
       const lat = parseFloat(chip.getAttribute("data-lat"));
       const lng = parseFloat(chip.getAttribute("data-lng"));
+      if (!lat || !lng) return;
 
       if (currentTargetMode === "pickup") {
+        pickupLatInput.value = lat;
+        pickupLngInput.value = lng;
         setPickupPoint(lat, lng, name);
+        if (pickupMarker) {
+          pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(name)}`).openPopup();
+        }
         if (!dropoffLatInput.value) {
           targetModeButtons.forEach((b) => b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff"));
           currentTargetMode = "dropoff";
         }
       } else {
+        dropoffLatInput.value = lat;
+        dropoffLngInput.value = lng;
         setDropoffPoint(lat, lng, name);
+        if (dropoffMarker) {
+          dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(name)}`).openPopup();
+        }
       }
+
+      if (map) {
+        map.flyTo([lat, lng], 16, { duration: 0.8 });
+      }
+
+      showMapToast(`${currentTargetMode === "pickup" ? "🟢 Pickup" : "🏁 Drop-off"} Na-pin sa: ${name}`);
+      updateRouteLine();
+      recalculateFare();
     });
   }
 
