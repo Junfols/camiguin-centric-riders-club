@@ -468,6 +468,31 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "full_address": "Baylao, Mambajao"
     },
     {
+        "name": "Moonflower Garden and Restaurant, Baylao",
+        "cat": "food",
+        "keywords": [
+            "moonflower",
+            "moonflower garden",
+            "moonflower restaurant",
+            "moonflower garden and restaurant",
+            "moonflower gardern and restaurant",
+            "moonflower gardern",
+            "moonflower baylao",
+            "moonflower garden baylao",
+            "baylao moonflower",
+            "baylao restaurant",
+            "ice cream",
+            "restaurant baylao",
+            "food",
+            "resto",
+            "restaurant"
+        ],
+        "lat": 9.25057,
+        "lng": 124.7011,
+        "mun": "Mambajao",
+        "full_address": "Baylao, Mambajao, Camiguin"
+    },
+    {
         "name": "Samuel Restaurant, Mambajao",
         "cat": "food",
         "keywords": [
@@ -2323,6 +2348,7 @@ CAMIGUIN_HIGHWAY_WAYPOINTS: list[tuple[float, float, str, float]] = [
     (9.24500, 124.66200, "Agoho Mambajao", 59.50),
     (9.24800, 124.68500, "Kuguita Mambajao", 61.80),
     (9.24150, 124.69100, "Baylao Highway Junction", 62.60),
+    (9.25057, 124.70110, "Baylao (Moonflower Garden)", 63.00),
     (9.24880, 124.70800, "Airport Rd / Pandan", 63.40),
     (9.24971, 124.71667, "Burgos St (Jollibee)", 64.00),
 ]
