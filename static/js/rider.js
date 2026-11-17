@@ -764,13 +764,71 @@
   let radarMap = null;
   let radarMarkers = {};
 
+  let radarStreetLayer = null;
+  let radarSatGroup = null;
+  let radarCurrentLayer = "street";
+
   function initRadarMap() {
     if (!radarMapEl || radarMap || typeof L === "undefined") return;
-    radarMap = L.map(radarMapEl).setView([9.2000, 124.7200], 11);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
+    radarMap = L.map(radarMapEl, {
+      maxBounds: [
+        [8.90, 124.40],
+        [9.50, 125.05]
+      ]
+    }).setView([9.2000, 124.7200], 11);
+
+    radarStreetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
       attribution: '&copy; OpenStreetMap',
-    }).addTo(radarMap);
+    });
+
+    const satImagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri',
+    });
+    const satLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      pane: "overlayPane",
+    });
+    radarSatGroup = L.layerGroup([satImagery, satLabels]);
+
+    radarStreetLayer.addTo(radarMap);
+
+    // Radar Layer Switcher Buttons
+    document.querySelectorAll("[data-radar-layer]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const layerType = btn.getAttribute("data-radar-layer");
+        if (layerType === radarCurrentLayer) return;
+        if (layerType === "satellite") {
+          radarMap.removeLayer(radarStreetLayer);
+          radarSatGroup.addTo(radarMap);
+          radarCurrentLayer = "satellite";
+        } else {
+          radarMap.removeLayer(radarSatGroup);
+          radarStreetLayer.addTo(radarMap);
+          radarCurrentLayer = "street";
+        }
+        document.querySelectorAll("[data-radar-layer]").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-radar-layer") === layerType);
+        });
+      });
+    });
+
+    // Radar Recenter Button
+    const recenterBtn = document.getElementById("radar-recenter-btn");
+    if (recenterBtn) {
+      recenterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (radarMap) {
+          if (currentRider && currentRider.last_lat && currentRider.last_lng) {
+            radarMap.flyTo([currentRider.last_lat, currentRider.last_lng], 14, { duration: 1.0 });
+          } else {
+            radarMap.flyTo([9.2000, 124.7200], 11, { duration: 1.0 });
+          }
+        }
+      });
+    }
   }
 
   if (toggleRadarMapBtn && radarMapContainer) {
