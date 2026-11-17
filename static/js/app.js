@@ -562,17 +562,93 @@
     });
   });
 
-  // Map Initialization (Camiguin Center)
+  // Map Layer Objects & Enhanced Controls
+  let streetLayer = null;
+  let satGroup = null;
+  let currentTileLayer = "street";
+  let userGpsMarker = null;
+
+  // Map Initialization (Camiguin Center with Dual Street/Satellite Support)
   function initMap() {
     const mapEl = document.getElementById("booking-map");
     if (!mapEl || typeof L === "undefined") return;
 
-    map = L.map(mapEl).setView([9.2000, 124.7200], 11);
+    map = L.map(mapEl, {
+      zoomControl: true,
+      maxBounds: [
+        [8.90, 124.40],
+        [9.50, 125.05]
+      ]
+    }).setView([9.2000, 124.7200], 11);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
+    // 1. Street Layer (OpenStreetMap)
+    streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    });
+
+    // 2. Satellite Hybrid (Esri World Imagery + Places & Boundaries)
+    const satImagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri',
+    });
+
+    const satLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      pane: "overlayPane",
+    });
+
+    satGroup = L.layerGroup([satImagery, satLabels]);
+
+    // Add default street layer
+    streetLayer.addTo(map);
+
+    // Layer Switcher Buttons ([data-layer-target])
+    document.querySelectorAll("[data-layer-target]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const layerType = btn.getAttribute("data-layer-target");
+        switchMapLayer(layerType);
+      });
+    });
+
+    // Locate Me Buttons (.btn-locate-me)
+    document.querySelectorAll(".btn-locate-me").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleLocateMe();
+      });
+    });
+
+    // Fullscreen Toggle Buttons (.btn-fullscreen-toggle)
+    document.querySelectorAll(".btn-fullscreen-toggle").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMapFullscreen();
+      });
+    });
+
+    // Fullscreen Mode Buttons (Pickup/Dropoff toggle inside fullscreen topbar)
+    document.querySelectorAll(".fs-mode-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const mode = btn.getAttribute("data-target-mode");
+        currentTargetMode = mode;
+        document.querySelectorAll("[data-target-mode]").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-target-mode") === mode);
+        });
+      });
+    });
+
+    // Close fullscreen on ESC key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const container = document.getElementById("map-canvas-container");
+        if (container && container.classList.contains("is-fullscreen")) {
+          toggleMapFullscreen();
+        }
+      }
+    });
 
     // Click on map to place pin
     map.on("click", (e) => {
@@ -582,13 +658,76 @@
       if (currentTargetMode === "pickup") {
         setPickupPoint(lat, lng, `Pinned Pickup (${lat}, ${lng})`);
         if (!dropoffLatInput.value) {
-          targetModeButtons.forEach((b) => b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff"));
+          document.querySelectorAll("[data-target-mode]").forEach((b) => b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff"));
           currentTargetMode = "dropoff";
         }
       } else {
         setDropoffPoint(lat, lng, `Pinned Dropoff (${lat}, ${lng})`);
       }
     });
+  }
+
+  function switchMapLayer(layerType) {
+    if (!map || layerType === currentTileLayer) return;
+    if (layerType === "satellite") {
+      map.removeLayer(streetLayer);
+      satGroup.addTo(map);
+      currentTileLayer = "satellite";
+    } else {
+      map.removeLayer(satGroup);
+      streetLayer.addTo(map);
+      currentTileLayer = "street";
+    }
+    document.querySelectorAll("[data-layer-target]").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-layer-target") === layerType);
+    });
+    showMapToast(layerType === "satellite" ? "🛰️ Naka-on ang Satellite Aerial View" : "🗺️ Naka-on ang Standard Kalsada Map");
+  }
+
+  function handleLocateMe() {
+    if (!navigator.geolocation) {
+      showMapToast("Dili suportado ang Geolocation sa imong device.");
+      return;
+    }
+    showMapToast("🔍 Gina-detect ang imong GPS location...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(5));
+        const lng = parseFloat(pos.coords.longitude.toFixed(5));
+
+        if (userGpsMarker) map.removeLayer(userGpsMarker);
+        userGpsMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: "user-gps-beacon-icon",
+            html: `<div class="user-gps-beacon"><div class="gps-pulse-ring"></div><div class="gps-dot"></div></div>`,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+          }),
+          zIndexOffset: 900
+        }).addTo(map);
+
+        map.flyTo([lat, lng], 15, { duration: 1.2 });
+        setPickupPoint(lat, lng, `📍 Akong Lokasyon (${lat}, ${lng})`);
+        showMapToast("✅ Na-pin ang imong GPS location isip Pickup!");
+      },
+      (err) => {
+        showMapToast("⚠️ Dili ma-access ang GPS. Palihug i-allow ang Location sa browser.");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }
+
+  function toggleMapFullscreen() {
+    const container = document.getElementById("map-canvas-container");
+    if (!container) return;
+    const isFs = container.classList.toggle("is-fullscreen");
+    document.body.style.overflow = isFs ? "hidden" : "";
+    document.querySelectorAll(".btn-fullscreen-toggle").forEach((b) => {
+      b.innerHTML = isFs ? "<span>✕</span> I-close" : "<span>⛶</span> Padak-a";
+    });
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 200);
   }
 
   function setPickupPoint(lat, lng, label) {
@@ -598,10 +737,13 @@
 
     if (!pickupMarker) {
       const greenIcon = L.divIcon({
-        className: "custom-pin",
-        html: `<div style="background:#16a34a;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:2px solid #fff;">🟢</div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        className: "custom-pin-enhanced",
+        html: `
+          <div class="custom-pin-badge pin-pickup">🟢 Pickup (A)</div>
+          <div class="custom-pin-arrow"></div>
+        `,
+        iconSize: [90, 32],
+        iconAnchor: [45, 32],
       });
       pickupMarker = L.marker([lat, lng], { icon: greenIcon, draggable: true }).addTo(map);
       pickupMarker.on("dragend", (e) => {
@@ -622,10 +764,13 @@
 
     if (!dropoffMarker) {
       const redIcon = L.divIcon({
-        className: "custom-pin",
-        html: `<div style="background:#dc2626;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:2px solid #fff;">🏁</div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        className: "custom-pin-enhanced",
+        html: `
+          <div class="custom-pin-badge pin-dropoff">🏁 Dropoff (B)</div>
+          <div class="custom-pin-arrow"></div>
+        `,
+        iconSize: [95, 32],
+        iconAnchor: [47, 32],
       });
       dropoffMarker = L.marker([lat, lng], { icon: redIcon, draggable: true }).addTo(map);
       dropoffMarker.on("dragend", (e) => {
