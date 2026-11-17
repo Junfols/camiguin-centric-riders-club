@@ -1861,8 +1861,7 @@
     });
   }
 
-  // Pin on Map Handlers ("mudiritso dayun pag pin ang map")
-  // "THEN PAG CLICK NAKO SA PIN MAP MUADTO SA SA SAKTO NGA GE PIN MAP"
+  // Pin on Map Handlers ("Dili ibutang sa dagat kung blangko, magpa-tap sa user sa mapa")
   if (locateDropoffGpsBtn) {
     const handleLocateDropoffClick = (e) => {
       if (e) {
@@ -1870,6 +1869,7 @@
         e.stopPropagation();
       }
 
+      // 1. Switch mode to dropoff
       targetModeButtons.forEach((b) =>
         b.classList.toggle("active", b.getAttribute("data-target-mode") === "dropoff")
       );
@@ -1877,57 +1877,55 @@
 
       const currentVal = dropoffInput ? dropoffInput.value.trim() : "";
       const found = currentVal ? matchCamiguinPlace(currentVal) : null;
-      let targetLat = null;
-      let targetLng = null;
-      let displayLabel = "";
-
-      // Prioritize exact coordinates from input match or stored coordinates
-      if (found) {
-        targetLat = found.lat;
-        targetLng = found.lng;
-        displayLabel = found.name;
-        if (dropoffInput) dropoffInput.value = found.name;
-        if (dropoffLatInput) dropoffLatInput.value = found.lat;
-        if (dropoffLngInput) dropoffLngInput.value = found.lng;
-      } else if (dropoffLatInput && dropoffLngInput && dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
-        targetLat = parseFloat(dropoffLatInput.value);
-        targetLng = parseFloat(dropoffLngInput.value);
-        displayLabel = currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`;
-      } else if (map) {
-        const c = map.getCenter();
-        targetLat = parseFloat(c.lat.toFixed(5));
-        targetLng = parseFloat(c.lng.toFixed(5));
-        displayLabel = currentVal || `Pinned Drop-off (${targetLat}, ${targetLng})`;
-      } else {
-        targetLat = 9.24971;
-        targetLng = 124.71667;
-        displayLabel = "Jollibee Camiguin, Mambajao";
-      }
-
-      setDropoffPoint(targetLat, targetLng, displayLabel);
-      if (dropoffMarker) {
-        dropoffMarker.setLatLng([targetLat, targetLng]);
-        dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
-      }
 
       const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
       if (mapContainer) {
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
+      // Case A: If user already typed or selected a known place name
+      if (found) {
+        setDropoffPoint(found.lat, found.lng, found.name);
+        if (dropoffMarker) {
+          dropoffMarker.setLatLng([found.lat, found.lng]);
+          dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(found.name)}`).openPopup();
+        }
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+          }, 60);
+        }
+        showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
+        updateRouteLine();
+        recalculateFare();
+        return;
+      }
+
+      // Case B: If existing valid pinned coordinates exist
+      if (dropoffLatInput && dropoffLngInput && dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
+        const tLat = parseFloat(dropoffLatInput.value);
+        const tLng = parseFloat(dropoffLngInput.value);
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([tLat, tLng], 16, { duration: 0.8 });
+            if (dropoffMarker) dropoffMarker.openPopup();
+          }, 60);
+        }
+        showMapToast(`🏁 Kasamtangang Drop-off Pin sa mapa`);
+        return;
+      }
+
+      // Case C: Box is BLANK - DO NOT DROP A PIN IN THE SEA!
+      // Center map on Poblacion Mambajao and instruct user to tap the map!
       if (map) {
         setTimeout(() => {
           map.invalidateSize();
-          map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
-          if (dropoffMarker) {
-            dropoffMarker.openPopup();
-          }
+          map.setView([9.24971, 124.71667], 14);
         }, 60);
       }
-
-      showMapToast(`🏁 Naa sa Mapa ang Drop-off: ${displayLabel}`);
-      updateRouteLine();
-      recalculateFare();
+      showMapToast("👇 Palihug i-tap o i-click ang mapa aron mapili ang Drop-off!");
     };
 
     locateDropoffGpsBtn.addEventListener("click", handleLocateDropoffClick);
@@ -1941,6 +1939,7 @@
         e.stopPropagation();
       }
 
+      // 1. Switch mode to pickup
       targetModeButtons.forEach((b) =>
         b.classList.toggle("active", b.getAttribute("data-target-mode") === "pickup")
       );
@@ -1948,56 +1947,54 @@
 
       const currentVal = pickupInput ? pickupInput.value.trim() : "";
       const found = currentVal ? matchCamiguinPlace(currentVal) : null;
-      let targetLat = null;
-      let targetLng = null;
-      let displayLabel = "";
-
-      if (found) {
-        targetLat = found.lat;
-        targetLng = found.lng;
-        displayLabel = found.name;
-        if (pickupInput) pickupInput.value = found.name;
-        if (pickupLatInput) pickupLatInput.value = found.lat;
-        if (pickupLngInput) pickupLngInput.value = found.lng;
-      } else if (pickupLatInput && pickupLngInput && pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
-        targetLat = parseFloat(pickupLatInput.value);
-        targetLng = parseFloat(pickupLngInput.value);
-        displayLabel = currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`;
-      } else if (map) {
-        const c = map.getCenter();
-        targetLat = parseFloat(c.lat.toFixed(5));
-        targetLng = parseFloat(c.lng.toFixed(5));
-        displayLabel = currentVal || `Pinned Pickup (${targetLat}, ${targetLng})`;
-      } else {
-        targetLat = 9.25319;
-        targetLng = 124.71660;
-        displayLabel = "Mambajao Public Market";
-      }
-
-      setPickupPoint(targetLat, targetLng, displayLabel);
-      if (pickupMarker) {
-        pickupMarker.setLatLng([targetLat, targetLng]);
-        pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(displayLabel)}`).openPopup();
-      }
 
       const mapContainer = document.getElementById("map-canvas-container") || document.getElementById("booking-map");
       if (mapContainer) {
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
+      // Case A: If user already typed or selected a known place
+      if (found) {
+        setPickupPoint(found.lat, found.lng, found.name);
+        if (pickupMarker) {
+          pickupMarker.setLatLng([found.lat, found.lng]);
+          pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(found.name)}`).openPopup();
+        }
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+          }, 60);
+        }
+        showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
+        updateRouteLine();
+        recalculateFare();
+        return;
+      }
+
+      // Case B: If existing valid pinned coordinates exist
+      if (pickupLatInput && pickupLngInput && pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
+        const tLat = parseFloat(pickupLatInput.value);
+        const tLng = parseFloat(pickupLngInput.value);
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([tLat, tLng], 16, { duration: 0.8 });
+            if (pickupMarker) pickupMarker.openPopup();
+          }, 60);
+        }
+        showMapToast(`🟢 Kasamtangang Pickup Pin sa mapa`);
+        return;
+      }
+
+      // Case C: Box is BLANK - DO NOT DROP A PIN IN THE SEA!
       if (map) {
         setTimeout(() => {
           map.invalidateSize();
-          map.flyTo([targetLat, targetLng], 16, { duration: 0.8 });
-          if (pickupMarker) {
-            pickupMarker.openPopup();
-          }
+          map.setView([9.24971, 124.71667], 14);
         }, 60);
       }
-
-      showMapToast(`🟢 Naa sa Mapa ang Pickup: ${displayLabel}`);
-      updateRouteLine();
-      recalculateFare();
+      showMapToast("👇 Palihug i-tap o i-click ang mapa aron mapili ang Pickup!");
     };
 
     pinPickupMapBtn.addEventListener("click", handlePinPickupClick);
@@ -2258,7 +2255,7 @@
       }
     });
 
-    // Click on map to place pin (Strict Camiguin Island only!)
+    // Click on map to place pin (Strict Camiguin Island only & No ocean clicking!)
     map.on("click", (e) => {
       const lat = parseFloat(e.latlng.lat.toFixed(5));
       const lng = parseFloat(e.latlng.lng.toFixed(5));
@@ -2266,6 +2263,17 @@
       // Sulod ra gyud sa Isla sa Camiguin ang pwede ma-pin
       if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
         showMapToast("⚠️ Sulod lamang sa Isla sa Camiguin ang pag-pin sa mapa.");
+        return;
+      }
+
+      // Check distance to nearest Camiguin land/place - reject clicks out at deep sea
+      let minDist = Infinity;
+      for (const p of CAMIGUIN_PLACES) {
+        const d = Math.hypot(lat - p.lat, lng - p.lng);
+        if (d < minDist) minDist = d;
+      }
+      if (minDist > 0.035) { // ~3.8km out at sea
+        showMapToast("⚠️ Naa sa dagat ang imong na-click. Palihug i-tap sa yuta o kalsada sa Camiguin!");
         return;
       }
 
