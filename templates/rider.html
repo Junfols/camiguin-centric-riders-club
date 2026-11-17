@@ -163,7 +163,7 @@
     <!-- Active Job (if currently handling one) -->
     <div id="rider-active-job-box" class="card active-job-card hidden">
       <div class="active-job-head">
-        <span class="badge badge-success">Ongoing Active Trip</span>
+        <span class="badge badge-success" id="active-job-status-badge">Ongoing Active Trip</span>
         <strong id="active-job-code" style="font-family:monospace;font-size:1.05rem;">CCRC-0000</strong>
       </div>
 
@@ -366,5 +366,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=21"></script>
+<script src="/static/js/rider.js?v=23"></script>
 {% endblock %}

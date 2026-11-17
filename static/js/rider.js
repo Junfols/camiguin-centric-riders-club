@@ -400,6 +400,84 @@
     });
   }
 
+  // Render Active Job Card
+  function renderActiveJobCard(job) {
+    if (!job) {
+      if (activeJobBox) activeJobBox.classList.add("hidden");
+      resetRiderChat(null);
+      return;
+    }
+    resetRiderChat(job);
+
+    if (activeJobBox) activeJobBox.classList.remove("hidden");
+    if (activeJobCode) activeJobCode.textContent = job.booking_code;
+    if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}`;
+    if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}`;
+    if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
+    if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
+    if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
+    if (activeJobCallBtn) activeJobCallBtn.href = `tel:${job.customer_phone}`;
+
+    // Scheduled badge or Ongoing badge
+    const badgeEl = document.getElementById("active-job-status-badge");
+    if (badgeEl) {
+      if (job.scheduled_at) {
+        badgeEl.textContent = `📅 Advance Trip (${job.scheduled_at.replace('T', ' ')})`;
+        badgeEl.className = "badge badge-primary";
+      } else {
+        badgeEl.textContent = "Ongoing Active Trip";
+        badgeEl.className = "badge badge-success";
+      }
+    }
+
+    // Navigation links
+    if (navPickupBtn) {
+      if (job.pickup_lat && job.pickup_lng) {
+        navPickupBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${job.pickup_lat},${job.pickup_lng}`;
+        navPickupBtn.classList.remove("hidden");
+      } else {
+        navPickupBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.pickup_address)}`;
+      }
+    }
+
+    if (navDropoffBtn) {
+      if (job.dropoff_lat && job.dropoff_lng) {
+        navDropoffBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${job.dropoff_lat},${job.dropoff_lng}`;
+        navDropoffBtn.classList.remove("hidden");
+      } else {
+        navDropoffBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.dropoff_address)}`;
+      }
+    }
+
+    // Notes
+    if (activeJobNotesWrap && activeJobNotes) {
+      if (job.item_notes) {
+        activeJobNotes.textContent = job.item_notes;
+        if (activeJobBudget) {
+          if (job.estimated_budget && job.estimated_budget > 0) {
+            activeJobBudget.textContent = `Shopping Budget to Advance: ₱${job.estimated_budget}`;
+          } else {
+            activeJobBudget.textContent = "";
+          }
+        }
+        activeJobNotesWrap.classList.remove("hidden");
+      } else {
+        activeJobNotesWrap.classList.add("hidden");
+      }
+    }
+
+    // Action Step Buttons
+    if (jobInProgressBtn && jobCompleteBtn) {
+      if (job.status === "accepted") {
+        jobInProgressBtn.classList.remove("hidden");
+        jobCompleteBtn.classList.add("hidden");
+      } else if (job.status === "in_progress") {
+        jobInProgressBtn.classList.add("hidden");
+        jobCompleteBtn.classList.remove("hidden");
+      }
+    }
+  }
+
   // Check Active Job
   async function checkActiveJob() {
     if (!currentRider) return;
@@ -412,58 +490,7 @@
       // Render Scheduled Jobs Card & Reminder
       renderScheduledJobs(scheduledJobs);
 
-      if (!activeJob) {
-        activeJobBox.classList.add("hidden");
-        resetRiderChat(null);
-        return;
-      }
-      resetRiderChat(activeJob);
-
-      activeJobBox.classList.remove("hidden");
-      activeJobCode.textContent = activeJob.booking_code;
-      activeJobTitle.textContent = `${activeJob.service_type.toUpperCase()} • ${activeJob.dropoff_address}`;
-      activeJobFare.textContent = `Fare to Collect: ₱${Math.round(activeJob.fare_amount)}`;
-      activeJobPickup.textContent = activeJob.pickup_address;
-      activeJobDropoff.textContent = activeJob.dropoff_address;
-      activeJobCustomer.textContent = `${activeJob.customer_name} (${activeJob.customer_phone})`;
-      activeJobCallBtn.href = `tel:${activeJob.customer_phone}`;
-
-      // Navigation links
-      if (activeJob.pickup_lat && activeJob.pickup_lng) {
-        navPickupBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${activeJob.pickup_lat},${activeJob.pickup_lng}`;
-        navPickupBtn.classList.remove("hidden");
-      } else {
-        navPickupBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(activeJob.pickup_address)}`;
-      }
-
-      if (activeJob.dropoff_lat && activeJob.dropoff_lng) {
-        navDropoffBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${activeJob.dropoff_lat},${activeJob.dropoff_lng}`;
-        navDropoffBtn.classList.remove("hidden");
-      } else {
-        navDropoffBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(activeJob.dropoff_address)}`;
-      }
-
-      // Notes
-      if (activeJob.item_notes) {
-        activeJobNotes.textContent = activeJob.item_notes;
-        if (activeJob.estimated_budget && activeJob.estimated_budget > 0) {
-          activeJobBudget.textContent = `Shopping Budget to Advance: ₱${activeJob.estimated_budget}`;
-        } else {
-          activeJobBudget.textContent = "";
-        }
-        activeJobNotesWrap.classList.remove("hidden");
-      } else {
-        activeJobNotesWrap.classList.add("hidden");
-      }
-
-      // Action Step Buttons
-      if (activeJob.status === "accepted") {
-        jobInProgressBtn.classList.remove("hidden");
-        jobCompleteBtn.classList.add("hidden");
-      } else if (activeJob.status === "in_progress") {
-        jobInProgressBtn.classList.add("hidden");
-        jobCompleteBtn.classList.remove("hidden");
-      }
+      renderActiveJobCard(activeJob);
     } catch (_) {}
   }
 
@@ -748,7 +775,10 @@
         }
 
         if (window.playDispatchChime) window.playDispatchChime();
-        alert("🎉 Success! You have accepted this booking. Please proceed with the trip.");
+        if (data.job) {
+          activeJob = data.job;
+          renderActiveJobCard(data.job);
+        }
         checkActiveJob();
         fetchAvailableJobs();
       } catch (err) {

@@ -3344,12 +3344,21 @@ def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str,
     return [dict(r) for r in rows]
 
 
+PHT = timezone(timedelta(hours=8))
+
+def get_now_pht() -> datetime:
+    """Returns current date and time in Philippine Standard Time (UTC+8) matching Camiguin Island."""
+    return datetime.now(PHT).replace(tzinfo=None)
+
+
 def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, Any] | None:
     """
-    Returns the rider's immediate active trip:
-    1. Any trip with status = 'in_progress'
-    2. Any on-demand trip with status = 'accepted' (scheduled_at is empty)
-    3. Any advance trip with status = 'accepted' where pickup time is due soon (<= 30 mins)
+    Returns the rider's active trip to display on their dashboard:
+    1. Priority 1: In-progress trip (always active).
+    2. Priority 2: On-demand accepted trip (no schedule).
+    3. Priority 3: Advance trip due soon (<= 30 mins).
+    4. Fallback Priority 4: Nearest accepted advance trip if rider has no other active trips,
+       ensuring the trip NEVER disappears from the rider's dashboard after accepting!
     """
     rows = conn.execute(
         """
@@ -3363,27 +3372,57 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
     if not rows:
         return None
 
-    # First priority: in_progress job is always the immediate active job
+    # Priority 1: in_progress job
     for r in rows:
         if r["status"] == "in_progress":
             return dict(r)
 
-    now = datetime.now()
-    # Second priority: on-demand job (no schedule) or scheduled job due within 30 mins
+    now = get_now_pht()
+
+    # Priority 2: on-demand accepted job (no schedule)
     for r in rows:
         if r["status"] == "accepted":
             sched_str = (r.get("scheduled_at") or "").strip()
             if not sched_str:
                 return dict(r)
-            try:
-                sched_dt = datetime.fromisoformat(sched_str)
-                mins_left = (sched_dt - now).total_seconds() / 60
-                if mins_left <= 30:
-                    d = dict(r)
-                    d["minutes_left"] = max(0, int(mins_left))
-                    return d
-            except Exception:
-                return dict(r)
+
+    # Priority 3: advance accepted job due within 30 mins
+    for r in rows:
+        if r["status"] == "accepted":
+            sched_str = (r.get("scheduled_at") or "").strip()
+            if sched_str:
+                try:
+                    sched_dt = datetime.fromisoformat(sched_str)
+                    mins_left = (sched_dt - now).total_seconds() / 60
+                    if mins_left <= 30:
+                        d = dict(r)
+                        d["minutes_left"] = max(0, int(mins_left))
+                        d["is_advance"] = True
+                        return d
+                except Exception:
+                    return dict(r)
+
+    # Priority 4 Fallback: If rider has accepted advance jobs, show the earliest one
+    # so the dashboard NEVER appears blank right after accepting a booking!
+    advance_jobs = []
+    for r in rows:
+        if r["status"] == "accepted":
+            d = dict(r)
+            sched_str = (d.get("scheduled_at") or "").strip()
+            mins_left = None
+            if sched_str:
+                try:
+                    sched_dt = datetime.fromisoformat(sched_str)
+                    mins_left = int((sched_dt - now).total_seconds() / 60)
+                except Exception:
+                    pass
+            d["minutes_left"] = mins_left
+            d["is_advance"] = True
+            advance_jobs.append(d)
+
+    if advance_jobs:
+        advance_jobs.sort(key=lambda x: x.get("scheduled_at") or "")
+        return advance_jobs[0]
 
     return None
 
@@ -3402,7 +3441,7 @@ def get_rider_scheduled_jobs(conn: DatabaseConnection, rider_id: int) -> list[di
         (rider_id,),
     ).fetchall()
 
-    now = datetime.now()
+    now = get_now_pht()
     results = []
     for r in rows:
         d = dict(r)

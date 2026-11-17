@@ -42,6 +42,7 @@ from db import (
     get_online_riders,
     get_rider_active_job,
     get_rider_scheduled_jobs,
+    get_now_pht,
     get_rider_by_id,
     get_rider_by_phone,
     get_settings,
@@ -911,7 +912,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         is_target_advance = False
         if target_sched:
             try:
-                diff_m = (datetime.fromisoformat(target_sched) - datetime.now()).total_seconds() / 60
+                diff_m = (datetime.fromisoformat(target_sched) - get_now_pht()).total_seconds() / 60
                 if diff_m > 30:
                     is_target_advance = True
             except Exception:
@@ -920,7 +921,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         # Check if rider already has an active ongoing job
         active = get_rider_active_job(conn, int(rider_id))
         if active and active["id"] != booking_id and not is_target_advance:
-            return jsonify({"error": "You already have an active ongoing trip that must be completed first."}), 400
+            # If the current active job is a future advance job (not in_progress and scheduled > 15m), allow taking this on-demand job!
+            is_active_advance = False
+            act_sched = (active.get("scheduled_at") or "").strip()
+            if act_sched and active.get("status") != "in_progress":
+                try:
+                    m_left = (datetime.fromisoformat(act_sched) - get_now_pht()).total_seconds() / 60
+                    if m_left > 15:
+                        is_active_advance = True
+                except Exception:
+                    pass
+            if not is_active_advance:
+                return jsonify({"error": "You already have an active ongoing trip that must be completed first."}), 400
 
         claimed = accept_booking(conn, booking_id, int(rider_id))
         if not claimed:
