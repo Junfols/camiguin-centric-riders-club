@@ -2719,9 +2719,14 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_verified INTEGER DEFAULT 0",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'active'",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS total_spent REAL DEFAULT 0.0",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS scheduled_at VARCHAR(64) DEFAULT NULL",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code_id INTEGER DEFAULT NULL",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code VARCHAR(64) DEFAULT ''",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS discount_amount DOUBLE PRECISION DEFAULT 0",
         ]:
             try:
                 conn.execute(migration)
+                conn.commit()
             except Exception:
                 try:
                     conn.rollback()
@@ -2825,6 +2830,10 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             pickup_time TEXT DEFAULT NULL,
             completed_at TEXT DEFAULT NULL,
             cancelled_reason TEXT DEFAULT '',
+            scheduled_at TEXT DEFAULT NULL,
+            promo_code_id INTEGER DEFAULT NULL,
+            promo_code TEXT DEFAULT '',
+            discount_amount REAL DEFAULT 0,
             created_at TEXT NOT NULL,
             FOREIGN KEY (rider_id) REFERENCES riders(id) ON DELETE SET NULL
         )
@@ -3032,6 +3041,10 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             pickup_time VARCHAR(32) DEFAULT NULL,
             completed_at VARCHAR(32) DEFAULT NULL,
             cancelled_reason TEXT DEFAULT '',
+            scheduled_at VARCHAR(64) DEFAULT NULL,
+            promo_code_id INTEGER DEFAULT NULL,
+            promo_code VARCHAR(64) DEFAULT '',
+            discount_amount DOUBLE PRECISION DEFAULT 0,
             created_at VARCHAR(32) NOT NULL
         )
         """
@@ -3158,8 +3171,27 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
     ]:
         try:
             conn.execute(f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
+            conn.commit()
         except Exception:
-            pass
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+    for col_def in [
+        ("scheduled_at", "VARCHAR(64) DEFAULT NULL"),
+        ("promo_code_id", "INTEGER DEFAULT NULL"),
+        ("promo_code", "VARCHAR(64) DEFAULT ''"),
+        ("discount_amount", "DOUBLE PRECISION DEFAULT 0"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE bookings ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
 
 def _seed_initial_data(conn: DatabaseConnection) -> None:
