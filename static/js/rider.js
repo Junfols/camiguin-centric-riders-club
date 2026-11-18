@@ -30,6 +30,13 @@
   const activeJobBudget = document.getElementById("active-job-budget");
   const activeJobCustomer = document.getElementById("active-job-customer");
   const activeJobCallBtn = document.getElementById("active-job-call-btn");
+  const activeJobInappCallBtn = document.getElementById("active-job-inapp-call-btn");
+  const riderChatInappCallBtn = document.getElementById("rider-chat-inapp-call-btn");
+  const riderChatVoiceBtn = document.getElementById("rider-chat-voice-btn");
+  const riderChatVoiceBar = document.getElementById("rider-chat-voice-recording-bar");
+  const riderChatVoiceTimer = document.getElementById("rider-chat-voice-timer");
+  const riderChatVoiceCancelBtn = document.getElementById("rider-chat-voice-cancel-btn");
+  const riderChatVoiceSendBtn = document.getElementById("rider-chat-voice-send-btn");
   const navPickupBtn = document.getElementById("nav-pickup-btn");
   const navDropoffBtn = document.getElementById("nav-dropoff-btn");
   const jobInProgressBtn = document.getElementById("job-in-progress-btn");
@@ -79,6 +86,51 @@
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
+  }
+
+  function syncRiderVoiceCallContext() {
+    const liveJob = (currentRider && activeJob && ["accepted", "in_progress"].includes(activeJob.status))
+      ? activeJob
+      : null;
+    const schedJob = (!liveJob && currentRider && currentScheduledJobs && currentScheduledJobs.length > 0 && ["accepted", "in_progress"].includes(currentScheduledJobs[0].status))
+      ? currentScheduledJobs[0]
+      : null;
+    const targetJob = liveJob || schedJob;
+    const canCall = Boolean(targetJob);
+
+    if (activeJobInappCallBtn) {
+      activeJobInappCallBtn.classList.toggle("hidden", !liveJob);
+    }
+    if (riderChatInappCallBtn) {
+      riderChatInappCallBtn.classList.toggle("hidden", !liveJob);
+    }
+    if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.configure === "function") {
+      window.CCRCVoiceCall.configure({
+        role: "rider",
+        bookingRef: targetJob ? targetJob.id : null,
+        bookingCode: targetJob ? (targetJob.booking_code || "") : "",
+        peerName: targetJob ? (targetJob.customer_name || "Passenger") : "Passenger",
+        peerPhone: targetJob ? (targetJob.customer_phone || "") : "",
+        peerRoleLabel: "Passenger",
+        canCall: canCall,
+        onFallbackVoiceNote: () => {
+          const card = document.querySelector(".rider-chat-card");
+          if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (riderChatVoiceBtn) riderChatVoiceBtn.focus();
+        },
+      });
+    }
+  }
+
+  if (activeJobInappCallBtn) {
+    activeJobInappCallBtn.addEventListener("click", () => {
+      if (window.CCRCVoiceCall) window.CCRCVoiceCall.startCall();
+    });
+  }
+  if (riderChatInappCallBtn) {
+    riderChatInappCallBtn.addEventListener("click", () => {
+      if (window.CCRCVoiceCall) window.CCRCVoiceCall.startCall();
+    });
   }
 
   // Switch between Login, Register, and Forgot Password Forms
@@ -390,6 +442,7 @@
     knownJobKeys.clear();
     if (transferModal) transferModal.classList.add("hidden");
     currentRider = null;
+    syncRiderVoiceCallContext();
     setStoredRider(null);
     document.documentElement.classList.remove("is-rider-session");
     document.body.classList.remove("rider-logged-in");
@@ -432,6 +485,7 @@
       knownJobKeys.clear();
       if (transferModal) transferModal.classList.add("hidden");
       currentRider = null;
+      syncRiderVoiceCallContext();
       try {
         await fetch("/api/rider/logout", { method: "POST" });
       } catch (_) {}
@@ -1055,6 +1109,7 @@
       resetRiderChat(null);
       renderJobOnRiderMap(null);
       renderCoRidersList(cachedCoRiders);
+      syncRiderVoiceCallContext();
       return;
     }
     resetRiderChat(job);
@@ -1161,6 +1216,7 @@
     // Interactive Live GPS Route Map for Active Job
     renderJobOnRiderMap(job);
     renderCoRidersList(cachedCoRiders);
+    syncRiderVoiceCallContext();
   }
 
   // Check Active Job
@@ -2018,11 +2074,14 @@
   }
 
   function appendRiderChatMessage(msg, isSelf) {
+    if (!riderChatBox) return;
+    if (msg.id && riderChatBox.querySelector(`[data-msg-id="${msg.id}"]`)) return;
     if (riderChatEmptyHint) riderChatEmptyHint.style.display = "none";
 
     const isSystem = msg.sender_role === "system";
     const wrap = document.createElement("div");
     wrap.className = `chat-bubble-wrap ${isSystem ? "system" : (isSelf ? "self" : "other")}`;
+    if (msg.id) wrap.dataset.msgId = String(msg.id);
 
     const sender = isSystem
       ? (msg.sender_name || "CCRC Dispatch")
@@ -2030,10 +2089,27 @@
     const roleIcon = isSystem ? "🚨" : (isSelf ? "🛵" : "👤");
     const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
 
+    let bodyHtml = "";
+    const safeMediaUrl = typeof msg.media_url === "string" && msg.media_url.startsWith("/") ? msg.media_url : "";
+    if (msg.msg_type === "voice" && safeMediaUrl) {
+      const rawDur = Number(msg.media_duration || 0);
+      const durMins = Math.floor(rawDur / 60);
+      const durSecs = Math.round(rawDur % 60);
+      const durLabel = rawDur > 0 ? ` (${durMins}:${String(durSecs).padStart(2, "0")})` : "";
+      bodyHtml = `
+        <div class="chat-voice-bubble-body">
+          <span class="chat-voice-label"><span>🎤 Voice Message</span>${escapeHtml(durLabel)}</span>
+          <audio controls preload="metadata" src="${escapeHtml(safeMediaUrl)}" class="chat-voice-player"></audio>
+        </div>
+      `;
+    } else {
+      bodyHtml = escapeHtml(msg.message);
+    }
+
     wrap.innerHTML = `
       <span class="chat-sender-label">${roleIcon} ${escapeHtml(sender)}</span>
       <div class="chat-bubble">
-        ${escapeHtml(msg.message)}
+        ${bodyHtml}
         <span class="chat-time">${timeStr}</span>
       </div>
     `;
@@ -2059,7 +2135,7 @@
             riderLastMessageId = msg.id;
             const isSelf = (msg.sender_role === "rider");
             appendRiderChatMessage(msg, isSelf);
-            if (!isSelf) hasIncomingFromCustomer = true;
+            if (!isSelf && msg.sender_name !== "CCRC Call") hasIncomingFromCustomer = true;
           }
         }
         if (hasIncomingFromCustomer) {
@@ -2110,11 +2186,34 @@
     });
   });
 
+  if (riderChatVoiceBtn && window.CCRCVoiceCall && typeof window.CCRCVoiceCall.bindVoiceRecorder === "function") {
+    window.CCRCVoiceCall.bindVoiceRecorder({
+      triggerBtn: riderChatVoiceBtn,
+      barEl: riderChatVoiceBar,
+      timerEl: riderChatVoiceTimer,
+      cancelBtn: riderChatVoiceCancelBtn,
+      sendBtn: riderChatVoiceSendBtn,
+      getUploadUrl: () => activeJob ? `/api/chat/${activeJob.id}/voice?after=${riderLastMessageId}` : "",
+      onUploaded: (data) => {
+        const list = (data && Array.isArray(data.messages) && data.messages.length > 0)
+          ? data.messages
+          : (data && data.message ? [data.message] : []);
+        for (const m of list) {
+          if (m && m.id > riderLastMessageId) {
+            riderLastMessageId = m.id;
+            appendRiderChatMessage(m, m.sender_role === "rider");
+          }
+        }
+      },
+    });
+  }
+
   function resetRiderChat(job) {
     if (!job) {
       if (riderChatPollTimer) clearInterval(riderChatPollTimer);
       riderChatPollTimer = null;
       currentActiveJobId = null;
+      if (riderChatVoiceBar) riderChatVoiceBar.classList.add("hidden");
       return;
     }
     if (currentActiveJobId !== job.id) {

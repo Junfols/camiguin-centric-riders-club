@@ -5,6 +5,8 @@ On-Demand Island Express Riders: Pahatud, Pakuha, Pasugo & Pabili.
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import secrets
 import threading
@@ -32,6 +34,11 @@ from db import (
     restore_full_backup,
     add_booking_message,
     get_booking_messages,
+    add_call_signal,
+    create_call_session,
+    get_call_session,
+    get_latest_call_state,
+    respond_to_call,
     accept_booking,
     calculate_fare,
     calculate_haversine_km,
@@ -260,7 +267,39 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not res:
             return "File not found", 404
         data, mimetype = res
-        return Response(data, mimetype=mimetype)
+        total_len = len(data)
+        range_header = (request.headers.get("Range") or "").strip()
+        if range_header.startswith("bytes=") and total_len > 0:
+            try:
+                spec = range_header[6:].split(",")[0].strip()
+                start_str, _, end_str = spec.partition("-")
+                if start_str == "":
+                    suffix = int(end_str)
+                    start = max(0, total_len - suffix)
+                    end = total_len - 1
+                else:
+                    start = int(start_str)
+                    end = int(end_str) if end_str else total_len - 1
+                if start < 0 or start >= total_len or end < start:
+                    resp_416 = Response(status=416)
+                    resp_416.headers["Content-Range"] = f"bytes */{total_len}"
+                    return resp_416
+                end = min(end, total_len - 1)
+                chunk = data[start : end + 1]
+                resp = Response(chunk, status=206, mimetype=mimetype)
+                resp.headers["Content-Range"] = f"bytes {start}-{end}/{total_len}"
+                resp.headers["Accept-Ranges"] = "bytes"
+                resp.headers["Content-Length"] = str(len(chunk))
+                resp.headers["Cache-Control"] = "public, max-age=86400"
+                return resp
+            except (ValueError, TypeError):
+                pass
+
+        resp = Response(data, mimetype=mimetype)
+        resp.headers["Accept-Ranges"] = "bytes"
+        resp.headers["Content-Length"] = str(total_len)
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
 
     # -------------------------------------------------------------------------
     # Customer Storefront & Booking Routes
@@ -1079,6 +1118,362 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "message": new_msg,
             "messages": messages,
         })
+
+    _ALLOWED_VOICE_MIMES = {
+        "audio/webm": "webm",
+        "audio/ogg": "ogg",
+        "audio/mp4": "m4a",
+        "audio/x-m4a": "m4a",
+        "audio/m4a": "m4a",
+        "audio/mpeg": "mp3",
+        "audio/mp3": "mp3",
+        "audio/wav": "wav",
+        "audio/x-wav": "wav",
+        "audio/aac": "aac",
+        "audio/flac": "flac",
+    }
+    _MAX_VOICE_BYTES = 1_500_000
+
+    @app.post("/api/chat/<code_or_id>/voice")
+    def post_chat_voice_message(code_or_id: str):
+        conn = get_db()
+        booking = None
+        if code_or_id.isdigit():
+            booking = get_booking_by_id(conn, int(code_or_id))
+        if not booking:
+            booking = get_booking_by_code(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        auth_role = _authorize_chat_role(booking)
+        if not auth_role:
+            return jsonify({"error": "Unauthorized to send voice messages for this booking."}), 401
+
+        raw_bytes = b""
+        raw_mime = ""
+        dur_raw: Any = 0.0
+
+        audio_file = request.files.get("audio")
+        if audio_file is not None:
+            raw_bytes = audio_file.read(_MAX_VOICE_BYTES + 1)
+            raw_mime = (audio_file.mimetype or request.form.get("mimetype") or "audio/webm").split(";")[0].strip().lower()
+            dur_raw = request.form.get("duration") or 0.0
+        else:
+            data = request.get_json(silent=True) or {}
+            b64_val = (data.get("audio_base64") or "").strip()
+            raw_mime = (data.get("mimetype") or "").split(";")[0].strip().lower()
+            dur_raw = data.get("duration") or 0.0
+            if b64_val:
+                if b64_val.startswith("data:") and "," in b64_val:
+                    head, b64_payload = b64_val.split(",", 1)
+                    if not raw_mime and ";" in head:
+                        raw_mime = head[5:].split(";")[0].strip().lower()
+                else:
+                    b64_payload = b64_val
+                try:
+                    raw_bytes = base64.b64decode(b64_payload, validate=True)
+                except Exception:
+                    return jsonify({"error": "Invalid audio encoding."}), 400
+
+        if len(raw_bytes) < 50:
+            return jsonify({"error": "Voice recording is empty or too short."}), 400
+        if len(raw_bytes) > _MAX_VOICE_BYTES:
+            return jsonify({"error": "Voice message is too large (maximum ~60 seconds)."}), 413
+
+        ext = _ALLOWED_VOICE_MIMES.get(raw_mime)
+        if not ext:
+            return jsonify({"error": f"Unsupported audio format ({raw_mime or 'unknown'})."}), 400
+
+        try:
+            duration_sec = max(0.0, min(300.0, round(float(dur_raw or 0.0), 1)))
+        except (ValueError, TypeError):
+            duration_sec = 0.0
+
+        sender_role = auth_role
+        if sender_role == "rider":
+            rider = get_rider_by_id(conn, int(session["rider_id"]))
+            sender_name = (rider.get("name") if rider else None) or "Club Rider"
+        elif sender_role == "system":
+            sender_name = "CCRC Dispatch"
+        else:
+            sender_name = booking.get("customer_name") or "Passenger"
+
+        fname = f"voice_{booking['id']}_{secrets.token_hex(8)}.{ext}"
+        media_url = save_uploaded_media(conn, fname, raw_bytes, raw_mime)
+
+        mins = int(duration_sec // 60)
+        secs = int(round(duration_sec % 60))
+        if secs >= 60:
+            mins += 1
+            secs = 0
+        dur_label = f"{mins}:{secs:02d}"
+        fallback_text = f"🎤 Voice message ({dur_label})" if duration_sec > 0 else "🎤 Voice message"
+
+        new_msg = add_booking_message(
+            conn,
+            booking["id"],
+            sender_role,
+            sender_name,
+            fallback_text,
+            msg_type="voice",
+            media_url=media_url,
+            media_duration=duration_sec,
+        )
+        conn.commit()
+
+        try:
+            after_id = max(0, int(request.args.get("after") or 0))
+        except (ValueError, TypeError):
+            after_id = 0
+        messages = get_booking_messages(conn, booking["id"], after_id=after_id)
+        return jsonify({
+            "success": True,
+            "message": new_msg,
+            "messages": messages,
+        }), 201
+
+    # -------------------------------------------------------------------------
+    # Free In-App Voice Call Routes (WebRTC Peer Audio + DB Signaling)
+    # -------------------------------------------------------------------------
+    def _get_rtc_ice_servers() -> list[dict[str, Any]]:
+        raw_json = (os.environ.get("CCRC_ICE_SERVERS_JSON") or "").strip()
+        if raw_json:
+            try:
+                parsed = json.loads(raw_json)
+                if isinstance(parsed, list) and parsed:
+                    return parsed
+            except Exception:
+                pass
+        servers: list[dict[str, Any]] = [
+            {"urls": "stun:stun.l.google.com:19302"},
+            {"urls": "stun:stun1.l.google.com:19302"},
+            {"urls": "stun:stun.cloudflare.com:3478"},
+        ]
+        turn_urls = [u.strip() for u in (os.environ.get("CCRC_TURN_URLS") or "").split(",") if u.strip()]
+        if turn_urls:
+            turn_entry: dict[str, Any] = {"urls": turn_urls if len(turn_urls) > 1 else turn_urls[0]}
+            turn_user = (os.environ.get("CCRC_TURN_USERNAME") or "").strip()
+            turn_cred = (os.environ.get("CCRC_TURN_CREDENTIAL") or "").strip()
+            if turn_user:
+                turn_entry["username"] = turn_user
+            if turn_cred:
+                turn_entry["credential"] = turn_cred
+            servers.append(turn_entry)
+        return servers
+
+    def _resolve_booking_by_code_or_id(conn: Any, code_or_id: str) -> dict[str, Any] | None:
+        if str(code_or_id).isdigit():
+            b = get_booking_by_id(conn, int(code_or_id))
+            if b:
+                return b
+        return get_booking_by_code(conn, str(code_or_id))
+
+    @app.get("/api/rtc/ice-config")
+    def get_rtc_ice_config():
+        return jsonify({"success": True, "ice_servers": _get_rtc_ice_servers()})
+
+    @app.get("/api/calls/<code_or_id>/state")
+    def get_inapp_call_state(code_or_id: str):
+        conn = get_db()
+        booking = _resolve_booking_by_code_or_id(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        auth_role = _authorize_chat_role(booking)
+        if not auth_role:
+            return jsonify({"error": "Unauthorized for this booking's call state."}), 401
+
+        try:
+            after_signal_id = max(0, int(request.args.get("after_signal_id") or 0))
+        except (ValueError, TypeError):
+            after_signal_id = 0
+        try:
+            active_call_id = int(request.args.get("call_id")) if request.args.get("call_id") else None
+        except (ValueError, TypeError):
+            active_call_id = None
+
+        call_obj, signals = get_latest_call_state(
+            conn,
+            int(booking["id"]),
+            active_call_id=active_call_id,
+            after_signal_id=after_signal_id,
+        )
+        conn.commit()
+
+        can_call = bool(booking.get("rider_id") and booking.get("status") in ("accepted", "in_progress"))
+        if auth_role == "rider":
+            peer_name = booking.get("customer_name") or "Passenger"
+            peer_phone = booking.get("customer_phone") or ""
+        else:
+            peer_name = booking.get("rider_name") or "Club Rider"
+            peer_phone = booking.get("rider_phone") or ""
+
+        return jsonify({
+            "success": True,
+            "viewer_role": auth_role,
+            "booking_id": booking["id"],
+            "booking_code": booking["booking_code"],
+            "booking_status": booking.get("status"),
+            "can_call": can_call,
+            "peer_name": peer_name,
+            "peer_phone": peer_phone,
+            "call": call_obj,
+            "signals": signals,
+            "ice_servers": _get_rtc_ice_servers(),
+        })
+
+    @app.post("/api/calls/<code_or_id>/start")
+    def start_inapp_call(code_or_id: str):
+        conn = get_db()
+        booking = _resolve_booking_by_code_or_id(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        auth_role = _authorize_chat_role(booking)
+        if not auth_role:
+            return jsonify({"error": "Unauthorized to start a call for this booking."}), 401
+        if auth_role not in ("customer", "rider"):
+            return jsonify({"error": "Only the passenger or assigned rider can initiate an in-app voice call."}), 403
+
+        if auth_role == "rider":
+            rider = get_rider_by_id(conn, int(session["rider_id"]))
+            caller_name = (rider.get("name") if rider else None) or booking.get("rider_name") or "Club Rider"
+        else:
+            caller_name = booking.get("customer_name") or "Passenger"
+
+        data = request.get_json(silent=True) or {}
+        offer_data = data.get("offer")
+        if offer_data is not None and not isinstance(offer_data, dict):
+            return jsonify({"error": "Invalid WebRTC offer payload."}), 400
+
+        ok, msg, call_obj, status_code = create_call_session(
+            conn,
+            booking=booking,
+            caller_role=auth_role,
+            caller_name=caller_name,
+            offer_data=offer_data,
+        )
+        if not ok:
+            conn.commit()
+            return jsonify({
+                "error": msg,
+                "call": call_obj,
+                "ice_servers": _get_rtc_ice_servers(),
+            }), status_code
+
+        conn.commit()
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "call": call_obj,
+            "ice_servers": _get_rtc_ice_servers(),
+        }), 201
+
+    @app.post("/api/calls/session/<int:call_id>/respond")
+    def respond_inapp_call(call_id: int):
+        conn = get_db()
+        prev_call = get_call_session(conn, call_id)
+        if not prev_call:
+            return jsonify({"error": "Call session not found."}), 404
+
+        booking = get_booking_by_id(conn, int(prev_call["booking_id"]))
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        auth_role = _authorize_chat_role(booking)
+        if not auth_role:
+            return jsonify({"error": "Unauthorized to respond to this call."}), 401
+
+        data = request.get_json(silent=True) or {}
+        action = (data.get("action") or "").strip().lower()
+        answer_data = data.get("answer")
+        reason = str(data.get("reason") or "").strip()
+
+        if answer_data is not None and not isinstance(answer_data, dict):
+            return jsonify({"error": "Invalid WebRTC answer payload."}), 400
+
+        prev_status = prev_call.get("status")
+        ok, msg, call_obj, status_code = respond_to_call(
+            conn,
+            call_id=call_id,
+            actor_role=auth_role,
+            action=action,
+            answer_data=answer_data,
+            reason=reason,
+        )
+        if not ok:
+            conn.commit()
+            return jsonify({"error": msg, "call": call_obj}), status_code
+
+        # Log one brief timeline note in chat when a call terminates cleanly
+        if call_obj and prev_status in ("ringing", "accepted") and call_obj.get("status") in ("declined", "ended", "missed"):
+            try:
+                final_status = call_obj.get("status")
+                if final_status == "declined":
+                    log_text = "📵 In-app call was declined."
+                elif final_status == "missed":
+                    log_text = f"📵 Missed in-app call from {call_obj.get('caller_name') or 'User'}."
+                else:
+                    dur_label = ""
+                    ans_str = call_obj.get("answered_at")
+                    end_str = call_obj.get("ended_at")
+                    if ans_str and end_str:
+                        try:
+                            secs = max(0, int((datetime.fromisoformat(end_str) - datetime.fromisoformat(ans_str)).total_seconds()))
+                            dur_label = f" ({secs // 60}:{secs % 60:02d})"
+                        except Exception:
+                            dur_label = ""
+                    log_text = f"📞 In-app voice call ended{dur_label}."
+                add_booking_message(conn, int(booking["id"]), "system", "CCRC Call", log_text)
+            except Exception:
+                pass
+
+        conn.commit()
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "call": call_obj,
+            "ice_servers": _get_rtc_ice_servers(),
+        })
+
+    @app.post("/api/calls/session/<int:call_id>/signal")
+    def post_inapp_call_signal(call_id: int):
+        conn = get_db()
+        call_obj = get_call_session(conn, call_id)
+        if not call_obj:
+            return jsonify({"error": "Call session not found."}), 404
+
+        booking = get_booking_by_id(conn, int(call_obj["booking_id"]))
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        auth_role = _authorize_chat_role(booking)
+        if not auth_role:
+            return jsonify({"error": "Unauthorized to signal this call."}), 401
+        if auth_role not in (call_obj["caller_role"], call_obj["callee_role"], "system"):
+            return jsonify({"error": "Forbidden from signaling this call."}), 403
+        if call_obj.get("status") not in ("ringing", "accepted"):
+            return jsonify({"error": "Call has already ended."}), 409
+
+        data = request.get_json(silent=True) or {}
+        signal_ids: list[int] = []
+
+        candidates = data.get("candidates")
+        if isinstance(candidates, list) and candidates:
+            for item in candidates[:30]:
+                if item is not None:
+                    sig_id = add_call_signal(conn, call_id, int(booking["id"]), auth_role, "candidate", item)
+                    signal_ids.append(sig_id)
+        else:
+            sig_type = (data.get("signal_type") or "").strip().lower()
+            if sig_type not in ("offer", "answer", "candidate", "renegotiate"):
+                return jsonify({"error": "Invalid signal_type."}), 400
+            sig_data = data.get("data")
+            sig_id = add_call_signal(conn, call_id, int(booking["id"]), auth_role, sig_type, sig_data)
+            signal_ids.append(sig_id)
+
+        conn.commit()
+        return jsonify({"success": True, "signal_ids": signal_ids})
 
     # -------------------------------------------------------------------------
     # Live Tracking Routes

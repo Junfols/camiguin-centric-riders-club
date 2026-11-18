@@ -148,13 +148,18 @@
       </div>
     </div>
 
-    <div class="rider-actions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
-      <a id="rider-call-btn" href="tel:{{ booking.rider_phone }}" class="btn btn-primary" style="text-align:center;">
-        📞 Call Rider
-      </a>
-      <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
-        💬 Send SMS
-      </a>
+    <div class="rider-actions-grid" style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+      <button type="button" id="inapp-call-rider-btn" class="btn btn-inapp-call btn-block {% if not (booking.rider_id and booking.status in ['accepted', 'in_progress']) %}hidden{% endif %}" style="padding:11px 14px;border-radius:12px;font-size:0.96rem;">
+        🔊 Free In-App Call
+      </button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <a id="rider-call-btn" href="tel:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
+          📞 Phone Call
+        </a>
+        <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
+          💬 Send SMS
+        </a>
+      </div>
     </div>
   </div>
 
@@ -171,7 +176,12 @@
           </span>
         </div>
       </div>
-      <span class="badge badge-success" id="chat-online-badge">Online</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" id="chat-inapp-call-btn" class="btn-inapp-call-mini {% if not (booking.rider_id and booking.status in ['accepted', 'in_progress']) %}hidden{% endif %}" title="Start Free In-App Voice Call">
+          📞 Call
+        </button>
+        <span class="badge badge-success" id="chat-online-badge">Online</span>
+      </div>
     </div>
 
     <!-- Quick Canned Replies for Customer -->
@@ -189,8 +199,22 @@
       </div>
     </div>
 
+    <!-- Voice Recording Live Bar -->
+    <div id="chat-voice-recording-bar" class="chat-voice-recording-bar hidden">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="voice-rec-dot"></span>
+        <span>Recording Voice...</span>
+        <strong id="chat-voice-timer">0:00</strong>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" id="chat-voice-cancel-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">Cancel</button>
+        <button type="button" id="chat-voice-send-btn" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;">Send Voice ✈️</button>
+      </div>
+    </div>
+
     <!-- Input Form -->
     <form class="chat-input-bar" id="chat-form">
+      <button type="button" id="chat-voice-btn" class="chat-voice-btn" title="Record Voice Message">🎙️</button>
       <input type="text" id="chat-input-field" placeholder="Type a message to rider..." maxlength="300" autocomplete="off" required>
       <button type="submit" id="chat-send-btn" class="btn btn-primary chat-send-btn" title="Send message">
         <span>Send</span> ✈️
@@ -361,6 +385,7 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=29"></script>
+<script src="/static/js/voice_call.js?v=1"></script>
+<script src="/static/js/track.js?v=30"></script>
 {% endif %}
 {% endblock %}

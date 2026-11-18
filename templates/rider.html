@@ -303,9 +303,14 @@
             <strong style="font-size:0.85rem;">Customer:</strong>
             <div id="active-job-customer" class="loc-text">Customer Name</div>
             <div id="active-job-customer-badge" style="margin:4px 0;"></div>
-            <a id="active-job-call-btn" href="#" class="btn btn-sm btn-primary nav-map-btn">
-              📞 Call Customer
-            </a>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;">
+              <button type="button" id="active-job-inapp-call-btn" class="btn btn-sm btn-inapp-call nav-map-btn">
+                🔊 Free In-App Call
+              </button>
+              <a id="active-job-call-btn" href="#" class="btn btn-sm btn-outline nav-map-btn">
+                📞 Phone Call
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -353,7 +358,12 @@
               <span class="chat-subtitle text-muted" style="font-size:0.8rem;">Direct in-app messaging</span>
             </div>
           </div>
-          <span class="badge badge-accent" id="rider-chat-badge">Active Chat</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" id="rider-chat-inapp-call-btn" class="btn-inapp-call-mini" title="Start Free In-App Voice Call">
+              📞 Call
+            </button>
+            <span class="badge badge-accent" id="rider-chat-badge">Active Chat</span>
+          </div>
         </div>
 
         <!-- Quick Canned Replies for Rider -->
@@ -372,8 +382,22 @@
           </div>
         </div>
 
+        <!-- Voice Recording Live Bar -->
+        <div id="rider-chat-voice-recording-bar" class="chat-voice-recording-bar hidden">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="voice-rec-dot"></span>
+            <span>Recording Voice...</span>
+            <strong id="rider-chat-voice-timer">0:00</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" id="rider-chat-voice-cancel-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">Cancel</button>
+            <button type="button" id="rider-chat-voice-send-btn" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;">Send Voice ✈️</button>
+          </div>
+        </div>
+
         <!-- Input Form -->
         <form class="chat-input-bar" id="rider-chat-form" style="margin-top:8px;">
+          <button type="button" id="rider-chat-voice-btn" class="chat-voice-btn" title="Record Voice Message">🎙️</button>
           <input type="text" id="rider-chat-input-field" placeholder="Reply to customer..." maxlength="300" autocomplete="off" required>
           <button type="submit" id="rider-chat-send-btn" class="btn btn-primary chat-send-btn">
             <span>Send</span> ✈️
@@ -597,5 +621,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=30"></script>
+<script src="/static/js/voice_call.js?v=1"></script>
+<script src="/static/js/rider.js?v=31"></script>
 {% endblock %}

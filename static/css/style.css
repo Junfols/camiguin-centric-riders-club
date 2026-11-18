@@ -2746,3 +2746,151 @@ body.rider-logged-in .nav-rider-logged-item {
   opacity: 0.72;
 }
 
+/* Free In-App Voice Call & Voice Messages UI */
+.btn-inapp-call {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.btn-inapp-call:hover {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
+}
+
+.btn-inapp-call:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-inapp-call-mini {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-inapp-call-mini:hover {
+  background: #bbf7d0;
+}
+
+.chat-voice-btn {
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.chat-voice-btn:hover {
+  border-color: var(--primary);
+  background: #fff7ed;
+}
+
+.chat-voice-btn.recording {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.chat-voice-recording-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.voice-rec-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: ccrc-rec-blink 1s infinite;
+}
+
+@keyframes ccrc-rec-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+.chat-voice-bubble-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-voice-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.chat-voice-player {
+  width: 220px;
+  max-width: 100%;
+  height: 36px;
+  border-radius: 18px;
+  outline: none;
+}
+
+.ccrc-call-avatar-ring {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  margin: 0 auto;
+  background: rgba(34, 197, 94, 0.16);
+  border: 2.5px solid #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ccrc-call-avatar-ring.ringing {
+  animation: ccrc-call-pulse 1.5s infinite ease-out;
+}
+
+.ccrc-btn-pulse-green {
+  animation: ccrc-call-pulse 1.6s infinite ease-out;
+}
+
+@keyframes ccrc-call-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+  70% { box-shadow: 0 0 0 18px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+@media (max-width: 480px) {
+  .chat-voice-player {
+    width: 185px;
+  }
+}
+

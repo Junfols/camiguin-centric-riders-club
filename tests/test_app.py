@@ -53,15 +53,16 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v12
+        # 2. Service Worker v13
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v12", sw_text)
-        self.assertIn("/static/css/style.css?v=25", sw_text)
-        self.assertIn("/static/js/i18n.js?v=5", sw_text)
+        self.assertIn("ccrc-pwa-v13", sw_text)
+        self.assertIn("/static/css/style.css?v=26", sw_text)
+        self.assertIn("/static/js/i18n.js?v=6", sw_text)
         self.assertIn("/static/js/app.js?v=34", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
+        self.assertIn("/static/js/voice_call.js?v=1", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")
@@ -2143,7 +2144,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="track-transfer-banner"', tr_html)
         self.assertIn("Transfer Rider One", tr_html)
         self.assertIn('id="rider-rating-wrap"', tr_html)
-        self.assertIn("track.js?v=29", tr_html)
+        self.assertIn("track.js?v=30", tr_html)
 
         # r2 sees transferred b_a prioritized BEFORE b_newer in broadcast feed, then claims and completes it
         with self.client.session_transaction() as sess:
@@ -2276,7 +2277,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="co-riders-transfer-hint"', rider_html)
         self.assertIn('id="rider-transfer-modal"', rider_html)
         self.assertIn("Transfer to Rider", rider_html)
-        self.assertIn("rider.js?v=30", rider_html)
+        self.assertIn("rider.js?v=31", rider_html)
         rider_js = self.client.get("/static/js/rider.js").get_data(as_text=True)
         self.assertIn("scheduled-transfer-btn", rider_js)
         self.assertIn("co-rider-transfer-btn", rider_js)
@@ -2302,6 +2303,440 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertEqual(restored_b["transfer_count"], 2)
         finally:
             conn.close()
+
+    def test_inapp_voice_call_and_voice_messages(self):
+        import base64
+        import io
+        from datetime import timedelta
+        from db import (
+            export_full_backup,
+            get_booking_messages,
+            get_call_session,
+            get_connection,
+            get_now_pht,
+            restore_full_backup,
+        )
+
+        cust_client = self.app.test_client()
+        rider_client = self.app.test_client()
+        other_client = self.app.test_client()
+
+        r1 = self._create_active_rider(name="Voice Rider One", phone="09178880001", bike_model="Honda Click 125i")
+        r2 = self._create_active_rider(name="Voice Rider Two", phone="09178880002", bike_model="Yamaha NMAX")
+
+        # 1. Public ICE config (STUN defaults + optional env TURN override)
+        ice_resp = self.client.get("/api/rtc/ice-config")
+        self.assertEqual(ice_resp.status_code, 200)
+        ice_data = ice_resp.get_json()
+        self.assertTrue(ice_data["success"])
+        ice_urls = [s.get("urls") for s in ice_data["ice_servers"]]
+        self.assertIn("stun:stun.l.google.com:19302", ice_urls)
+
+        old_turn = os.environ.get("CCRC_TURN_URLS")
+        try:
+            os.environ["CCRC_TURN_URLS"] = "turn:turn.camiguin.example:3478"
+            turn_data = self.client.get("/api/rtc/ice-config").get_json()
+            self.assertTrue(any(s.get("urls") == "turn:turn.camiguin.example:3478" for s in turn_data["ice_servers"]))
+        finally:
+            if old_turn is None:
+                os.environ.pop("CCRC_TURN_URLS", None)
+            else:
+                os.environ["CCRC_TURN_URLS"] = old_turn
+
+        # 2. Customer creates booking & verifies broadcast/unauth guards
+        b_resp = cust_client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Voice Call Passenger",
+                "customer_phone": "09175553001",
+                "service_type": "pahatud",
+                "pickup_address": "Poblacion, Mambajao",
+                "dropoff_address": "Agoho, Mambajao",
+            },
+        )
+        self.assertEqual(b_resp.status_code, 201)
+        b = b_resp.get_json()["booking"]
+        code = b["booking_code"]
+
+        # Unauthenticated client blocked
+        self.assertEqual(self.client.get(f"/api/calls/{code}/state").status_code, 401)
+        self.assertEqual(self.client.post(f"/api/calls/{code}/start", json={}).status_code, 401)
+        self.assertEqual(self.client.post(f"/api/chat/{code}/voice", json={}).status_code, 401)
+
+        # Customer sees can_call=False and cannot call while status is broadcast
+        st_bcast = cust_client.get(f"/api/calls/{code}/state").get_json()
+        self.assertFalse(st_bcast["can_call"])
+        self.assertEqual(st_bcast["viewer_role"], "customer")
+        self.assertEqual(
+            cust_client.post(
+                f"/api/calls/{code}/start",
+                json={"offer": {"type": "offer", "sdp": "v=0-early"}},
+            ).status_code,
+            400,
+        )
+
+        # Unrelated rider r2 blocked from accessing booking calls/voice
+        with other_client.session_transaction() as sess:
+            sess["rider_id"] = r2
+        self.assertEqual(other_client.get(f"/api/calls/{b['id']}/state").status_code, 401)
+        self.assertEqual(other_client.post(f"/api/chat/{b['id']}/voice", json={}).status_code, 401)
+
+        # 3. Assigned rider r1 accepts the booking
+        with rider_client.session_transaction() as sess:
+            sess["rider_id"] = r1
+        self.assertEqual(rider_client.post(f"/api/bookings/{b['id']}/accept").status_code, 200)
+
+        # 4. HTML, assets & i18n checks on Track & Rider pages
+        track_html = cust_client.get(f"/track/{code}").get_data(as_text=True)
+        for token in (
+            'id="ccrc-call-modal"',
+            'id="ccrc-remote-audio"',
+            'id="inapp-call-rider-btn"',
+            'id="chat-inapp-call-btn"',
+            'id="chat-voice-recording-bar"',
+            'id="chat-voice-btn"',
+            "voice_call.js?v=1",
+            "track.js?v=30",
+            "style.css?v=26",
+            "i18n.js?v=6",
+            "📞 Phone Call",
+        ):
+            self.assertIn(token, track_html)
+
+        rider_html = rider_client.get("/rider").get_data(as_text=True)
+        for token in (
+            'id="active-job-inapp-call-btn"',
+            'id="rider-chat-inapp-call-btn"',
+            'id="rider-chat-voice-recording-bar"',
+            'id="rider-chat-voice-btn"',
+            "voice_call.js?v=1",
+            "rider.js?v=31",
+            "📞 Phone Call",
+        ):
+            self.assertIn(token, rider_html)
+
+        vc_js = self.client.get("/static/js/voice_call.js").get_data(as_text=True)
+        self.assertIn("CCRCVoiceCall", vc_js)
+        self.assertIn("bindVoiceRecorder", vc_js)
+        css_text = self.client.get("/static/css/style.css").get_data(as_text=True)
+        self.assertIn(".btn-inapp-call", css_text)
+        self.assertIn(".chat-voice-player", css_text)
+        i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
+        self.assertIn("Free In-App Call", i18n_js)
+        self.assertIn("Libreng Tawag sa App", i18n_js)
+        self.assertIn("Record Voice Message", i18n_js)
+
+        # 5. Full WebRTC Call Lifecycle (Customer -> Rider, ICE candidates, Answer, Hangup)
+        start_resp = cust_client.post(
+            f"/api/calls/{code}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0-cust-sdp-offer"}},
+        )
+        self.assertEqual(start_resp.status_code, 201)
+        call1 = start_resp.get_json()["call"]
+        call1_id = call1["id"]
+        self.assertEqual(call1["status"], "ringing")
+        self.assertEqual(call1["caller_role"], "customer")
+        self.assertEqual(call1["callee_role"], "rider")
+
+        # Simultaneous outgoing call from rider conflicts (409)
+        self.assertEqual(
+            rider_client.post(
+                f"/api/calls/{b['id']}/start",
+                json={"offer": {"type": "offer", "sdp": "v=0-collision"}},
+            ).status_code,
+            409,
+        )
+
+        # Caller cannot accept their own ringing call (403)
+        self.assertEqual(
+            cust_client.post(
+                f"/api/calls/session/{call1_id}/respond",
+                json={"action": "accept"},
+            ).status_code,
+            403,
+        )
+
+        # Customer batches ICE candidates; unrelated rider blocked from signaling
+        sig_resp = cust_client.post(
+            f"/api/calls/session/{call1_id}/signal",
+            json={"candidates": [{"candidate": "cand-c1"}, {"candidate": "cand-c2"}]},
+        )
+        self.assertEqual(sig_resp.status_code, 200)
+        self.assertEqual(len(sig_resp.get_json()["signal_ids"]), 2)
+        self.assertEqual(
+            other_client.post(
+                f"/api/calls/session/{call1_id}/signal",
+                json={"candidates": [{"candidate": "intruder"}]},
+            ).status_code,
+            401,
+        )
+
+        # Rider polls call state & receives offer + ICE candidates
+        r_state = rider_client.get(f"/api/calls/{b['id']}/state").get_json()
+        self.assertTrue(r_state["can_call"])
+        self.assertEqual(r_state["viewer_role"], "rider")
+        self.assertEqual(r_state["peer_name"], "Voice Call Passenger")
+        self.assertEqual(r_state["call"]["id"], call1_id)
+        sig_types = [s["signal_type"] for s in r_state["signals"]]
+        self.assertIn("offer", sig_types)
+        self.assertIn("candidate", sig_types)
+        offer_sig = next(s for s in r_state["signals"] if s["signal_type"] == "offer")
+        self.assertEqual(offer_sig["data"]["sdp"], "v=0-cust-sdp-offer")
+
+        # Rider answers call with SDP answer + sends ICE candidate
+        ans_resp = rider_client.post(
+            f"/api/calls/session/{call1_id}/respond",
+            json={
+                "action": "accept",
+                "answer": {"type": "answer", "sdp": "v=0-rider-sdp-answer"},
+            },
+        )
+        self.assertEqual(ans_resp.status_code, 200)
+        ans_call = ans_resp.get_json()["call"]
+        self.assertEqual(ans_call["status"], "accepted")
+        self.assertIsNotNone(ans_call["answered_at"])
+
+        # Starting another call while one is active conflicts (409)
+        self.assertEqual(
+            cust_client.post(
+                f"/api/calls/{code}/start",
+                json={"offer": {"type": "offer", "sdp": "v=0-dup"}},
+            ).status_code,
+            409,
+        )
+        self.assertEqual(
+            rider_client.post(
+                f"/api/calls/session/{call1_id}/signal",
+                json={"candidates": [{"candidate": "cand-r1"}]},
+            ).status_code,
+            200,
+        )
+
+        # Customer receives SDP answer + rider ICE
+        c_state = cust_client.get(f"/api/calls/{code}/state?call_id={call1_id}&after_signal_id=0").get_json()
+        self.assertEqual(c_state["call"]["status"], "accepted")
+        c_sig_types = [s["signal_type"] for s in c_state["signals"]]
+        self.assertIn("answer", c_sig_types)
+        self.assertIn("candidate", c_sig_types)
+        ans_sig = next(s for s in c_state["signals"] if s["signal_type"] == "answer")
+        self.assertEqual(ans_sig["data"]["sdp"], "v=0-rider-sdp-answer")
+
+        # Customer hangs up -> logs system summary in chat & closes signaling
+        hang_resp = cust_client.post(
+            f"/api/calls/session/{call1_id}/respond",
+            json={"action": "hangup", "reason": "Finished call"},
+        )
+        self.assertEqual(hang_resp.status_code, 200)
+        self.assertEqual(hang_resp.get_json()["call"]["status"], "ended")
+
+        self.assertEqual(
+            rider_client.post(
+                f"/api/calls/session/{call1_id}/signal",
+                json={"candidates": [{"candidate": "late-cand"}]},
+            ).status_code,
+            409,
+        )
+
+        msgs_after_hang = cust_client.get(f"/api/chat/{code}/messages").get_json()["messages"]
+        self.assertTrue(
+            any(
+                m["sender_role"] == "system"
+                and m["sender_name"] == "CCRC Call"
+                and "In-app voice call ended" in m["message"]
+                for m in msgs_after_hang
+            )
+        )
+
+        # 6. Decline Flow + Stale Call Expiry
+        call2 = rider_client.post(
+            f"/api/calls/{b['id']}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0-rider-call"}},
+        ).get_json()["call"]
+        dec_resp = cust_client.post(
+            f"/api/calls/session/{call2['id']}/respond",
+            json={"action": "decline", "reason": "Busy"},
+        )
+        self.assertEqual(dec_resp.status_code, 200)
+        self.assertEqual(dec_resp.get_json()["call"]["status"], "declined")
+
+        msgs_after_dec = cust_client.get(f"/api/chat/{code}/messages").get_json()["messages"]
+        self.assertTrue(
+            any(
+                m["sender_role"] == "system"
+                and m["sender_name"] == "CCRC Call"
+                and "declined" in m["message"]
+                for m in msgs_after_dec
+            )
+        )
+
+        call3 = cust_client.post(
+            f"/api/calls/{code}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0-stale"}},
+        ).get_json()["call"]
+        old_ts = (get_now_pht() - timedelta(seconds=60)).isoformat(timespec="seconds")
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute(
+                "UPDATE call_sessions SET created_at = ?, updated_at = ? WHERE id = ?",
+                (old_ts, old_ts, call3["id"]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        stale_state = rider_client.get(f"/api/calls/{b['id']}/state?call_id={call3['id']}").get_json()
+        self.assertIsNotNone(stale_state["call"])
+        self.assertEqual(stale_state["call"]["status"], "missed")
+        self.assertEqual(stale_state["call"]["end_reason"], "No answer")
+
+        # 7. Push-to-Talk Voice Messages + Byte-Range HTTP 206 Streaming
+        # Validation checks
+        self.assertEqual(
+            cust_client.post(
+                f"/api/chat/{code}/voice",
+                data={"audio": (io.BytesIO(b"tiny"), "short.webm", "audio/webm"), "mimetype": "audio/webm", "duration": "0.1"},
+                content_type="multipart/form-data",
+            ).status_code,
+            400,
+        )
+        self.assertEqual(
+            cust_client.post(
+                f"/api/chat/{code}/voice",
+                data={"audio": (io.BytesIO(b"A" * 120), "bad.txt", "text/plain"), "mimetype": "text/plain", "duration": "1.0"},
+                content_type="multipart/form-data",
+            ).status_code,
+            400,
+        )
+        self.assertEqual(
+            cust_client.post(
+                f"/api/chat/{code}/voice",
+                data={"audio": (io.BytesIO(b"B" * 1_500_050), "big.webm", "audio/webm"), "mimetype": "audio/webm", "duration": "65.0"},
+                content_type="multipart/form-data",
+            ).status_code,
+            413,
+        )
+
+        # Customer multipart audio upload
+        sample_audio = bytes(range(256)) * 2  # 512 bytes deterministic payload
+        v_cust = cust_client.post(
+            f"/api/chat/{code}/voice",
+            data={
+                "audio": (io.BytesIO(sample_audio), "note.webm", "audio/webm"),
+                "mimetype": "audio/webm",
+                "duration": "4.2",
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(v_cust.status_code, 201)
+        v_cust_msg = v_cust.get_json()["message"]
+        self.assertEqual(v_cust_msg["msg_type"], "voice")
+        self.assertEqual(v_cust_msg["sender_role"], "customer")
+        self.assertAlmostEqual(float(v_cust_msg["media_duration"]), 4.2, places=1)
+        self.assertTrue(v_cust_msg["media_url"].startswith("/media/voice_"))
+        self.assertTrue(v_cust_msg["media_url"].endswith(".webm"))
+
+        # Rider JSON data-URI base64 audio upload
+        rider_audio = b"M4A-DATA-" * 16
+        b64_payload = "data:audio/mp4;base64," + base64.b64encode(rider_audio).decode("ascii")
+        v_rider = rider_client.post(
+            f"/api/chat/{b['id']}/voice",
+            json={"audio_base64": b64_payload, "duration": 2.7},
+        )
+        self.assertEqual(v_rider.status_code, 201)
+        v_rider_msg = v_rider.get_json()["message"]
+        self.assertEqual(v_rider_msg["msg_type"], "voice")
+        self.assertEqual(v_rider_msg["sender_role"], "rider")
+        self.assertTrue(v_rider_msg["media_url"].endswith(".m4a"))
+
+        # Chat messages API includes voice metadata
+        chat_msgs = cust_client.get(f"/api/chat/{code}/messages").get_json()["messages"]
+        voice_msgs = [m for m in chat_msgs if m.get("msg_type") == "voice"]
+        self.assertEqual(len(voice_msgs), 2)
+
+        # Full GET + HTTP 206 Partial Content byte-range streaming
+        full_media = cust_client.get(v_cust_msg["media_url"])
+        self.assertEqual(full_media.status_code, 200)
+        self.assertEqual(full_media.headers.get("Accept-Ranges"), "bytes")
+        self.assertEqual(full_media.data, sample_audio)
+
+        part_media = cust_client.get(v_cust_msg["media_url"], headers={"Range": "bytes=0-99"})
+        self.assertEqual(part_media.status_code, 206)
+        self.assertEqual(part_media.headers.get("Content-Range"), f"bytes 0-99/{len(sample_audio)}")
+        self.assertEqual(part_media.headers.get("Content-Length"), "100")
+        self.assertEqual(part_media.data, sample_audio[:100])
+
+        bad_range = cust_client.get(v_cust_msg["media_url"], headers={"Range": "bytes=9999-10050"})
+        self.assertEqual(bad_range.status_code, 416)
+
+        # 8. Open Calls Auto-End on Transfer and Trip Completion
+        call_tr = cust_client.post(
+            f"/api/calls/{code}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0-pre-transfer"}},
+        ).get_json()["call"]
+        self.assertEqual(
+            rider_client.post(
+                f"/api/bookings/{b['id']}/transfer",
+                json={"target_rider_id": r2, "reason": "Flat tire", "go_offline": False},
+            ).status_code,
+            200,
+        )
+        conn = get_connection(self.db_path)
+        try:
+            tr_c = get_call_session(conn, call_tr["id"])
+            self.assertEqual(tr_c["status"], "missed")
+            self.assertEqual(tr_c["end_reason"], "Trip transferred to another rider")
+        finally:
+            conn.close()
+
+        # New rider r2 handles booking -> call accepted -> trip completed auto-ends call
+        self.assertEqual(other_client.post(f"/api/bookings/{b['id']}/status", json={"status": "in_progress"}).status_code, 200)
+        call_done = other_client.post(
+            f"/api/calls/{b['id']}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0-before-complete"}},
+        ).get_json()["call"]
+        self.assertEqual(
+            cust_client.post(
+                f"/api/calls/session/{call_done['id']}/respond",
+                json={"action": "accept", "answer": {"type": "answer", "sdp": "v=0-cust-ans"}},
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            other_client.post(f"/api/bookings/{b['id']}/status", json={"status": "completed"}).status_code,
+            200,
+        )
+        conn = get_connection(self.db_path)
+        try:
+            done_c = get_call_session(conn, call_done["id"])
+            self.assertEqual(done_c["status"], "ended")
+            self.assertEqual(done_c["end_reason"], "Booking completed")
+        finally:
+            conn.close()
+        self.assertEqual(
+            other_client.post(
+                f"/api/calls/{b['id']}/start",
+                json={"offer": {"type": "offer", "sdp": "v=0-after-done"}},
+            ).status_code,
+            400,
+        )
+
+        # 9. Full Backup & Restore Preserves Voice Messages and Uploaded Audio
+        conn = get_connection(self.db_path)
+        try:
+            snap = export_full_backup(conn)
+            res = restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+            self.assertTrue(res["success"])
+            restored_msgs = get_booking_messages(conn, b["id"])
+            restored_voices = [m for m in restored_msgs if m.get("msg_type") == "voice"]
+            self.assertEqual(len(restored_voices), 2)
+            self.assertEqual(restored_voices[0]["media_url"], v_cust_msg["media_url"])
+            self.assertAlmostEqual(float(restored_voices[0]["media_duration"]), 4.2, places=1)
+        finally:
+            conn.close()
+
+        restored_media = self.client.get(v_cust_msg["media_url"])
+        self.assertEqual(restored_media.status_code, 200)
+        self.assertEqual(restored_media.data, sample_audio)
 
 
 if __name__ == "__main__":

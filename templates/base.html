@@ -22,7 +22,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <!-- Main Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=25">
+  <link rel="stylesheet" href="/static/css/style.css?v=26">
   <script>
     (function() {
       try {
@@ -569,7 +569,69 @@
     </div>
   </div>
 
-  <script src="/static/js/i18n.js?v=5"></script>
+  <!-- Free In-App Voice Call Modal (Shared between Customer Tracking & Rider Hub) -->
+  <div id="ccrc-call-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(15,23,42,0.82);z-index:10050;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);">
+    <div class="modal-card modal-sm ccrc-call-card" style="width:100%;max-width:380px;background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);color:#f8fafc;border-radius:22px;padding:24px 20px;text-align:center;box-shadow:0 24px 48px rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.12);">
+      <div class="ccrc-call-badge-row" style="margin-bottom:14px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,0.18);color:#4ade80;border:1px solid rgba(74,222,128,0.35);border-radius:20px;padding:4px 12px;font-size:0.74rem;font-weight:700;">
+          <span>🔊</span> <span>Free In-App Voice Call</span>
+        </span>
+      </div>
+
+      <div id="ccrc-call-avatar-ring" class="ccrc-call-avatar-ring ringing">
+        <span id="ccrc-call-avatar-icon" style="font-size:2.3rem;">📞</span>
+      </div>
+
+      <div id="ccrc-call-peer-role" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;font-weight:700;margin-top:12px;">
+        CCRC Voice
+      </div>
+      <h3 id="ccrc-call-peer-name" style="margin:4px 0 2px;font-size:1.3rem;color:#ffffff;">Connecting...</h3>
+      <div id="ccrc-call-booking-code" style="font-family:monospace;font-size:0.78rem;color:#fb923c;margin-bottom:10px;">CCRC</div>
+
+      <div id="ccrc-call-status-text" style="font-size:0.92rem;color:#cbd5e1;font-weight:600;min-height:22px;">
+        Calling...
+      </div>
+      <div id="ccrc-call-timer" class="hidden" style="font-family:monospace;font-size:1.4rem;font-weight:800;color:#4ade80;margin-top:6px;">
+        00:00
+      </div>
+
+      <!-- Incoming Call Action Row -->
+      <div id="ccrc-call-incoming-actions" class="hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;">
+        <button type="button" id="ccrc-call-decline-btn" class="btn" style="background:#dc2626;color:#fff;border:none;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.95rem;">
+          ✕ Decline
+        </button>
+        <button type="button" id="ccrc-call-answer-btn" class="btn ccrc-btn-pulse-green" style="background:#16a34a;color:#fff;border:none;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.95rem;">
+          📞 Answer
+        </button>
+      </div>
+
+      <!-- Active / Outgoing Call Action Row -->
+      <div id="ccrc-call-active-actions" class="hidden" style="display:flex;justify-content:center;gap:12px;margin-top:20px;">
+        <button type="button" id="ccrc-call-mute-btn" class="btn" style="flex:1;background:#334155;color:#f8fafc;border:1px solid #475569;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.9rem;">
+          🎙️ Mute
+        </button>
+        <button type="button" id="ccrc-call-hangup-btn" class="btn" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.9rem;">
+          📵 End Call
+        </button>
+      </div>
+
+      <!-- Fallback & Close Options -->
+      <div id="ccrc-call-fallback-wrap" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.1);display:grid;gap:8px;">
+        <a id="ccrc-call-tel-fallback" href="#" class="btn btn-sm" style="background:rgba(255,255,255,0.08);color:#e2e8f0;border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:8px 12px;text-decoration:none;font-size:0.8rem;font-weight:600;">
+          📞 Regular Phone Call (Backup)
+        </a>
+        <button type="button" id="ccrc-call-voice-note-fallback" class="btn btn-sm" style="background:rgba(249,115,22,0.16);color:#fdba74;border:1px solid rgba(249,115,22,0.4);border-radius:10px;padding:8px 12px;font-size:0.8rem;font-weight:600;cursor:pointer;">
+          🎙️ Send Voice Message Instead
+        </button>
+        <button type="button" id="ccrc-call-close-btn" class="btn btn-sm hidden" style="background:#475569;color:#ffffff;border:none;border-radius:10px;padding:9px 12px;font-size:0.84rem;font-weight:700;cursor:pointer;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+  <audio id="ccrc-remote-audio" autoplay playsinline style="display:none;"></audio>
+
+  <script src="/static/js/i18n.js?v=6"></script>
   <script src="/static/js/auth.js?v=1"></script>
   {% block scripts %}{% endblock %}
   <!-- Secret 10-Tap on 🛵 Logo Icon to Unlock Admin -->

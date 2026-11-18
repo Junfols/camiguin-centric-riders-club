@@ -32,7 +32,52 @@
   const riderAvatar = document.getElementById("rider-avatar");
   const riderCallBtn = document.getElementById("rider-call-btn");
   const riderSmsBtn = document.getElementById("rider-sms-btn");
+  const inappCallRiderBtn = document.getElementById("inapp-call-rider-btn");
+  const chatInappCallBtn = document.getElementById("chat-inapp-call-btn");
+  const chatVoiceBtn = document.getElementById("chat-voice-btn");
+  const chatVoiceBar = document.getElementById("chat-voice-recording-bar");
+  const chatVoiceTimer = document.getElementById("chat-voice-timer");
+  const chatVoiceCancelBtn = document.getElementById("chat-voice-cancel-btn");
+  const chatVoiceSendBtn = document.getElementById("chat-voice-send-btn");
   const liveDistanceIndicator = document.getElementById("live-distance-indicator");
+
+  function syncCustomerVoiceCallContext(b) {
+    if (!b) return;
+    const canCall = Boolean(b.rider_id && ["accepted", "in_progress"].includes(b.status));
+    if (inappCallRiderBtn) {
+      inappCallRiderBtn.classList.toggle("hidden", !canCall);
+    }
+    if (chatInappCallBtn) {
+      chatInappCallBtn.classList.toggle("hidden", !canCall);
+    }
+    if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.configure === "function") {
+      window.CCRCVoiceCall.configure({
+        role: "customer",
+        bookingRef: b.booking_code,
+        bookingCode: b.booking_code,
+        peerName: b.rider_name || "Club Rider",
+        peerPhone: b.rider_phone || "",
+        peerRoleLabel: "Club Rider",
+        canCall: canCall,
+        onFallbackVoiceNote: () => {
+          const section = document.getElementById("chat-section");
+          if (section) section.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (chatVoiceBtn) chatVoiceBtn.focus();
+        },
+      });
+    }
+  }
+
+  if (inappCallRiderBtn) {
+    inappCallRiderBtn.addEventListener("click", () => {
+      if (window.CCRCVoiceCall) window.CCRCVoiceCall.startCall();
+    });
+  }
+  if (chatInappCallBtn) {
+    chatInappCallBtn.addEventListener("click", () => {
+      if (window.CCRCVoiceCall) window.CCRCVoiceCall.startCall();
+    });
+  }
 
   let map;
   let pickupMarker = null;
@@ -417,6 +462,8 @@
         }
       }
 
+      syncCustomerVoiceCallContext(b);
+
       if (b.status === "completed" || b.status === "cancelled") {
         if (livePollTimer) {
           clearInterval(livePollTimer);
@@ -462,11 +509,14 @@
   }
 
   function appendChatMessage(msg, isSelf) {
+    if (!chatMessagesBox) return;
+    if (msg.id && chatMessagesBox.querySelector(`[data-msg-id="${msg.id}"]`)) return;
     if (chatEmptyHint) chatEmptyHint.style.display = "none";
 
     const isSystem = msg.sender_role === "system";
     const wrap = document.createElement("div");
     wrap.className = `chat-bubble-wrap ${isSystem ? "system" : (isSelf ? "self" : "other")}`;
+    if (msg.id) wrap.dataset.msgId = String(msg.id);
 
     const sender = isSystem
       ? (msg.sender_name || "CCRC Dispatch")
@@ -474,10 +524,27 @@
     const roleIcon = isSystem ? "🚨" : (isSelf ? "👤" : "🛵");
     const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
 
+    let bodyHtml = "";
+    const safeMediaUrl = typeof msg.media_url === "string" && msg.media_url.startsWith("/") ? msg.media_url : "";
+    if (msg.msg_type === "voice" && safeMediaUrl) {
+      const rawDur = Number(msg.media_duration || 0);
+      const durMins = Math.floor(rawDur / 60);
+      const durSecs = Math.round(rawDur % 60);
+      const durLabel = rawDur > 0 ? ` (${durMins}:${String(durSecs).padStart(2, "0")})` : "";
+      bodyHtml = `
+        <div class="chat-voice-bubble-body">
+          <span class="chat-voice-label"><span>🎤 Voice Message</span>${escapeHtml(durLabel)}</span>
+          <audio controls preload="metadata" src="${escapeHtml(safeMediaUrl)}" class="chat-voice-player"></audio>
+        </div>
+      `;
+    } else {
+      bodyHtml = escapeHtml(msg.message);
+    }
+
     wrap.innerHTML = `
       <span class="chat-sender-label">${roleIcon} ${escapeHtml(sender)}</span>
       <div class="chat-bubble">
-        ${escapeHtml(msg.message)}
+        ${bodyHtml}
         <span class="chat-time">${timeStr}</span>
       </div>
     `;
@@ -498,7 +565,7 @@
             lastMessageId = msg.id;
             const isSelf = (msg.sender_role === "customer");
             appendChatMessage(msg, isSelf);
-            if (!isSelf) hasIncomingFromOther = true;
+            if (!isSelf && msg.sender_name !== "CCRC Call") hasIncomingFromOther = true;
           }
         }
         if (hasIncomingFromOther) {
@@ -550,6 +617,28 @@
       if (msg) sendCustomerMessage(msg);
     });
   });
+
+  if (chatVoiceBtn && window.CCRCVoiceCall && typeof window.CCRCVoiceCall.bindVoiceRecorder === "function") {
+    window.CCRCVoiceCall.bindVoiceRecorder({
+      triggerBtn: chatVoiceBtn,
+      barEl: chatVoiceBar,
+      timerEl: chatVoiceTimer,
+      cancelBtn: chatVoiceCancelBtn,
+      sendBtn: chatVoiceSendBtn,
+      getUploadUrl: () => `/api/chat/${encodeURIComponent(booking.booking_code)}/voice?after=${lastMessageId}`,
+      onUploaded: (data) => {
+        const list = (data && Array.isArray(data.messages) && data.messages.length > 0)
+          ? data.messages
+          : (data && data.message ? [data.message] : []);
+        for (const m of list) {
+          if (m && m.id > lastMessageId) {
+            lastMessageId = m.id;
+            appendChatMessage(m, m.sender_role === "customer");
+          }
+        }
+      },
+    });
+  }
 
   // Share Live GPS
   const shareBtn = document.getElementById("share-gps-btn");
@@ -666,6 +755,7 @@
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
     pollChatMessages();
+    syncCustomerVoiceCallContext(booking);
     if (booking.status !== "completed" && booking.status !== "cancelled") {
       livePollTimer = setInterval(pollLiveStatus, 3000);
       chatPollTimer = setInterval(pollChatMessages, 2500);
