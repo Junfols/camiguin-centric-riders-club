@@ -53,10 +53,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v3
+        # 2. Service Worker v4
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
-        self.assertIn("ccrc-pwa-v3", sw_resp.get_data(as_text=True))
+        sw_text = sw_resp.get_data(as_text=True)
+        self.assertIn("ccrc-pwa-v4", sw_text)
+        self.assertIn("/static/js/app.js?v=28", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")

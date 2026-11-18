@@ -2478,8 +2478,8 @@
     }
   });
 
-  // Handle typing inside Pickup and Dropoff inputs without overwriting user text mid-type
-  function handleTypedAddress(isPickup, isCommit) {
+  // Resolve coordinates on explicit commit (Enter / blur after typing) WITHOUT overwriting user text
+  function handleTypedAddress(isPickup, shouldFlyMap) {
     const input = isPickup ? pickupInput : dropoffInput;
     const latInput = isPickup ? pickupLatInput : dropoffLatInput;
     const lngInput = isPickup ? pickupLngInput : dropoffLngInput;
@@ -2492,64 +2492,63 @@
       return;
     }
 
-    if (text.length >= 2) {
-      const textLower = text.toLowerCase();
-      const found = matchCamiguinPlace(text);
-      const isExact =
-        found &&
-        (found.name.toLowerCase() === textLower ||
-          (found.keywords || []).some((k) => k.toLowerCase() === textLower));
+    // If coordinates were already set via dropdown click/map pin/chip, just recalculate
+    if (latInput && lngInput && latInput.value && lngInput.value) {
+      recalculateFare();
+      return;
+    }
 
-      // Only pin automatically while typing if it's an exact match, or when user commits (change/Enter)
-      if (found && (isExact || isCommit)) {
+    if (text.length >= 3) {
+      const found = matchCamiguinPlace(text);
+      if (found) {
         if (isPickup) {
           pickupLatInput.value = found.lat;
           pickupLngInput.value = found.lng;
-          setPickupPoint(found.lat, found.lng, isCommit ? found.name : null);
-          if (map) {
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }
+          // Pass null as label so the user's typed text is NEVER auto-replaced
+          setPickupPoint(found.lat, found.lng, null);
           if (pickupMarker) {
-            pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(found.name)}`).openPopup();
+            pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(text)}`);
+            if (shouldFlyMap) pickupMarker.openPopup();
           }
-          showMapToast(`🟢 Pickup pinned at: ${found.name}`);
+          if (shouldFlyMap && map) {
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+            showMapToast(`🟢 Pickup pinned near: ${found.name}`);
+          }
         } else {
           dropoffLatInput.value = found.lat;
           dropoffLngInput.value = found.lng;
-          setDropoffPoint(found.lat, found.lng, isCommit ? found.name : null);
-          if (map) {
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }
+          // Pass null as label so the user's typed text is NEVER auto-replaced
+          setDropoffPoint(found.lat, found.lng, null);
           if (dropoffMarker) {
-            dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(found.name)}`).openPopup();
+            dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(text)}`);
+            if (shouldFlyMap) dropoffMarker.openPopup();
           }
-          showMapToast(`🏁 Drop-off pinned at: ${found.name}`);
+          if (shouldFlyMap && map) {
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+            showMapToast(`🏁 Drop-off pinned near: ${found.name}`);
+          }
         }
         updateRouteLine();
         return;
       }
     }
 
-    if (isCommit) {
-      recalculateFare();
-    }
+    recalculateFare();
   }
-
-  let pickupTypeTimer = null;
-  let dropoffTypeTimer = null;
 
   if (pickupInput) {
     pickupInput.addEventListener("input", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      // Clear stale coordinates whenever user edits the address text
+      // Clear stale coordinates whenever user edits the address text, without auto-inserting
       if (pickupLatInput) pickupLatInput.value = "";
       if (pickupLngInput) pickupLngInput.value = "";
-      clearTimeout(pickupTypeTimer);
-      pickupTypeTimer = setTimeout(() => handleTypedAddress(true, false), 250);
     });
     pickupInput.addEventListener("change", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      handleTypedAddress(true, true);
+      const recentPick = Date.now() - Number(pickupInput.dataset.lastSelectedAt || 0) < 600;
+      if (!recentPick) {
+        handleTypedAddress(true, false);
+      }
     });
     pickupInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -2563,16 +2562,17 @@
   if (dropoffInput) {
     dropoffInput.addEventListener("input", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      // Clear stale coordinates & active chip whenever user edits the address text
+      // Clear stale coordinates & active chip whenever user edits the address text, without auto-inserting
       if (dropoffLatInput) dropoffLatInput.value = "";
       if (dropoffLngInput) dropoffLngInput.value = "";
       document.querySelectorAll(".chip-pill").forEach((p) => p.classList.remove("active"));
-      clearTimeout(dropoffTypeTimer);
-      dropoffTypeTimer = setTimeout(() => handleTypedAddress(false, false), 250);
     });
     dropoffInput.addEventListener("change", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      handleTypedAddress(false, true);
+      const recentPick = Date.now() - Number(dropoffInput.dataset.lastSelectedAt || 0) < 600;
+      if (!recentPick) {
+        handleTypedAddress(false, false);
+      }
     });
     dropoffInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -2688,26 +2688,7 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      // Case A: If user already typed or selected a known place name
-      if (found) {
-        setDropoffPoint(found.lat, found.lng, found.name);
-        if (dropoffMarker) {
-          dropoffMarker.setLatLng([found.lat, found.lng]);
-          dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(found.name)}`).openPopup();
-        }
-        if (map) {
-          setTimeout(() => {
-            map.invalidateSize();
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }, 60);
-        }
-        showMapToast(`🏁 Drop-off pinned at: ${found.name}`);
-        updateRouteLine();
-        recalculateFare();
-        return;
-      }
-
-      // Case B: If existing valid pinned coordinates exist
+      // Case A: If existing valid pinned/selected coordinates exist, center directly on them
       if (dropoffLatInput && dropoffLngInput && dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
         const tLat = parseFloat(dropoffLatInput.value);
         const tLng = parseFloat(dropoffLngInput.value);
@@ -2719,6 +2700,25 @@
           }, 60);
         }
         showMapToast("🏁 Current Drop-off Pin on map");
+        return;
+      }
+
+      // Case B: If user typed a place name without picking from dropdown, center near match without overwriting text
+      if (found) {
+        setDropoffPoint(found.lat, found.lng, null);
+        if (dropoffMarker) {
+          dropoffMarker.setLatLng([found.lat, found.lng]);
+          dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(currentVal || found.name)}`).openPopup();
+        }
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+          }, 60);
+        }
+        showMapToast(`🏁 Drop-off pinned at: ${found.name}`);
+        updateRouteLine();
+        recalculateFare();
         return;
       }
 
@@ -2758,26 +2758,7 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      // Case A: If user already typed or selected a known place
-      if (found) {
-        setPickupPoint(found.lat, found.lng, found.name);
-        if (pickupMarker) {
-          pickupMarker.setLatLng([found.lat, found.lng]);
-          pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(found.name)}`).openPopup();
-        }
-        if (map) {
-          setTimeout(() => {
-            map.invalidateSize();
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }, 60);
-        }
-        showMapToast(`🟢 Pickup pinned at: ${found.name}`);
-        updateRouteLine();
-        recalculateFare();
-        return;
-      }
-
-      // Case B: If existing valid pinned coordinates exist
+      // Case A: If existing valid pinned/selected coordinates exist, center directly on them
       if (pickupLatInput && pickupLngInput && pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
         const tLat = parseFloat(pickupLatInput.value);
         const tLng = parseFloat(pickupLngInput.value);
@@ -2788,7 +2769,26 @@
             if (pickupMarker) pickupMarker.openPopup();
           }, 60);
         }
-        showMapToast(`🟢 Current Pickup Pin on map`);
+        showMapToast("🟢 Current Pickup Pin on map");
+        return;
+      }
+
+      // Case B: If user typed a place name without picking from dropdown, center near match without overwriting text
+      if (found) {
+        setPickupPoint(found.lat, found.lng, null);
+        if (pickupMarker) {
+          pickupMarker.setLatLng([found.lat, found.lng]);
+          pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(currentVal || found.name)}`).openPopup();
+        }
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+          }, 60);
+        }
+        showMapToast(`🟢 Pickup pinned at: ${found.name}`);
+        updateRouteLine();
+        recalculateFare();
         return;
       }
 
@@ -2806,10 +2806,50 @@
     pinPickupMapBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   }
 
-  // Autocomplete Dropdown Search & Instant Pinning
+  // Autocomplete Dropdown Search & Explicit-Click Pinning
   function setupPlacesAutocomplete(inputEl, dropdownEl, isPickup) {
     if (!inputEl || !dropdownEl) return;
     let debounceTimer = null;
+    let blurHideTimer = null;
+    let isTouchingDropdown = false;
+    let touchMovedInDropdown = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    dropdownEl.addEventListener("mousedown", (e) => {
+      // Keep focus in input on desktop mouse click so blur/change don't race before click
+      e.preventDefault();
+    });
+
+    dropdownEl.addEventListener("touchstart", (e) => {
+      isTouchingDropdown = true;
+      touchMovedInDropdown = false;
+      const t = e.touches && e.touches[0];
+      if (t) {
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+      }
+      clearTimeout(blurHideTimer);
+    }, { passive: true });
+
+    dropdownEl.addEventListener("touchmove", (e) => {
+      const t = e.touches && e.touches[0];
+      if (t && (Math.abs(t.clientX - touchStartX) > 10 || Math.abs(t.clientY - touchStartY) > 10)) {
+        touchMovedInDropdown = true;
+      }
+    }, { passive: true });
+
+    dropdownEl.addEventListener("touchend", () => {
+      setTimeout(() => {
+        isTouchingDropdown = false;
+      }, 350);
+    }, { passive: true });
+
+    document.addEventListener("click", (e) => {
+      if (e.target !== inputEl && !dropdownEl.contains(e.target)) {
+        dropdownEl.classList.add("hidden");
+      }
+    });
 
     async function searchAndRender() {
       const q = inputEl.value.trim();
@@ -2828,7 +2868,8 @@
           const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
           if (res.ok) {
             const data = await res.json();
-            if (data && data.places && data.places.length > 0) {
+            const justSelected = Date.now() - Number(inputEl.dataset.lastSelectedAt || 0) < 600;
+            if (data && data.places && data.places.length > 0 && inputEl.value.trim() === q && !justSelected) {
               const seen = new Set(localMatches.map((m) => m.name.toLowerCase()));
               for (const item of data.places) {
                 if (!seen.has(item.name.toLowerCase())) {
@@ -2891,7 +2932,11 @@
       dropdownEl.classList.remove("hidden");
 
       dropdownEl.querySelectorAll(".places-item").forEach((el, idx) => {
-        const handleSelect = (e) => {
+        el.addEventListener("click", (e) => {
+          if (touchMovedInDropdown) {
+            touchMovedInDropdown = false;
+            return;
+          }
           if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -2899,10 +2944,11 @@
           const item = items[idx];
           if (!item) return;
 
+          inputEl.dataset.lastSelectedAt = String(Date.now());
           inputEl.value = item.name;
           dropdownEl.classList.add("hidden");
 
-          // MUDIRITSO DAYUN PAG PIN ANG MAP SA EXACT PLACE!
+          // Pin exact selected place on map ONLY after explicit click
           if (isPickup) {
             pickupLatInput.value = item.lat;
             pickupLngInput.value = item.lng;
@@ -2926,11 +2972,7 @@
           showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} pinned at: ${item.name}`);
           updateRouteLine();
           recalculateFare();
-        };
-
-        el.addEventListener("pointerdown", handleSelect);
-        el.addEventListener("mousedown", handleSelect);
-        el.addEventListener("click", handleSelect);
+        });
       });
     }
 
@@ -2944,7 +2986,12 @@
     });
 
     inputEl.addEventListener("blur", () => {
-      setTimeout(() => dropdownEl.classList.add("hidden"), 350);
+      clearTimeout(blurHideTimer);
+      blurHideTimer = setTimeout(() => {
+        if (!isTouchingDropdown) {
+          dropdownEl.classList.add("hidden");
+        }
+      }, 320);
     });
   }
 
