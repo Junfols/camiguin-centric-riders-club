@@ -10,6 +10,7 @@ import math
 import os
 import queue
 import random
+import re
 import secrets
 import sqlite3
 import string
@@ -739,8 +740,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "711 balbagon",
             "7 eleven port"
         ],
-        "lat": 9.2558,
-        "lng": 124.7169,
+        "lat": 9.2430,
+        "lng": 124.7370,
         "mun": "Mambajao"
     },
     {
@@ -1123,8 +1124,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "pantalan",
             "pantalan balbagon"
         ],
-        "lat": 9.2561,
-        "lng": 124.7175,
+        "lat": 9.24292,
+        "lng": 124.73730,
         "mun": "Mambajao"
     },
     {
@@ -1275,8 +1276,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "sto ni\u00f1o",
             "bugnaw spring"
         ],
-        "lat": 9.155,
-        "lng": 124.655,
+        "lat": 9.15010,
+        "lng": 124.67371,
         "mun": "Catarman"
     },
     {
@@ -1302,8 +1303,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "lubnganan",
             "krus"
         ],
-        "lat": 9.201,
-        "lng": 124.63,
+        "lat": 9.20660,
+        "lng": 124.63260,
         "mun": "Catarman"
     },
     {
@@ -1522,8 +1523,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "brgy balbagon",
             "barangay balbagon"
         ],
-        "lat": 9.254,
-        "lng": 124.714,
+        "lat": 9.24340,
+        "lng": 124.73370,
         "mun": "Mambajao"
     },
     {
@@ -2254,57 +2255,70 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
 ]
 
 
+def _normalize_place_tokens(text: str) -> list[str]:
+    cleaned = re.sub(r"[,()\-/&.]+", " ", (text or "").lower())
+    return [w for w in cleaned.split() if w]
+
+
 def search_camiguin_places(query: str, limit: int = 10) -> list[dict[str, Any]]:
     """
     Comprehensive island search: all 57 barangays, stores, supermarkets, pharmacies, streets,
     buildings, resorts, ports, schools, hospitals, tourist spots.
-    Uses multi-stage token & keyword matching for 100% pinpoint accuracy.
+    Uses scored multi-stage token & keyword matching for pinpoint accuracy.
     """
     if not query:
         return []
     q = query.strip().lower()
-    q_words = [w for w in q.replace(",", " ").replace("-", " ").split() if w]
-    results: list[dict[str, Any]] = []
+    q_words = _normalize_place_tokens(q)
+    scored: list[tuple[int, int, dict[str, Any]]] = []
     seen_names: set[str] = set()
 
-    # 1. Exact match on place name or keywords
-    for p in CAMIGUIN_KNOWN_PLACES:
+    for idx, p in enumerate(CAMIGUIN_KNOWN_PLACES):
         name_lower = p["name"].lower()
-        if q == name_lower or any(q == kw for kw in p.get("keywords", [])):
+        kws = [kw.lower() for kw in p.get("keywords", [])]
+        mun_lower = (p.get("mun") or "").lower()
+        cat_lower = (p.get("cat") or "").lower()
+        score = 0
+
+        if q == name_lower:
+            score = 1000
+        elif any(q == kw for kw in kws):
+            score = 900
+        elif name_lower.startswith(q):
+            score = 750
+        elif any(kw.startswith(q) for kw in kws):
+            score = 650
+        elif q_words:
+            name_words = set(_normalize_place_tokens(name_lower))
+            mun_words = set(_normalize_place_tokens(mun_lower))
+            all_kw_words: set[str] = set()
+            for kw in kws:
+                all_kw_words.update(_normalize_place_tokens(kw))
+            all_words = name_words | all_kw_words | mun_words
+            if all(any(qw == nw or nw.startswith(qw) for nw in all_words) for qw in q_words):
+                # Prefer matches where all words hit name+keywords over mun-assisted hits
+                if all(any(qw == nw or nw.startswith(qw) for nw in (name_words | all_kw_words)) for qw in q_words):
+                    score = 520
+                else:
+                    score = 480
+            elif len(q) >= 3 and (q in name_lower or any(q in kw for kw in kws)):
+                score = 300
+        elif len(q) >= 3 and (q in name_lower or any(q in kw for kw in kws)):
+            score = 300
+
+        if score > 0:
+            # When searching a town/barangay name (e.g. "Mambajao", "Catarman", "Yumbing"),
+            # prioritize barangay/town center & transport hubs over generic schools/stores
+            if cat_lower == "barangay":
+                score += 40
+            elif cat_lower in ("transport", "tourist", "building", "hospital"):
+                score += 15
             if p["name"] not in seen_names:
-                results.append(p)
+                scored.append((score, -idx, p))
                 seen_names.add(p["name"])
 
-    # 2. Starts with query
-    for p in CAMIGUIN_KNOWN_PLACES:
-        name_lower = p["name"].lower()
-        if name_lower.startswith(q) or any(kw.startswith(q) for kw in p.get("keywords", [])):
-            if p["name"] not in seen_names:
-                results.append(p)
-                seen_names.add(p["name"])
-
-    # 3. Whole-word / token matching
-    for p in CAMIGUIN_KNOWN_PLACES:
-        name_lower = p["name"].lower()
-        name_words = set(name_lower.replace(",", " ").replace("-", " ").split())
-        all_kw_words = set()
-        for kw in p.get("keywords", []):
-            for w in kw.replace("-", " ").split():
-                all_kw_words.add(w)
-
-        if all(any(qw == nw or nw.startswith(qw) for nw in name_words.union(all_kw_words)) for qw in q_words):
-            if p["name"] not in seen_names:
-                results.append(p)
-                seen_names.add(p["name"])
-
-    # 4. Fallback substring match (only if query >= 3 chars)
-    if len(q) >= 3 and len(results) < limit:
-        for p in CAMIGUIN_KNOWN_PLACES:
-            name_lower = p["name"].lower()
-            if q in name_lower or any(q in kw for kw in p.get("keywords", [])):
-                if p["name"] not in seen_names:
-                    results.append(p)
-                    seen_names.add(p["name"])
+    scored.sort(reverse=True)
+    results: list[dict[str, Any]] = [item[2] for item in scored[:limit]]
 
     # 5. External OSM Nominatim fallback if fewer than limit
     if len(results) < limit and len(q) >= 3:

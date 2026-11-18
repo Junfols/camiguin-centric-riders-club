@@ -124,7 +124,7 @@
             <div class="route-input-row">
               <label for="pickup-address" class="route-field-label">PICKUP / MEETING POINT</label>
               <div class="route-field-wrap">
-                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off" list="camiguin-places-list">
+                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off">
                 <button type="button" id="clear-pickup-btn" class="input-clear-btn hidden" aria-label="Clear pickup" title="Erase text">✕</button>
                 <div class="route-actions-inline">
                   <button type="button" id="locate-pickup-gps-btn" class="route-mini-btn" title="Use current GPS">📍 My GPS</button>
@@ -142,7 +142,7 @@
             <div class="route-input-row">
               <label for="dropoff-address" class="route-field-label">DESTINATION / DROP-OFF</label>
               <div class="route-field-wrap">
-                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off" list="camiguin-places-list">
+                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off">
                 <button type="button" id="clear-dropoff-btn" class="input-clear-btn hidden" aria-label="Clear dropoff" title="Erase text">✕</button>
                 <div class="route-actions-inline">
                   <button type="button" id="locate-dropoff-gps-btn" class="route-mini-btn" title="Pin on Map">📍 Pin Map</button>
@@ -155,100 +155,20 @@
           </div>
         </div>
 
-        <datalist id="camiguin-places-list">
-          <!-- Gasolinahan -->
-          <option value="Petron Gas Station Mambajao (Balbagon)">
-          <option value="Petron Gas Station Poblacion Mambajao">
-          <option value="Shell Gas Station Mambajao (Tupsan)">
-          <option value="Phoenix Gas Station Mambajao (Lakas)">
-          <option value="Petron Gas Station Catarman">
-          <option value="Petron Gas Station Mahinog (Benoni)">
-          <!-- Schools -->
-          <option value="Mambajao Central School">
-          <option value="Fatima College of Camiguin (FCC)">
-          <option value="Camiguin Polytechnic State College (CPSC / CSU)">
-          <option value="Camiguin National High School (CNHS)">
-          <option value="Yumbing National High School">
-          <!-- Churches -->
-          <option value="San Nicolas de Tolentino Parish Church, Mambajao">
-          <option value="IFI Parish of the Good Shepherd, Mambajao">
-          <option value="Iglesia Ni Cristo (INC), Mambajao">
-          <option value="San Roque Parish Church, Mahinog">
-          <option value="Our Lady of Mount Carmel Parish Church, Catarman">
-          <option value="Holy Rosary Parish Church, Sagay">
-          <option value="Our Lady of Consolation Parish Church, Guinsiliban">
-          <!-- Restaurants & Cafes -->
-          <option value="Moonflower Garden and Restaurant, Baylao">
-          <option value="Samuel Restaurant, Mambajao (Placido Reyes St)">
-          <option value="Kurma Eco Restaurant & Cafe, Yumbing">
-          <option value="Julie's Bakeshop, Mambajao">
-          <option value="Goldilocks Bakeshop, Mambajao">
-          <option value="CheckPoint Food Park, Mambajao">
-          <option value="Jollibee Camiguin, Mambajao (Burgos St)">
-          <option value="Gaisano Capital Camiguin (Placido Reyes St)">
-          <option value="Placido Reyes Street, Mambajao">
-          <option value="Burgos Street, Mambajao">
-          <option value="Bonifacio Aranas Street, Mambajao">
-          <option value="Plaridel Street, Mambajao">
-          <option value="Rizal Street, Mambajao">
-          <option value="Mabini Street, Mambajao">
-          <option value="Mambajao Public Market">
-          <option value="7-Eleven Mambajao Town Center">
-          <option value="Balbagon Port (FastCat)">
-          <option value="Benoni Passenger Terminal, Mahinog">
-          <option value="Benoni Port / Ferry Wharf, Mahinog">
-          <option value="Boloc-boloc, Mambajao">
-          <option value="Sa-ay Cold Spring, Mambajao">
-          <option value="Baylao, Mambajao">
-          <option value="Gaisano Capital Camiguin">
-          <option value="Davilett Store, Mambajao">
-          <option value="Nene Uy Store, Mambajao">
-          <option value="7-Eleven Mambajao">
-          <option value="Mambajao Public Market">
-          <option value="Mambajao Town Plaza">
-          <option value="Balbagon Port (FastCat)">
-          <option value="Benoni Passenger Terminal, Mahinog">
-          <option value="Benoni Port / Ferry Wharf, Mahinog">
-          <option value="Camiguin Airport">
-          <option value="Camiguin General Hospital">
-          <option value="Provincial Capitol, Mambajao">
-          <option value="Agoho, Mambajao">
-          <option value="Yumbing, Mambajao">
-          <option value="Paras Beach Resort, Yumbing">
-          <option value="Balyali Beach Resort, Yumbing">
-          <option value="White Island Boat Jump-off">
-          <option value="Tongatok Cliff Resort">
-          <option value="Lanzones Resort, Mambajao">
-          <option value="Camiguin Highland Resort / Soro-soro">
-          <option value="Katibawasan Falls">
-          <option value="Ardent Hot Spring">
-          <option value="Sunken Cemetery, Catarman">
-          <option value="Old Church Ruins, Bonbon">
-          <option value="Tuasan Falls, Catarman">
-          <option value="Sto. Niño Cold Spring, Catarman">
-          <option value="Bura Soda Water Park, Catarman">
-          <option value="Mantigue Island Jump-off, Mahinog">
-          <option value="Taguines Lagoon, Mahinog">
-          <option value="Poblacion Mahinog">
-          <option value="Poblacion Catarman">
-          <option value="Poblacion Sagay">
-          <option value="Poblacion Guinsiliban">
-        </datalist>
-
         <!-- Quick Destination Pills -->
         <div class="landmarks-clean-box">
           <span class="landmarks-clean-title">Popular Destinations:</span>
           <div class="landmark-chips-scroll" id="quick-landmark-chips">
             <button type="button" class="chip-pill" data-name="Jollibee Camiguin, Mambajao" data-lat="9.24971" data-lng="124.71667">🍔 Jollibee Camiguin</button>
             <button type="button" class="chip-pill" data-name="Gaisano Capital Camiguin (Placido Reyes St)" data-lat="9.25290" data-lng="124.71613">🛒 Gaisano (Placido Reyes St)</button>
-            <button type="button" class="chip-pill" data-name="Benoni Port (Mahinog)" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
-            <button type="button" class="chip-pill" data-name="Balbagon Port (Mambajao)" data-lat="9.2561" data-lng="124.7175">⛴️ Balbagon Port</button>
-            <button type="button" class="chip-pill" data-name="White Island Boat Jump-off" data-lat="9.2538" data-lng="124.6532">🏝️ White Island</button>
-            <button type="button" class="chip-pill" data-name="Paras Beach Resort (Yumbing)" data-lat="9.2553" data-lng="124.6468">🏖️ Paras Beach</button>
+            <button type="button" class="chip-pill" data-name="Benoni Port / Ferry Wharf, Mahinog" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
+            <button type="button" class="chip-pill" data-name="Balbagon Port (FastCat &amp; Ferry Wharf)" data-lat="9.24292" data-lng="124.73730">⛴️ Balbagon Port</button>
+            <button type="button" class="chip-pill" data-name="White Island Boat Jump-off, Yumbing" data-lat="9.2538" data-lng="124.6532">🏝️ White Island</button>
+            <button type="button" class="chip-pill" data-name="Paras Beach Resort, Yumbing" data-lat="9.2553" data-lng="124.6468">🏖️ Paras Beach</button>
             <button type="button" class="chip-pill" data-name="Camiguin Airport" data-lat="9.2530" data-lng="124.7061">✈️ Airport</button>
             <button type="button" class="chip-pill" data-name="Mambajao Public Market" data-lat="9.25319" data-lng="124.71660">🏪 Market</button>
             <button type="button" class="chip-pill" data-name="Katibawasan Falls" data-lat="9.2152" data-lng="124.7188">💧 Katibawasan</button>
-            <button type="button" class="chip-pill" data-name="Sunken Cemetery, Catarman" data-lat="9.2025" data-lng="124.6300">⚓ Sunken Cemetery</button>
+            <button type="button" class="chip-pill" data-name="Sunken Cemetery &amp; Giant Cross, Bonbon" data-lat="9.20660" data-lng="124.63260">⚓ Sunken Cemetery</button>
           </div>
         </div>
 

@@ -1268,6 +1268,38 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         )
         self.assertEqual(with_csrf.status_code, 400)
 
+    def test_place_search_accuracy_and_coordinates(self):
+        from db import geocode_camiguin_location, search_camiguin_places
+
+        # Balbagon Port & Barangay Balbagon must resolve to Balbagon east coast (~124.733-124.737), not Poblacion
+        balbagon_port = geocode_camiguin_location("Balbagon Port")
+        self.assertIsNotNone(balbagon_port)
+        self.assertIn("Balbagon Port", balbagon_port["name"])
+        self.assertGreater(balbagon_port["lng"], 124.73)
+
+        balbagon_brgy = geocode_camiguin_location("Balbagon")
+        self.assertIsNotNone(balbagon_brgy)
+        self.assertEqual(balbagon_brgy["name"], "Balbagon, Mambajao")
+        self.assertGreater(balbagon_brgy["lng"], 124.73)
+
+        # Municipality/barangay queries should not be hijacked by schools/restaurants
+        self.assertNotIn("School", geocode_camiguin_location("Mambajao")["name"])
+        self.assertNotIn("School", geocode_camiguin_location("Catarman")["name"])
+        self.assertEqual(geocode_camiguin_location("Yumbing")["name"], "Yumbing, Mambajao")
+
+        # Municipality-qualified & punctuated queries must match cleanly
+        sunken = geocode_camiguin_location("Sunken Cemetery, Catarman")
+        self.assertIsNotNone(sunken)
+        self.assertIn("Sunken Cemetery", sunken["name"])
+
+        # /api/places/search returns ranked results
+        resp = self.client.get("/api/places/search?q=Balbagon%20Port")
+        self.assertEqual(resp.status_code, 200)
+        places = resp.get_json()["places"]
+        self.assertTrue(len(places) >= 1)
+        self.assertIn("Balbagon Port", places[0]["name"])
+        self.assertTrue(any("Balbagon" in p["name"] for p in search_camiguin_places("Balbagon", limit=5)))
+
 
 if __name__ == "__main__":
     unittest.main()

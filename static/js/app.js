@@ -773,8 +773,8 @@
       "711 balbagon",
       "7 eleven port"
     ],
-    "lat": 9.2558,
-    "lng": 124.7169,
+    "lat": 9.2430,
+    "lng": 124.7370,
     "mun": "Mambajao"
   },
   {
@@ -1157,8 +1157,8 @@
       "pantalan",
       "pantalan balbagon"
     ],
-    "lat": 9.2561,
-    "lng": 124.7175,
+    "lat": 9.24292,
+    "lng": 124.73730,
     "mun": "Mambajao"
   },
   {
@@ -1309,8 +1309,8 @@
       "sto ni\u00f1o",
       "bugnaw spring"
     ],
-    "lat": 9.155,
-    "lng": 124.655,
+    "lat": 9.15010,
+    "lng": 124.67371,
     "mun": "Catarman"
   },
   {
@@ -1336,8 +1336,8 @@
       "lubnganan",
       "krus"
     ],
-    "lat": 9.201,
-    "lng": 124.63,
+    "lat": 9.20660,
+    "lng": 124.63260,
     "mun": "Catarman"
   },
   {
@@ -1556,8 +1556,8 @@
       "brgy balbagon",
       "barangay balbagon"
     ],
-    "lat": 9.254,
-    "lng": 124.714,
+    "lat": 9.24340,
+    "lng": 124.73370,
     "mun": "Mambajao"
   },
   {
@@ -2287,50 +2287,72 @@
   }
 ];
 
-    function matchCamiguinPlace(str) {
-    if (!str) return null;
+  function normalizePlaceTokens(text) {
+    return (text || "")
+      .toLowerCase()
+      .replace(/[,()\-/&.]+/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+  }
+
+  function searchCamiguinPlacesLocal(str, limit = 10) {
+    if (!str) return [];
     const s = str.trim().toLowerCase();
-    const qWords = s.replace(/,/g, " ").replace(/-/g, " ").split(/\s+/).filter(Boolean);
+    if (!s) return [];
+    const qWords = normalizePlaceTokens(s);
+    const scored = [];
 
-    // 1. Exact match on name or keywords
-    for (const p of CAMIGUIN_PLACES) {
-      if (s === p.name.toLowerCase()) return p;
-      for (const k of p.keywords) {
-        if (s === k.toLowerCase()) return p;
-      }
-    }
+    for (let idx = 0; idx < CAMIGUIN_PLACES.length; idx++) {
+      const p = CAMIGUIN_PLACES[idx];
+      const nameLower = p.name.toLowerCase();
+      const kws = (p.keywords || []).map((k) => k.toLowerCase());
+      const munLower = (p.mun || "").toLowerCase();
+      const catLower = (p.cat || "").toLowerCase();
+      let score = 0;
 
-    // 2. Starts with query
-    for (const p of CAMIGUIN_PLACES) {
-      if (p.name.toLowerCase().startsWith(s)) return p;
-      for (const k of p.keywords) {
-        if (k.toLowerCase().startsWith(s)) return p;
-      }
-    }
+      if (s === nameLower) {
+        score = 1000;
+      } else if (kws.some((k) => s === k)) {
+        score = 900;
+      } else if (nameLower.startsWith(s)) {
+        score = 750;
+      } else if (kws.some((k) => k.startsWith(s))) {
+        score = 650;
+      } else if (qWords.length > 0) {
+        const nameWords = new Set(normalizePlaceTokens(nameLower));
+        const munWords = new Set(normalizePlaceTokens(munLower));
+        const kwWords = new Set();
+        kws.forEach((k) => normalizePlaceTokens(k).forEach((w) => kwWords.add(w)));
+        const nameAndKw = new Set([...nameWords, ...kwWords]);
+        const allWords = new Set([...nameAndKw, ...munWords]);
 
-    // 3. Word token matching
-    for (const p of CAMIGUIN_PLACES) {
-      const nameWords = new Set(p.name.toLowerCase().replace(/,/g, " ").replace(/-/g, " ").split(/\s+/).filter(Boolean));
-      const kwWords = new Set();
-      p.keywords.forEach(k => k.toLowerCase().replace(/-/g, " ").split(/\s+/).forEach(w => kwWords.add(w)));
-
-      const allWords = new Set([...nameWords, ...kwWords]);
-      if (qWords.every(qw => [...allWords].some(nw => nw === qw || nw.startsWith(qw)))) {
-        return p;
-      }
-    }
-
-    // 4. Substring fallback (if input length >= 3)
-    if (s.length >= 3) {
-      for (const p of CAMIGUIN_PLACES) {
-        if (p.name.toLowerCase().includes(s)) return p;
-        for (const k of p.keywords) {
-          if (k.toLowerCase().includes(s)) return p;
+        if (qWords.every((qw) => [...allWords].some((nw) => nw === qw || nw.startsWith(qw)))) {
+          if (qWords.every((qw) => [...nameAndKw].some((nw) => nw === qw || nw.startsWith(qw)))) {
+            score = 520;
+          } else {
+            score = 480;
+          }
+        } else if (s.length >= 3 && (nameLower.includes(s) || kws.some((k) => k.includes(s)))) {
+          score = 300;
         }
+      } else if (s.length >= 3 && (nameLower.includes(s) || kws.some((k) => k.includes(s)))) {
+        score = 300;
+      }
+
+      if (score > 0) {
+        if (catLower === "barangay") score += 40;
+        else if (catLower === "transport" || catLower === "tourist" || catLower === "building" || catLower === "hospital") score += 15;
+        scored.push({ place: p, score, idx });
       }
     }
 
-    return null;
+    scored.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - b.idx));
+    return scored.slice(0, limit).map((item) => item.place);
+  }
+
+  function matchCamiguinPlace(str) {
+    const matches = searchCamiguinPlacesLocal(str, 1);
+    return matches.length > 0 ? matches[0] : null;
   }
 
   function getNearestCamiguinPlace(lat, lng) {
@@ -2456,64 +2478,108 @@
     }
   });
 
-  // Handle typing inside Pickup and Dropoff inputs with immediate map center & flyTo!
-  function handleTypedAddress(isPickup) {
+  // Handle typing inside Pickup and Dropoff inputs without overwriting user text mid-type
+  function handleTypedAddress(isPickup, isCommit) {
     const input = isPickup ? pickupInput : dropoffInput;
-    const text = input.value.trim();
+    const latInput = isPickup ? pickupLatInput : dropoffLatInput;
+    const lngInput = isPickup ? pickupLngInput : dropoffLngInput;
+    const text = input ? input.value.trim() : "";
+
+    if (!text) {
+      if (latInput) latInput.value = "";
+      if (lngInput) lngInput.value = "";
+      recalculateFare();
+      return;
+    }
+
     if (text.length >= 2) {
+      const textLower = text.toLowerCase();
       const found = matchCamiguinPlace(text);
-      if (found) {
+      const isExact =
+        found &&
+        (found.name.toLowerCase() === textLower ||
+          (found.keywords || []).some((k) => k.toLowerCase() === textLower));
+
+      // Only pin automatically while typing if it's an exact match, or when user commits (change/Enter)
+      if (found && (isExact || isCommit)) {
         if (isPickup) {
           pickupLatInput.value = found.lat;
           pickupLngInput.value = found.lng;
-          setPickupPoint(found.lat, found.lng, found.name);
+          setPickupPoint(found.lat, found.lng, isCommit ? found.name : null);
           if (map) {
             map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
           }
           if (pickupMarker) {
             pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(found.name)}`).openPopup();
           }
-          showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
+          showMapToast(`🟢 Pickup pinned at: ${found.name}`);
         } else {
           dropoffLatInput.value = found.lat;
           dropoffLngInput.value = found.lng;
-          setDropoffPoint(found.lat, found.lng, found.name);
+          setDropoffPoint(found.lat, found.lng, isCommit ? found.name : null);
           if (map) {
             map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
           }
           if (dropoffMarker) {
             dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(found.name)}`).openPopup();
           }
-          showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
+          showMapToast(`🏁 Drop-off pinned at: ${found.name}`);
         }
         updateRouteLine();
+        return;
       }
     }
-    recalculateFare();
+
+    if (isCommit) {
+      recalculateFare();
+    }
   }
 
-  let typeTimer = null;
+  let pickupTypeTimer = null;
+  let dropoffTypeTimer = null;
+
   if (pickupInput) {
     pickupInput.addEventListener("input", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      clearTimeout(typeTimer);
-      typeTimer = setTimeout(() => handleTypedAddress(true), 250);
+      // Clear stale coordinates whenever user edits the address text
+      if (pickupLatInput) pickupLatInput.value = "";
+      if (pickupLngInput) pickupLngInput.value = "";
+      clearTimeout(pickupTypeTimer);
+      pickupTypeTimer = setTimeout(() => handleTypedAddress(true, false), 250);
     });
     pickupInput.addEventListener("change", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      handleTypedAddress(true);
+      handleTypedAddress(true, true);
+    });
+    pickupInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (pickupSuggestions) pickupSuggestions.classList.add("hidden");
+        handleTypedAddress(true, true);
+      }
     });
   }
 
   if (dropoffInput) {
     dropoffInput.addEventListener("input", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      clearTimeout(typeTimer);
-      typeTimer = setTimeout(() => handleTypedAddress(false), 250);
+      // Clear stale coordinates & active chip whenever user edits the address text
+      if (dropoffLatInput) dropoffLatInput.value = "";
+      if (dropoffLngInput) dropoffLngInput.value = "";
+      document.querySelectorAll(".chip-pill").forEach((p) => p.classList.remove("active"));
+      clearTimeout(dropoffTypeTimer);
+      dropoffTypeTimer = setTimeout(() => handleTypedAddress(false, false), 250);
     });
     dropoffInput.addEventListener("change", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      handleTypedAddress(false);
+      handleTypedAddress(false, true);
+    });
+    dropoffInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (dropoffSuggestions) dropoffSuggestions.classList.add("hidden");
+        handleTypedAddress(false, true);
+      }
     });
   }
   // Clear 'X' Button Handlers for Pickup and Drop-off
@@ -2545,7 +2611,7 @@
       if (pickupInput) pickupInput.focus();
       updateRouteLine();
       recalculateFare();
-      showMapToast("Pickup na-erase na.");
+      showMapToast("Pickup cleared.");
     });
   }
 
@@ -2578,7 +2644,7 @@
       if (dropoffInput) dropoffInput.focus();
       updateRouteLine();
       recalculateFare();
-      showMapToast("Drop-off na-erase na.");
+      showMapToast("Drop-off cleared.");
     });
   }
 
@@ -2635,7 +2701,7 @@
             map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
           }, 60);
         }
-        showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
+        showMapToast(`🏁 Drop-off pinned at: ${found.name}`);
         updateRouteLine();
         recalculateFare();
         return;
@@ -2652,7 +2718,7 @@
             if (dropoffMarker) dropoffMarker.openPopup();
           }, 60);
         }
-        showMapToast(`🏁 Kasamtangang Drop-off Pin sa mapa`);
+        showMapToast("🏁 Current Drop-off Pin on map");
         return;
       }
 
@@ -2753,15 +2819,7 @@
         return;
       }
 
-      const qLower = q.toLowerCase();
-      const localMatches = [];
-      for (const p of CAMIGUIN_PLACES) {
-        const nLower = p.name.toLowerCase();
-        if (nLower.includes(qLower) || p.keywords.some((k) => k.includes(qLower) || qLower.includes(k))) {
-          localMatches.push(p);
-          if (localMatches.length >= 8) break;
-        }
-      }
+      const localMatches = searchCamiguinPlacesLocal(q, 8);
 
       renderResults(localMatches);
 
@@ -2865,7 +2923,7 @@
             map.flyTo([item.lat, item.lng], 16, { duration: 0.8 });
           }
 
-          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} Na-pin sa: ${item.name}`);
+          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} pinned at: ${item.name}`);
           updateRouteLine();
           recalculateFare();
         };
