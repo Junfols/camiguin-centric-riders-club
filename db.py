@@ -3828,14 +3828,13 @@ def add_booking_message(
     message: str,
 ) -> dict[str, Any]:
     now = datetime.now().isoformat(timespec="seconds")
-    cur = conn.execute(
+        msg_id = conn.insert_returning_id(
         """
         INSERT INTO booking_messages (booking_id, sender_role, sender_name, message, created_at)
         VALUES (?, ?, ?, ?, ?)
         """,
         (booking_id, sender_role, sender_name, message, now),
     )
-    msg_id = cur.lastrowid
     return {
         "id": msg_id,
         "booking_id": booking_id,
