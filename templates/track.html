@@ -190,6 +190,13 @@
     <div style="text-align:center;padding:10px 0;">
       <span style="font-size:2rem;">⭐</span>
       <h3 style="margin:6px 0 2px;">Rate Your Island Rider</h3>
+      {% if already_reviewed %}
+      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">Your rating and feedback have been recorded.</p>
+      <div id="review-feedback-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">
+        ✓ Thank you very much! Your review has already been submitted.<br>
+        <div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; Back to Dashboard</a></div>
+      </div>
+      {% else %}
       <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
 
       <form id="track-review-form">
@@ -211,6 +218,7 @@
         </button>
         <div id="review-feedback-msg" class="hidden" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;"></div>
       </form>
+      {% endif %}
     </div>
   </div>
 
@@ -340,6 +348,6 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=27"></script>
+<script src="/static/js/track.js?v=28"></script>
 {% endif %}
 {% endblock %}

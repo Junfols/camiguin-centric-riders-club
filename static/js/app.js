@@ -254,7 +254,10 @@
     "keywords": [
       "tagdo",
       "brgy tagdo",
-      "barangay tagdo"
+      "barangay tagdo",
+      "upper tagdo",
+      "hinterland",
+      "tungason"
     ],
     "lat": 9.2384,
     "lng": 124.6885,
@@ -4208,6 +4211,49 @@
     recalculateFare();
   }
 
+  let lastBaseFare = 40;
+  let appliedPromo = null;
+
+  function applyPromoPreviewToFare() {
+    const discountRow = document.getElementById("promo-discount-row");
+    const discountVal = document.getElementById("promo-discount-val");
+    const promoFeedback = document.getElementById("promo-feedback");
+    const baseFare = Math.max(0, Math.round(Number(lastBaseFare || 40)));
+
+    if (!appliedPromo) {
+      if (discountRow) discountRow.classList.add("hidden");
+      if (discountVal) discountVal.textContent = "-₱0";
+      if (fareDisplay) fareDisplay.textContent = String(baseFare);
+      return;
+    }
+
+    const minFare = Number(appliedPromo.min_fare || 0);
+    if (minFare > 0 && baseFare < minFare) {
+      if (discountRow) discountRow.classList.add("hidden");
+      if (discountVal) discountVal.textContent = "-₱0";
+      if (fareDisplay) fareDisplay.textContent = String(baseFare);
+      if (promoFeedback) {
+        promoFeedback.textContent = `✕ Minimum fare of ₱${Math.round(minFare)} required for ${appliedPromo.code}.`;
+        promoFeedback.style.color = "#dc2626";
+        promoFeedback.classList.remove("hidden");
+      }
+      return;
+    }
+
+    const rawDiscount = Math.max(0, Number(appliedPromo.discount_amount || 0));
+    const effectiveDiscount = Math.min(rawDiscount, baseFare);
+    const discountedFare = Math.max(0, Math.round(baseFare - effectiveDiscount));
+
+    if (fareDisplay) fareDisplay.textContent = String(discountedFare);
+    if (discountVal) discountVal.textContent = `-₱${Math.round(effectiveDiscount)}`;
+    if (discountRow) discountRow.classList.remove("hidden");
+    if (promoFeedback) {
+      promoFeedback.textContent = `✓ ₱${Math.round(effectiveDiscount)} discount voucher applied!`;
+      promoFeedback.style.color = "#16a34a";
+      promoFeedback.classList.remove("hidden");
+    }
+  }
+
   let fareReqSeq = 0;
 
   function renderFareBreakdownBadges(breakdown, autoHinterland) {
@@ -4281,7 +4327,8 @@
         routeLine = null;
       }
       currentRoadKm = null;
-      if (fareDisplay) fareDisplay.textContent = "40";
+      lastBaseFare = 40;
+      applyPromoPreviewToFare();
       if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Select Location)";
       renderFareBreakdownBadges(null, false);
       if (optHinterland && optHinterland.dataset.autoApplied === "1" && !optHinterland.dataset.manual) {
@@ -4314,7 +4361,8 @@
       const data = await res.json();
       if (reqId !== fareReqSeq) return;
       if (data && data.fare_amount) {
-        if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
+        lastBaseFare = Math.round(Number(data.fare_amount));
+        applyPromoPreviewToFare();
         if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Road Distance)`;
 
         renderFareBreakdownBadges(data.breakdown, Boolean(data.auto_hinterland));
@@ -4581,8 +4629,12 @@
         if (cRegName && payload.customer_name) cRegName.value = payload.customer_name;
 
         // Open modal
-        const custModal = document.getElementById("customer-auth-modal");
-        if (custModal) custModal.classList.remove("hidden");
+        if (window.CCRCAuth && typeof window.CCRCAuth.openModal === "function") {
+          window.CCRCAuth.openModal("login");
+        } else {
+          const custModal = document.getElementById("customer-auth-modal");
+          if (custModal) custModal.classList.remove("hidden");
+        }
         return;
       }
 
@@ -4602,15 +4654,15 @@
           localStorage.setItem("ccrc_active_booking", b.booking_code);
           if (payload.customer_phone) localStorage.setItem("ccrc_customer_phone", payload.customer_phone);
           if (payload.customer_name) localStorage.setItem("ccrc_customer_name", payload.customer_name);
-          if (payload.customer_password) {
-            localStorage.setItem("ccrc_customer_session", JSON.stringify({
-              name: payload.customer_name,
-              phone: payload.customer_phone,
-              barangay: payload.customer_barangay,
-              is_verified: 1,
-            }));
-          }
         } catch (_) {}
+        if (payload.customer_password) {
+          setStoredCustomer({
+            name: payload.customer_name,
+            phone: payload.customer_phone,
+            barangay: payload.customer_barangay,
+            is_verified: 1,
+          });
+        }
 
         updateActiveTripNavLinks(b.booking_code);
         if (typeof window.playDispatchChime === "function") window.playDispatchChime();
@@ -4679,15 +4731,28 @@
     const applyPromoBtn = document.getElementById("apply-promo-btn");
     const promoInput = document.getElementById("promo-code-input");
     const promoFeedback = document.getElementById("promo-feedback");
-    const promoDiscountRow = document.getElementById("promo-discount-row");
-    const promoDiscountVal = document.getElementById("promo-discount-val");
+
+    if (promoInput) {
+      promoInput.addEventListener("input", () => {
+        const curCode = promoInput.value.trim().toUpperCase();
+        if (!curCode || (appliedPromo && curCode !== appliedPromo.code)) {
+          appliedPromo = null;
+          if (promoFeedback) promoFeedback.classList.add("hidden");
+          applyPromoPreviewToFare();
+        }
+      });
+    }
 
     if (applyPromoBtn && promoInput) {
       applyPromoBtn.addEventListener("click", async () => {
         const code = promoInput.value.trim().toUpperCase();
-        if (!code) return;
-        const currentFareText = document.getElementById("fare-display")?.textContent || "40";
-        const currentFare = parseFloat(currentFareText) || 40.0;
+        if (!code) {
+          appliedPromo = null;
+          if (promoFeedback) promoFeedback.classList.add("hidden");
+          applyPromoPreviewToFare();
+          return;
+        }
+        const currentFare = Number(lastBaseFare || 40);
 
         try {
           applyPromoBtn.disabled = true;
@@ -4699,25 +4764,29 @@
           });
           const data = await res.json();
           if (data.success && data.promo) {
-            promoFeedback.textContent = `✓ ${data.promo.message}`;
-            promoFeedback.style.color = "#16a34a";
-            promoFeedback.classList.remove("hidden");
-            if (promoDiscountRow && promoDiscountVal) {
-              promoDiscountVal.textContent = `-₱${data.promo.discount_amount}`;
-              promoDiscountRow.classList.remove("hidden");
-            }
-            if (document.getElementById("fare-display")) {
-              document.getElementById("fare-display").textContent = data.promo.new_fare;
-            }
+            appliedPromo = {
+              code: data.promo.code || code,
+              discount_amount: Number(data.promo.raw_discount ?? data.promo.discount_amount ?? 0),
+              min_fare: Number(data.promo.min_fare ?? 0),
+            };
+            applyPromoPreviewToFare();
           } else {
-            promoFeedback.textContent = `✕ ${data.error || "Invalid promo code."}`;
+            appliedPromo = null;
+            applyPromoPreviewToFare();
+            if (promoFeedback) {
+              promoFeedback.textContent = `✕ ${data.error || "Invalid promo code."}`;
+              promoFeedback.style.color = "#dc2626";
+              promoFeedback.classList.remove("hidden");
+            }
+          }
+        } catch (err) {
+          appliedPromo = null;
+          applyPromoPreviewToFare();
+          if (promoFeedback) {
+            promoFeedback.textContent = "Could not validate code.";
             promoFeedback.style.color = "#dc2626";
             promoFeedback.classList.remove("hidden");
           }
-        } catch (err) {
-          promoFeedback.textContent = "Could not validate code.";
-          promoFeedback.style.color = "#dc2626";
-          promoFeedback.classList.remove("hidden");
         } finally {
           applyPromoBtn.disabled = false;
           applyPromoBtn.textContent = "Apply";
@@ -4869,17 +4938,8 @@
   setInterval(checkCustomerActiveBooking, 6000);
 
   // ---------------------------------------------------------------------------
-  // Customer Authentication & Legit Verification Controller
+  // Customer Authentication & Legit Verification Controller (Delegated to CCRCAuth)
   // ---------------------------------------------------------------------------
-  const customerAuthBtn = document.getElementById("customer-auth-btn");
-  const customerAuthBtnText = document.getElementById("customer-auth-btn-text");
-  const customerAuthModal = document.getElementById("customer-auth-modal");
-  const unauthedView = document.getElementById("cust-auth-unauthed-view");
-  const authedView = document.getElementById("cust-auth-authed-view");
-  const tabLogin = document.getElementById("cust-tab-login");
-  const tabRegister = document.getElementById("cust-tab-register");
-  const loginForm = document.getElementById("cust-login-form");
-  const registerForm = document.getElementById("cust-register-form");
   const regDuringToggle = document.getElementById("reg-during-booking-toggle");
   const regDuringFields = document.getElementById("reg-during-booking-fields");
 
@@ -4894,23 +4954,32 @@
   }
 
   function getStoredCustomer() {
+    if (window.CCRCAuth && typeof window.CCRCAuth.getStoredCustomer === "function") {
+      return window.CCRCAuth.getStoredCustomer();
+    }
     try {
-      const raw = localStorage.getItem("ccrc_customer_session");
-      return raw ? JSON.parse(raw) : null;
+      const raw = localStorage.getItem("ccrc_customer_session") || localStorage.getItem("ccrc_customer_user");
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && parsed.phone ? parsed : null;
     } catch (_) {
       return null;
     }
   }
 
   function setStoredCustomer(cust) {
+    if (window.CCRCAuth && typeof window.CCRCAuth.setStoredCustomer === "function") {
+      window.CCRCAuth.setStoredCustomer(cust);
+      return;
+    }
     try {
-      if (cust) {
+      if (cust && cust.phone) {
         localStorage.setItem("ccrc_customer_session", JSON.stringify(cust));
-        if (cust.phone) localStorage.setItem("ccrc_customer_phone", cust.phone);
+        localStorage.setItem("ccrc_customer_phone", cust.phone);
         if (cust.name) localStorage.setItem("ccrc_customer_name", cust.name);
         if (cust.avatar_url) localStorage.setItem("ccrc_customer_avatar", cust.avatar_url);
       } else {
         localStorage.removeItem("ccrc_customer_session");
+        localStorage.removeItem("ccrc_customer_user");
         localStorage.removeItem("ccrc_customer_phone");
         localStorage.removeItem("ccrc_customer_name");
         localStorage.removeItem("ccrc_customer_avatar");
@@ -4925,68 +4994,18 @@
     const regOption = document.getElementById("booking-register-option");
     const nameInput = document.getElementById("customer-name");
     const phoneInput = document.getElementById("customer-phone");
-    const signInBtn = document.getElementById("customer-signin-btn") || document.getElementById("customer-auth-btn");
-    const loggedPill = document.getElementById("customer-logged-pill");
-    const pillName = document.getElementById("customer-pill-name");
 
     if (cust && cust.phone) {
-      const avatarUrl = cust.avatar_url || localStorage.getItem("ccrc_customer_avatar");
+      let avatarUrl = cust.avatar_url || "";
+      try {
+        if (!avatarUrl) avatarUrl = localStorage.getItem("ccrc_customer_avatar") || "";
+      } catch (_) {}
 
-      // Hide Sign In button completely!
-      if (signInBtn) {
-        signInBtn.style.setProperty("display", "none", "important");
-        signInBtn.classList.add("hidden");
-      }
-      if (loggedPill) {
-        loggedPill.style.setProperty("display", "inline-flex", "important");
-        loggedPill.classList.remove("hidden");
-      }
-      if (pillName) pillName.textContent = (cust.name ? cust.name.split(" ")[0] : "Account") + " ✓";
-      if (customerAuthBtnText) customerAuthBtnText.textContent = cust.name ? cust.name.split(" ")[0] + " ✓" : "Account ✓";
       if (custBadge) custBadge.classList.remove("hidden");
       if (regOption) regOption.classList.add("hidden");
 
-      // Header avatar sync
-      const headerAvatarImg = document.getElementById("header-cust-avatar-img");
-      const headerPlaceholder = document.getElementById("header-cust-placeholder");
-      if (headerAvatarImg && avatarUrl) {
-        headerAvatarImg.src = avatarUrl;
-        headerAvatarImg.classList.remove("hidden");
-        if (headerPlaceholder) headerPlaceholder.classList.add("hidden");
-      } else if (headerPlaceholder) {
-        headerPlaceholder.classList.remove("hidden");
-        if (headerAvatarImg) headerAvatarImg.classList.add("hidden");
-      }
-
       if (nameInput && !nameInput.value) nameInput.value = cust.name || "";
       if (phoneInput && !phoneInput.value) phoneInput.value = cust.phone || "";
-
-      if (unauthedView) unauthedView.classList.add("hidden");
-      if (authedView) {
-        authedView.classList.remove("hidden");
-        const pName = document.getElementById("c-profile-name");
-        const pPhone = document.getElementById("c-profile-phone");
-        const pEmail = document.getElementById("c-profile-email");
-        const pRides = document.getElementById("c-profile-rides");
-        const pSpent = document.getElementById("c-profile-spent");
-        if (pName) pName.textContent = cust.name || "Customer";
-        if (pPhone) pPhone.textContent = cust.phone || "";
-        if (pEmail && cust.email) pEmail.textContent = cust.email;
-        if (pRides) pRides.textContent = cust.total_rides || 0;
-        if (pSpent) pSpent.textContent = `₱${Number(cust.total_spent || 0).toFixed(2)}`;
-
-        // Customer Avatar in Profile Modal
-        const profImg = document.getElementById("c-profile-avatar-img");
-        const profPlaceholder = document.getElementById("c-profile-avatar-placeholder");
-        if (profImg && avatarUrl) {
-          profImg.src = avatarUrl;
-          profImg.classList.remove("hidden");
-          if (profPlaceholder) profPlaceholder.classList.add("hidden");
-        } else if (profPlaceholder) {
-          profPlaceholder.classList.remove("hidden");
-          if (profImg) profImg.classList.add("hidden");
-        }
-      }
 
       // Customer Avatar in Home Card
       const homeImg = document.getElementById("cust-home-avatar-img");
@@ -5000,38 +5019,16 @@
         if (homeImg) homeImg.classList.add("hidden");
       }
 
-      // Hide bottom-right rider icon when customer is logged in
-      const bottomRiderNav = document.getElementById("bottom-nav-rider");
-      if (bottomRiderNav) {
-        bottomRiderNav.style.setProperty("display", "none", "important");
-        bottomRiderNav.classList.add("hidden");
-      }
-
       loadCustomerHomeHistory();
     } else {
-      // Show Sign In button!
-      if (signInBtn) {
-        signInBtn.style.setProperty("display", "inline-flex", "important");
-        signInBtn.classList.remove("hidden");
-      }
-      if (loggedPill) {
-        loggedPill.style.setProperty("display", "none", "important");
-        loggedPill.classList.add("hidden");
-      }
-      if (customerAuthBtnText) customerAuthBtnText.textContent = "Sign In";
       if (custBadge) custBadge.classList.add("hidden");
       if (regOption) regOption.classList.remove("hidden");
-      if (unauthedView) unauthedView.classList.remove("hidden");
-      if (authedView) authedView.classList.add("hidden");
       const historyCard = document.getElementById("customer-home-history-card");
       if (historyCard) historyCard.classList.add("hidden");
+    }
 
-      // Show bottom-right rider icon when customer is NOT logged in
-      const bottomRiderNav = document.getElementById("bottom-nav-rider");
-      if (bottomRiderNav) {
-        bottomRiderNav.style.removeProperty("display");
-        bottomRiderNav.classList.remove("hidden");
-      }
+    if (window.CCRCAuth && typeof window.CCRCAuth.syncUI === "function") {
+      window.CCRCAuth.syncUI();
     }
   }
 
@@ -5120,372 +5117,7 @@
     } catch (_) {}
   }
 
-  // Open Customer Modal
-  const signInBtnElem = document.getElementById("customer-signin-btn") || document.getElementById("customer-auth-btn");
-  if (signInBtnElem && customerAuthModal) {
-    signInBtnElem.addEventListener("click", () => {
-      updateCustomerAuthUI();
-      customerAuthModal.classList.remove("hidden");
-    });
-  }
-
-  const custProfileBtn = document.getElementById("customer-profile-btn");
-  if (custProfileBtn && customerAuthModal) {
-    custProfileBtn.addEventListener("click", () => {
-      updateCustomerAuthUI();
-      customerAuthModal.classList.remove("hidden");
-    });
-  }
-
-  const headerCustLogoutBtn = document.getElementById("header-cust-logout-btn");
-  if (headerCustLogoutBtn) {
-    headerCustLogoutBtn.addEventListener("click", async () => {
-      if (confirm("Are you sure you want to log out of your customer account?")) {
-        try {
-          await fetch("/api/customer/logout", { method: "POST" });
-        } catch (_) {}
-        setStoredCustomer(null);
-        window.location.reload();
-      }
-    });
-  }
-
-  // Tab switching
-  if (tabLogin && tabRegister && loginForm && registerForm) {
-    tabLogin.addEventListener("click", () => {
-      tabLogin.style.borderBottom = "3px solid var(--primary)";
-      tabLogin.style.color = "var(--primary)";
-      tabLogin.style.fontWeight = "700";
-      tabRegister.style.borderBottom = "3px solid transparent";
-      tabRegister.style.color = "#64748b";
-      tabRegister.style.fontWeight = "600";
-      loginForm.classList.remove("hidden");
-      registerForm.classList.add("hidden");
-      if (custForgotForm) custForgotForm.classList.add("hidden");
-    });
-
-    tabRegister.addEventListener("click", () => {
-      tabRegister.style.borderBottom = "3px solid var(--primary)";
-      tabRegister.style.color = "var(--primary)";
-      tabRegister.style.fontWeight = "700";
-      tabLogin.style.borderBottom = "3px solid transparent";
-      tabLogin.style.color = "#64748b";
-      tabLogin.style.fontWeight = "600";
-      registerForm.classList.remove("hidden");
-      loginForm.classList.add("hidden");
-      if (custForgotForm) custForgotForm.classList.add("hidden");
-    });
-  }
-
-  // Customer Forgot Password UI & Form Handling
-  const custForgotForm = document.getElementById("cust-forgot-form");
-  const custSwitchForgotBtn = document.getElementById("c-switch-forgot-btn");
-  const custForgotBackBtn = document.getElementById("c-forgot-back-btn");
-  const custTabBar = document.getElementById("cust-auth-tab-bar");
-  const custForgotMsg = document.getElementById("c-forgot-msg");
-
-  if (custSwitchForgotBtn && custForgotForm) {
-    custSwitchForgotBtn.addEventListener("click", () => {
-      if (loginForm) loginForm.classList.add("hidden");
-      if (registerForm) registerForm.classList.add("hidden");
-      if (custTabBar) custTabBar.classList.add("hidden");
-      custForgotForm.classList.remove("hidden");
-
-      const enteredPhone = document.getElementById("c-login-phone")?.value.trim();
-      const forgotPhone = document.getElementById("c-forgot-phone");
-      if (enteredPhone && forgotPhone && !forgotPhone.value) {
-        forgotPhone.value = enteredPhone;
-      }
-    });
-  }
-
-  if (custForgotBackBtn && custForgotForm) {
-    custForgotBackBtn.addEventListener("click", () => {
-      custForgotForm.classList.add("hidden");
-      if (custTabBar) custTabBar.classList.remove("hidden");
-      if (loginForm) loginForm.classList.remove("hidden");
-    });
-  }
-
-  if (custForgotForm) {
-    custForgotForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!custForgotMsg) return;
-      custForgotMsg.classList.add("hidden");
-      custForgotMsg.textContent = "";
-
-      const phone = document.getElementById("c-forgot-phone")?.value.trim() || "";
-      const email = document.getElementById("c-forgot-email")?.value.trim() || "";
-      const newPwd = document.getElementById("c-forgot-new-pwd")?.value || "";
-      const confirmPwd = document.getElementById("c-forgot-confirm-pwd")?.value || "";
-      const resetBtn = document.getElementById("c-forgot-btn");
-
-      if (newPwd !== confirmPwd) {
-        custForgotMsg.style.background = "#fee2e2";
-        custForgotMsg.style.color = "#991b1b";
-        custForgotMsg.style.border = "1px solid #fca5a5";
-        custForgotMsg.textContent = "New password and confirmation password do not match.";
-        custForgotMsg.classList.remove("hidden");
-        return;
-      }
-
-      resetBtn.disabled = true;
-      resetBtn.textContent = "Verifying and saving...";
-
-      try {
-        const res = await fetch("/api/customer/forgot-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone: phone,
-            email: email,
-            new_password: newPwd,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to reset password.");
-
-        custForgotMsg.style.background = "#dcfce7";
-        custForgotMsg.style.color = "#166534";
-        custForgotMsg.style.border = "1px solid #86efac";
-        custForgotMsg.innerHTML = "✅ <strong>Success!</strong> " + (data.message || "Your password has been reset.") + "<br><small>Redirecting you to Log In...</small>";
-        custForgotMsg.classList.remove("hidden");
-
-        const loginPhoneInput = document.getElementById("c-login-phone");
-        if (loginPhoneInput) loginPhoneInput.value = phone;
-
-        setTimeout(() => {
-          custForgotForm.classList.add("hidden");
-          if (custTabBar) custTabBar.classList.remove("hidden");
-          if (loginForm) loginForm.classList.remove("hidden");
-          custForgotMsg.classList.add("hidden");
-          const loginPwd = document.getElementById("c-login-pwd");
-          if (loginPwd) loginPwd.focus();
-        }, 1800);
-      } catch (err) {
-        custForgotMsg.style.background = "#fee2e2";
-        custForgotMsg.style.color = "#991b1b";
-        custForgotMsg.style.border = "1px solid #fca5a5";
-        custForgotMsg.textContent = err.message;
-        custForgotMsg.classList.remove("hidden");
-      } finally {
-        resetBtn.disabled = false;
-        resetBtn.textContent = "Save New Password →";
-      }
-    });
-  }
-
-  // Handle Customer Login
-  if (loginForm) {
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errEl = document.getElementById("c-login-err");
-      if (errEl) errEl.classList.add("hidden");
-      const phone = document.getElementById("c-login-phone")?.value.trim();
-      const password = document.getElementById("c-login-pwd")?.value;
-      const btn = document.getElementById("c-login-btn");
-      btn.disabled = true;
-      btn.textContent = "Logging in...";
-
-      try {
-        const res = await fetch("/api/customer/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Login failed");
-
-        setStoredCustomer(data.customer);
-        if (customerAuthModal) customerAuthModal.classList.add("hidden");
-        alert(`Welcome back, ${data.customer.name}! Your account is verified.`);
-      } catch (err) {
-        if (errEl) {
-          errEl.textContent = err.message;
-          errEl.classList.remove("hidden");
-        }
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Log In to CCRC →";
-      }
-    });
-  }
-
-  // Customer Registration Photo Handler (Camera & Gallery)
-  let currentCustAvatarBase64 = "";
-  const cCamBtn = document.getElementById("c-photo-camera-btn");
-  const cGalBtn = document.getElementById("c-photo-gallery-btn");
-  const cCamInput = document.getElementById("c-reg-file-camera");
-  const cGalInput = document.getElementById("c-reg-file-gallery");
-  const cPhotoImg = document.getElementById("c-reg-photo-img");
-  const cPhotoPlaceholder = document.getElementById("c-reg-photo-placeholder");
-  const cPhotoStatus = document.getElementById("c-photo-status");
-
-  if (cCamBtn && cCamInput) {
-    cCamBtn.addEventListener("click", () => cCamInput.click());
-  }
-  if (cGalBtn && cGalInput) {
-    cGalBtn.addEventListener("click", () => cGalInput.click());
-  }
-
-  function handleCustPhotoFile(file) {
-    if (!file) return;
-    if (cPhotoStatus) {
-      cPhotoStatus.textContent = "⏳ Processing photo...";
-      cPhotoStatus.style.color = "#0284c7";
-    }
-    const reader = new FileReader();
-    reader.onerror = function() {
-      if (cPhotoStatus) {
-        cPhotoStatus.textContent = "⚠️ Unable to read file.";
-        cPhotoStatus.style.color = "#dc2626";
-      }
-    };
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onerror = function() {
-        if (cPhotoStatus) {
-          cPhotoStatus.textContent = "⚠️ Unable to read photo. Please choose a JPG or PNG file.";
-          cPhotoStatus.style.color = "#dc2626";
-        }
-      };
-      img.onload = function() {
-        const maxDim = 480;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) {
-            h = Math.round((h * maxDim) / w);
-            w = maxDim;
-          } else {
-            w = Math.round((w * maxDim) / h);
-            h = maxDim;
-          }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-        currentCustAvatarBase64 = canvas.toDataURL("image/jpeg", 0.82);
-
-        if (cPhotoImg) {
-          cPhotoImg.src = currentCustAvatarBase64;
-          cPhotoImg.classList.remove("hidden");
-        }
-        if (cPhotoPlaceholder) {
-          cPhotoPlaceholder.classList.add("hidden");
-        }
-        if (cPhotoStatus) {
-          cPhotoStatus.textContent = "✓ Photo ready (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
-          cPhotoStatus.style.color = "#16a34a";
-        }
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  if (cCamInput) {
-    cCamInput.addEventListener("change", function() {
-      if (this.files && this.files[0]) handleCustPhotoFile(this.files[0]);
-    });
-  }
-  if (cGalInput) {
-    cGalInput.addEventListener("change", function() {
-      if (this.files && this.files[0]) handleCustPhotoFile(this.files[0]);
-    });
-  }
-
-  // Handle Customer Register
-  if (registerForm) {
-    registerForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errEl = document.getElementById("c-reg-err");
-      if (errEl) errEl.classList.add("hidden");
-      const name = document.getElementById("c-reg-name")?.value.trim();
-      const phone = document.getElementById("c-reg-phone")?.value.trim();
-      const email = document.getElementById("c-reg-email")?.value.trim();
-      const barangay = document.getElementById("c-reg-barangay")?.value;
-      const password = document.getElementById("c-reg-pwd")?.value;
-
-      if (!email || !email.includes("@") || !email.includes(".")) {
-        if (errEl) {
-          errEl.textContent = "Please enter a valid Email Address (e.g. maria@gmail.com).";
-          errEl.classList.remove("hidden");
-        }
-        return;
-      }
-      if (!currentCustAvatarBase64) {
-        if (errEl) {
-          errEl.textContent = "Please take or choose a photo (Camera or Gallery) for your customer verification.";
-          errEl.classList.remove("hidden");
-        }
-        return;
-      }
-
-      const btn = document.getElementById("c-reg-btn");
-      btn.disabled = true;
-      btn.textContent = "Registering...";
-
-      try {
-        const res = await fetch("/api/customer/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            phone,
-            email,
-            barangay,
-            password,
-            avatar_base64: currentCustAvatarBase64,
-          }),
-        });
-        let data = {};
-        try {
-          data = await res.json();
-        } catch (_) {
-          throw new Error(
-            res.status === 502 || res.status === 503
-              ? "The server is still restarting on Render. Please try again in a few seconds."
-              : `Server error (${res.status}). Please try again.`
-          );
-        }
-        if (!res.ok) throw new Error(data.error || "Registration failed. Please try again.");
-
-        setStoredCustomer(data.customer);
-        if (customerAuthModal) customerAuthModal.classList.add("hidden");
-        alert(`Congratulations ${data.customer.name}! You are now a Verified CCRC Passenger (🛡️ Verified Badge).`);
-      } catch (err) {
-        if (errEl) {
-          let msg = err.message || "";
-          if (msg.toLowerCase().includes("fetch")) {
-            msg = "Unable to connect to the server (Failed to fetch). The server may be deploying or restarting on Render. Please wait a few seconds and click again.";
-          }
-          errEl.textContent = msg;
-          errEl.classList.remove("hidden");
-        }
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Register & Get Verified Badge 🛡️";
-      }
-    });
-  }
-
-  // Customer Logout
-  const custLogoutBtn = document.getElementById("c-profile-logout-btn");
-  if (custLogoutBtn) {
-    custLogoutBtn.addEventListener("click", async () => {
-      if (confirm("Are you sure you want to log out of your customer account?")) {
-        try {
-          await fetch("/api/customer/logout", { method: "POST" });
-        } catch (_) {}
-        setStoredCustomer(null);
-        if (customerAuthModal) customerAuthModal.classList.add("hidden");
-        window.location.reload();
-      }
-    });
-  }
+  window.addEventListener("ccrc:customer-auth-changed", updateCustomerAuthUI);
 
   // Initialize customer session check on load
   updateCustomerAuthUI();

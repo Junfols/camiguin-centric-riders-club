@@ -233,5 +233,22 @@
       feed.innerHTML = `<div class="empty-state text-danger">Error fetching history: ${escapeHtml(err.message)}</div>`;
     }
   }
+
+  window.addEventListener("ccrc:customer-auth-changed", (ev) => {
+    const cust = ev && ev.detail ? ev.detail.customer : null;
+    if (cust && cust.phone) {
+      phoneInput.value = cust.phone;
+      loadHistory(cust.phone);
+    } else {
+      phoneInput.value = "";
+      profileCard.classList.add("hidden");
+      feed.innerHTML = `
+        <div class="empty-state">
+          <span style="font-size:2.5rem;display:block;margin-bottom:8px;">🛵</span>
+          Enter your mobile number above to look up your past Camiguin rides and courier parcels.
+        </div>
+      `;
+    }
+  });
 </script>
 {% endblock %}

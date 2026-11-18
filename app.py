@@ -76,11 +76,14 @@ from db import (
     record_transaction,
     get_all_transactions,
     get_rider_transactions,
+    get_rider_transaction_summary,
     get_customer_transactions,
     get_financial_summary,
+    get_booking_summary_counts,
     validate_promo_code,
     apply_promo_code,
     create_review,
+    get_review_by_booking_id,
     get_rider_reviews,
     calculate_nearest_rider_eta,
 )
@@ -310,17 +313,23 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         settings = get_settings(conn)
         data = request.get_json(silent=True) or {}
-        p_lat = float(data.get("pickup_lat") or 0.0)
-        p_lng = float(data.get("pickup_lng") or 0.0)
-        d_lat = float(data.get("dropoff_lat") or 0.0)
-        d_lng = float(data.get("dropoff_lng") or 0.0)
+        try:
+            p_lat = float(data.get("pickup_lat") or 0.0)
+            p_lng = float(data.get("pickup_lng") or 0.0)
+            d_lat = float(data.get("dropoff_lat") or 0.0)
+            d_lng = float(data.get("dropoff_lng") or 0.0)
+        except (ValueError, TypeError):
+            p_lat = p_lng = d_lat = d_lng = 0.0
         p_addr = (data.get("pickup_address") or "").strip()
         d_addr = (data.get("dropoff_address") or "").strip()
         item_notes = (data.get("item_notes") or "").strip()
         service = (data.get("service_type") or "pahatud").lower()
 
         is_large_store = bool(data.get("is_large_store", False))
-        extra_stores_count = int(data.get("extra_stores_count") or 0)
+        try:
+            extra_stores_count = max(0, int(data.get("extra_stores_count") or 0))
+        except (ValueError, TypeError):
+            extra_stores_count = 0
         is_bulky = bool(data.get("is_bulky_or_high_value", False))
         manual_hinterland = bool(data.get("is_hinterland", False))
 
@@ -408,11 +417,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return render_template(
             "tours.html",
             active_nav="tours",
-            club=settings,
+            settings=settings,
             tour_packages=enriched_packages,
             packages=enriched_packages,
             online_riders_count=len(online_riders),
-            year=datetime.now().year,
         )
 
     @app.get("/history")
@@ -422,8 +430,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return render_template(
             "history.html",
             active_nav="history",
-            club=settings,
-            year=datetime.now().year,
+            settings=settings,
         )
 
     @app.get("/about")
@@ -433,8 +440,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return render_template(
             "about.html",
             active_nav="about",
-            club=settings,
-            year=datetime.now().year,
+            settings=settings,
         )
 
     @app.get("/faq")
@@ -444,8 +450,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return render_template(
             "faq.html",
             active_nav="faq",
-            club=settings,
-            year=datetime.now().year,
+            settings=settings,
         )
 
     @app.get("/terms")
@@ -455,8 +460,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return render_template(
             "terms.html",
             active_nav="terms",
-            club=settings,
-            year=datetime.now().year,
+            settings=settings,
         )
 
     # -------------------------------------------------------------------------
@@ -508,20 +512,35 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         elif phone:
             if not is_admin and (not sess_phone or normalize_ph_phone(phone) != normalize_ph_phone(sess_phone)):
                 return jsonify({"active": False, "booking": None, "error": "Unauthorized"}), 401
+            norm_p = normalize_ph_phone(phone) or phone
             digits = "".join(filter(str.isdigit, phone))
             last10 = digits[-10:] if len(digits) >= 10 else digits
-            cur = conn.execute("""
-                SELECT b.*,
-                       r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
-                       r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
-                       r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-                       r.avatar_url AS rider_avatar
-                FROM bookings b
-                LEFT JOIN riders r ON b.rider_id = r.id
-                WHERE (b.customer_phone = ? OR b.customer_phone LIKE ? OR b.customer_phone LIKE ?)
-                  AND b.status IN ('broadcast', 'accepted', 'in_progress')
-                ORDER BY b.id DESC LIMIT 1
-            """, (phone, f"%{last10}", f"0{last10}"))
+            if len(last10) >= 7:
+                cur = conn.execute("""
+                    SELECT b.*,
+                           r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
+                           r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
+                           r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+                           r.avatar_url AS rider_avatar
+                    FROM bookings b
+                    LEFT JOIN riders r ON b.rider_id = r.id
+                    WHERE (b.customer_phone = ? OR b.customer_phone = ? OR b.customer_phone LIKE ? OR b.customer_phone LIKE ?)
+                      AND b.status IN ('broadcast', 'accepted', 'in_progress')
+                    ORDER BY b.id DESC LIMIT 1
+                """, (phone, norm_p, f"%{last10}", f"0{last10}"))
+            else:
+                cur = conn.execute("""
+                    SELECT b.*,
+                           r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
+                           r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
+                           r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+                           r.avatar_url AS rider_avatar
+                    FROM bookings b
+                    LEFT JOIN riders r ON b.rider_id = r.id
+                    WHERE (b.customer_phone = ? OR b.customer_phone = ?)
+                      AND b.status IN ('broadcast', 'accepted', 'in_progress')
+                    ORDER BY b.id DESC LIMIT 1
+                """, (phone, norm_p))
             row = cur.fetchone()
             if row:
                 booking = dict(row)
@@ -717,7 +736,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         data = request.get_json(silent=True) or {}
         rider_id = data.get("rider_id")
         rating = data.get("rating")
-        if not rider_id or not rating:
+        if not rider_id or rating is None:
             return jsonify({"error": "Rider ID and rating are required."}), 400
         customer_name = (data.get("customer_name") or "Passenger").strip()
         comment = (data.get("comment") or "").strip()
@@ -728,6 +747,24 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             rating = int(rating)
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid IDs or rating value."}), 400
+
+        if rating < 1 or rating > 5:
+            return jsonify({"error": "Rating must be between 1 and 5."}), 400
+
+        rider = get_rider_by_id(conn, rider_id)
+        if not rider:
+            return jsonify({"error": "Rider not found."}), 404
+
+        if booking_id is not None:
+            booking = get_booking_by_id(conn, booking_id)
+            if not booking:
+                return jsonify({"error": "Booking not found."}), 404
+            if booking.get("status") != "completed":
+                return jsonify({"error": "You can only review completed trips."}), 400
+            if booking.get("rider_id") != rider_id:
+                return jsonify({"error": "Booking is not assigned to that rider."}), 400
+            if get_review_by_booking_id(conn, booking_id):
+                return jsonify({"error": "You have already submitted a review for this trip."}), 409
 
         review = create_review(conn, booking_id, rider_id, customer_name, rating, comment)
         return jsonify({"success": True, "review": review}), 201
@@ -787,7 +824,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             service_type = "pahatud"
 
         customer_name = (data.get("customer_name") or "").strip()
-        customer_phone = (data.get("customer_phone") or "").strip()
+        raw_phone = (data.get("customer_phone") or "").strip()
+        customer_phone = normalize_ph_phone(raw_phone) or raw_phone
         pickup_address = (data.get("pickup_address") or "").strip()
         dropoff_address = (data.get("dropoff_address") or "").strip()
 
@@ -836,13 +874,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         item_notes = (data.get("item_notes") or "").strip()
         try:
-            estimated_budget = float(data.get("estimated_budget") or 0.0)
+            estimated_budget = max(0.0, float(data.get("estimated_budget") or 0.0))
         except (ValueError, TypeError):
             estimated_budget = 0.0
 
         # Special options from Fare Matrix
         is_large_store = bool(data.get("is_large_store", False))
-        extra_stores_count = int(data.get("extra_stores_count") or 0)
+        try:
+            extra_stores_count = max(0, int(data.get("extra_stores_count") or 0))
+        except (ValueError, TypeError):
+            extra_stores_count = 0
         is_bulky = bool(data.get("is_bulky_or_high_value", False)) or (estimated_budget >= 2000.0)
 
         # Auto-detect upland / steep (tungason) route by keywords or coordinates
@@ -980,7 +1021,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not _authorize_chat_role(booking):
             return jsonify({"error": "Unauthorized to view messages for this booking."}), 401
 
-        after_id = int(request.args.get("after") or 0)
+        try:
+            after_id = max(0, int(request.args.get("after") or 0))
+        except (ValueError, TypeError):
+            after_id = 0
         messages = get_booking_messages(conn, booking["id"], after_id=after_id)
         return jsonify({
             "success": True,
@@ -1021,7 +1065,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         new_msg = add_booking_message(conn, booking["id"], sender_role, sender_name, text)
         conn.commit()
 
-        after_id = int(request.args.get("after") or 0)
+        try:
+            after_id = max(0, int(request.args.get("after") or 0))
+        except (ValueError, TypeError):
+            after_id = 0
         messages = get_booking_messages(conn, booking["id"], after_id=after_id)
         return jsonify({
             "success": True,
@@ -1043,7 +1090,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         else:
             if session.get("active_booking_code") == booking["booking_code"]:
                 session.pop("active_booking_code", None)
-        return render_template("track.html", booking=booking, active_nav="track")
+        already_reviewed = bool(booking.get("id") and get_review_by_booking_id(conn, booking["id"]))
+        return render_template("track.html", booking=booking, active_nav="track", already_reviewed=already_reviewed)
 
     @app.get("/api/bookings/track/<booking_code>")
     def api_track_booking(booking_code: str):
@@ -1074,6 +1122,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "trail": trail,
             "distance_to_pickup_km": distance_to_pickup_km,
             "distance_to_dropoff_km": distance_to_dropoff_km,
+            "already_reviewed": bool(booking.get("id") and get_review_by_booking_id(conn, booking["id"])),
         })
 
     # -------------------------------------------------------------------------
@@ -1294,12 +1343,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def rider_active_job():
         rider_id = session.get("rider_id")
         if not rider_id:
-            return jsonify({"job": None, "scheduled_jobs": []})
+            return jsonify({"authenticated": False, "job": None, "scheduled_jobs": []})
         conn = get_db()
 
         job = get_rider_active_job(conn, int(rider_id))
         scheduled_jobs = get_rider_scheduled_jobs(conn, int(rider_id))
-        return jsonify({"job": job, "scheduled_jobs": scheduled_jobs})
+        return jsonify({"authenticated": True, "job": job, "scheduled_jobs": scheduled_jobs})
 
     @app.post("/api/bookings/<int:booking_id>/accept")
     def rider_accept_booking(booking_id: int):
@@ -1365,7 +1414,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         booking = get_booking_by_id(conn, booking_id)
         if not booking or booking.get("rider_id") != int(rider_id):
             return jsonify({"error": "Booking not found or not assigned to you."}), 404
-        update_booking_status(conn, booking_id, "in_progress")
+        if booking.get("status") != "accepted":
+            return jsonify({"error": "Only accepted scheduled bookings can be started."}), 400
+        if not update_booking_status(conn, booking_id, "in_progress"):
+            return jsonify({"error": "Unable to start booking from its current status."}), 400
         conn.commit()
         return jsonify({"success": True, "job": get_booking_by_id(conn, booking_id)})
 
@@ -1442,24 +1494,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         txns = get_rider_transactions(conn, r_id, limit=50)
         now_pht_str = get_now_pht().strftime("%Y-%m-%d")
+        summary = get_rider_transaction_summary(conn, r_id, now_pht_str)
 
-        today_earnings = sum(
-            float(t["amount"])
-            for t in txns
-            if t["status"] == "completed" and str(t["created_at"]).startswith(now_pht_str)
-        )
-        all_time_earnings = sum(
-            float(t["amount"])
-            for t in txns
-            if t["status"] == "completed"
-        )
         return jsonify({
             "success": True,
             "rider_id": r_id,
             "transactions": txns,
-            "today_earnings": today_earnings,
-            "all_time_earnings": all_time_earnings,
-            "total_transactions": len(txns),
+            "today_earnings": summary["today_earnings"],
+            "all_time_earnings": summary["all_time_earnings"],
+            "total_transactions": summary["total_transactions"],
         })
 
     # -------------------------------------------------------------------------
@@ -1565,11 +1608,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         transactions = get_all_transactions(conn, limit=200)
         customers = get_all_customers(conn)
         fin_summary = get_financial_summary(conn)
+        booking_counts = get_booking_summary_counts(conn)
 
         stats = {
-            "total_bookings": len(recent_bookings),
-            "completed": sum(1 for b in recent_bookings if b["status"] == "completed"),
-            "active_now": sum(1 for b in recent_bookings if b["status"] in ("broadcast", "accepted", "in_progress")),
+            "total_bookings": booking_counts["total_bookings"],
+            "completed": booking_counts["completed"],
+            "active_now": booking_counts["active_now"],
             "online_riders": sum(1 for r in riders if r["is_online"] == 1 and r["status"] == "active"),
             "pending_riders": sum(1 for r in riders if r["status"] == "pending"),
             "total_riders": len(riders),

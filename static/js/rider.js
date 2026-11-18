@@ -350,14 +350,57 @@
     });
   }
 
+  let sessionExpiredHandled = false;
+
+  function handleExpiredRiderSession() {
+    if (sessionExpiredHandled) return;
+    sessionExpiredHandled = true;
+    if (gpsWatchId) {
+      try { navigator.geolocation.clearWatch(gpsWatchId); } catch (_) {}
+      gpsWatchId = null;
+    }
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    resetRiderChat(null);
+    activeJob = null;
+    currentRider = null;
+    setStoredRider(null);
+    document.documentElement.classList.remove("is-rider-session");
+    document.body.classList.remove("rider-logged-in");
+    if (dashSection) dashSection.classList.add("hidden");
+    if (authSection) authSection.classList.remove("hidden");
+    const bLogout = document.getElementById("bottom-nav-rider-logout");
+    if (bLogout) bLogout.classList.add("hidden");
+    const hLogout = document.getElementById("header-rider-logout-btn");
+    if (hLogout) hLogout.classList.add("hidden");
+    if (loginErrorMsg) {
+      loginErrorMsg.style.color = "";
+      loginErrorMsg.style.backgroundColor = "";
+      loginErrorMsg.style.borderColor = "";
+      loginErrorMsg.textContent = "Your rider session has expired. Please log in again.";
+      loginErrorMsg.classList.remove("hidden");
+    }
+  }
+
   // Unified Logout Handler
   async function handleRiderLogout() {
     if (confirm("Are you sure you want to log out of your Rider Account?")) {
       setStoredRider(null);
       document.documentElement.classList.remove("is-rider-session");
       document.body.classList.remove("rider-logged-in");
-      if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
-      if (pollInterval) clearInterval(pollInterval);
+      if (gpsWatchId) {
+        try { navigator.geolocation.clearWatch(gpsWatchId); } catch (_) {}
+        gpsWatchId = null;
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      resetRiderChat(null);
+      activeJob = null;
+      currentRider = null;
       try {
         await fetch("/api/rider/logout", { method: "POST" });
       } catch (_) {}
@@ -365,16 +408,10 @@
     }
   }
 
+  window.ccrcRiderLogout = handleRiderLogout;
+
   if (logoutBtn) {
     logoutBtn.addEventListener("click", handleRiderLogout);
-  }
-  const bottomNavLogout = document.getElementById("bottom-nav-rider-logout");
-  if (bottomNavLogout) {
-    bottomNavLogout.addEventListener("click", handleRiderLogout);
-  }
-  const headerNavLogout = document.getElementById("header-rider-logout-btn");
-  if (headerNavLogout) {
-    headerNavLogout.addEventListener("click", handleRiderLogout);
   }
   const bottomRiderRefresh = document.getElementById("bottom-rider-refresh-btn");
   if (bottomRiderRefresh) {
@@ -382,6 +419,7 @@
   }
 
   function initRiderSession(rider) {
+    sessionExpiredHandled = false;
     currentRider = rider;
     document.documentElement.classList.add("is-rider-session");
     document.body.classList.add("rider-logged-in");
@@ -504,17 +542,33 @@
   // Online / Offline Toggle
   if (onlineToggle) {
     onlineToggle.addEventListener("change", async () => {
+      if (!currentRider) return;
       const isOnline = onlineToggle.checked;
       updateOnlineBadge(isOnline);
       if (isOnline && "Notification" in window && Notification.permission === "default") {
         try { Notification.requestPermission(); } catch(_) {}
       }
       try {
-        await fetch("/api/rider/status", {
+        const res = await fetch("/api/rider/status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rider_id: currentRider.id, is_online: isOnline }),
         });
+        if (res.status === 401) {
+          onlineToggle.checked = !isOnline;
+          updateOnlineBadge(!isOnline);
+          handleExpiredRiderSession();
+          return;
+        }
+        if (!res.ok) {
+          onlineToggle.checked = !isOnline;
+          updateOnlineBadge(!isOnline);
+          return;
+        }
+        if (currentRider) {
+          currentRider.is_online = isOnline ? 1 : 0;
+          setStoredRider(currentRider);
+        }
         if (isOnline) {
           fetchAvailableJobs();
           checkActiveJob();
@@ -541,6 +595,7 @@
     if (!navigator.geolocation || !currentRider) return;
 
     function sendLocation(lat, lng, speed, heading) {
+      if (!currentRider) return;
       gpsStatusLabel.textContent = `Live GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Active)`;
       if (currentRider) {
         currentRider.last_lat = lat;
@@ -558,7 +613,11 @@
           heading: heading || 0,
           booking_id: activeJob ? activeJob.id : null,
         }),
-      }).catch(() => {});
+      })
+        .then((res) => {
+          if (res.status === 401) handleExpiredRiderSession();
+        })
+        .catch(() => {});
     }
 
     gpsWatchId = navigator.geolocation.watchPosition(
@@ -902,11 +961,12 @@
             }).addTo(riderJobMap);
             riderJobMap.fitBounds(riderJobRouteLine.getBounds(), { padding: [40, 40] });
           }
-          if (data && data.distance_km) {
+          const rKm = data && (data.road_km ?? data.distance_km);
+          if (rKm) {
             const distInfo = document.getElementById("rider-job-distance-info");
             if (distInfo) {
-              const km = Number(data.distance_km).toFixed(1);
-              const mins = Math.max(2, Math.round((data.distance_km / 30) * 60));
+              const km = Number(rKm).toFixed(1);
+              const mins = Math.max(2, Math.round((rKm / 30) * 60));
               distInfo.textContent = `📍 ${km} km (~${mins} mins trip)`;
             }
           }
@@ -1034,7 +1094,16 @@
     if (!currentRider) return;
     try {
       const res = await fetch(`/api/rider/active-job?rider_id=${currentRider.id}`);
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
+      if (!res.ok) return;
       const data = await res.json();
+      if (data && data.authenticated === false) {
+        handleExpiredRiderSession();
+        return;
+      }
       activeJob = data.job;
       const scheduledJobs = data.scheduled_jobs || [];
 
@@ -1175,17 +1244,20 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "in_progress" }),
         });
+        if (res.status === 401) {
+          handleExpiredRiderSession();
+          return;
+        }
         if (res.ok) {
           checkActiveJob();
         } else {
           const errData = await res.json().catch(() => ({}));
           alert(errData.error || "Could not update trip status.");
-          jobInProgressBtn.textContent = origText;
         }
       } catch (_) {
         alert("Network error updating trip status. Please try again.");
-        jobInProgressBtn.textContent = origText;
       } finally {
+        jobInProgressBtn.textContent = origText;
         jobInProgressBtn.disabled = false;
       }
     });
@@ -1204,22 +1276,28 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "completed" }),
         });
+        if (res.status === 401) {
+          handleExpiredRiderSession();
+          return;
+        }
         if (res.ok) {
           alert("✓ Trip successfully marked as Completed! Thank you for your service.");
           activeJob = null;
           activeJobBox.classList.add("hidden");
+          resetRiderChat(null);
           renderJobOnRiderMap(null);
+          checkActiveJob();
           fetchAvailableJobs();
           loadRiderTransactions();
+          loadRiderReviews();
         } else {
           const errData = await res.json().catch(() => ({}));
           alert(errData.error || "Could not complete trip.");
-          jobCompleteBtn.textContent = origText;
         }
       } catch (_) {
         alert("Network error completing trip. Please try again.");
-        jobCompleteBtn.textContent = origText;
       } finally {
+        jobCompleteBtn.textContent = origText;
         jobCompleteBtn.disabled = false;
       }
     });
@@ -1265,6 +1343,10 @@
     if (!currentRider) return;
     try {
       const res = await fetch(`/api/rider/transactions?rider_id=${currentRider.id}`);
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       const todayEl = document.getElementById("rider-today-earnings");
@@ -1320,6 +1402,10 @@
     if (!onlineToggle.checked) return;
     try {
       const res = await fetch("/api/rider/available-jobs");
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       const jobs = data.jobs || [];
@@ -1504,6 +1590,10 @@
     if (!activeJob) return;
     try {
       const res = await fetch(`/api/chat/${activeJob.id}/messages?after=${riderLastMessageId}`);
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.messages && data.messages.length > 0) {
@@ -1567,6 +1657,8 @@
   function resetRiderChat(job) {
     if (!job) {
       if (riderChatPollTimer) clearInterval(riderChatPollTimer);
+      riderChatPollTimer = null;
+      currentActiveJobId = null;
       return;
     }
     if (currentActiveJobId !== job.id) {
@@ -1692,6 +1784,10 @@
     if (!currentRider) return;
     try {
       const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       const list = data.co_riders || [];

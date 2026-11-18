@@ -33,6 +33,14 @@ def get_database_url() -> str:
     return (os.environ.get("DATABASE_URL") or "").strip()
 
 
+PHT = timezone(timedelta(hours=8))
+
+
+def get_now_pht() -> datetime:
+    """Returns current date and time in Philippine Standard Time (UTC+8) matching Camiguin Island."""
+    return datetime.now(PHT).replace(tzinfo=None)
+
+
 # -------------------------------------------------------------------------
 # Camiguin Island Master Landmark & Places Directory (Verified OSM Coordinates)
 # Covers all 5 municipalities, all 58 official barangays, sitios, stores, supermarkets,
@@ -219,7 +227,10 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "keywords": [
             "tagdo",
             "brgy tagdo",
-            "barangay tagdo"
+            "barangay tagdo",
+            "upper tagdo",
+            "hinterland",
+            "tungason"
         ],
         "lat": 9.2384,
         "lng": 124.6885,
@@ -3390,6 +3401,7 @@ HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
     "hinterland",
     "ardent",
     "sitio esperanza",
+    "upper tagdo",
     "timogsay",
     "timugsay",
     "timogsai",
@@ -3421,7 +3433,7 @@ HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
     "steep uphill",
 )
 
-_HINTERLAND_BOUNDARY_RE = re.compile(r"\b(?:itum|esperanza|saay|cogon)\b")
+_HINTERLAND_BOUNDARY_RE = re.compile(r"\b(?:itum|esperanza|saay|cogon|tagdo)\b")
 
 
 def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
@@ -3431,8 +3443,8 @@ def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
       - Mambajao Uplands: Soro-soro, Highland Resort, Katibawasan Falls, Quiboro,
         Utopia, PHIVOLCS, Sa-ay Cold Spring, Binunsaran, Nanaw, Itum / Hibok-Hibok Trail,
         Sitio Esperanza & Ardent Hot Spring.
-      - Agoho & Bug-ong Uplands: Upper Cogon (above Agoho / Sibato foothills) and
-        Timogsay / Timugsay (above Bug-ong), clear of Tagdo & coastal resorts.
+      - Agoho, Bug-ong & Tagdo Uplands: Upper Cogon (above Agoho / Sibato foothills),
+        Timogsay / Timugsay (above Bug-ong), and Barangay Tagdo, clear of coastal resorts.
       - Catarman Mountain Uplands: Tuasan Falls / Upper Mainit.
       - Sagay Uplands: Binangawan Falls interior.
     """
@@ -3446,7 +3458,7 @@ def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
 
     if 9.185 <= lat_f <= 9.2355 and 124.682 <= lng_f <= 124.734:
         return True
-    if 9.215 <= lat_f <= 9.2400 and 124.6680 <= lng_f <= 124.6845:
+    if 9.215 <= lat_f <= 9.2400 and 124.6680 <= lng_f <= 124.6960:
         return True
     if 9.168 <= lat_f <= 9.205 and 124.668 <= lng_f <= 124.695:
         return True
@@ -3497,7 +3509,7 @@ def calculate_fare(
     - Queuing at large establishments / groceries (Gaisano, Davilett, Nene Uy): +₱30.00
     - Extra store stops: +₱20.00 per additional store
     - Bulky orders / Shopping orders >= ₱2,000: +₱20.00
-    - Hinterland / Mountain route (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon, Quiboro, Sa-ay, Tuasan, Binangawan, Itum, etc.): +₱30.00
+    - Hinterland / Mountain route (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon, Quiboro, Sa-ay, Tuasan, Binangawan, Itum, etc.): +₱30.00
     """
     clean_km = max(1.0, round(km, 2))
     base_fare = float(settings.get("base_fare") or 40.0)
@@ -3549,7 +3561,7 @@ def calculate_fare(
 
 
 def generate_booking_code() -> str:
-    now = datetime.now()
+    now = get_now_pht()
     token = secrets.token_hex(2).upper()
     return f"CCRC-{now.strftime('%y%m')}-{token}"
 
@@ -4162,7 +4174,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
 
 
 def _seed_initial_data(conn: DatabaseConnection) -> None:
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
 
     default_settings = {
         "club_name": "Camiguin Centric Riders Club",
@@ -4197,7 +4209,7 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
     try:
         existing_promos = conn.execute("SELECT COUNT(*) AS c FROM promo_codes").fetchone()
         if not existing_promos or existing_promos["c"] == 0:
-            now_iso = datetime.now().isoformat(timespec="seconds")
+            now_iso = get_now_pht().isoformat(timespec="seconds")
             starter_promos = [
                 ("WELCOME20", 20.0, 50.0, 1000, 0, "2027-12-31T23:59:59", 1, now_iso),
                 ("FIRSTRIDE", 15.0, 40.0, 500, 0, "2027-12-31T23:59:59", 1, now_iso),
@@ -4219,7 +4231,7 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
     try:
         existing_txns = conn.execute("SELECT COUNT(*) AS c FROM transactions").fetchone()
         if not existing_txns or existing_txns["c"] == 0:
-            now_iso = datetime.now().isoformat(timespec="seconds")
+            now_iso = get_now_pht().isoformat(timespec="seconds")
             bookings_rows = conn.execute("SELECT * FROM bookings ORDER BY id ASC").fetchall()
             for b in bookings_rows:
                 r_id = b.get("rider_id")
@@ -4357,7 +4369,7 @@ def register_rider(
 ) -> int:
     clean_phone = normalize_ph_phone(phone)
     pwd_hash = generate_password_hash(password)
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     clean_email = email.strip().lower()
     return conn.insert_returning_id(
         """
@@ -4403,7 +4415,7 @@ def update_rider_password(conn: DatabaseConnection, rider_id: int, new_password_
 
 
 def update_rider_online_status(conn: DatabaseConnection, rider_id: int, is_online: bool) -> None:
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     conn.execute(
         "UPDATE riders SET is_online = ?, last_active_at = ? WHERE id = ?",
         (1 if is_online else 0, now, rider_id),
@@ -4419,7 +4431,7 @@ def update_rider_location(
     speed: float = 0.0,
     heading: float = 0.0,
 ) -> None:
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     conn.execute(
         "UPDATE riders SET last_lat = ?, last_lng = ?, last_active_at = ? WHERE id = ?",
         (lat, lng, now, rider_id),
@@ -4472,7 +4484,7 @@ def create_booking(
     discount_amount: float = 0.0,
 ) -> dict[str, Any]:
     code = generate_booking_code()
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     booking_id = conn.insert_returning_id(
         """
         INSERT INTO bookings (
@@ -4570,13 +4582,6 @@ def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str,
         """
     ).fetchall()
     return [dict(r) for r in rows]
-
-
-PHT = timezone(timedelta(hours=8))
-
-def get_now_pht() -> datetime:
-    """Returns current date and time in Philippine Standard Time (UTC+8) matching Camiguin Island."""
-    return datetime.now(PHT).replace(tzinfo=None)
 
 
 def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, Any] | None:
@@ -4693,7 +4698,7 @@ def get_rider_scheduled_jobs(conn: DatabaseConnection, rider_id: int) -> list[di
 
 def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> bool:
     """Atomic acceptance: assigns rider only if booking is still in 'broadcast' status."""
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     cur = conn.execute(
         """
         UPDATE bookings
@@ -4724,7 +4729,7 @@ def update_booking_status(conn: DatabaseConnection, booking_id: int, new_status:
     if prev_status in ("completed", "cancelled"):
         return False
 
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     extra_col = ""
     extra_params = []
     if new_status == "in_progress":
@@ -4774,7 +4779,7 @@ def get_booking_tracking_trail(conn: DatabaseConnection, booking_id: int, limit:
 # Media Storage in DB
 # -----------------------------------------------------------------------------
 def save_uploaded_media(conn: DatabaseConnection, filename: str, data: bytes, mimetype: str) -> str:
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     conn.execute(
         """
         INSERT INTO uploaded_media (filename, data, mimetype, created_at)
@@ -4803,7 +4808,7 @@ def add_booking_message(
     sender_name: str,
     message: str,
 ) -> dict[str, Any]:
-    now = datetime.now().isoformat(timespec="seconds")
+    now = get_now_pht().isoformat(timespec="seconds")
     msg_id = conn.insert_returning_id(
         """
         INSERT INTO booking_messages (booking_id, sender_role, sender_name, message, created_at)
@@ -5012,10 +5017,10 @@ def restore_full_backup(
                     """
                     INSERT INTO riders (
                         id, name, phone, password_hash, bike_model, plate_number,
-                        municipality, color, license_no, avatar_url, status,
+                        municipality, color, license_no, avatar_url, email, status,
                         is_online, last_lat, last_lng, last_active_at, total_trips,
                         rating_avg, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         r_id,
@@ -5028,6 +5033,7 @@ def restore_full_backup(
                         r.get("color", "#f97316"),
                         r.get("license_no", ""),
                         r.get("avatar_url", ""),
+                        r.get("email", ""),
                         r.get("status", "active"),
                         int(r.get("is_online") or 0),
                         r.get("last_lat"),
@@ -5035,7 +5041,7 @@ def restore_full_backup(
                         r.get("last_active_at"),
                         int(r.get("total_trips") or 0),
                         float(r.get("rating_avg") or 5.0),
-                        r.get("created_at") or datetime.now().isoformat(),
+                        r.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             else:
@@ -5043,10 +5049,10 @@ def restore_full_backup(
                     """
                     INSERT INTO riders (
                         name, phone, password_hash, bike_model, plate_number,
-                        municipality, color, license_no, avatar_url, status,
+                        municipality, color, license_no, avatar_url, email, status,
                         is_online, last_lat, last_lng, last_active_at, total_trips,
                         rating_avg, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         r.get("name", "Unknown Rider"),
@@ -5058,6 +5064,7 @@ def restore_full_backup(
                         r.get("color", "#f97316"),
                         r.get("license_no", ""),
                         r.get("avatar_url", ""),
+                        r.get("email", ""),
                         r.get("status", "active"),
                         int(r.get("is_online") or 0),
                         r.get("last_lat"),
@@ -5065,7 +5072,7 @@ def restore_full_backup(
                         r.get("last_active_at"),
                         int(r.get("total_trips") or 0),
                         float(r.get("rating_avg") or 5.0),
-                        r.get("created_at") or datetime.now().isoformat(),
+                        r.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             restored_summary["riders"] += 1
@@ -5091,8 +5098,9 @@ def restore_full_backup(
                         dropoff_address, dropoff_lat, dropoff_lng, item_notes,
                         estimated_budget, estimated_km, fare_amount, payment_method,
                         rider_id, accepted_at, pickup_time, completed_at,
-                        cancelled_reason, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        cancelled_reason, scheduled_at, promo_code_id, promo_code,
+                        discount_amount, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         b_id,
@@ -5117,7 +5125,11 @@ def restore_full_backup(
                         b.get("pickup_time"),
                         b.get("completed_at"),
                         b.get("cancelled_reason", ""),
-                        b.get("created_at") or datetime.now().isoformat(),
+                        b.get("scheduled_at"),
+                        b.get("promo_code_id"),
+                        b.get("promo_code") or "",
+                        float(b.get("discount_amount") or 0.0),
+                        b.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             else:
@@ -5129,8 +5141,9 @@ def restore_full_backup(
                         dropoff_address, dropoff_lat, dropoff_lng, item_notes,
                         estimated_budget, estimated_km, fare_amount, payment_method,
                         rider_id, accepted_at, pickup_time, completed_at,
-                        cancelled_reason, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        cancelled_reason, scheduled_at, promo_code_id, promo_code,
+                        discount_amount, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         code,
@@ -5154,7 +5167,11 @@ def restore_full_backup(
                         b.get("pickup_time"),
                         b.get("completed_at"),
                         b.get("cancelled_reason", ""),
-                        b.get("created_at") or datetime.now().isoformat(),
+                        b.get("scheduled_at"),
+                        b.get("promo_code_id"),
+                        b.get("promo_code") or "",
+                        float(b.get("discount_amount") or 0.0),
+                        b.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             restored_summary["bookings"] += 1
@@ -5180,7 +5197,7 @@ def restore_full_backup(
                         m.get("sender_role", "system"),
                         m.get("sender_name", "System"),
                         m.get("message", ""),
-                        m.get("created_at") or datetime.now().isoformat(),
+                        m.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             else:
@@ -5194,7 +5211,7 @@ def restore_full_backup(
                         m.get("sender_role", "system"),
                         m.get("sender_name", "System"),
                         m.get("message", ""),
-                        m.get("created_at") or datetime.now().isoformat(),
+                        m.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             restored_summary["booking_messages"] += 1
@@ -5221,7 +5238,7 @@ def restore_full_backup(
                         rv.get("customer_name", "Customer"),
                         int(rv.get("rating") or 5),
                         rv.get("comment", ""),
-                        rv.get("created_at") or datetime.now().isoformat(),
+                        rv.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             else:
@@ -5236,7 +5253,7 @@ def restore_full_backup(
                         rv.get("customer_name", "Customer"),
                         int(rv.get("rating") or 5),
                         rv.get("comment", ""),
-                        rv.get("created_at") or datetime.now().isoformat(),
+                        rv.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             restored_summary["reviews"] += 1
@@ -5246,7 +5263,7 @@ def restore_full_backup(
             fname = med.get("filename")
             b64_data = med.get("data_base64")
             mimetype = med.get("mimetype", "application/octet-stream")
-            created_at = med.get("created_at") or datetime.now().isoformat()
+            created_at = med.get("created_at") or get_now_pht().isoformat()
             if not fname or not b64_data:
                 continue
             try:
@@ -5289,7 +5306,7 @@ def restore_full_backup(
                         float(lng),
                         float(tl.get("speed") or 0.0),
                         float(tl.get("heading") or 0.0),
-                        tl.get("created_at") or datetime.now().isoformat(),
+                        tl.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             else:
@@ -5305,7 +5322,7 @@ def restore_full_backup(
                         float(lng),
                         float(tl.get("speed") or 0.0),
                         float(tl.get("heading") or 0.0),
-                        tl.get("created_at") or datetime.now().isoformat(),
+                        tl.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
             restored_summary["tracking_logs"] += 1
@@ -5332,8 +5349,8 @@ def restore_full_backup(
                         c.get("email", ""), c.get("avatar_url", ""), c.get("barangay", ""),
                         int(c.get("is_verified") or 0), c.get("status", "active"),
                         int(c.get("total_rides") or 0), float(c.get("total_spent") or 0.0),
-                        c.get("saved_notes", ""), c.get("created_at") or datetime.now().isoformat(),
-                        c.get("last_active_at") or datetime.now().isoformat(),
+                        c.get("saved_notes", ""), c.get("created_at") or get_now_pht().isoformat(),
+                        c.get("last_active_at") or get_now_pht().isoformat(),
                     ),
                 )
             else:
@@ -5350,8 +5367,8 @@ def restore_full_backup(
                         c.get("email", ""), c.get("avatar_url", ""), c.get("barangay", ""),
                         int(c.get("is_verified") or 0), c.get("status", "active"),
                         int(c.get("total_rides") or 0), float(c.get("total_spent") or 0.0),
-                        c.get("saved_notes", ""), c.get("created_at") or datetime.now().isoformat(),
-                        c.get("last_active_at") or datetime.now().isoformat(),
+                        c.get("saved_notes", ""), c.get("created_at") or get_now_pht().isoformat(),
+                        c.get("last_active_at") or get_now_pht().isoformat(),
                     ),
                 )
             restored_summary["customers"] += 1
@@ -5373,7 +5390,7 @@ def restore_full_backup(
                     p_code, float(p.get("discount_amount") or 0.0), float(p.get("min_fare") or 0.0),
                     int(p.get("max_uses") or 100), int(p.get("uses_count") or 0),
                     int(p.get("is_active") if p.get("is_active") is not None else 1),
-                    p.get("expires_at"), p.get("created_at") or datetime.now().isoformat(),
+                    p.get("expires_at"), p.get("created_at") or get_now_pht().isoformat(),
                 ),
             )
             restored_summary["promo_codes"] += 1
@@ -5400,7 +5417,7 @@ def restore_full_backup(
                     tx.get("customer_phone", ""), tx.get("service_type", "pahatud"),
                     float(tx.get("amount") or 0.0), tx.get("payment_method", "cash"),
                     tx.get("status", "completed"), tx.get("notes", ""),
-                    tx.get("created_at") or datetime.now().isoformat(),
+                    tx.get("created_at") or get_now_pht().isoformat(),
                 ),
             )
             restored_summary["transactions"] += 1
@@ -5431,25 +5448,29 @@ def restore_full_backup(
 # Customer Profiles, Verification & History
 # -------------------------------------------------------------------------
 def get_or_create_customer(conn: DatabaseConnection, phone: str, name: str = "") -> dict[str, Any]:
-    phone = (phone or "").strip()
+    raw_phone = (phone or "").strip()
+    clean_phone = normalize_ph_phone(raw_phone) or raw_phone
     name = (name or "").strip()
-    now_iso = datetime.now().isoformat(timespec="seconds")
-    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
-    if row:
-        if name and name != row["name"]:
-            conn.execute("UPDATE customers SET name = ?, last_active_at = ? WHERE phone = ?", (name, now_iso, phone))
+    now_iso = get_now_pht().isoformat(timespec="seconds")
+
+    existing = get_customer_by_phone(conn, clean_phone) or (get_customer_by_phone(conn, raw_phone) if raw_phone else None)
+    if existing:
+        if name and name != existing.get("name"):
+            conn.execute("UPDATE customers SET name = ?, last_active_at = ? WHERE id = ?", (name, now_iso, existing["id"]))
         else:
-            conn.execute("UPDATE customers SET last_active_at = ? WHERE phone = ?", (now_iso, phone))
-        return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
-    
+            conn.execute("UPDATE customers SET last_active_at = ? WHERE id = ?", (now_iso, existing["id"]))
+        row = conn.execute("SELECT * FROM customers WHERE id = ?", (existing["id"],)).fetchone()
+        return dict(row) if row else existing
+
     conn.execute(
         """
         INSERT INTO customers (phone, name, email, is_verified, status, total_rides, total_spent, saved_notes, created_at, last_active_at)
         VALUES (?, ?, '', 0, 'active', 0, 0.0, '', ?, ?)
         """,
-        (phone, name or "Camiguin Passenger", now_iso, now_iso)
+        (clean_phone, name or "Camiguin Passenger", now_iso, now_iso)
     )
-    return dict(conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone())
+    row = conn.execute("SELECT * FROM customers WHERE phone = ? ORDER BY id DESC LIMIT 1", (clean_phone,)).fetchone()
+    return dict(row) if row else {"phone": clean_phone, "name": name or "Camiguin Passenger", "is_verified": 0}
 
 def register_customer(
     conn: DatabaseConnection,
@@ -5467,7 +5488,7 @@ def register_customer(
     avatar_url = (avatar_url or "").strip()
     pwd_hash = generate_password_hash(password) if password else ""
     is_verified = 1 if password else 0
-    now_iso = datetime.now().isoformat(timespec="seconds")
+    now_iso = get_now_pht().isoformat(timespec="seconds")
 
     cust = get_customer_by_phone(conn, clean_phone)
     if cust:
@@ -5512,7 +5533,7 @@ def authenticate_customer(conn: DatabaseConnection, phone: str, password: str) -
     pwd_hash = r_dict.get("password_hash") or ""
     if not pwd_hash or not check_password_hash(pwd_hash, password):
         return None
-    now_iso = datetime.now().isoformat(timespec="seconds")
+    now_iso = get_now_pht().isoformat(timespec="seconds")
     conn.execute("UPDATE customers SET last_active_at = ? WHERE id = ?", (now_iso, r_dict["id"]))
     return r_dict
 
@@ -5599,7 +5620,7 @@ def update_customer_stats(conn: DatabaseConnection, customer_phone: str, fare_am
         fare = float(fare_amount or 0.0)
     except (ValueError, TypeError):
         fare = 0.0
-    now_iso = datetime.now().isoformat(timespec="seconds")
+    now_iso = get_now_pht().isoformat(timespec="seconds")
     cust = get_customer_by_phone(conn, phone)
     if cust:
         conn.execute(
@@ -5622,20 +5643,35 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
 
     digits = "".join(filter(str.isdigit, clean_p))
     last10 = digits[-10:] if len(digits) >= 10 else digits
+    norm_p = normalize_ph_phone(clean_p) or clean_p
 
-    rows = conn.execute(
-        f"""
-        SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone
-        FROM bookings b
-        LEFT JOIN riders r ON b.rider_id = r.id
-        WHERE b.customer_phone = ?
-           OR b.customer_phone LIKE ?
-           OR b.customer_phone LIKE ?
-        ORDER BY b.id DESC
-        LIMIT {int(limit)}
-        """,
-        (clean_p, f"%{last10}", f"0{last10}")
-    ).fetchall()
+    if len(last10) >= 7:
+        rows = conn.execute(
+            f"""
+            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone
+            FROM bookings b
+            LEFT JOIN riders r ON b.rider_id = r.id
+            WHERE b.customer_phone = ?
+               OR b.customer_phone = ?
+               OR b.customer_phone LIKE ?
+               OR b.customer_phone LIKE ?
+            ORDER BY b.id DESC
+            LIMIT {int(limit)}
+            """,
+            (clean_p, norm_p, f"%{last10}", f"0{last10}")
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            f"""
+            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone
+            FROM bookings b
+            LEFT JOIN riders r ON b.rider_id = r.id
+            WHERE b.customer_phone = ?
+            ORDER BY b.id DESC
+            LIMIT {int(limit)}
+            """,
+            (clean_p,)
+        ).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -5645,7 +5681,7 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
 def generate_transaction_code(booking_code: str = "") -> str:
     if booking_code:
         return f"TXN-{booking_code}"
-    now_str = datetime.now().strftime("%Y%m%d")
+    now_str = get_now_pht().strftime("%Y%m%d")
     rnd = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"TXN-{now_str}-{rnd}"
 
@@ -5671,7 +5707,7 @@ def record_transaction(
     except (ValueError, TypeError):
         amount = 0.0
     payment_method = booking.get("payment_method", "cash")
-    now_iso = datetime.now().isoformat(timespec="seconds")
+    now_iso = get_now_pht().isoformat(timespec="seconds")
 
     existing = conn.execute("SELECT * FROM transactions WHERE booking_id = ?", (booking_id,)).fetchone()
     if existing:
@@ -5758,17 +5794,36 @@ def get_rider_transactions(conn: DatabaseConnection, rider_id: int, limit: int =
     ).fetchall()
     return [dict(r) for r in rows]
 
+def get_rider_transaction_summary(conn: DatabaseConnection, rider_id: int, today_prefix: str) -> dict[str, Any]:
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS total_count,
+               COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) AS all_time_earnings,
+               COALESCE(SUM(CASE WHEN status = 'completed' AND SUBSTR(CAST(created_at AS TEXT), 1, 10) = ? THEN amount ELSE 0 END), 0) AS today_earnings
+        FROM transactions
+        WHERE rider_id = ?
+        """,
+        (today_prefix, rider_id),
+    ).fetchone()
+    return {
+        "total_transactions": int(row["total_count"] or 0) if row else 0,
+        "all_time_earnings": float(row["all_time_earnings"] or 0.0) if row else 0.0,
+        "today_earnings": float(row["today_earnings"] or 0.0) if row else 0.0,
+    }
+
 def get_customer_transactions(conn: DatabaseConnection, customer_phone: str, limit: int = 50) -> list[dict[str, Any]]:
+    raw_p = (customer_phone or "").strip()
+    clean_p = normalize_ph_phone(raw_p) or raw_p
     rows = conn.execute(
         """
         SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
         FROM transactions t
         LEFT JOIN customers c ON t.customer_phone = c.phone
-        WHERE t.customer_phone = ?
+        WHERE t.customer_phone = ? OR t.customer_phone = ?
         ORDER BY t.id DESC
         LIMIT ?
         """,
-        (customer_phone.strip(), limit),
+        (clean_p, raw_p, limit),
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -5808,6 +5863,21 @@ def get_financial_summary(conn: DatabaseConnection) -> dict[str, Any]:
         "verified_customers": cust_stats["verified_customers"] if cust_stats else 0,
     }
 
+def get_booking_summary_counts(conn: DatabaseConnection) -> dict[str, int]:
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS total_bookings,
+               COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed,
+               COALESCE(SUM(CASE WHEN status IN ('broadcast', 'accepted', 'in_progress') THEN 1 ELSE 0 END), 0) AS active_now
+        FROM bookings
+        """
+    ).fetchone()
+    return {
+        "total_bookings": int(row["total_bookings"] or 0) if row else 0,
+        "completed": int(row["completed"] or 0) if row else 0,
+        "active_now": int(row["active_now"] or 0) if row else 0,
+    }
+
 # -------------------------------------------------------------------------
 # Promo Codes Engine
 # -------------------------------------------------------------------------
@@ -5824,7 +5894,7 @@ def validate_promo_code(conn: DatabaseConnection, code: str, current_fare: float
         return {"valid": False, "error": "This promo code has reached its maximum redemptions."}
     if row["expires_at"]:
         exp_str = str(row["expires_at"]).strip().replace(" ", "T")[:19]
-        now_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        now_str = get_now_pht().strftime("%Y-%m-%dT%H:%M:%S")
         if exp_str < now_str:
             return {"valid": False, "error": "This promo code has already expired."}
     if row["min_fare"] and current_fare < float(row["min_fare"]):
@@ -5836,6 +5906,8 @@ def validate_promo_code(conn: DatabaseConnection, code: str, current_fare: float
         "code": row["code"],
         "promo_id": row["id"],
         "discount_amount": discount,
+        "raw_discount": float(row["discount_amount"] or 0.0),
+        "min_fare": float(row["min_fare"] or 0.0),
         "new_fare": max(0.0, current_fare - discount),
         "message": f"₱{discount:.0f} discount voucher applied!"
     }
@@ -5858,20 +5930,38 @@ def apply_promo_code(conn: DatabaseConnection, code: str) -> bool:
 # Rider Ratings & Reviews
 # -------------------------------------------------------------------------
 def create_review(conn: DatabaseConnection, booking_id: int | None, rider_id: int, customer_name: str, rating: int, comment: str = "") -> dict[str, Any]:
-    now_iso = datetime.now().isoformat(timespec="seconds")
+    now_iso = get_now_pht().isoformat(timespec="seconds")
     rating = max(1, min(5, int(rating)))
+    clean_name = (customer_name or "").strip() or "Island Passenger"
+    clean_comment = (comment or "").strip()
     review_id = conn.insert_returning_id(
         """
         INSERT INTO reviews (booking_id, rider_id, customer_name, rating, comment, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (booking_id, rider_id, customer_name.strip() or "Island Passenger", rating, comment.strip(), now_iso)
+        (booking_id, rider_id, clean_name, rating, clean_comment, now_iso)
     )
     # Recalculate average rating for rider (do NOT increment total_trips here; handled on booking completion)
     avg_row = conn.execute("SELECT AVG(rating) as avg_r, COUNT(*) as cnt FROM reviews WHERE rider_id = ?", (rider_id,)).fetchone()
-    if avg_row and avg_row["avg_r"]:
+    if avg_row and avg_row["avg_r"] is not None:
         conn.execute("UPDATE riders SET rating_avg = ? WHERE id = ?", (round(float(avg_row["avg_r"]), 2), rider_id))
-    return {"id": review_id, "rider_id": rider_id, "rating": rating, "comment": comment, "created_at": now_iso}
+    conn.commit()
+    return {
+        "id": review_id,
+        "booking_id": booking_id,
+        "rider_id": rider_id,
+        "customer_name": clean_name,
+        "rating": rating,
+        "comment": clean_comment,
+        "created_at": now_iso,
+    }
+
+def get_review_by_booking_id(conn: DatabaseConnection, booking_id: int) -> dict[str, Any] | None:
+    row = conn.execute(
+        "SELECT * FROM reviews WHERE booking_id = ? ORDER BY id DESC LIMIT 1",
+        (booking_id,),
+    ).fetchone()
+    return dict(row) if row else None
 
 def get_rider_reviews(conn: DatabaseConnection, rider_id: int, limit: int = 10) -> list[dict[str, Any]]:
     rows = conn.execute(

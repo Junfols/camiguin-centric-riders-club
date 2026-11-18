@@ -53,12 +53,13 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v7
+        # 2. Service Worker v9
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v7", sw_text)
-        self.assertIn("/static/js/app.js?v=31", sw_text)
+        self.assertIn("ccrc-pwa-v9", sw_text)
+        self.assertIn("/static/js/app.js?v=33", sw_text)
+        self.assertIn("/static/js/auth.js?v=1", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")
@@ -1417,7 +1418,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
                 f"Coastal highway waypoint falsely flagged upland: {label}",
             )
 
-        # 2. Verify Mambajao Centro -> Soro-soro / Utopia / Highland / Ardent / Katibawasan / Binunsaran / Timogsay / Upper Cogon
+        # 2. Verify Mambajao Centro -> Soro-soro / Utopia / Highland / Ardent / Katibawasan / Binunsaran / Tagdo / Timogsay / Upper Cogon
         # automatically add +₱30 across BOTH /api/fare-estimate AND /api/bookings (including Passenger rides!)
         upland_cases = [
             ("Mambajao Town Plaza", "Soro-soro, Mambajao", "pahatud"),
@@ -1427,6 +1428,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             ("Gaisano Capital Camiguin", "Katibawasan Falls", "pasugo"),
             ("Mambajao Town Plaza", "Binunsaran, Mambajao", "pahatud"),
             ("Mambajao Town Plaza", "Sa-ay Cold Spring, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Tagdo, Mambajao", "pahatud"),
+            ("Poblacion, Mambajao", "Brgy. Tagdo", "pabili"),
             ("Mambajao Town Plaza", "Timogsay, Bug-ong, Mambajao", "pahatud"),
             ("Mambajao Town Plaza", "Timugsay, Bug-ong", "pabili"),
             ("Mambajao Town Plaza", "Upper Cogon, Agoho, Mambajao", "pahatud"),
@@ -1467,9 +1470,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertEqual(booked["breakdown"]["hinterland_fee"], 30.0)
             self.assertEqual(booked["booking"]["fare_amount"], est["fare_amount"])
 
-        # 3. Map-pinned coordinates inside Soro-soro / Utopia, Upper Cogon, and Timogsay without place keywords still auto-add +₱30
+        # 3. Map-pinned coordinates inside Soro-soro / Utopia, Tagdo, Upper Cogon, and Timogsay without place keywords still auto-add +₱30
         for d_lat, d_lng in [
             (9.22741, 124.70748),  # Utopia / Quiboro
+            (9.23840, 124.68850),  # Tagdo, Mambajao
             (9.23580, 124.67380),  # Upper Cogon (above Agoho)
             (9.23750, 124.67950),  # Timogsay (above Bug-ong)
         ]:
@@ -1495,7 +1499,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             ("Moonflower Garden, Baylao", "Jollibee Camiguin"),
             ("Balbagon Port", "White Island Boat Jump-off, Yumbing"),
             ("Pandan, Mambajao", "Mambajao Town Plaza"),
-            ("Tagdo, Mambajao", "Agoho, Mambajao"),
+            ("Kuguita, Mambajao", "Agoho, Mambajao"),
             ("Poblacion, Mambajao", "Agoho, Mambajao"),
             ("Poblacion, Mambajao", "Bug-ong, Mambajao"),
             ("Mambajao Town Plaza", "Lanzones Cabana, Agoho"),
@@ -1513,14 +1517,344 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertFalse(flat_est["auto_hinterland"], (pickup_q, dropoff_q))
             self.assertEqual(flat_est["breakdown"]["hinterland_fee"], 0.0, (pickup_q, dropoff_q))
 
-        # 5. Home template & i18n reflect Timogsay / Upper Cogon + upland badge labels
+        # 5. Home template & i18n reflect Tagdo / Timogsay / Upper Cogon + upland badge labels
         home_html = self.client.get("/").get_data(as_text=True)
         self.assertIn('id="fare-breakdown-badges"', home_html)
+        self.assertIn("Tagdo", home_html)
         self.assertIn("Timogsay", home_html)
         self.assertIn("Upper Cogon", home_html)
         i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
         self.assertIn("Steep / Upland Route (Auto-Added)", i18n_js)
-        self.assertIn("Timogsay, Upper Cogon", i18n_js)
+        self.assertIn("Tagdo, Timogsay, Upper Cogon", i18n_js)
+
+    def test_system_audit_regression_fixes(self):
+        from pathlib import Path
+        from db import (
+            accept_booking,
+            create_review,
+            export_full_backup,
+            get_booking_summary_counts,
+            get_connection,
+            get_now_pht,
+            get_rider_by_phone,
+            get_rider_reviews,
+            restore_full_backup,
+            update_booking_status,
+            validate_promo_code,
+        )
+
+        # 1. Public pages render clean club name (no club=settings overwrite) & load shared auth.js
+        for route in ("/tours", "/history", "/about", "/faq", "/terms"):
+            resp = self.client.get(route)
+            self.assertEqual(resp.status_code, 200, route)
+            html_body = resp.get_data(as_text=True)
+            self.assertIn("Camiguin Centric Riders Club", html_body, route)
+            self.assertIn("/static/js/auth.js?v=1", html_body, route)
+
+        # 2. Review auto-commit persistence, API guards, duplicate protection & track already_reviewed
+        r1 = self._create_active_rider(name="Audit Rider One", phone="09171110001")
+        r2 = self._create_active_rider(name="Audit Rider Two", phone="09171110002")
+
+        conn = get_connection(self.db_path)
+        try:
+            create_review(conn, None, r1, "Direct Reviewer", 4, "Persisted without caller commit")
+        finally:
+            conn.close()
+
+        conn_check = get_connection(self.db_path)
+        try:
+            revs = get_rider_reviews(conn_check, r1)
+            self.assertTrue(any(r["comment"] == "Persisted without caller commit" for r in revs))
+        finally:
+            conn_check.close()
+
+        b_open = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Audit Passenger",
+                "customer_phone": "09172220001",
+                "service_type": "pahatud",
+                "pickup_address": "Poblacion, Mambajao",
+                "dropoff_address": "Agoho, Mambajao",
+            },
+        ).get_json()["booking"]
+
+        # Validation guards before trip completion
+        self.assertEqual(self.client.post("/api/reviews", json={"rider_id": r1, "rating": 0}).status_code, 400)
+        self.assertEqual(self.client.post("/api/reviews", json={"rider_id": r1, "rating": 6}).status_code, 400)
+        self.assertEqual(self.client.post("/api/reviews", json={"rider_id": 999999, "rating": 5}).status_code, 404)
+        self.assertEqual(
+            self.client.post("/api/reviews", json={"rider_id": r1, "booking_id": 999999, "rating": 5}).status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.post("/api/reviews", json={"rider_id": r1, "booking_id": b_open["id"], "rating": 5}).status_code,
+            400,
+        )
+
+        # Complete trip as r1
+        conn = get_connection(self.db_path)
+        try:
+            self.assertTrue(accept_booking(conn, b_open["id"], r1))
+            self.assertTrue(update_booking_status(conn, b_open["id"], "completed"))
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Wrong rider rejected (400)
+        self.assertEqual(
+            self.client.post("/api/reviews", json={"rider_id": r2, "booking_id": b_open["id"], "rating": 5}).status_code,
+            400,
+        )
+
+        # Before review submission, /track/<CODE> & JSON show not reviewed
+        tr_before = self.client.get(f"/track/{b_open['booking_code']}").get_data(as_text=True)
+        self.assertNotIn("Your review has already been submitted", tr_before)
+        tr_json_before = self.client.get(f"/api/bookings/track/{b_open['booking_code']}").get_json()
+        self.assertFalse(tr_json_before["already_reviewed"])
+
+        # Valid completed-booking review (201) + duplicate rejected (409) + optional review without booking_id (201)
+        rev_ok = self.client.post(
+            "/api/reviews",
+            json={"rider_id": r1, "booking_id": b_open["id"], "rating": 5, "customer_name": "Audit Passenger"},
+        )
+        self.assertEqual(rev_ok.status_code, 201)
+        rev_dup = self.client.post(
+            "/api/reviews",
+            json={"rider_id": r1, "booking_id": b_open["id"], "rating": 5, "customer_name": "Audit Passenger"},
+        )
+        self.assertEqual(rev_dup.status_code, 409)
+        rev_opt = self.client.post(
+            "/api/reviews",
+            json={"rider_id": r1, "rating": 4, "customer_name": "Walk-in Passenger", "comment": "Smooth ride"},
+        )
+        self.assertEqual(rev_opt.status_code, 201)
+
+        tr_after = self.client.get(f"/track/{b_open['booking_code']}").get_data(as_text=True)
+        self.assertIn("Your review has already been submitted", tr_after)
+        tr_json_after = self.client.get(f"/api/bookings/track/{b_open['booking_code']}").get_json()
+        self.assertTrue(tr_json_after["already_reviewed"])
+
+        # 3. Road route road_km, active-job authenticated boolean, start-now status guard, & chat ?after=abc tolerance
+        road_resp = self.client.get("/api/road-route?p_lat=9.25405&p_lng=124.71636&d_lat=9.2400&d_lng=124.6600")
+        self.assertEqual(road_resp.status_code, 200)
+        road_data = road_resp.get_json()
+        self.assertEqual(road_data["code"], "Ok")
+        self.assertGreater(road_data["road_km"], 0)
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        aj_out = self.client.get("/api/rider/active-job").get_json()
+        self.assertFalse(aj_out["authenticated"])
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1
+        aj_in = self.client.get("/api/rider/active-job").get_json()
+        self.assertTrue(aj_in["authenticated"])
+
+        # start-now must reject already completed booking with 400
+        start_completed = self.client.post(f"/api/bookings/{b_open['id']}/start-now")
+        self.assertEqual(start_completed.status_code, 400)
+
+        # Chat ?after=abc on GET & POST must not fail with 500 ValueError
+        chat_get = self.client.get(f"/api/chat/{b_open['booking_code']}/messages?after=abc")
+        self.assertEqual(chat_get.status_code, 200)
+        chat_post = self.client.post(
+            f"/api/chat/{b_open['booking_code']}/messages?after=abc",
+            json={"message": "Safe arrival!"},
+        )
+        self.assertEqual(chat_post.status_code, 200)
+        self.assertTrue(any(m["message"] == "Safe arrival!" for m in chat_post.get_json()["messages"]))
+
+        # 4. Phone normalization (+63 spaces) & short-phone wildcard LIKE leak prevention
+        self.client.post(
+            "/api/customer/register",
+            json={
+                "name": "Spaced Phone User",
+                "phone": "0917 888 9900",
+                "email": "spaced.user@example.com",
+                "password": "password123",
+                "barangay": "Mambajao",
+            },
+        )
+        spaced_book = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Spaced Phone User",
+                "customer_phone": "+63 917 888 9900",
+                "service_type": "pahatud",
+                "pickup_address": "Mambajao Town Plaza",
+                "dropoff_address": "Agoho, Mambajao",
+            },
+        )
+        self.assertEqual(spaced_book.status_code, 201)
+        sb = spaced_book.get_json()["booking"]
+        self.assertEqual(sb["customer_phone"], "09178889900")
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1
+        avail = self.client.get("/api/rider/available-jobs").get_json()["jobs"]
+        matched_sb = [j for j in avail if j["id"] == sb["id"]]
+        self.assertEqual(len(matched_sb), 1)
+        self.assertEqual(matched_sb[0]["customer_verified"], 1)
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["customer_phone"] = "a"
+        short_hist = self.client.get("/api/customer/history/a")
+        self.assertEqual(short_hist.status_code, 200)
+        self.assertEqual(short_hist.get_json()["history"], [])
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["customer_phone"] = "12"
+        short_act = self.client.get("/api/customer/active-booking?phone=12")
+        self.assertEqual(short_act.status_code, 200)
+        self.assertFalse(short_act.get_json()["active"])
+
+        # 5. Promo code metadata + frontend recalculate hook
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute(
+                "INSERT INTO promo_codes (code, discount_amount, min_fare, max_uses, uses_count, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("MIN100TEST", 25.0, 100.0, 10, 0, 1, "2026-01-01T00:00:00"),
+            )
+            conn.commit()
+            p_res = validate_promo_code(conn, "MIN100TEST", 120.0)
+            self.assertTrue(p_res["valid"])
+            self.assertEqual(p_res["raw_discount"], 25.0)
+            self.assertEqual(p_res["min_fare"], 100.0)
+        finally:
+            conn.close()
+
+        root = Path(__file__).resolve().parent.parent
+        app_js = (root / "static/js/app.js").read_text(encoding="utf-8")
+        self.assertIn("applyPromoPreviewToFare", app_js)
+
+        # 6. >50 rider transactions & >50 bookings SQL aggregation accuracy
+        r_bulk = self._create_active_rider(name="Bulk Ledger Rider", phone="09173330001")
+        today_iso = get_now_pht().strftime("%Y-%m-%d") + "T09:00:00"
+        conn = get_connection(self.db_path)
+        try:
+            before_counts = get_booking_summary_counts(conn)
+            for i in range(55):
+                status = "completed" if i < 25 else "broadcast"
+                ts = today_iso if i < 30 else "2026-01-01T09:00:00"
+                b_id = conn.insert_returning_id(
+                    """
+                    INSERT INTO bookings (
+                        booking_code, service_type, status, customer_name, customer_phone,
+                        pickup_address, dropoff_address, fare_amount, estimated_km,
+                        payment_method, rider_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"CCRC-BULK-{i:03d}",
+                        "pahatud",
+                        status,
+                        f"Bulk Cust {i}",
+                        f"0999111{i:04d}",
+                        "Poblacion, Mambajao",
+                        "Agoho, Mambajao",
+                        100.0,
+                        2.0,
+                        "cash",
+                        r_bulk,
+                        ts,
+                    ),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO transactions (
+                        transaction_code, booking_id, booking_code, customer_phone, customer_name,
+                        rider_id, rider_name, service_type, amount, payment_method, status, notes, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"TXN-BULK-{i:03d}",
+                        b_id,
+                        f"CCRC-BULK-{i:03d}",
+                        f"0999111{i:04d}",
+                        f"Bulk Cust {i}",
+                        r_bulk,
+                        "Bulk Ledger Rider",
+                        "pahatud",
+                        100.0,
+                        "cash",
+                        "completed",
+                        "Bulk audit test",
+                        ts,
+                    ),
+                )
+            conn.commit()
+            after_counts = get_booking_summary_counts(conn)
+            self.assertEqual(after_counts["total_bookings"], before_counts["total_bookings"] + 55)
+            self.assertEqual(after_counts["completed"], before_counts["completed"] + 25)
+            self.assertEqual(after_counts["active_now"], before_counts["active_now"] + 30)
+        finally:
+            conn.close()
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r_bulk
+        r_tx_resp = self.client.get("/api/rider/transactions")
+        self.assertEqual(r_tx_resp.status_code, 200)
+        r_tx = r_tx_resp.get_json()
+        self.assertEqual(len(r_tx["transactions"]), 50)
+        self.assertEqual(r_tx["total_transactions"], 55)
+        self.assertEqual(r_tx["today_earnings"], 3000.0)
+        self.assertEqual(r_tx["all_time_earnings"], 5500.0)
+
+        # 7. Backup & restore fidelity for riders.email and bookings.scheduled_at/promo_code/promo_code_id/discount_amount
+        r_reg = self.client.post(
+            "/api/rider/register",
+            json={
+                "name": "Backup Fidelity Rider",
+                "phone": "09174445566",
+                "email": "backup.rider@example.com",
+                "password": "riderpass123",
+                "license_no": "B01-88-123456",
+                "bike_model": "Yamaha NMAX",
+                "plate_number": "BKP-101",
+                "municipality": "Mambajao",
+            },
+        )
+        self.assertEqual(r_reg.status_code, 201)
+        b_promo = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Backup Promo User",
+                "customer_phone": "09174447788",
+                "pickup_address": "Balbagon Port",
+                "dropoff_address": "Agoho, Mambajao",
+                "service_type": "pahatud",
+                "promo_code": "WELCOME20",
+                "scheduled_at": "2026-12-01T10:30:00",
+            },
+        ).get_json()["booking"]
+
+        conn = get_connection(self.db_path)
+        try:
+            snap = export_full_backup(conn)
+            restore_res = restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+            self.assertTrue(restore_res["success"])
+
+            restored_rider = get_rider_by_phone(conn, "backup.rider@example.com")
+            self.assertIsNotNone(restored_rider)
+            self.assertEqual(restored_rider["email"], "backup.rider@example.com")
+
+            restored_booking = conn.execute(
+                "SELECT * FROM bookings WHERE booking_code = ?",
+                (b_promo["booking_code"],),
+            ).fetchone()
+            self.assertIsNotNone(restored_booking)
+            self.assertEqual(restored_booking["scheduled_at"], "2026-12-01T10:30:00")
+            self.assertEqual(restored_booking["promo_code"], "WELCOME20")
+            self.assertEqual(restored_booking["promo_code_id"], b_promo["promo_code_id"])
+            self.assertEqual(float(restored_booking["discount_amount"]), float(b_promo["discount_amount"]))
+        finally:
+            conn.close()
 
 
 if __name__ == "__main__":

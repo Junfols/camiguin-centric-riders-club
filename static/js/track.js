@@ -44,6 +44,8 @@
   let currentTileLayer = "street";
   let lastRiderPosition = null;
   let currentRiderBearing = 0;
+  let livePollTimer = null;
+  let chatPollTimer = null;
 
   function calculateBearing(lat1, lng1, lat2, lng2) {
     const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -273,6 +275,26 @@
         try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch (_) {}
       }
 
+      // Sync progress stepper steps
+      const stepBroadcast = document.getElementById("step-broadcast");
+      const stepAccepted = document.getElementById("step-accepted");
+      const stepTransit = document.getElementById("step-transit");
+      const stepCompleted = document.getElementById("step-completed");
+      if (stepBroadcast) stepBroadcast.classList.toggle("active", ["broadcast", "accepted", "in_progress", "completed"].includes(b.status));
+      if (stepAccepted) stepAccepted.classList.toggle("active", ["accepted", "in_progress", "completed"].includes(b.status));
+      if (stepTransit) stepTransit.classList.toggle("active", ["in_progress", "completed"].includes(b.status));
+      if (stepCompleted) stepCompleted.classList.toggle("active", b.status === "completed");
+
+      // Sync hidden review rider ID & chat status subtitle dynamically
+      const reviewRiderInput = document.getElementById("review-rider-id");
+      if (reviewRiderInput && b.rider_id) {
+        reviewRiderInput.value = b.rider_id;
+      }
+      const chatStatusText = document.getElementById("chat-rider-status-text");
+      if (chatStatusText && b.rider_name) {
+        chatStatusText.textContent = `Direct in-app messaging with ${b.rider_name}`;
+      }
+
       // Update status pill
       if (statusPill) {
         statusPill.className = `status-pill status-${b.status}`;
@@ -292,6 +314,8 @@
           if (reviewCard) reviewCard.classList.remove("hidden");
         } else if (b.status === "cancelled") {
           statusPill.textContent = "✕ Booking has been cancelled.";
+          const backWrap = document.getElementById("track-completed-back-wrap");
+          if (backWrap) backWrap.classList.remove("hidden");
         }
       }
 
@@ -326,6 +350,19 @@
           liveDistanceIndicator.innerHTML = `📍 Rider distance from Destination: <strong>~${data.distance_to_dropoff_km} km</strong>`;
         } else if (b.status === "completed") {
           liveDistanceIndicator.innerHTML = `✓ <strong>Successfully Delivered</strong>`;
+        } else if (b.status === "cancelled") {
+          liveDistanceIndicator.innerHTML = `✕ <strong>Trip Cancelled</strong>`;
+        }
+      }
+
+      if (b.status === "completed" || b.status === "cancelled") {
+        if (livePollTimer) {
+          clearInterval(livePollTimer);
+          livePollTimer = null;
+        }
+        if (chatPollTimer) {
+          clearInterval(chatPollTimer);
+          chatPollTimer = null;
         }
       }
     } catch (_) {}
@@ -341,7 +378,6 @@
   const chatEmptyHint = document.getElementById("chat-empty-hint");
   const cannedButtons = document.querySelectorAll("#customer-canned-replies .canned-btn");
   let lastMessageId = 0;
-  let chatPollTimer = null;
 
   function playChatBeep() {
     try {
@@ -564,10 +600,10 @@
 
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
-    // Start polling every 3 seconds
-    setInterval(pollLiveStatus, 3000);
-    // Poll chat messages every 2.5 seconds
     pollChatMessages();
-    chatPollTimer = setInterval(pollChatMessages, 2500);
+    if (booking.status !== "completed" && booking.status !== "cancelled") {
+      livePollTimer = setInterval(pollLiveStatus, 3000);
+      chatPollTimer = setInterval(pollChatMessages, 2500);
+    }
   });
 })();

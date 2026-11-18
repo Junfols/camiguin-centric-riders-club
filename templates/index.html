@@ -70,7 +70,7 @@
       <a id="active-card-track-btn" href="{{ '/track/' ~ active_booking.booking_code if active_booking else '#' }}" class="btn btn-primary btn-block" style="flex:2; padding:12px 18px; font-weight:700; text-align:center; font-size:0.95rem; border-radius:10px;">
         🗺️ Resume Live GPS Tracking &rarr;
       </a>
-      <button type="button" id="active-card-dismiss-btn" class="btn btn-outline" style="flex:1; font-size:0.85rem; border-radius:10px; white-space:nowrap;" onclick="document.getElementById('booking-form')?.scrollIntoView({behavior:'smooth'})">
+      <button type="button" id="active-card-dismiss-btn" class="btn btn-outline" style="flex:1; font-size:0.85rem; border-radius:10px; white-space:nowrap;" onclick="document.getElementById('booking-request-form')?.scrollIntoView({behavior:'smooth'})">
         Book Another Ride +
       </button>
     </div>
@@ -215,7 +215,7 @@
               <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
               <div>
                 <strong>Hinterland / Mountain Route (+₱30)</strong>
-                <small class="text-muted">Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon</small>
+                <small class="text-muted">Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon</small>
               </div>
             </label>
           </div>
@@ -543,7 +543,7 @@
           <li><strong>Large Store Queuing:</strong> +₱30 when queuing at Gaisano, Davilett, Nene Uy</li>
           <li><strong>Additional Store Stops:</strong> +₱20 per extra store</li>
           <li><strong>Bulky Orders (&gt;=₱2,000):</strong> +₱20</li>
-          <li><strong>Hinterland / Mountain Route:</strong> +₱30 auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon, etc.)</li>
+          <li><strong>Hinterland / Mountain Route:</strong> +₱30 auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon, etc.)</li>
         </ul>
       </div>
     </div>
@@ -575,5 +575,5 @@
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
 </script>
-<script src="/static/js/app.js?v=31"></script>
+<script src="/static/js/app.js?v=33"></script>
 {% endblock %}
