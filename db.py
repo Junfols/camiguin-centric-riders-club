@@ -3828,7 +3828,7 @@ def add_booking_message(
     message: str,
 ) -> dict[str, Any]:
     now = datetime.now().isoformat(timespec="seconds")
-        msg_id = conn.insert_returning_id(
+    msg_id = conn.insert_returning_id(
         """
         INSERT INTO booking_messages (booking_id, sender_role, sender_name, message, created_at)
         VALUES (?, ?, ?, ?, ?)
