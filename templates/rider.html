@@ -167,7 +167,10 @@
         <div style="display:flex;align-items:center;gap:12px;">
           <img id="dash-rider-avatar-img" src="" alt="Rider Photo" class="hidden" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.15);">
           <div>
-            <span class="badge badge-accent">CCRC Verified Rider</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span class="badge badge-accent">CCRC Verified Rider</span>
+              <span id="dash-rider-rating-badge" class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-weight:700;">⭐ 5.0</span>
+            </div>
             <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
             <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
             <div class="text-muted" id="dash-rider-license" style="font-size:0.78rem;color:#64748b;margin-top:2px;">License: #</div>
@@ -438,6 +441,20 @@
       </div>
     </div>
 
+
+    <!-- Customer Ratings & Reviews Card -->
+    <div class="card" id="rider-reviews-section" style="margin-top:1.25rem;border:1px solid #fde68a;background:linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0;font-size:1.05rem;">⭐ Customer Ratings &amp; Feedback</h3>
+          <span class="text-muted" style="font-size:0.8rem;">Mga komento ug grado gikan sa imong mga pasahero</span>
+        </div>
+        <span id="rider-reviews-summary-pill" class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:700;">⭐ 5.0 (0 reviews)</span>
+      </div>
+      <div id="rider-reviews-list" style="display:grid;gap:8px;">
+        <div class="text-muted" style="font-size:0.85rem;padding:8px 0;">Loading customer feedback...</div>
+      </div>
+    </div>
 
     <div style="margin-top:1.5rem;text-align:center;">
       <button type="button" id="rider-logout-btn" class="text-btn text-danger">Log Out of Rider Account</button>

@@ -215,7 +215,10 @@
                   {% endif %}
                   <div>
                     <strong>{{ r.name }}</strong>
-                    <div style="font-size:0.78rem;"><a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a></div>
+                    <div style="font-size:0.78rem;">
+                      <a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a>
+                      <span style="margin-left:6px;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:10px;font-weight:700;font-size:0.72rem;">⭐ {{ "%.1f"|format(r.rating_avg or 5.0) }}</span>
+                    </div>
                   </div>
                 </div>
               </td>

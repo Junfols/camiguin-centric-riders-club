@@ -429,6 +429,7 @@
     fetchAvailableJobs();
     fetchCoRiders();
     loadRiderTransactions();
+    loadRiderReviews();
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
@@ -438,6 +439,66 @@
         checkActiveJob();
       }
     }, 3500);
+  }
+
+  async function loadRiderReviews() {
+    if (!currentRider || !currentRider.id) return;
+    const badgeEl = document.getElementById("dash-rider-rating-badge");
+    const summaryPill = document.getElementById("rider-reviews-summary-pill");
+    const listEl = document.getElementById("rider-reviews-list");
+    try {
+      const res = await fetch(`/api/reviews/${currentRider.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const avg = Number(data.rating_avg || currentRider.rating_avg || 5.0).toFixed(1);
+      const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+      if (badgeEl) badgeEl.textContent = `⭐ ${avg}`;
+      if (summaryPill) summaryPill.textContent = `⭐ ${avg} (${reviews.length} review${reviews.length === 1 ? "" : "s"})`;
+      if (!listEl) return;
+
+      listEl.innerHTML = "";
+      if (reviews.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "text-muted";
+        empty.style.cssText = "font-size:0.85rem;padding:8px 0;";
+        empty.textContent = "Wala pay customer review. Kompletoha ang mga biyahe aron makadawat ug 5-star ratings!";
+        listEl.appendChild(empty);
+        return;
+      }
+
+      reviews.forEach((rv) => {
+        const item = document.createElement("div");
+        item.style.cssText = "background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;";
+        const topRow = document.createElement("div");
+        topRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;";
+        const nameEl = document.createElement("strong");
+        nameEl.style.fontSize = "0.86rem";
+        nameEl.textContent = rv.customer_name || "Island Passenger";
+        const starsEl = document.createElement("span");
+        starsEl.style.cssText = "color:#d97706;font-weight:700;font-size:0.82rem;";
+        const count = Math.max(1, Math.min(5, Number(rv.rating || 5)));
+        starsEl.textContent = "★".repeat(count) + "☆".repeat(5 - count);
+        topRow.appendChild(nameEl);
+        topRow.appendChild(starsEl);
+        item.appendChild(topRow);
+
+        if (rv.comment) {
+          const commentEl = document.createElement("div");
+          commentEl.style.cssText = "font-size:0.84rem;color:#334155;line-height:1.4;";
+          commentEl.textContent = rv.comment;
+          item.appendChild(commentEl);
+        }
+
+        if (rv.created_at) {
+          const dateEl = document.createElement("div");
+          dateEl.className = "text-muted";
+          dateEl.style.cssText = "font-size:0.74rem;margin-top:4px;";
+          dateEl.textContent = String(rv.created_at).slice(0, 16).replace("T", " ");
+          item.appendChild(dateEl);
+        }
+        listEl.appendChild(item);
+      });
+    } catch (_) {}
   }
 
   // Online / Offline Toggle

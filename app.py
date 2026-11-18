@@ -722,7 +722,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def api_get_rider_reviews(rider_id: int):
         conn = get_db()
         reviews = get_rider_reviews(conn, rider_id)
-        return jsonify({"success": True, "reviews": reviews})
+        rider = get_rider_by_id(conn, rider_id)
+        rating_avg = float(rider.get("rating_avg") or 5.0) if rider else 5.0
+        return jsonify({
+            "success": True,
+            "rating_avg": round(rating_avg, 2),
+            "review_count": len(reviews),
+            "reviews": reviews,
+        })
 
     @app.get("/api/riders/online")
     def api_online_riders():
