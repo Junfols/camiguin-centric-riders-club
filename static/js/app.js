@@ -70,10 +70,2358 @@
       .replace(/'/g, "&#039;");
   }
 
-  // Camiguin Master Places Directory (126+ Locations)
+  // Camiguin Master Places Directory (Synced with db.py Verified OSM Coordinates)
   let CAMIGUIN_PLACES = [
   {
-    "name": "Petron Gas Station Mambajao (Balbagon)",
+    "name": "Poblacion, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "mambajao",
+      "poblacion mambajao",
+      "poblacion",
+      "centro mambajao",
+      "mambajao proper",
+      "mambajao town"
+    ],
+    "lat": 9.25405,
+    "lng": 124.71636,
+    "mun": "Mambajao",
+    "full_address": "Poblacion, Mambajao, Camiguin"
+  },
+  {
+    "name": "Agoho, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "agoho",
+      "brgy agoho",
+      "barangay agoho",
+      "agoho sandy beach",
+      "agoho beach"
+    ],
+    "lat": 9.24479,
+    "lng": 124.66854,
+    "mun": "Mambajao",
+    "full_address": "Agoho, Mambajao, Camiguin"
+  },
+  {
+    "name": "Anito, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "anito",
+      "brgy anito",
+      "barangay anito"
+    ],
+    "lat": 9.22961,
+    "lng": 124.7444,
+    "mun": "Mambajao",
+    "full_address": "Anito, Mambajao, Camiguin"
+  },
+  {
+    "name": "Balbagon, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "balbagon",
+      "brgy balbagon",
+      "barangay balbagon"
+    ],
+    "lat": 9.23802,
+    "lng": 124.7395,
+    "mun": "Mambajao",
+    "full_address": "Balbagon, Mambajao, Camiguin"
+  },
+  {
+    "name": "Baylao, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "baylao",
+      "bailao",
+      "brgy baylao",
+      "barangay baylao"
+    ],
+    "lat": 9.24674,
+    "lng": 124.69862,
+    "mun": "Mambajao",
+    "full_address": "Baylao, Mambajao, Camiguin"
+  },
+  {
+    "name": "Benhaan, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "benhaan",
+      "brgy benhaan",
+      "barangay benhaan"
+    ],
+    "lat": 9.20322,
+    "lng": 124.76773,
+    "mun": "Mambajao",
+    "full_address": "Benhaan, Mambajao, Camiguin"
+  },
+  {
+    "name": "Bug-ong, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "bug-ong",
+      "bugong",
+      "brgy bug-ong",
+      "barangay bugong",
+      "barangay bug-ong"
+    ],
+    "lat": 9.25117,
+    "lng": 124.67809,
+    "mun": "Mambajao",
+    "full_address": "Bug-ong, Mambajao, Camiguin"
+  },
+  {
+    "name": "Kuguita, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "kuguita",
+      "cuguita",
+      "brgy kuguita",
+      "barangay kuguita"
+    ],
+    "lat": 9.24839,
+    "lng": 124.68679,
+    "mun": "Mambajao",
+    "full_address": "Kuguita, Mambajao, Camiguin"
+  },
+  {
+    "name": "Magting, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "magting",
+      "brgy magting",
+      "barangay magting",
+      "magting mambajao"
+    ],
+    "lat": 9.21895,
+    "lng": 124.75603,
+    "mun": "Mambajao",
+    "full_address": "Magting, Mambajao, Camiguin"
+  },
+  {
+    "name": "Naasag, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "naasag",
+      "brgy naasag",
+      "barangay naasag"
+    ],
+    "lat": 9.23512,
+    "lng": 124.64924,
+    "mun": "Mambajao",
+    "full_address": "Naasag, Mambajao, Camiguin"
+  },
+  {
+    "name": "Pandan, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "pandan",
+      "pandan mambajao",
+      "brgy pandan",
+      "barangay pandan",
+      "pandayan",
+      "brgy pandayan",
+      "barangay pandayan"
+    ],
+    "lat": 9.23818,
+    "lng": 124.72698,
+    "mun": "Mambajao",
+    "full_address": "Pandan, Mambajao, Camiguin"
+  },
+  {
+    "name": "Soro-soro, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "soro-soro",
+      "sorosoro",
+      "soro soro",
+      "soro'soro",
+      "brgy sorosoro",
+      "brgy soro-soro",
+      "hinterland"
+    ],
+    "lat": 9.22961,
+    "lng": 124.72617,
+    "mun": "Mambajao",
+    "full_address": "Soro-soro, Mambajao, Camiguin"
+  },
+  {
+    "name": "Tagdo, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "tagdo",
+      "brgy tagdo",
+      "barangay tagdo"
+    ],
+    "lat": 9.2384,
+    "lng": 124.6885,
+    "mun": "Mambajao",
+    "full_address": "Tagdo, Mambajao, Camiguin"
+  },
+  {
+    "name": "Tupsan, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "tupsan",
+      "tupsan mambajao",
+      "brgy tupsan",
+      "barangay tupsan"
+    ],
+    "lat": 9.20186,
+    "lng": 124.77742,
+    "mun": "Mambajao",
+    "full_address": "Tupsan, Mambajao, Camiguin"
+  },
+  {
+    "name": "Yumbing, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "yumbing",
+      "brgy yumbing",
+      "barangay yumbing"
+    ],
+    "lat": 9.24346,
+    "lng": 124.66295,
+    "mun": "Mambajao",
+    "full_address": "Yumbing, Mambajao, Camiguin"
+  },
+  {
+    "name": "Poblacion, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "mahinog",
+      "poblacion mahinog",
+      "mahinog centro",
+      "centro mahinog",
+      "mahinog proper"
+    ],
+    "lat": 9.15434,
+    "lng": 124.78761,
+    "mun": "Mahinog",
+    "full_address": "Poblacion, Mahinog, Camiguin"
+  },
+  {
+    "name": "Benoni, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "benoni",
+      "brgy benoni",
+      "barangay benoni",
+      "benoni mahinog"
+    ],
+    "lat": 9.13912,
+    "lng": 124.79328,
+    "mun": "Mahinog",
+    "full_address": "Benoni, Mahinog, Camiguin"
+  },
+  {
+    "name": "Binaliwan, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "binaliwan",
+      "brgy binaliwan",
+      "barangay binaliwan",
+      "binitinan",
+      "brgy binitinan",
+      "barangay binitinan"
+    ],
+    "lat": 9.16189,
+    "lng": 124.78917,
+    "mun": "Mahinog",
+    "full_address": "Binaliwan, Mahinog, Camiguin"
+  },
+  {
+    "name": "Catohogan, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "catohogan",
+      "katohogan",
+      "brgy catohogan",
+      "barangay catohogan"
+    ],
+    "lat": 9.18562,
+    "lng": 124.78183,
+    "mun": "Mahinog",
+    "full_address": "Catohogan, Mahinog, Camiguin"
+  },
+  {
+    "name": "Hubangon, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "hubangon",
+      "brgy hubangon",
+      "barangay hubangon"
+    ],
+    "lat": 9.17296,
+    "lng": 124.78517,
+    "mun": "Mahinog",
+    "full_address": "Hubangon, Mahinog, Camiguin"
+  },
+  {
+    "name": "Owakan, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "owakan",
+      "brgy owakan",
+      "barangay owakan"
+    ],
+    "lat": 9.15373,
+    "lng": 124.76255,
+    "mun": "Mahinog",
+    "full_address": "Owakan, Mahinog, Camiguin"
+  },
+  {
+    "name": "Puntod, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "puntod",
+      "brgy puntod",
+      "barangay puntod"
+    ],
+    "lat": 9.15603,
+    "lng": 124.77313,
+    "mun": "Mahinog",
+    "full_address": "Puntod, Mahinog, Camiguin"
+  },
+  {
+    "name": "San Isidro, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san isidro",
+      "san isidro mahinog",
+      "brgy san isidro",
+      "barangay san isidro"
+    ],
+    "lat": 9.18171,
+    "lng": 124.76971,
+    "mun": "Mahinog",
+    "full_address": "San Isidro, Mahinog, Camiguin"
+  },
+  {
+    "name": "San Jose, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san jose",
+      "san jose mahinog",
+      "brgy san jose",
+      "barangay san jose"
+    ],
+    "lat": 9.16774,
+    "lng": 124.78382,
+    "mun": "Mahinog",
+    "full_address": "San Jose, Mahinog, Camiguin"
+  },
+  {
+    "name": "San Miguel, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san miguel",
+      "san miguel mahinog",
+      "brgy san miguel",
+      "barangay san miguel"
+    ],
+    "lat": 9.13051,
+    "lng": 124.78384,
+    "mun": "Mahinog",
+    "full_address": "San Miguel, Mahinog, Camiguin"
+  },
+  {
+    "name": "San Roque, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san roque",
+      "san roque mahinog",
+      "brgy san roque",
+      "barangay san roque"
+    ],
+    "lat": 9.15279,
+    "lng": 124.79187,
+    "mun": "Mahinog",
+    "full_address": "San Roque, Mahinog, Camiguin"
+  },
+  {
+    "name": "Tubod, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "tubod",
+      "tubod mahinog",
+      "brgy tubod",
+      "barangay tubod"
+    ],
+    "lat": 9.1609,
+    "lng": 124.78326,
+    "mun": "Mahinog",
+    "full_address": "Tubod, Mahinog, Camiguin"
+  },
+  {
+    "name": "Tupsan Pequeño, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "tupsan pequeno",
+      "tupsan pequeño",
+      "tupsan mahinog",
+      "brgy tupsan pequeno"
+    ],
+    "lat": 9.19518,
+    "lng": 124.77836,
+    "mun": "Mahinog",
+    "full_address": "Tupsan Pequeño, Mahinog, Camiguin"
+  },
+  {
+    "name": "Poblacion, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "catarman",
+      "poblacion catarman",
+      "catarman centro",
+      "centro catarman",
+      "catarman proper"
+    ],
+    "lat": 9.12523,
+    "lng": 124.67453,
+    "mun": "Catarman",
+    "full_address": "Poblacion, Catarman, Camiguin"
+  },
+  {
+    "name": "Alga, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "alga",
+      "algga",
+      "brgy alga",
+      "barangay alga",
+      "alangilan catarman",
+      "biga"
+    ],
+    "lat": 9.11799,
+    "lng": 124.6819,
+    "mun": "Catarman",
+    "full_address": "Alga, Catarman, Camiguin"
+  },
+  {
+    "name": "Bonbon, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "bonbon",
+      "bonbon catarman",
+      "brgy bonbon",
+      "barangay bonbon"
+    ],
+    "lat": 9.19867,
+    "lng": 124.63629,
+    "mun": "Catarman",
+    "full_address": "Bonbon, Catarman, Camiguin"
+  },
+  {
+    "name": "Bura, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "bura",
+      "bura catarman",
+      "brgy bura",
+      "barangay bura"
+    ],
+    "lat": 9.1762,
+    "lng": 124.65194,
+    "mun": "Catarman",
+    "full_address": "Bura, Catarman, Camiguin"
+  },
+  {
+    "name": "Catibac, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "catibac",
+      "brgy catibac",
+      "barangay catibac"
+    ],
+    "lat": 9.17761,
+    "lng": 124.6352,
+    "mun": "Catarman",
+    "full_address": "Catibac, Catarman, Camiguin"
+  },
+  {
+    "name": "Compol, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "compol",
+      "brgy compol",
+      "barangay compol"
+    ],
+    "lat": 9.14206,
+    "lng": 124.65601,
+    "mun": "Catarman",
+    "full_address": "Compol, Catarman, Camiguin"
+  },
+  {
+    "name": "Lawigan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "lawigan",
+      "brgy lawigan",
+      "barangay lawigan"
+    ],
+    "lat": 9.16665,
+    "lng": 124.63975,
+    "mun": "Catarman",
+    "full_address": "Lawigan, Catarman, Camiguin"
+  },
+  {
+    "name": "Liloan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "liloan",
+      "licoan",
+      "brgy liloan",
+      "barangay liloan",
+      "liloan catarman"
+    ],
+    "lat": 9.14331,
+    "lng": 124.67926,
+    "mun": "Catarman",
+    "full_address": "Liloan, Catarman, Camiguin"
+  },
+  {
+    "name": "Looc, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "looc",
+      "looc catarman",
+      "brgy looc",
+      "barangay looc"
+    ],
+    "lat": 9.13131,
+    "lng": 124.67012,
+    "mun": "Catarman",
+    "full_address": "Looc, Catarman, Camiguin"
+  },
+  {
+    "name": "Mainit, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "mainit",
+      "mainit catarman",
+      "brgy mainit",
+      "barangay mainit"
+    ],
+    "lat": 9.15517,
+    "lng": 124.65775,
+    "mun": "Catarman",
+    "full_address": "Mainit, Catarman, Camiguin"
+  },
+  {
+    "name": "Manduao, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "manduao",
+      "mandawa",
+      "brgy manduao",
+      "barangay manduao"
+    ],
+    "lat": 9.13813,
+    "lng": 124.67337,
+    "mun": "Catarman",
+    "full_address": "Manduao, Catarman, Camiguin"
+  },
+  {
+    "name": "Panghiawan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "panghiawan",
+      "pangihawan",
+      "brgy panghiawan",
+      "barangay panghiawan"
+    ],
+    "lat": 9.15186,
+    "lng": 124.64599,
+    "mun": "Catarman",
+    "full_address": "Panghiawan, Catarman, Camiguin"
+  },
+  {
+    "name": "Santo Niño, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "santo nino",
+      "santo niño",
+      "sto nino catarman",
+      "brgy sto nino",
+      "barangay santo nino"
+    ],
+    "lat": 9.14845,
+    "lng": 124.67332,
+    "mun": "Catarman",
+    "full_address": "Santo Niño, Catarman, Camiguin"
+  },
+  {
+    "name": "Tangaro, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "tangaro",
+      "brgy tangaro",
+      "barangay tangaro"
+    ],
+    "lat": 9.11241,
+    "lng": 124.69434,
+    "mun": "Catarman",
+    "full_address": "Tangaro, Catarman, Camiguin"
+  },
+  {
+    "name": "Poblacion, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "sagay",
+      "poblacion sagay",
+      "sagay centro",
+      "centro sagay",
+      "sagay proper"
+    ],
+    "lat": 9.10511,
+    "lng": 124.72349,
+    "mun": "Sagay",
+    "full_address": "Poblacion, Sagay, Camiguin"
+  },
+  {
+    "name": "Alangilan, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "alangilan",
+      "alangilan sagay",
+      "brgy alangilan",
+      "brgy alangilan sagay"
+    ],
+    "lat": 9.10209,
+    "lng": 124.74535,
+    "mun": "Sagay",
+    "full_address": "Alangilan, Sagay, Camiguin"
+  },
+  {
+    "name": "Bacnit, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "bacnit",
+      "brgy bacnit",
+      "barangay bacnit"
+    ],
+    "lat": 9.12643,
+    "lng": 124.70861,
+    "mun": "Sagay",
+    "full_address": "Bacnit, Sagay, Camiguin"
+  },
+  {
+    "name": "Balite, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "balite",
+      "balite sagay",
+      "brgy balite",
+      "barangay balite"
+    ],
+    "lat": 9.08187,
+    "lng": 124.76099,
+    "mun": "Sagay",
+    "full_address": "Balite, Sagay, Camiguin"
+  },
+  {
+    "name": "Bonbon, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "bonbon sagay",
+      "brgy bonbon sagay",
+      "barangay bonbon sagay"
+    ],
+    "lat": 9.10377,
+    "lng": 124.73214,
+    "mun": "Sagay",
+    "full_address": "Bonbon, Sagay, Camiguin"
+  },
+  {
+    "name": "Bugang, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "bugang",
+      "bug-ang",
+      "brgy bugang",
+      "barangay bugang"
+    ],
+    "lat": 9.10841,
+    "lng": 124.70507,
+    "mun": "Sagay",
+    "full_address": "Bugang, Sagay, Camiguin"
+  },
+  {
+    "name": "Cuna, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "cuna",
+      "cuña",
+      "brgy cuna",
+      "barangay cuna"
+    ],
+    "lat": 9.12148,
+    "lng": 124.74358,
+    "mun": "Sagay",
+    "full_address": "Cuña, Sagay, Camiguin"
+  },
+  {
+    "name": "Manuyog, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "manuyog",
+      "brgy manuyog",
+      "barangay manuyog"
+    ],
+    "lat": 9.094,
+    "lng": 124.75344,
+    "mun": "Sagay",
+    "full_address": "Manuyog, Sagay, Camiguin"
+  },
+  {
+    "name": "Mayana, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "mayana",
+      "brgy mayana",
+      "barangay mayana"
+    ],
+    "lat": 9.10524,
+    "lng": 124.71876,
+    "mun": "Sagay",
+    "full_address": "Mayana, Sagay, Camiguin"
+  },
+  {
+    "name": "North Poblacion, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "guinsiliban",
+      "north poblacion",
+      "north poblacion guinsiliban",
+      "poblacion guinsiliban"
+    ],
+    "lat": 9.09874,
+    "lng": 124.78589,
+    "mun": "Guinsiliban",
+    "full_address": "North Poblacion, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "South Poblacion, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "south poblacion",
+      "south poblacion guinsiliban"
+    ],
+    "lat": 9.09569,
+    "lng": 124.78495,
+    "mun": "Guinsiliban",
+    "full_address": "South Poblacion, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Butay, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "butay",
+      "brgy butay",
+      "barangay butay"
+    ],
+    "lat": 9.10476,
+    "lng": 124.76919,
+    "mun": "Guinsiliban",
+    "full_address": "Butay, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Cabuan, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "cabuan",
+      "brgy cabuan",
+      "barangay cabuan"
+    ],
+    "lat": 9.11881,
+    "lng": 124.7981,
+    "mun": "Guinsiliban",
+    "full_address": "Cabuan, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Cantaan, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "cantaan",
+      "brgy cantaan",
+      "barangay cantaan"
+    ],
+    "lat": 9.10898,
+    "lng": 124.79682,
+    "mun": "Guinsiliban",
+    "full_address": "Cantaan, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Liong, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "liong",
+      "liongs",
+      "brgy liong",
+      "barangay liong"
+    ],
+    "lat": 9.0841,
+    "lng": 124.77734,
+    "mun": "Guinsiliban",
+    "full_address": "Liong, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Maac, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "maac",
+      "brgy maac",
+      "barangay maac"
+    ],
+    "lat": 9.12702,
+    "lng": 124.79588,
+    "mun": "Guinsiliban",
+    "full_address": "Maac, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Boloc-boloc, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "boloc boloc",
+      "boloc-boloc",
+      "bolocboloc",
+      "bolok bolok",
+      "bolok-bolok",
+      "bolokboloc",
+      "boloc",
+      "bolok",
+      "sitio boloc-boloc",
+      "sitio boloc boloc",
+      "boloc boloc mambajao",
+      "bolocboloc mambajao"
+    ],
+    "lat": 9.25725,
+    "lng": 124.70658,
+    "mun": "Mambajao",
+    "full_address": "Sitio Boloc-boloc, Poblacion, Mambajao"
+  },
+  {
+    "name": "Sitio Esperanza, Tagdo, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "esperanza",
+      "sitio esperanza",
+      "esperanza tagdo",
+      "esperanza mambajao"
+    ],
+    "lat": 9.22762,
+    "lng": 124.68826,
+    "mun": "Mambajao",
+    "full_address": "Sitio Esperanza, Tagdo, Mambajao"
+  },
+  {
+    "name": "Binunsaran, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "binunsaran",
+      "sitio binunsaran",
+      "itum",
+      "itum road",
+      "hinterland"
+    ],
+    "lat": 9.20987,
+    "lng": 124.7058,
+    "mun": "Mambajao",
+    "full_address": "Binunsaran, Mambajao, Camiguin"
+  },
+  {
+    "name": "Lakas, Poblacion, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "lakas",
+      "sitio lakas",
+      "upper lakas",
+      "lakas mambajao"
+    ],
+    "lat": 9.24794,
+    "lng": 124.72204,
+    "mun": "Mambajao",
+    "full_address": "Sitio Lakas, Poblacion, Mambajao"
+  },
+  {
+    "name": "Quiboro, Poblacion, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "quiboro",
+      "sitio quiboro",
+      "quipasa",
+      "quiboro mambajao"
+    ],
+    "lat": 9.23345,
+    "lng": 124.71291,
+    "mun": "Mambajao",
+    "full_address": "Sitio Quiboro, Poblacion, Mambajao"
+  },
+  {
+    "name": "Balintawak, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "balintawak",
+      "balintawak street",
+      "balintawak mambajao"
+    ],
+    "lat": 9.25067,
+    "lng": 124.72091,
+    "mun": "Mambajao",
+    "full_address": "Sitio Balintawak, Poblacion, Mambajao"
+  },
+  {
+    "name": "Ardent Hot Spring, Esperanza",
+    "cat": "tourist",
+    "keywords": [
+      "ardent hot spring",
+      "ardent hot springs",
+      "ardent spring",
+      "ardent",
+      "ardent hibok-hibok",
+      "ardent resort",
+      "hot spring",
+      "esperanza hot spring"
+    ],
+    "lat": 9.22702,
+    "lng": 124.68798,
+    "mun": "Mambajao",
+    "full_address": "Sitio Esperanza, Tagdo, Mambajao, Camiguin"
+  },
+  {
+    "name": "White Island Boat Jump-off, Yumbing",
+    "cat": "tourist",
+    "keywords": [
+      "white island",
+      "white island boat station",
+      "white island jump-off",
+      "white island boat",
+      "yumbing dock",
+      "jump-off",
+      "medano",
+      "island"
+    ],
+    "lat": 9.24368,
+    "lng": 124.6609,
+    "mun": "Mambajao",
+    "full_address": "Yumbing Boat Dock, Yumbing, Mambajao"
+  },
+  {
+    "name": "Mantigue Island Boat Station, San Roque",
+    "cat": "tourist",
+    "keywords": [
+      "mantigue island",
+      "mantigue",
+      "mantigue boat station",
+      "san roque mantigue",
+      "mantigue ferry"
+    ],
+    "lat": 9.15164,
+    "lng": 124.79513,
+    "mun": "Mahinog",
+    "full_address": "San Roque Boat Terminal, Mahinog, Camiguin"
+  },
+  {
+    "name": "Katibawasan Falls",
+    "cat": "tourist",
+    "keywords": [
+      "katibawasan falls",
+      "katibawasan",
+      "busay",
+      "waterfall",
+      "hinterland"
+    ],
+    "lat": 9.21358,
+    "lng": 124.71793,
+    "mun": "Mambajao",
+    "full_address": "Soro-soro / Pandan, Mambajao, Camiguin"
+  },
+  {
+    "name": "Tuasan Falls, Mainit, Catarman",
+    "cat": "tourist",
+    "keywords": [
+      "tuasan falls",
+      "tuasan",
+      "busay catarman",
+      "waterfall"
+    ],
+    "lat": 9.17683,
+    "lng": 124.68097,
+    "mun": "Catarman",
+    "full_address": "Barangay Mainit, Catarman, Camiguin"
+  },
+  {
+    "name": "Sto. Niño Cold Spring, Catarman",
+    "cat": "tourist",
+    "keywords": [
+      "sto. nino cold spring",
+      "sto. niño cold spring",
+      "sto nino cold spring",
+      "santo nino cold spring",
+      "sto. niño spring sagay",
+      "cold spring",
+      "sto nino",
+      "sto. nino",
+      "sto niño",
+      "bugnaw spring"
+    ],
+    "lat": 9.15019,
+    "lng": 124.67424,
+    "mun": "Catarman",
+    "full_address": "Barangay Santo Niño, Catarman, Camiguin"
+  },
+  {
+    "name": "Bura Soda Water Park, Catarman",
+    "cat": "tourist",
+    "keywords": [
+      "bura soda water",
+      "bura soda water park",
+      "soda water",
+      "soda water pool",
+      "bura soda",
+      "soda swimming",
+      "bura"
+    ],
+    "lat": 9.17107,
+    "lng": 124.65697,
+    "mun": "Catarman",
+    "full_address": "Barangay Bura, Catarman, Camiguin"
+  },
+  {
+    "name": "Sunken Cemetery & Giant Cross, Bonbon",
+    "cat": "tourist",
+    "keywords": [
+      "sunken cemetery",
+      "sunken cemetery cross",
+      "sunken cemetery catarman",
+      "sunken",
+      "giant cross",
+      "lubnganan",
+      "krus"
+    ],
+    "lat": 9.2068,
+    "lng": 124.63277,
+    "mun": "Catarman",
+    "full_address": "Barangay Bonbon, Catarman, Camiguin"
+  },
+  {
+    "name": "Old Church Ruins (Gui-ob Church), Bonbon",
+    "cat": "tourist",
+    "keywords": [
+      "old church ruins",
+      "guiob church ruins",
+      "gui-ob church ruins",
+      "church ruins",
+      "guiob",
+      "gui-ob",
+      "old church",
+      "simbahan"
+    ],
+    "lat": 9.20184,
+    "lng": 124.63457,
+    "mun": "Catarman",
+    "full_address": "Barangay Bonbon, Catarman, Camiguin"
+  },
+  {
+    "name": "Mount Vulcan Daan / Walkway to Old Volcano",
+    "cat": "tourist",
+    "keywords": [
+      "walkway to old volcano",
+      "stations of the cross / volcano walkway",
+      "stations of the cross",
+      "volcano walkway",
+      "vulcan daan",
+      "old volcano",
+      "mount vulcan",
+      "walkway",
+      "via crucis"
+    ],
+    "lat": 9.21068,
+    "lng": 124.64015,
+    "mun": "Catarman",
+    "full_address": "Walkway Trailhead, Bonbon, Catarman, Camiguin"
+  },
+  {
+    "name": "Mount Hibok-Hibok Jump-off (DENR Visitors Center)",
+    "cat": "tourist",
+    "keywords": [
+      "hibok-hibok",
+      "hibok hibok",
+      "mount hibok-hibok",
+      "volcano hike",
+      "denr visitors center"
+    ],
+    "lat": 9.19684,
+    "lng": 124.69221,
+    "mun": "Mambajao",
+    "full_address": "Mambajao-Itum Road, Mount Hibok-Hibok, Mambajao"
+  },
+  {
+    "name": "Giant Clam Sanctuary, Cantaan",
+    "cat": "tourist",
+    "keywords": [
+      "giant clam sanctuary",
+      "giant clam sanctuary guinsiliban",
+      "kibila giant clam",
+      "giant clam",
+      "clam sanctuary",
+      "kibila",
+      "cantaan",
+      "taklobo"
+    ],
+    "lat": 9.10614,
+    "lng": 124.80301,
+    "mun": "Guinsiliban",
+    "full_address": "Sitio Kibila, Barangay Cantaan, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "Taguines Lagoon & Zipline, Benoni",
+    "cat": "tourist",
+    "keywords": [
+      "taguines lagoon",
+      "taguines",
+      "zipline",
+      "lagoon bistro",
+      "kamayan"
+    ],
+    "lat": 9.13287,
+    "lng": 124.79156,
+    "mun": "Mahinog",
+    "full_address": "Benoni Highway, Mahinog, Camiguin"
+  },
+  {
+    "name": "Katunggan Mangrove Park, Mahinog",
+    "cat": "tourist",
+    "keywords": [
+      "katunggan",
+      "katunggan park",
+      "mangrove park",
+      "bakawan",
+      "boardwalk"
+    ],
+    "lat": 9.13159,
+    "lng": 124.79736,
+    "mun": "Mahinog",
+    "full_address": "Benoni Coast, Mahinog, Camiguin"
+  },
+  {
+    "name": "Sa-ay Cold Spring, Mambajao",
+    "cat": "tourist",
+    "keywords": [
+      "sa-ay",
+      "saay",
+      "sa ay",
+      "sa-ay cold spring",
+      "saay cold spring",
+      "quipasa",
+      "cold spring"
+    ],
+    "lat": 9.2211,
+    "lng": 124.7034,
+    "mun": "Mambajao",
+    "full_address": "Sitio Quipasa, Poblacion, Mambajao"
+  },
+  {
+    "name": "Binangawan Falls, Sagay",
+    "cat": "tourist",
+    "keywords": [
+      "binangawan falls",
+      "binangawan",
+      "waterfall sagay",
+      "busay sagay"
+    ],
+    "lat": 9.15596,
+    "lng": 124.73317,
+    "mun": "Sagay",
+    "full_address": "Sagay Uplands, Camiguin"
+  },
+  {
+    "name": "Macao Cold Spring, Tupsan",
+    "cat": "tourist",
+    "keywords": [
+      "macao cold spring",
+      "macao",
+      "tupsan spring",
+      "cold spring"
+    ],
+    "lat": 9.19586,
+    "lng": 124.77407,
+    "mun": "Mambajao",
+    "full_address": "Tupsan, Mambajao, Camiguin"
+  },
+  {
+    "name": "Hibok-Hibok Volcano Observatory (PHIVOLCS)",
+    "cat": "tourist",
+    "keywords": [
+      "phivolcs",
+      "volcano observatory",
+      "hibok-hibok observatory",
+      "observatory",
+      "quiboro"
+    ],
+    "lat": 9.22719,
+    "lng": 124.70799,
+    "mun": "Mambajao",
+    "full_address": "Quiboro / Itum, Mambajao, Camiguin"
+  },
+  {
+    "name": "Old Parola Park, Mambajao",
+    "cat": "tourist",
+    "keywords": [
+      "old parola park",
+      "parola",
+      "lighthouse",
+      "parola park"
+    ],
+    "lat": 9.25551,
+    "lng": 124.71656,
+    "mun": "Mambajao",
+    "full_address": "Parola Road, Poblacion, Mambajao"
+  },
+  {
+    "name": "Balbagon Port (FastCat & Ferry Wharf)",
+    "cat": "transport",
+    "keywords": [
+      "balbagon port",
+      "mambajao port",
+      "fastcat",
+      "super shuttle",
+      "ferry",
+      "barko",
+      "pantalan",
+      "pantalan balbagon",
+      "balbagon wharf"
+    ],
+    "lat": 9.2439,
+    "lng": 124.73794,
+    "mun": "Mambajao",
+    "full_address": "Balbagon Port Road, Balbagon, Mambajao"
+  },
+  {
+    "name": "Benoni Port / Ferry Wharf, Mahinog",
+    "cat": "transport",
+    "keywords": [
+      "benoni port",
+      "benoni port / taguines lagoon",
+      "benoni wharf",
+      "pantalan benoni",
+      "ferry mahinog",
+      "barko benoni",
+      "wharf",
+      "port",
+      "pantalan"
+    ],
+    "lat": 9.13904,
+    "lng": 124.7942,
+    "mun": "Mahinog",
+    "full_address": "Benoni Ferry Wharf, Benoni, Mahinog"
+  },
+  {
+    "name": "Benoni Passenger Terminal, Mahinog",
+    "cat": "transport",
+    "keywords": [
+      "benoni passenger terminal",
+      "benoni terminal",
+      "passenger terminal",
+      "passenger terminal benoni",
+      "benoni port passenger terminal",
+      "ppa passenger terminal",
+      "ppa benoni",
+      "pantalan passenger terminal",
+      "ferry terminal"
+    ],
+    "lat": 9.13931,
+    "lng": 124.79342,
+    "mun": "Mahinog",
+    "full_address": "PPA Passenger Terminal, Benoni, Mahinog"
+  },
+  {
+    "name": "Guinsiliban Port / Ferry Terminal",
+    "cat": "transport",
+    "keywords": [
+      "guinsiliban port",
+      "pantalan guinsiliban",
+      "ferry guinsiliban",
+      "guinsiliban wharf"
+    ],
+    "lat": 9.09873,
+    "lng": 124.78824,
+    "mun": "Guinsiliban",
+    "full_address": "Guinsiliban Ferry Wharf, Guinsiliban"
+  },
+  {
+    "name": "Camiguin Airport",
+    "cat": "transport",
+    "keywords": [
+      "airport",
+      "camiguin airport",
+      "tugpahanan",
+      "eroplano",
+      "flight",
+      "arrivals",
+      "departures"
+    ],
+    "lat": 9.25111,
+    "lng": 124.70459,
+    "mun": "Mambajao",
+    "full_address": "Baylao / Lumban, Mambajao, Camiguin"
+  },
+  {
+    "name": "Mambajao Transport Terminal",
+    "cat": "transport",
+    "keywords": [
+      "mambajao terminal",
+      "transport terminal",
+      "bus terminal",
+      "van terminal",
+      "jeep terminal",
+      "multicab terminal"
+    ],
+    "lat": 9.25383,
+    "lng": 124.71595,
+    "mun": "Mambajao",
+    "full_address": "Plaridel / Market District, Poblacion, Mambajao"
+  },
+  {
+    "name": "Paras Beach Resort, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "paras beach",
+      "paras beach resort",
+      "paras resort",
+      "paras",
+      "hotel"
+    ],
+    "lat": 9.24379,
+    "lng": 124.66164,
+    "mun": "Mambajao",
+    "full_address": "Pearl Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Balai sa Baibai Dive Resort, Agoho",
+    "cat": "resort",
+    "keywords": [
+      "balai sa baibai",
+      "balai sa babibai",
+      "balyali",
+      "balyali resort",
+      "balyali beach resort",
+      "balyali resort yumbing",
+      "balyali yumbing",
+      "dive resort"
+    ],
+    "lat": 9.25025,
+    "lng": 124.6705,
+    "mun": "Mambajao",
+    "full_address": "Agoho Coastline, Mambajao"
+  },
+  {
+    "name": "Tongatok Cliff Resort, Naasag",
+    "cat": "resort",
+    "keywords": [
+      "tongatok cliff",
+      "tongatok cliff viewpoint",
+      "tongatok",
+      "cliff resort"
+    ],
+    "lat": 9.23035,
+    "lng": 124.6432,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Naasag, Mambajao"
+  },
+  {
+    "name": "Camiguin Lanzones Resort, Balbagon",
+    "cat": "resort",
+    "keywords": [
+      "camiguin lanzones resort",
+      "lanzones resort",
+      "lanzones balbagon",
+      "resort balbagon"
+    ],
+    "lat": 9.2408,
+    "lng": 124.7356,
+    "mun": "Mambajao",
+    "full_address": "Bliss Road, Balbagon, Mambajao"
+  },
+  {
+    "name": "Lanzones Cabana, Agoho",
+    "cat": "resort",
+    "keywords": [
+      "lanzones cabana",
+      "lanzones agoho",
+      "dal-as",
+      "resort agoho"
+    ],
+    "lat": 9.24185,
+    "lng": 124.66742,
+    "mun": "Mambajao",
+    "full_address": "Dal-as, Agoho, Mambajao"
+  },
+  {
+    "name": "Camiguin Highland Resort, Soro-soro",
+    "cat": "resort",
+    "keywords": [
+      "highland resort",
+      "camiguin highland",
+      "highland",
+      "sorosoro",
+      "soro-soro",
+      "soro'soro",
+      "hinterland"
+    ],
+    "lat": 9.21816,
+    "lng": 124.72839,
+    "mun": "Mambajao",
+    "full_address": "Soro-soro, Mambajao, Camiguin"
+  },
+  {
+    "name": "Somewhere Else Boutique Resort, Agoho",
+    "cat": "resort",
+    "keywords": [
+      "somewhere else",
+      "somewhere else resort",
+      "boutique resort"
+    ],
+    "lat": 9.25025,
+    "lng": 124.67126,
+    "mun": "Mambajao",
+    "full_address": "Agoho Coast, Mambajao"
+  },
+  {
+    "name": "Cabua-an Beach Resort, Mambajao",
+    "cat": "resort",
+    "keywords": [
+      "cabua-an",
+      "cabuaan",
+      "cabua-an beach resort",
+      "balerin",
+      "balerin resort"
+    ],
+    "lat": 9.25104,
+    "lng": 124.72308,
+    "mun": "Mambajao",
+    "full_address": "Cabua-an Beach, Lakas, Mambajao"
+  },
+  {
+    "name": "Pabua's Cottages, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "pabuas",
+      "pabua",
+      "pabua's cottages",
+      "paguia cottages",
+      "cottages"
+    ],
+    "lat": 9.24367,
+    "lng": 124.66242,
+    "mun": "Mambajao",
+    "full_address": "Pearl Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Medano Island Resort, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "medano",
+      "medano island resort",
+      "medano resort"
+    ],
+    "lat": 9.24482,
+    "lng": 124.66288,
+    "mun": "Mambajao",
+    "full_address": "Pearl Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Bahay Bakasyunan sa Camiguin, Balbagon",
+    "cat": "resort",
+    "keywords": [
+      "bahay bakasyunan",
+      "bbc",
+      "bakasyunan",
+      "balbagon resort"
+    ],
+    "lat": 9.24066,
+    "lng": 124.73718,
+    "mun": "Mambajao",
+    "full_address": "Balbagon, Mambajao, Camiguin"
+  },
+  {
+    "name": "Bintana sa Paraiso Binunsaran, Mambajao",
+    "cat": "resort",
+    "keywords": [
+      "bintana sa paraiso",
+      "bintana",
+      "binunsaran",
+      "hinterland"
+    ],
+    "lat": 9.2119,
+    "lng": 124.70596,
+    "mun": "Mambajao",
+    "full_address": "Binunsaran, Mambajao, Camiguin"
+  },
+  {
+    "name": "Villa Paraiso Resort & Apartelle, Mambajao",
+    "cat": "resort",
+    "keywords": [
+      "villa paraiso",
+      "apartelle",
+      "rizal resort"
+    ],
+    "lat": 9.24406,
+    "lng": 124.7158,
+    "mun": "Mambajao",
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "GV Hotel Camiguin, Mambajao",
+    "cat": "resort",
+    "keywords": [
+      "gv hotel",
+      "gv camiguin",
+      "hotel mambajao"
+    ],
+    "lat": 9.25009,
+    "lng": 124.71679,
+    "mun": "Mambajao",
+    "full_address": "Burgos Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Camiguin Volcan Beach Eco Retreat, Naasag",
+    "cat": "resort",
+    "keywords": [
+      "volcan beach",
+      "eco retreat",
+      "zum kuckuck",
+      "naasag resort"
+    ],
+    "lat": 9.23288,
+    "lng": 124.64393,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Naasag, Mambajao"
+  },
+  {
+    "name": "Dreamland Resort & Hotel, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "dreamland",
+      "dreamland resort",
+      "yumbing hotel"
+    ],
+    "lat": 9.23887,
+    "lng": 124.65745,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Nype Stile Resort, Bug-ong",
+    "cat": "resort",
+    "keywords": [
+      "nype stile",
+      "nype stile resort",
+      "bug-ong resort"
+    ],
+    "lat": 9.24384,
+    "lng": 124.67919,
+    "mun": "Mambajao",
+    "full_address": "Bug-ong, Mambajao, Camiguin"
+  },
+  {
+    "name": "Golden Sunset Beach Club, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "golden sunset",
+      "sunset beach club",
+      "yumbing"
+    ],
+    "lat": 9.2382,
+    "lng": 124.65398,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Seaside Traveler's Inn, Tangaro, Catarman",
+    "cat": "resort",
+    "keywords": [
+      "seaside travelers inn",
+      "seaside inn",
+      "tangaro inn",
+      "catarman hotel"
+    ],
+    "lat": 9.11482,
+    "lng": 124.68757,
+    "mun": "Catarman",
+    "full_address": "Tangaro, Catarman, Camiguin"
+  },
+  {
+    "name": "Mambajao Town Plaza",
+    "cat": "building",
+    "keywords": [
+      "mambajao plaza",
+      "mambajao town plaza",
+      "mambajao central plaza",
+      "plaza",
+      "town center"
+    ],
+    "lat": 9.24933,
+    "lng": 124.7165,
+    "mun": "Mambajao",
+    "full_address": "Poblacion Town Center, Mambajao"
+  },
+  {
+    "name": "Mambajao Municipal Hall, Sitio Lakas",
+    "cat": "building",
+    "keywords": [
+      "mambajao municipal hall",
+      "municipal hall",
+      "munisipyo mambajao",
+      "munisipyo",
+      "mayor"
+    ],
+    "lat": 9.24475,
+    "lng": 124.72664,
+    "mun": "Mambajao",
+    "full_address": "Sitio Lakas, Poblacion, Mambajao"
+  },
+  {
+    "name": "Provincial Capitol Compound, Mambajao",
+    "cat": "building",
+    "keywords": [
+      "capitol",
+      "kapitolyo",
+      "provincial capitol",
+      "governor"
+    ],
+    "lat": 9.24417,
+    "lng": 124.72725,
+    "mun": "Mambajao",
+    "full_address": "Capitol Hills, Lakas, Mambajao"
+  },
+  {
+    "name": "Camiguin General Hospital (CGH)",
+    "cat": "hospital",
+    "keywords": [
+      "hospital",
+      "cgh",
+      "camiguin general hospital",
+      "clinic",
+      "doktor",
+      "emergency",
+      "pagamutan"
+    ],
+    "lat": 9.24847,
+    "lng": 124.72159,
+    "mun": "Mambajao",
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
+  },
+  {
+    "name": "Mambajao Municipal Police Station (PNP)",
+    "cat": "building",
+    "keywords": [
+      "police",
+      "pnp",
+      "pulis",
+      "police station",
+      "mambajao police",
+      "istasyon"
+    ],
+    "lat": 9.24608,
+    "lng": 124.72639,
+    "mun": "Mambajao",
+    "full_address": "Sitio Lakas, Poblacion, Mambajao"
+  },
+  {
+    "name": "Camiguin Sports Complex & Convention Center",
+    "cat": "building",
+    "keywords": [
+      "sports complex",
+      "convention center",
+      "grandstand",
+      "gymnasium",
+      "new camiguin gymnasium"
+    ],
+    "lat": 9.24374,
+    "lng": 124.7291,
+    "mun": "Mambajao",
+    "full_address": "Balbagon, Mambajao, Camiguin"
+  },
+  {
+    "name": "Mahinog Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "mahinog municipal hall",
+      "munisipyo mahinog",
+      "mahinog hall",
+      "mayor mahinog"
+    ],
+    "lat": 9.15614,
+    "lng": 124.78736,
+    "mun": "Mahinog",
+    "full_address": "Poblacion, Mahinog, Camiguin"
+  },
+  {
+    "name": "Catarman Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "catarman municipal hall",
+      "munisipyo catarman",
+      "catarman hall",
+      "mayor catarman"
+    ],
+    "lat": 9.12419,
+    "lng": 124.67579,
+    "mun": "Catarman",
+    "full_address": "Poblacion, Catarman, Camiguin"
+  },
+  {
+    "name": "Sagay Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "sagay municipal hall",
+      "munisipyo sagay",
+      "sagay hall",
+      "mayor sagay"
+    ],
+    "lat": 9.10494,
+    "lng": 124.72449,
+    "mun": "Sagay",
+    "full_address": "Iglesia Street, Poblacion, Sagay"
+  },
+  {
+    "name": "Guinsiliban Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "guinsiliban municipal hall",
+      "munisipyo guinsiliban",
+      "guinsiliban hall"
+    ],
+    "lat": 9.09629,
+    "lng": 124.78503,
+    "mun": "Guinsiliban",
+    "full_address": "Circumferential Road, Poblacion, Guinsiliban"
+  },
+  {
+    "name": "Gaisano Capital Camiguin (Placido Reyes St)",
+    "cat": "supermarket",
+    "keywords": [
+      "gaisano",
+      "gaisano capital",
+      "gaisano camiguin",
+      "placido reyes",
+      "mall",
+      "supermarket",
+      "grocery"
+    ],
+    "lat": 9.25281,
+    "lng": 124.71617,
+    "mun": "Mambajao",
+    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Davilett Store & Supermarket, Guinsiliban",
+    "cat": "supermarket",
+    "keywords": [
+      "davilett",
+      "davilet",
+      "davilett corp",
+      "davilett store",
+      "davi",
+      "supermarket guinsiliban",
+      "grocery"
+    ],
+    "lat": 9.09781,
+    "lng": 124.78542,
+    "mun": "Guinsiliban",
+    "full_address": "North Poblacion, Guinsiliban, Camiguin"
+  },
+  {
+    "name": "W & M Superstore, Mambajao",
+    "cat": "supermarket",
+    "keywords": [
+      "w&m",
+      "w & m",
+      "wm superstore",
+      "superstore",
+      "supermarket",
+      "grocery"
+    ],
+    "lat": 9.24929,
+    "lng": 124.71776,
+    "mun": "Mambajao",
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
+  },
+  {
+    "name": "Nene Uy Store / Wholesaler, Mambajao",
+    "cat": "store",
+    "keywords": [
+      "nene uy",
+      "nene",
+      "wholesaler",
+      "grocery",
+      "supply"
+    ],
+    "lat": 9.25172,
+    "lng": 124.71575,
+    "mun": "Mambajao",
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Mr. DIY Camiguin (Mambajao)",
+    "cat": "store",
+    "keywords": [
+      "mr diy",
+      "mr. diy",
+      "diy",
+      "hardware",
+      "department store"
+    ],
+    "lat": 9.25394,
+    "lng": 124.71608,
+    "mun": "Mambajao",
+    "full_address": "Parola Road, Poblacion, Mambajao"
+  },
+  {
+    "name": "DJ Bonita Merchandising, Mambajao",
+    "cat": "store",
+    "keywords": [
+      "dj bonita",
+      "bonita",
+      "department store",
+      "dry goods"
+    ],
+    "lat": 9.25351,
+    "lng": 124.71648,
+    "mun": "Mambajao",
+    "full_address": "Poblacion, Mambajao, Camiguin"
+  },
+  {
+    "name": "Tee Enterprises, Mambajao",
+    "cat": "store",
+    "keywords": [
+      "tee enterprises",
+      "tee",
+      "department store",
+      "hardware"
+    ],
+    "lat": 9.25364,
+    "lng": 124.71614,
+    "mun": "Mambajao",
+    "full_address": "Poblacion, Mambajao, Camiguin"
+  },
+  {
+    "name": "Mercury Drug Camiguin, Mambajao",
+    "cat": "pharmacy",
+    "keywords": [
+      "mercury drug",
+      "mercury",
+      "pharmacy",
+      "botika",
+      "tambal",
+      "drugstore"
+    ],
+    "lat": 9.25249,
+    "lng": 124.71641,
+    "mun": "Mambajao",
+    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "The Generics Pharmacy (TGP), Mambajao",
+    "cat": "pharmacy",
+    "keywords": [
+      "tgp",
+      "the generics pharmacy",
+      "generics pharmacy",
+      "botika",
+      "pharmacy",
+      "tambal"
+    ],
+    "lat": 9.25121,
+    "lng": 124.71581,
+    "mun": "Mambajao",
+    "full_address": "J. Rizal / Burgos, Poblacion, Mambajao"
+  },
+  {
+    "name": "Landbank Camiguin, Mambajao",
+    "cat": "building",
+    "keywords": [
+      "landbank",
+      "lbp",
+      "atm",
+      "bank"
+    ],
+    "lat": 9.25247,
+    "lng": 124.71612,
+    "mun": "Mambajao",
+    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "PNB Mambajao",
+    "cat": "building",
+    "keywords": [
+      "pnb",
+      "philippine national bank",
+      "atm",
+      "bank"
+    ],
+    "lat": 9.24932,
+    "lng": 124.71694,
+    "mun": "Mambajao",
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
+  },
+  {
+    "name": "EastWest Rural Bank, Mambajao",
+    "cat": "building",
+    "keywords": [
+      "eastwest",
+      "eastwest bank",
+      "atm",
+      "bank"
+    ],
+    "lat": 9.25338,
+    "lng": 124.71671,
+    "mun": "Mambajao",
+    "full_address": "Plaridel Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Palawan Pawnshop, Mambajao",
+    "cat": "store",
+    "keywords": [
+      "palawan",
+      "palawan pawnshop",
+      "palawan express",
+      "remittance"
+    ],
+    "lat": 9.24808,
+    "lng": 124.72096,
+    "mun": "Mambajao",
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
+  },
+  {
+    "name": "Cebuana Lhuillier (Plaridel St), Mambajao",
+    "cat": "store",
+    "keywords": [
+      "cebuana",
+      "cebuana lhuillier",
+      "pawnshop",
+      "remittance"
+    ],
+    "lat": 9.25348,
+    "lng": 124.71666,
+    "mun": "Mambajao",
+    "full_address": "Plaridel Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Mambajao Public Market",
+    "cat": "market",
+    "keywords": [
+      "mambajao market",
+      "public market",
+      "merkado",
+      "palengke",
+      "bagsakan",
+      "wet market",
+      "isda",
+      "karne",
+      "utanon"
+    ],
+    "lat": 9.2531,
+    "lng": 124.7166,
+    "mun": "Mambajao",
+    "full_address": "J. Ebarle / Plaridel Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Mahinog Public Market",
+    "cat": "market",
+    "keywords": [
+      "mahinog market",
+      "merkado mahinog",
+      "palengke mahinog"
+    ],
+    "lat": 9.15467,
+    "lng": 124.7879,
+    "mun": "Mahinog",
+    "full_address": "Circumferential Road, Poblacion, Mahinog"
+  },
+  {
+    "name": "Catarman Public Market",
+    "cat": "market",
+    "keywords": [
+      "catarman market",
+      "merkado catarman",
+      "palengke catarman"
+    ],
+    "lat": 9.12564,
+    "lng": 124.67387,
+    "mun": "Catarman",
+    "full_address": "Circumferential Road, Poblacion, Catarman"
+  },
+  {
+    "name": "Sagay Public Market",
+    "cat": "market",
+    "keywords": [
+      "sagay market",
+      "merkado sagay",
+      "palengke sagay"
+    ],
+    "lat": 9.10374,
+    "lng": 124.72696,
+    "mun": "Sagay",
+    "full_address": "Circumferential Road, Poblacion, Sagay"
+  },
+  {
+    "name": "Guinsiliban Public Market",
+    "cat": "market",
+    "keywords": [
+      "guinsiliban market",
+      "merkado guinsiliban",
+      "palengke guinsiliban"
+    ],
+    "lat": 9.10045,
+    "lng": 124.788,
+    "mun": "Guinsiliban",
+    "full_address": "North Poblacion, Guinsiliban"
+  },
+  {
+    "name": "Tupsan Public Market, Mambajao",
+    "cat": "market",
+    "keywords": [
+      "tupsan market",
+      "merkado tupsan",
+      "palengke tupsan"
+    ],
+    "lat": 9.20137,
+    "lng": 124.77786,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Tupsan, Mambajao"
+  },
+  {
+    "name": "Yumbing Public Market, Mambajao",
+    "cat": "market",
+    "keywords": [
+      "yumbing market",
+      "merkado yumbing",
+      "palengke yumbing"
+    ],
+    "lat": 9.23931,
+    "lng": 124.65973,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Jollibee Camiguin, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "jollibee",
+      "jolibee",
+      "joli",
+      "jolli",
+      "fastfood",
+      "chickenjoy",
+      "burger"
+    ],
+    "lat": 9.24971,
+    "lng": 124.71667,
+    "mun": "Mambajao",
+    "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Moonflower Garden and Restaurant, Baylao",
+    "cat": "food",
+    "keywords": [
+      "moonflower",
+      "moonflower garden",
+      "moonflower restaurant",
+      "moonflower garden and restaurant",
+      "moonflower baylao",
+      "moonflower garden baylao",
+      "baylao moonflower",
+      "ice cream",
+      "restaurant"
+    ],
+    "lat": 9.25057,
+    "lng": 124.7011,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Baylao, Mambajao"
+  },
+  {
+    "name": "Samuel Restaurant, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "samuel",
+      "samuel restaurant",
+      "resto",
+      "restaurant",
+      "food"
+    ],
+    "lat": 9.2528,
+    "lng": 124.71574,
+    "mun": "Mambajao",
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Kurma Eco Restaurant & Cafe, Yumbing",
+    "cat": "food",
+    "keywords": [
+      "kurma",
+      "kurma cafe",
+      "kurma restaurant",
+      "cafe",
+      "freedive",
+      "food"
+    ],
+    "lat": 9.24123,
+    "lng": 124.66003,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "CheckPoint Food Park, Yumbing",
+    "cat": "food",
+    "keywords": [
+      "checkpoint",
+      "checkpoint food park",
+      "food park",
+      "resto bar",
+      "kaonan",
+      "food"
+    ],
+    "lat": 9.24227,
+    "lng": 124.6634,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "Julie's Bakeshop, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "julies",
+      "julie's",
+      "julies bakeshop",
+      "tinapay",
+      "panaderia",
+      "bakery",
+      "bakeshop"
+    ],
+    "lat": 9.25188,
+    "lng": 124.71615,
+    "mun": "Mambajao",
+    "full_address": "Balintawak / Placido Reyes, Poblacion, Mambajao"
+  },
+  {
+    "name": "Vjandep Bakeshop, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "vjandep",
+      "pastel",
+      "pasalubong",
+      "bakery",
+      "bakeshop"
+    ],
+    "lat": 9.25328,
+    "lng": 124.71629,
+    "mun": "Mambajao",
+    "full_address": "Poblacion, Mambajao, Camiguin"
+  },
+  {
+    "name": "Chooks to Go, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "chooks",
+      "chooks to go",
+      "manok",
+      "lechon manok"
+    ],
+    "lat": 9.25185,
+    "lng": 124.7161,
+    "mun": "Mambajao",
+    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Angel's Burger, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "angels burger",
+      "angel's burger",
+      "burger",
+      "fastfood"
+    ],
+    "lat": 9.25379,
+    "lng": 124.7156,
+    "mun": "Mambajao",
+    "full_address": "Plaridel / Rizal Corner, Poblacion, Mambajao"
+  },
+  {
+    "name": "Potato Corner, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "potato corner",
+      "fries",
+      "fastfood"
+    ],
+    "lat": 9.25374,
+    "lng": 124.71592,
+    "mun": "Mambajao",
+    "full_address": "Poblacion, Mambajao, Camiguin"
+  },
+  {
+    "name": "Hayahay Cafe & Restaurant, Bug-ong",
+    "cat": "food",
+    "keywords": [
+      "hayahay cafe",
+      "hayahay",
+      "cafe",
+      "restaurant"
+    ],
+    "lat": 9.25081,
+    "lng": 124.67799,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Bug-ong, Mambajao"
+  },
+  {
+    "name": "Guerrera Restaurant, Yumbing",
+    "cat": "food",
+    "keywords": [
+      "guerrera",
+      "casa roces",
+      "asian food",
+      "rice paddy",
+      "restaurant"
+    ],
+    "lat": 9.24564,
+    "lng": 124.66463,
+    "mun": "Mambajao",
+    "full_address": "Yumbing / Agoho, Mambajao"
+  },
+  {
+    "name": "Northern Lights Cafe, Agoho",
+    "cat": "food",
+    "keywords": [
+      "northern lights",
+      "northern lights agoho",
+      "cafe",
+      "kape"
+    ],
+    "lat": 9.24422,
+    "lng": 124.66614,
+    "mun": "Mambajao",
+    "full_address": "Agoho, Mambajao, Camiguin"
+  },
+  {
+    "name": "Northern Lights Downtown, Balbagon",
+    "cat": "food",
+    "keywords": [
+      "northern lights downtown",
+      "northern lights balbagon",
+      "pizza",
+      "grill"
+    ],
+    "lat": 9.24478,
+    "lng": 124.73137,
+    "mun": "Mambajao",
+    "full_address": "Balbagon Highway, Mambajao"
+  },
+  {
+    "name": "La Dolce Vita, Baylao",
+    "cat": "food",
+    "keywords": [
+      "la dolce vita",
+      "pizza",
+      "italian",
+      "pasta"
+    ],
+    "lat": 9.25036,
+    "lng": 124.70507,
+    "mun": "Mambajao",
+    "full_address": "Baylao Highway, Mambajao"
+  },
+  {
+    "name": "Utopia Café, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "utopia",
+      "utopia cafe",
+      "utopia café",
+      "cafe",
+      "hinterland"
+    ],
+    "lat": 9.22741,
+    "lng": 124.70748,
+    "mun": "Mambajao",
+    "full_address": "Quiboro / Itum Road, Mambajao"
+  },
+  {
+    "name": "Paradiso Restaurant, Agoho",
+    "cat": "food",
+    "keywords": [
+      "paradiso",
+      "paradiso hillside",
+      "la isla cocina",
+      "pizza",
+      "restaurant"
+    ],
+    "lat": 9.24896,
+    "lng": 124.67246,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Agoho, Mambajao"
+  },
+  {
+    "name": "Daos Plant-Based Kitchen, Boloc-boloc",
+    "cat": "food",
+    "keywords": [
+      "daos",
+      "plant based",
+      "vegan",
+      "boloc-boloc restaurant"
+    ],
+    "lat": 9.25742,
+    "lng": 124.70395,
+    "mun": "Mambajao",
+    "full_address": "Boloc-boloc, Poblacion, Mambajao"
+  },
+  {
+    "name": "Nanaw Café, Binunsaran, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "nanaw",
+      "nanaw cafe",
+      "cafe",
+      "hinterland"
+    ],
+    "lat": 9.21037,
+    "lng": 124.70209,
+    "mun": "Mambajao",
+    "full_address": "Binunsaran, Mambajao, Camiguin"
+  },
+  {
+    "name": "Sapore Ristorante, Bug-ong",
+    "cat": "food",
+    "keywords": [
+      "sapore",
+      "italian",
+      "pasta",
+      "restaurant"
+    ],
+    "lat": 9.24393,
+    "lng": 124.67928,
+    "mun": "Mambajao",
+    "full_address": "Bug-ong, Mambajao, Camiguin"
+  },
+  {
+    "name": "The Beehive Restaurant, Bura",
+    "cat": "food",
+    "keywords": [
+      "beehive",
+      "the beehive",
+      "driftwood cafe",
+      "catarman restaurant"
+    ],
+    "lat": 9.17448,
+    "lng": 124.6359,
+    "mun": "Catarman",
+    "full_address": "Bura / Catibac Coast, Catarman"
+  },
+  {
+    "name": "Petron Gas Station Balbagon, Mambajao",
     "cat": "fuel",
     "keywords": [
       "petron",
@@ -88,32 +2436,99 @@
     "lat": 9.24535,
     "lng": 124.72986,
     "mun": "Mambajao",
-    "full_address": "Balbagon Highway, Mambajao"
+    "full_address": "Circumferential Road, Balbagon, Mambajao"
   },
   {
-    "name": "Petron Gas Station Poblacion Mambajao",
+    "name": "Shell Gas Station Poblacion, Mambajao",
     "cat": "fuel",
     "keywords": [
-      "petron",
-      "petron poblacion",
+      "shell",
+      "shell poblacion",
+      "shell mambajao",
       "gasolinahan",
       "gas station",
       "fuel",
       "gasolina",
       "tubil"
     ],
-    "lat": 9.2485,
-    "lng": 124.7185,
+    "lat": 9.25203,
+    "lng": 124.71567,
     "mun": "Mambajao",
-    "full_address": "Poblacion Mambajao"
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
   },
   {
-    "name": "Shell Gas Station Mambajao (Tupsan)",
+    "name": "Caltex Gas Station Gen. B. Aranas, Mambajao",
     "cat": "fuel",
     "keywords": [
-      "shell",
-      "shell mambajao",
+      "caltex",
+      "caltex mambajao",
+      "caltex aranas",
+      "gasolinahan",
+      "gas station",
+      "fuel",
+      "tubil"
+    ],
+    "lat": 9.24841,
+    "lng": 124.71949,
+    "mun": "Mambajao",
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
+  },
+  {
+    "name": "Caltex Gas Station J. Rizal, Mambajao",
+    "cat": "fuel",
+    "keywords": [
+      "caltex rizal",
+      "caltex poblacion",
+      "caltex",
+      "gasolinahan",
+      "fuel",
+      "tubil"
+    ],
+    "lat": 9.25343,
+    "lng": 124.71566,
+    "mun": "Mambajao",
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Jetti Gas Station Lakas, Mambajao",
+    "cat": "fuel",
+    "keywords": [
+      "jetti",
+      "jetti mambajao",
+      "jetti lakas",
+      "gasolinahan",
+      "gas station",
+      "fuel",
+      "tubil"
+    ],
+    "lat": 9.24712,
+    "lng": 124.72357,
+    "mun": "Mambajao",
+    "full_address": "Sitio Lakas, Poblacion, Mambajao"
+  },
+  {
+    "name": "Petron Gas Station Agoho, Mambajao",
+    "cat": "fuel",
+    "keywords": [
+      "petron agoho",
+      "gasolinahan agoho",
+      "gas station agoho",
+      "petron",
+      "gasolinahan",
+      "fuel",
+      "tubil"
+    ],
+    "lat": 9.2461,
+    "lng": 124.66922,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Agoho, Mambajao"
+  },
+  {
+    "name": "Shell Gas Station Tupsan, Mambajao",
+    "cat": "fuel",
+    "keywords": [
       "shell tupsan",
+      "shell",
       "gasolinahan",
       "gas station",
       "fuel",
@@ -123,24 +2538,7 @@
     "lat": 9.20656,
     "lng": 124.77516,
     "mun": "Mambajao",
-    "full_address": "Tupsan Highway, Mambajao"
-  },
-  {
-    "name": "Phoenix Gas Station Mambajao (Lakas)",
-    "cat": "fuel",
-    "keywords": [
-      "phoenix",
-      "phoenix mambajao",
-      "phoenix lakas",
-      "gasolinahan",
-      "gas station",
-      "fuel",
-      "tubil"
-    ],
-    "lat": 9.249,
-    "lng": 124.723,
-    "mun": "Mambajao",
-    "full_address": "Lakas, Poblacion, Mambajao"
+    "full_address": "Circumferential Road, Tupsan, Mambajao"
   },
   {
     "name": "Petron Gas Station Catarman",
@@ -156,38 +2554,89 @@
     "lat": 9.12577,
     "lng": 124.67342,
     "mun": "Catarman",
-    "full_address": "Poblacion Catarman"
+    "full_address": "Circumferential Road, Poblacion, Catarman"
   },
   {
-    "name": "Petron Gas Station Mahinog (Benoni)",
+    "name": "Petron Gas Station Sagay",
     "cat": "fuel",
     "keywords": [
-      "petron mahinog",
-      "petron benoni",
-      "gasolinahan",
+      "petron sagay",
+      "petron",
+      "gasolinahan sagay",
       "gas station",
       "fuel",
       "tubil"
     ],
-    "lat": 9.132,
-    "lng": 124.793,
-    "mun": "Mahinog",
-    "full_address": "Benoni Highway, Mahinog"
+    "lat": 9.10422,
+    "lng": 124.72567,
+    "mun": "Sagay",
+    "full_address": "Circumferential Road, Poblacion, Sagay"
   },
   {
-    "name": "Highway Fuel Station Agoho",
+    "name": "Shell Gas Station Benoni, Mahinog",
     "cat": "fuel",
     "keywords": [
-      "gasolinahan agoho",
-      "gas station agoho",
-      "gasolinahan",
+      "shell mahinog",
+      "shell benoni",
+      "gasolinahan mahinog",
+      "gas station",
       "fuel",
       "tubil"
     ],
-    "lat": 9.244,
-    "lng": 124.685,
+    "lat": 9.14758,
+    "lng": 124.79691,
+    "mun": "Mahinog",
+    "full_address": "Circumferential Road, Benoni, Mahinog"
+  },
+  {
+    "name": "Jetti Gas Station Benoni, Mahinog",
+    "cat": "fuel",
+    "keywords": [
+      "jetti mahinog",
+      "jetti benoni",
+      "gasolinahan benoni",
+      "gas station",
+      "fuel",
+      "tubil"
+    ],
+    "lat": 9.147,
+    "lng": 124.79749,
+    "mun": "Mahinog",
+    "full_address": "Circumferential Road, Benoni, Mahinog"
+  },
+  {
+    "name": "Camiguin Polytechnic State College (CPSC Mambajao)",
+    "cat": "school",
+    "keywords": [
+      "cpsc",
+      "csu",
+      "camiguin state university",
+      "camiguin polytechnic",
+      "polytechnic",
+      "state college",
+      "college",
+      "school"
+    ],
+    "lat": 9.24318,
+    "lng": 124.731,
     "mun": "Mambajao",
-    "full_address": "Agoho Highway, Mambajao"
+    "full_address": "Circumferential Road, Balbagon, Mambajao"
+  },
+  {
+    "name": "Fatima College of Camiguin (FCC)",
+    "cat": "school",
+    "keywords": [
+      "fatima college",
+      "fcc",
+      "fatima",
+      "fatima college of camiguin",
+      "college",
+      "school"
+    ],
+    "lat": 9.25044,
+    "lng": 124.71421,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Poblacion, Mambajao"
   },
   {
     "name": "Mambajao Central School",
@@ -202,39 +2651,21 @@
     "lat": 9.24931,
     "lng": 124.71982,
     "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
   },
   {
-    "name": "Fatima College of Camiguin (FCC)",
+    "name": "Mambajao National High School",
     "cat": "school",
     "keywords": [
-      "fatima college",
-      "fcc",
-      "fatima",
-      "fatima college of camiguin",
-      "college",
+      "mambajao high school",
+      "mnhs",
+      "high school",
       "school"
     ],
-    "lat": 9.25083,
-    "lng": 124.71408,
+    "lat": 9.25217,
+    "lng": 124.71943,
     "mun": "Mambajao",
-    "full_address": "Poblacion Mambajao"
-  },
-  {
-    "name": "Camiguin Polytechnic State College (CPSC / CSU Mambajao)",
-    "cat": "school",
-    "keywords": [
-      "cpsc",
-      "csu",
-      "camiguin state university",
-      "camiguin polytechnic",
-      "college",
-      "school"
-    ],
-    "lat": 9.2472,
-    "lng": 124.7291,
-    "mun": "Mambajao",
-    "full_address": "Balbagon, Mambajao"
+    "full_address": "Balintawak Street, Poblacion, Mambajao"
   },
   {
     "name": "Camiguin Polytechnic State College (Catarman Campus)",
@@ -245,10 +2676,10 @@
       "college catarman",
       "school"
     ],
-    "lat": 9.11666,
-    "lng": 124.68764,
+    "lat": 9.11663,
+    "lng": 124.68761,
     "mun": "Catarman",
-    "full_address": "Catarman"
+    "full_address": "Circumferential Road, Tangaro, Catarman"
   },
   {
     "name": "Camiguin National High School (CNHS)",
@@ -260,10 +2691,10 @@
       "high school",
       "school"
     ],
-    "lat": 9.1295,
-    "lng": 124.67217,
+    "lat": 9.1294,
+    "lng": 124.67219,
     "mun": "Catarman",
-    "full_address": "Catarman"
+    "full_address": "Circumferential Road, Looc, Catarman"
   },
   {
     "name": "Yumbing National High School",
@@ -274,10 +2705,10 @@
       "high school",
       "school"
     ],
-    "lat": 9.24378,
-    "lng": 124.66394,
+    "lat": 9.24386,
+    "lng": 124.66381,
     "mun": "Mambajao",
-    "full_address": "Yumbing, Mambajao"
+    "full_address": "Pearl Road, Yumbing, Mambajao"
   },
   {
     "name": "Magting Elementary School",
@@ -285,13 +2716,14 @@
     "keywords": [
       "magting elementary",
       "magting school",
+      "es magting",
       "school",
       "elementary"
     ],
-    "lat": 9.222,
-    "lng": 124.762,
+    "lat": 9.22428,
+    "lng": 124.75147,
     "mun": "Mambajao",
-    "full_address": "Magting, Mambajao"
+    "full_address": "Circumferential Road, Magting, Mambajao"
   },
   {
     "name": "Agoho Elementary School",
@@ -302,10 +2734,10 @@
       "school",
       "elementary"
     ],
-    "lat": 9.245,
-    "lng": 124.662,
+    "lat": 9.24625,
+    "lng": 124.67004,
     "mun": "Mambajao",
-    "full_address": "Agoho, Mambajao"
+    "full_address": "Circumferential Road, Agoho, Mambajao"
   },
   {
     "name": "Balbagon Elementary School",
@@ -316,10 +2748,10 @@
       "school",
       "elementary"
     ],
-    "lat": 9.243,
-    "lng": 124.738,
+    "lat": 9.23625,
+    "lng": 124.73903,
     "mun": "Mambajao",
-    "full_address": "Balbagon, Mambajao"
+    "full_address": "Circumferential Road, Balbagon, Mambajao"
   },
   {
     "name": "Catarman Central School",
@@ -329,10 +2761,10 @@
       "catarman elementary",
       "school"
     ],
-    "lat": 9.128,
-    "lng": 124.645,
+    "lat": 9.12842,
+    "lng": 124.67281,
     "mun": "Catarman",
-    "full_address": "Poblacion Catarman"
+    "full_address": "Circumferential Road, Poblacion, Catarman"
   },
   {
     "name": "Mahinog Central School",
@@ -342,10 +2774,10 @@
       "mahinog school",
       "school"
     ],
-    "lat": 9.153,
-    "lng": 124.785,
+    "lat": 9.15408,
+    "lng": 124.78856,
     "mun": "Mahinog",
-    "full_address": "Poblacion Mahinog"
+    "full_address": "Circumferential Road, Poblacion, Mahinog"
   },
   {
     "name": "Sagay Central School",
@@ -355,10 +2787,10 @@
       "sagay school",
       "school"
     ],
-    "lat": 9.102,
-    "lng": 124.721,
+    "lat": 9.10436,
+    "lng": 124.72937,
     "mun": "Sagay",
-    "full_address": "Poblacion Sagay"
+    "full_address": "Circumferential Road, Poblacion, Sagay"
   },
   {
     "name": "Guinsiliban Central School",
@@ -368,10 +2800,10 @@
       "guinsiliban school",
       "school"
     ],
-    "lat": 9.094,
-    "lng": 124.778,
+    "lat": 9.09811,
+    "lng": 124.78585,
     "mun": "Guinsiliban",
-    "full_address": "Poblacion Guinsiliban"
+    "full_address": "North Poblacion, Guinsiliban"
   },
   {
     "name": "San Nicolas de Tolentino Parish Church, Mambajao",
@@ -384,10 +2816,10 @@
       "catholic church",
       "church"
     ],
-    "lat": 9.2514,
-    "lng": 124.717,
+    "lat": 9.24964,
+    "lng": 124.71504,
     "mun": "Mambajao",
-    "full_address": "Poblacion Mambajao"
+    "full_address": "Poblacion, Mambajao, Camiguin"
   },
   {
     "name": "IFI Parish of the Good Shepherd, Mambajao",
@@ -403,36 +2835,50 @@
     "lat": 9.25145,
     "lng": 124.71702,
     "mun": "Mambajao",
-    "full_address": "Poblacion Mambajao"
+    "full_address": "Burgos Street, Poblacion, Mambajao"
   },
   {
-    "name": "Iglesia Ni Cristo (INC), Mambajao",
+    "name": "Iglesia Ni Cristo (INC), Poblacion, Mambajao",
     "cat": "church",
     "keywords": [
       "inc",
+      "inc mambajao",
       "iglesia ni cristo",
       "iglesia",
       "church"
     ],
-    "lat": 9.23866,
-    "lng": 124.65569,
+    "lat": 9.24823,
+    "lng": 124.7163,
     "mun": "Mambajao",
-    "full_address": "Mambajao"
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
   },
   {
-    "name": "San Roque Parish Church, Mahinog",
+    "name": "Iglesia Ni Cristo (INC), Yumbing",
     "cat": "church",
     "keywords": [
+      "inc yumbing",
+      "iglesia ni cristo yumbing",
+      "church"
+    ],
+    "lat": 9.23865,
+    "lng": 124.65567,
+    "mun": "Mambajao",
+    "full_address": "Circumferential Road, Yumbing, Mambajao"
+  },
+  {
+    "name": "St. Michael (San Roque) Parish Church, Mahinog",
+    "cat": "church",
+    "keywords": [
+      "st michael church",
       "san roque parish",
       "mahinog church",
       "simbahan sa mahinog",
-      "catholic church",
       "church"
     ],
-    "lat": 9.1532,
-    "lng": 124.785,
+    "lat": 9.15355,
+    "lng": 124.78791,
     "mun": "Mahinog",
-    "full_address": "Poblacion Mahinog"
+    "full_address": "Poblacion / San Roque, Mahinog, Camiguin"
   },
   {
     "name": "San Antonio de Padua Parish Church, Bonbon",
@@ -440,13 +2886,12 @@
     "keywords": [
       "san antonio parish",
       "bonbon church",
-      "catarman church",
       "church"
     ],
-    "lat": 9.207,
-    "lng": 124.632,
+    "lat": 9.19867,
+    "lng": 124.63629,
     "mun": "Catarman",
-    "full_address": "Bonbon, Catarman"
+    "full_address": "Bonbon, Catarman, Camiguin"
   },
   {
     "name": "Our Lady of Mount Carmel Parish Church, Catarman",
@@ -454,16 +2899,17 @@
     "keywords": [
       "catarman parish",
       "mount carmel church",
+      "catarman church",
       "simbahan sa catarman",
       "church"
     ],
-    "lat": 9.1282,
-    "lng": 124.6448,
+    "lat": 9.12455,
+    "lng": 124.6762,
     "mun": "Catarman",
-    "full_address": "Poblacion Catarman"
+    "full_address": "Poblacion, Catarman, Camiguin"
   },
   {
-    "name": "Holy Rosary Parish Church, Sagay",
+    "name": "Our Lady of the Holy Rosary Parish Church, Sagay",
     "cat": "church",
     "keywords": [
       "sagay parish",
@@ -471,10 +2917,10 @@
       "simbahan sa sagay",
       "church"
     ],
-    "lat": 9.1022,
-    "lng": 124.7212,
+    "lat": 9.10476,
+    "lng": 124.72537,
     "mun": "Sagay",
-    "full_address": "Poblacion Sagay"
+    "full_address": "Rosario Street, Poblacion, Sagay"
   },
   {
     "name": "Our Lady of Consolation Parish Church, Guinsiliban",
@@ -485,10 +2931,10 @@
       "simbahan sa guinsiliban",
       "church"
     ],
-    "lat": 9.0942,
-    "lng": 124.7782,
+    "lat": 9.09865,
+    "lng": 124.78533,
     "mun": "Guinsiliban",
-    "full_address": "Poblacion Guinsiliban"
+    "full_address": "North Poblacion, Guinsiliban, Camiguin"
   },
   {
     "name": "San Pedro Calungsod Chapel, Baylao",
@@ -499,131 +2945,10 @@
       "kapilya sa baylao",
       "church"
     ],
-    "lat": 9.2415,
-    "lng": 124.691,
-    "mun": "Mambajao",
-    "full_address": "Baylao, Mambajao"
-  },
-  {
-    "name": "Moonflower Garden and Restaurant, Baylao",
-    "cat": "food",
-    "keywords": [
-      "moonflower",
-      "moonflower garden",
-      "moonflower restaurant",
-      "moonflower garden and restaurant",
-      "moonflower gardern and restaurant",
-      "moonflower gardern",
-      "moonflower baylao",
-      "moonflower garden baylao",
-      "baylao moonflower",
-      "baylao restaurant",
-      "ice cream",
-      "restaurant baylao",
-      "food",
-      "resto",
-      "restaurant"
-    ],
-    "lat": 9.25057,
-    "lng": 124.7011,
+    "lat": 9.2495,
+    "lng": 124.6949,
     "mun": "Mambajao",
     "full_address": "Baylao, Mambajao, Camiguin"
-  },
-  {
-    "name": "Samuel Restaurant, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "samuel",
-      "samuel restaurant",
-      "placido reyes",
-      "resto",
-      "restaurant",
-      "food"
-    ],
-    "lat": 9.2528,
-    "lng": 124.71574,
-    "mun": "Mambajao",
-    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Kurma Eco Restaurant & Cafe, Yumbing",
-    "cat": "food",
-    "keywords": [
-      "kurma",
-      "kurma cafe",
-      "kurma restaurant",
-      "yumbing",
-      "cafe",
-      "food"
-    ],
-    "lat": 9.24144,
-    "lng": 124.65996,
-    "mun": "Mambajao",
-    "full_address": "Yumbing, Mambajao"
-  },
-  {
-    "name": "Julie's Bakeshop, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "julies",
-      "julies bakeshop",
-      "tinapay",
-      "bakery",
-      "bakeshop"
-    ],
-    "lat": 9.25188,
-    "lng": 124.71615,
-    "mun": "Mambajao",
-    "full_address": "Poblacion Mambajao"
-  },
-  {
-    "name": "Goldilocks Bakeshop, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "goldilocks",
-      "goldilocks mambajao",
-      "cake",
-      "bakeshop",
-      "bakery"
-    ],
-    "lat": 9.2518,
-    "lng": 124.7167,
-    "mun": "Mambajao",
-    "full_address": "Poblacion Mambajao"
-  },
-  {
-    "name": "CheckPoint Food Park, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "checkpoint",
-      "checkpoint food park",
-      "food park",
-      "restaurant",
-      "food"
-    ],
-    "lat": 9.24227,
-    "lng": 124.6634,
-    "mun": "Mambajao",
-    "full_address": "Agoho / Yumbing Highway, Mambajao"
-  },
-  {
-    "name": "Gaisano Capital Camiguin (Placido Reyes St)",
-    "cat": "supermarket",
-    "keywords": [
-      "gaisano",
-      "gaisano capital",
-      "placido reyes",
-      "p. reyes",
-      "placido reyes street",
-      "gaisano camiguin",
-      "mall",
-      "supermarket",
-      "grocery"
-    ],
-    "lat": 9.25290,
-    "lng": 124.71613,
-    "mun": "Mambajao",
-    "full_address": "Placido Reyes Street, Mabini, Poblacion, Mambajao"
   },
   {
     "name": "Placido Reyes Street, Mambajao",
@@ -631,6 +2956,7 @@
     "keywords": [
       "placido reyes",
       "placido reyes street",
+      "placido reyes / town center",
       "p. reyes",
       "p. reyes street",
       "gaisano street",
@@ -647,11 +2973,11 @@
     "keywords": [
       "burgos",
       "burgos street",
-      "jollibee street",
-      "burgos st"
+      "burgos st",
+      "ifi street"
     ],
-    "lat": 9.25058,
-    "lng": 124.71712,
+    "lat": 9.2514,
+    "lng": 124.71705,
     "mun": "Mambajao",
     "full_address": "Burgos Street, Poblacion, Mambajao"
   },
@@ -663,12 +2989,13 @@
       "gen aranas",
       "aranas street",
       "hospital street",
+      "jollibee street",
       "aranas"
     ],
-    "lat": 9.24931,
-    "lng": 124.71982,
+    "lat": 9.24825,
+    "lng": 124.72056,
     "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
+    "full_address": "General Bonifacio Aranas Street, Mambajao"
   },
   {
     "name": "Plaridel Street, Mambajao",
@@ -679,10 +3006,10 @@
       "market street",
       "plaridel st"
     ],
-    "lat": 9.25411,
-    "lng": 124.71813,
+    "lat": 9.25351,
+    "lng": 124.71605,
     "mun": "Mambajao",
-    "full_address": "Plaridel Street, Lagundi, Poblacion, Mambajao"
+    "full_address": "Plaridel Street, Poblacion, Mambajao"
   },
   {
     "name": "Rizal Street, Mambajao",
@@ -691,12 +3018,13 @@
       "rizal",
       "rizal street",
       "j.p. rizal",
+      "j. rizal",
       "rizal st"
     ],
-    "lat": 9.24673,
-    "lng": 124.71578,
+    "lat": 9.25049,
+    "lng": 124.71607,
     "mun": "Mambajao",
-    "full_address": "Rizal Street, Poblacion, Mambajao"
+    "full_address": "J. Rizal Street, Poblacion, Mambajao"
   },
   {
     "name": "Mabini Street, Mambajao",
@@ -706,1584 +3034,10 @@
       "mabini street",
       "mabini st"
     ],
-    "lat": 9.24477,
-    "lng": 124.71328,
+    "lat": 9.24951,
+    "lng": 124.71535,
     "mun": "Mambajao",
     "full_address": "Mabini Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Davilett Store & Supermarket, Mambajao",
-    "cat": "supermarket",
-    "keywords": [
-      "davilett",
-      "davilet",
-      "davi",
-      "supermarket",
-      "grocery"
-    ],
-    "lat": 9.2518,
-    "lng": 124.7167,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Nene Uy Store / Wholesaler, Mambajao",
-    "cat": "store",
-    "keywords": [
-      "nene uy",
-      "nene",
-      "wholesaler",
-      "grocery",
-      "supply"
-    ],
-    "lat": 9.2516,
-    "lng": 124.7166,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Prince Hypermart Camiguin",
-    "cat": "supermarket",
-    "keywords": [
-      "prince hypermart",
-      "prince",
-      "hypermart"
-    ],
-    "lat": 9.2495,
-    "lng": 124.718,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "7-Eleven Mambajao Town Center",
-    "cat": "store",
-    "keywords": [
-      "7-eleven",
-      "7-11",
-      "711",
-      "seven eleven",
-      "convenience store"
-    ],
-    "lat": 9.2505,
-    "lng": 124.7165,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "7-Eleven Balbagon Port Branch",
-    "cat": "store",
-    "keywords": [
-      "7-eleven balbagon",
-      "711 balbagon",
-      "7 eleven port"
-    ],
-    "lat": 9.2430,
-    "lng": 124.7370,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Mercury Drug Camiguin, Mambajao",
-    "cat": "pharmacy",
-    "keywords": [
-      "mercury drug",
-      "mercury",
-      "pharmacy",
-      "botika",
-      "tambal",
-      "drugstore"
-    ],
-    "lat": 9.25249,
-    "lng": 124.71641,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Rose Pharmacy Mambajao",
-    "cat": "pharmacy",
-    "keywords": [
-      "rose pharmacy",
-      "rose",
-      "pharmacy",
-      "botika",
-      "tambal"
-    ],
-    "lat": 9.252,
-    "lng": 124.7165,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Julies Bakeshop Mambajao",
-    "cat": "store",
-    "keywords": [
-      "julies",
-      "julies bakeshop",
-      "bakeshop",
-      "panaderia",
-      "tinapay"
-    ],
-    "lat": 9.251,
-    "lng": 124.7166,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Chooks to Go Mambajao",
-    "cat": "food",
-    "keywords": [
-      "chooks",
-      "chooks to go",
-      "manok",
-      "lechon manok"
-    ],
-    "lat": 9.2508,
-    "lng": 124.7167,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Andoks Litson Mambajao",
-    "cat": "food",
-    "keywords": [
-      "andoks",
-      "andok",
-      "litson manok"
-    ],
-    "lat": 9.2506,
-    "lng": 124.7168,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Dunkin Donuts Camiguin",
-    "cat": "food",
-    "keywords": [
-      "dunkin",
-      "donuts",
-      "dunkin donuts"
-    ],
-    "lat": 9.2502,
-    "lng": 124.7166,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Mambajao Public Market",
-    "cat": "market",
-    "keywords": [
-      "mambajao market",
-      "public market",
-      "merkado",
-      "palengke",
-      "wet market",
-      "isda",
-      "karne",
-      "utanon"
-    ],
-    "lat": 9.25319,
-    "lng": 124.7166,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Mahinog Public Market",
-    "cat": "market",
-    "keywords": [
-      "mahinog market",
-      "merkado mahinog",
-      "palengke mahinog"
-    ],
-    "lat": 9.1535,
-    "lng": 124.7852,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Catarman Public Market",
-    "cat": "market",
-    "keywords": [
-      "catarman market",
-      "merkado catarman",
-      "palengke catarman"
-    ],
-    "lat": 9.1275,
-    "lng": 124.6455,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Sagay Public Market",
-    "cat": "market",
-    "keywords": [
-      "sagay market",
-      "merkado sagay",
-      "palengke sagay"
-    ],
-    "lat": 9.1025,
-    "lng": 124.7205,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Guinsiliban Public Market",
-    "cat": "market",
-    "keywords": [
-      "guinsiliban market",
-      "merkado guinsiliban",
-      "palengke guinsiliban"
-    ],
-    "lat": 9.0938,
-    "lng": 124.7778,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Jollibee Camiguin, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "jollibee",
-      "jolibee",
-      "joli",
-      "jolli",
-      "fastfood",
-      "chickenjoy",
-      "burger"
-    ],
-    "lat": 9.24971,
-    "lng": 124.71667,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Checkpoint Food Park, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "checkpoint",
-      "food park",
-      "resto bar",
-      "kaonan"
-    ],
-    "lat": 9.2499,
-    "lng": 124.7182,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Hayahay Cafe & Restaurant",
-    "cat": "food",
-    "keywords": [
-      "hayahay cafe",
-      "hayahay",
-      "cafe"
-    ],
-    "lat": 9.2512,
-    "lng": 124.672,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Casa Roces / Guerrera Restaurant, Yumbing",
-    "cat": "food",
-    "keywords": [
-      "guerrera",
-      "casa roces",
-      "asian food",
-      "rice paddy"
-    ],
-    "lat": 9.2548,
-    "lng": 124.6475,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Northern Lights Cafe, Agoho",
-    "cat": "food",
-    "keywords": [
-      "northern lights",
-      "cafe",
-      "kape"
-    ],
-    "lat": 9.246,
-    "lng": 124.661,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "La Dolce Vita Italian Pizza, Agoho",
-    "cat": "food",
-    "keywords": [
-      "la dolce vita",
-      "pizza",
-      "italian",
-      "pasta"
-    ],
-    "lat": 9.2455,
-    "lng": 124.6615,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Penongs Barbeque Mambajao",
-    "cat": "food",
-    "keywords": [
-      "penongs",
-      "penong",
-      "bbq",
-      "chicken bbq",
-      "inasal"
-    ],
-    "lat": 9.2496,
-    "lng": 124.7172,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Provincial Capitol Compound, Mambajao",
-    "cat": "building",
-    "keywords": [
-      "capitol",
-      "kapitolyo",
-      "provincial capitol",
-      "governor"
-    ],
-    "lat": 9.24417,
-    "lng": 124.72725,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Mambajao Town Plaza / Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "mambajao plaza",
-      "plaza",
-      "municipal hall",
-      "munisipyo",
-      "mayor"
-    ],
-    "lat": 9.2515,
-    "lng": 124.7168,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Camiguin General Hospital (CGH)",
-    "cat": "hospital",
-    "keywords": [
-      "hospital",
-      "cgh",
-      "clinic",
-      "doktor",
-      "emergency",
-      "pagamutan"
-    ],
-    "lat": 9.24847,
-    "lng": 124.72159,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Mahinog Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "munisipyo mahinog",
-      "mahinog hall",
-      "mayor mahinog"
-    ],
-    "lat": 9.1532,
-    "lng": 124.785,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Catarman Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "munisipyo catarman",
-      "catarman hall",
-      "mayor catarman"
-    ],
-    "lat": 9.1282,
-    "lng": 124.6448,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Sagay Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "munisipyo sagay",
-      "sagay hall",
-      "mayor sagay"
-    ],
-    "lat": 9.1022,
-    "lng": 124.7212,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Guinsiliban Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "munisipyo guinsiliban",
-      "guinsiliban hall"
-    ],
-    "lat": 9.0942,
-    "lng": 124.7782,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Camiguin Polytechnic State College (CPSC)",
-    "cat": "school",
-    "keywords": [
-      "cpsc",
-      "polytechnic",
-      "college",
-      "state college",
-      "eskwela"
-    ],
-    "lat": 9.252,
-    "lng": 124.711,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Fatima College of Camiguin",
-    "cat": "school",
-    "keywords": [
-      "fatima college",
-      "fcc",
-      "fatima"
-    ],
-    "lat": 9.2522,
-    "lng": 124.7145,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Camiguin Provincial Police Office",
-    "cat": "building",
-    "keywords": [
-      "police",
-      "pnp",
-      "pulis",
-      "police station",
-      "istasyon"
-    ],
-    "lat": 9.2489,
-    "lng": 124.7225,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Balbagon Port (FastCat & Ferry Wharf)",
-    "cat": "transport",
-    "keywords": [
-      "balbagon port",
-      "balbagon",
-      "fastcat",
-      "super shuttle",
-      "ferry",
-      "barko",
-      "pantalan",
-      "pantalan balbagon"
-    ],
-    "lat": 9.24292,
-    "lng": 124.73730,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Benoni Passenger Terminal, Mahinog",
-    "cat": "transport",
-    "keywords": [
-      "benoni passenger terminal",
-      "benoni terminal",
-      "passenger terminal",
-      "passenger terminal benoni",
-      "benoni port passenger terminal",
-      "ppa passenger terminal",
-      "ppa benoni",
-      "pantalan passenger terminal",
-      "terminal",
-      "passenger",
-      "benoni port",
-      "pantalan benoni",
-      "ferry terminal",
-      "wharf",
-      "port",
-      "pantalan",
-      "transport"
-    ],
-    "lat": 9.1306,
-    "lng": 124.7937,
-    "mun": "Mahinog",
-    "full_address": "Benoni Port, Mahinog, Camiguin"
-  },
-  {
-    "name": "Benoni Port / Ferry Wharf, Mahinog",
-    "cat": "transport",
-    "keywords": [
-      "benoni port",
-      "benoni passenger terminal",
-      "benoni terminal",
-      "passenger terminal",
-      "benoni",
-      "wharf",
-      "port",
-      "pantalan",
-      "ferry mahinog",
-      "barko benoni",
-      "pantalan benoni"
-    ],
-    "lat": 9.1306,
-    "lng": 124.7937,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Guinsiliban Port / Ferry Terminal",
-    "cat": "transport",
-    "keywords": [
-      "guinsiliban port",
-      "pantalan guinsiliban",
-      "ferry guinsiliban"
-    ],
-    "lat": 9.0925,
-    "lng": 124.7815,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Camiguin Airport",
-    "cat": "transport",
-    "keywords": [
-      "airport",
-      "camiguin airport",
-      "tugpahanan",
-      "eroplano",
-      "flight"
-    ],
-    "lat": 9.253,
-    "lng": 124.7061,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "White Island Boat Jump-off, Yumbing",
-    "cat": "tourist",
-    "keywords": [
-      "white island",
-      "white island boat",
-      "jump-off",
-      "medano",
-      "island"
-    ],
-    "lat": 9.2538,
-    "lng": 124.6532,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Mantigue Island Boat Station, San Roque",
-    "cat": "tourist",
-    "keywords": [
-      "mantigue island",
-      "mantigue",
-      "boat station",
-      "san roque mantigue"
-    ],
-    "lat": 9.172,
-    "lng": 124.785,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Katibawasan Falls",
-    "cat": "tourist",
-    "keywords": [
-      "katibawasan falls",
-      "katibawasan",
-      "busay",
-      "waterfall"
-    ],
-    "lat": 9.2152,
-    "lng": 124.7188,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Tuasan Falls, Mainit, Catarman",
-    "cat": "tourist",
-    "keywords": [
-      "tuasan falls",
-      "tuasan",
-      "busay catarman"
-    ],
-    "lat": 9.17,
-    "lng": 124.675,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Ardent Hot Spring, Esperanza",
-    "cat": "tourist",
-    "keywords": [
-      "ardent hot spring",
-      "ardent",
-      "hot spring",
-      "esperanza hot spring"
-    ],
-    "lat": 9.238,
-    "lng": 124.661,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Sto. Ni\u00f1o Cold Spring, Catarman",
-    "cat": "tourist",
-    "keywords": [
-      "cold spring",
-      "sto nino",
-      "sto. nino",
-      "sto ni\u00f1o",
-      "bugnaw spring"
-    ],
-    "lat": 9.15010,
-    "lng": 124.67371,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Bura Soda Water Park, Catarman",
-    "cat": "tourist",
-    "keywords": [
-      "soda water",
-      "bura soda",
-      "soda swimming",
-      "bura"
-    ],
-    "lat": 9.182,
-    "lng": 124.638,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Sunken Cemetery & Giant Cross, Bonbon",
-    "cat": "tourist",
-    "keywords": [
-      "sunken cemetery",
-      "sunken",
-      "giant cross",
-      "lubnganan",
-      "krus"
-    ],
-    "lat": 9.20660,
-    "lng": 124.63260,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Old Church Ruins (Gui-ob Church), Bonbon",
-    "cat": "tourist",
-    "keywords": [
-      "church ruins",
-      "guiob",
-      "gui-ob",
-      "old church",
-      "simbahan"
-    ],
-    "lat": 9.205,
-    "lng": 124.632,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Mount Vulcan Daan / Walkway to Old Volcano",
-    "cat": "tourist",
-    "keywords": [
-      "vulcan daan",
-      "old volcano",
-      "walkway",
-      "via crucis"
-    ],
-    "lat": 9.2085,
-    "lng": 124.635,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Mount Hibok-Hibok Base Jump-off",
-    "cat": "tourist",
-    "keywords": [
-      "hibok-hibok",
-      "hibok hibok",
-      "volcano hike"
-    ],
-    "lat": 9.203,
-    "lng": 124.671,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Giant Clam Sanctuary, Cantaan",
-    "cat": "tourist",
-    "keywords": [
-      "giant clam",
-      "clam sanctuary",
-      "cantaan",
-      "taklobo"
-    ],
-    "lat": 9.081,
-    "lng": 124.786,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Taguines Lagoon & Zipline, Benoni",
-    "cat": "tourist",
-    "keywords": [
-      "taguines lagoon",
-      "taguines",
-      "zipline"
-    ],
-    "lat": 9.129,
-    "lng": 124.791,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Katunggan Mangrove Park, Mahinog",
-    "cat": "tourist",
-    "keywords": [
-      "katunggan",
-      "mangrove park",
-      "bakawan"
-    ],
-    "lat": 9.135,
-    "lng": 124.792,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Paras Beach Resort, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "paras beach",
-      "paras resort",
-      "paras",
-      "hotel"
-    ],
-    "lat": 9.2553,
-    "lng": 124.6468,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Balyali Beach Resort, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "balyali resort",
-      "balyali",
-      "beach resort"
-    ],
-    "lat": 9.2588,
-    "lng": 124.6432,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Tongatok Cliff Resort, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "tongatok cliff",
-      "tongatok",
-      "cliff resort"
-    ],
-    "lat": 9.2505,
-    "lng": 124.6341,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Lanzones Resort, Baylao, Mambajao",
-    "cat": "resort",
-    "keywords": [
-      "lanzones resort",
-      "lanzones",
-      "resort baylao"
-    ],
-    "lat": 9.239,
-    "lng": 124.697,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Camiguin Highland Resort, Soro-soro",
-    "cat": "resort",
-    "keywords": [
-      "highland resort",
-      "highland",
-      "sorosoro",
-      "soro-soro",
-      "soro'soro"
-    ],
-    "lat": 9.231,
-    "lng": 124.689,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Somewhere Else Boutique Resort, Agoho",
-    "cat": "resort",
-    "keywords": [
-      "somewhere else",
-      "boutique resort"
-    ],
-    "lat": 9.2458,
-    "lng": 124.6625,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Balerin Beach Resort, Agoho",
-    "cat": "resort",
-    "keywords": [
-      "balerin",
-      "balerin resort"
-    ],
-    "lat": 9.2445,
-    "lng": 124.663,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Pabua's Cottages, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "pabuas",
-      "pabua",
-      "cottages"
-    ],
-    "lat": 9.254,
-    "lng": 124.646,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Medano Island Resort, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "medano",
-      "medano resort"
-    ],
-    "lat": 9.2565,
-    "lng": 124.645,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Agoho, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "agoho",
-      "brgy agoho",
-      "barangay agoho"
-    ],
-    "lat": 9.245,
-    "lng": 124.662,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Anito, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "anito",
-      "brgy anito",
-      "barangay anito"
-    ],
-    "lat": 9.2296,
-    "lng": 124.7444,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Balbagon, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "balbagon",
-      "brgy balbagon",
-      "barangay balbagon"
-    ],
-    "lat": 9.24340,
-    "lng": 124.73370,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Baylao, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "baylao",
-      "bailao",
-      "brgy baylao",
-      "barangay baylao"
-    ],
-    "lat": 9.2415,
-    "lng": 124.691,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Benhaan, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "benhaan",
-      "brgy benhaan",
-      "barangay benhaan"
-    ],
-    "lat": 9.2032,
-    "lng": 124.7677,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Bug-ong, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "bug-ong",
-      "bugong",
-      "brgy bug-ong",
-      "barangay bugong"
-    ],
-    "lat": 9.253,
-    "lng": 124.639,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Kuguita, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "kuguita",
-      "cuguita",
-      "brgy kuguita",
-      "barangay kuguita"
-    ],
-    "lat": 9.249,
-    "lng": 124.685,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Magting, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "magting",
-      "brgy magting",
-      "barangay magting",
-      "magting mambajao"
-    ],
-    "lat": 9.2189,
-    "lng": 124.756,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Magting Elementary School, Mambajao",
-    "cat": "school",
-    "keywords": [
-      "magting elementary",
-      "magting school",
-      "es magting"
-    ],
-    "lat": 9.2242,
-    "lng": 124.7514,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Naasag, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "naasag",
-      "brgy naasag",
-      "barangay naasag"
-    ],
-    "lat": 9.251,
-    "lng": 124.628,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Pandayan, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "pandayan",
-      "brgy pandayan",
-      "barangay pandayan",
-      "pandayan mambajao"
-    ],
-    "lat": 9.247,
-    "lng": 124.708,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Boloc-boloc, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "boloc boloc",
-      "boloc-boloc",
-      "bolocboloc",
-      "bolok bolok",
-      "bolok-bolok",
-      "bolokbolok",
-      "boloc",
-      "bolok",
-      "sitio boloc-boloc",
-      "sitio boloc boloc",
-      "boloc boloc mambajao",
-      "bolocboloc mambajao",
-      "poblacion boloc boloc"
-    ],
-    "lat": 9.25725,
-    "lng": 124.70658,
-    "mun": "Mambajao",
-    "full_address": "Sitio Boloc-boloc, Poblacion, Mambajao, Camiguin"
-  },
-  {
-    "name": "Sa-ay Cold Spring, Mambajao",
-    "cat": "tourist",
-    "keywords": [
-      "sa-ay",
-      "saay",
-      "sa ay",
-      "sa-ay cold spring",
-      "saay cold spring",
-      "quipasa",
-      "spring"
-    ],
-    "lat": 9.2211,
-    "lng": 124.7034,
-    "mun": "Mambajao",
-    "full_address": "Quipasa, Mambajao, Camiguin"
-  },
-  {
-    "name": "Poblacion, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "poblacion mambajao",
-      "poblacion",
-      "centro mambajao",
-      "mambajao proper"
-    ],
-    "lat": 9.25405,
-    "lng": 124.71636,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Soro-soro, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "soro-soro",
-      "sorosoro",
-      "soro soro",
-      "brgy sorosoro"
-    ],
-    "lat": 9.231,
-    "lng": 124.689,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Tagdo, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "tagdo",
-      "brgy tagdo",
-      "barangay tagdo"
-    ],
-    "lat": 9.238,
-    "lng": 124.682,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Tupsan, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "tupsan",
-      "tupsan mambajao",
-      "brgy tupsan"
-    ],
-    "lat": 9.2019,
-    "lng": 124.7774,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Yumbing, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "yumbing",
-      "brgy yumbing",
-      "barangay yumbing"
-    ],
-    "lat": 9.2553,
-    "lng": 124.6468,
-    "mun": "Mambajao"
-  },
-  {
-    "name": "Benoni, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "benoni",
-      "brgy benoni",
-      "barangay benoni",
-      "benoni mahinog"
-    ],
-    "lat": 9.1306,
-    "lng": 124.7937,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Binitinan, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "binitinan",
-      "brgy binitinan",
-      "barangay binitinan",
-      "binitinan mahinog"
-    ],
-    "lat": 9.16,
-    "lng": 124.765,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Catohogan, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "catohogan",
-      "katohogan",
-      "brgy catohogan",
-      "barangay catohogan"
-    ],
-    "lat": 9.162,
-    "lng": 124.778,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Hubangon, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "hubangon",
-      "brgy hubangon",
-      "barangay hubangon"
-    ],
-    "lat": 9.168,
-    "lng": 124.776,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Owakan, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "owakan",
-      "brgy owakan",
-      "barangay owakan"
-    ],
-    "lat": 9.151,
-    "lng": 124.774,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Poblacion, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "poblacion mahinog",
-      "mahinog centro",
-      "centro mahinog",
-      "mahinog proper"
-    ],
-    "lat": 9.153,
-    "lng": 124.785,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Puntod, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "puntod",
-      "brgy puntod",
-      "barangay puntod"
-    ],
-    "lat": 9.146,
-    "lng": 124.781,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "San Isidro, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san isidro",
-      "san isidro mahinog",
-      "brgy san isidro"
-    ],
-    "lat": 9.165,
-    "lng": 124.768,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "San Jose, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san jose",
-      "san jose mahinog",
-      "brgy san jose"
-    ],
-    "lat": 9.158,
-    "lng": 124.771,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "San Miguel, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san miguel",
-      "san miguel mahinog",
-      "brgy san miguel"
-    ],
-    "lat": 9.17,
-    "lng": 124.779,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "San Roque, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san roque",
-      "san roque mahinog",
-      "brgy san roque"
-    ],
-    "lat": 9.172,
-    "lng": 124.785,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Tubod, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "tubod",
-      "tubod mahinog",
-      "brgy tubod"
-    ],
-    "lat": 9.16,
-    "lng": 124.775,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Tupsan Peque\u00f1o, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "tupsan pequeno",
-      "tupsan pequeo",
-      "tupsan mahinog"
-    ],
-    "lat": 9.185,
-    "lng": 124.75,
-    "mun": "Mahinog"
-  },
-  {
-    "name": "Alangilan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "alangilan catarman",
-      "brgy alangilan catarman"
-    ],
-    "lat": 9.158,
-    "lng": 124.638,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Biga, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "biga",
-      "brgy biga",
-      "barangay biga",
-      "biga catarman"
-    ],
-    "lat": 9.138,
-    "lng": 124.642,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Bonbon, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "bonbon",
-      "bonbon catarman",
-      "brgy bonbon"
-    ],
-    "lat": 9.201,
-    "lng": 124.63,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Bura, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "bura",
-      "bura catarman",
-      "brgy bura"
-    ],
-    "lat": 9.182,
-    "lng": 124.638,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Catibac, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "catibac",
-      "brgy catibac",
-      "barangay catibac"
-    ],
-    "lat": 9.165,
-    "lng": 124.642,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Compol, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "compol",
-      "brgy compol",
-      "barangay compol"
-    ],
-    "lat": 9.145,
-    "lng": 124.643,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Lawigan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "lawigan",
-      "brgy lawigan",
-      "barangay lawigan"
-    ],
-    "lat": 9.135,
-    "lng": 124.641,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Licoan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "licoan",
-      "brgy licoan",
-      "barangay licoan",
-      "licoan catarman"
-    ],
-    "lat": 9.142,
-    "lng": 124.644,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Mainit, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "mainit",
-      "mainit catarman",
-      "brgy mainit"
-    ],
-    "lat": 9.168,
-    "lng": 124.665,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Mandawa, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "mandawa",
-      "brgy mandawa",
-      "barangay mandawa"
-    ],
-    "lat": 9.15,
-    "lng": 124.643,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Panghiawan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "panghiawan",
-      "brgy panghiawan",
-      "barangay panghiawan"
-    ],
-    "lat": 9.115,
-    "lng": 124.652,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Poblacion, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "poblacion catarman",
-      "catarman centro",
-      "centro catarman",
-      "catarman proper"
-    ],
-    "lat": 9.128,
-    "lng": 124.645,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Santo Ni\u00f1o, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "santo nino",
-      "santo nio",
-      "sto nino catarman",
-      "brgy sto nino"
-    ],
-    "lat": 9.155,
-    "lng": 124.655,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Tangaro, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "tangaro",
-      "brgy tangaro",
-      "barangay tangaro"
-    ],
-    "lat": 9.122,
-    "lng": 124.648,
-    "mun": "Catarman"
-  },
-  {
-    "name": "Alangilan, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "alangilan sagay",
-      "brgy alangilan sagay"
-    ],
-    "lat": 9.095,
-    "lng": 124.708,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Bacnit, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "bacnit",
-      "brgy bacnit",
-      "barangay bacnit"
-    ],
-    "lat": 9.112,
-    "lng": 124.735,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Balite, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "balite",
-      "balite sagay",
-      "brgy balite"
-    ],
-    "lat": 9.098,
-    "lng": 124.715,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Bonbon, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "bonbon sagay",
-      "brgy bonbon sagay"
-    ],
-    "lat": 9.108,
-    "lng": 124.718,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Bugang, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "bugang",
-      "brgy bugang",
-      "barangay bugang"
-    ],
-    "lat": 9.108,
-    "lng": 124.728,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Cuna, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "cuna",
-      "brgy cuna",
-      "barangay cuna"
-    ],
-    "lat": 9.105,
-    "lng": 124.719,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Manuyog, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "manuyog",
-      "brgy manuyog",
-      "barangay manuyog"
-    ],
-    "lat": 9.088,
-    "lng": 124.691,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Mayana, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "mayana",
-      "brgy mayana",
-      "barangay mayana"
-    ],
-    "lat": 9.115,
-    "lng": 124.712,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Poblacion, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "poblacion sagay",
-      "sagay centro",
-      "centro sagay",
-      "sagay proper"
-    ],
-    "lat": 9.102,
-    "lng": 124.721,
-    "mun": "Sagay"
-  },
-  {
-    "name": "Butay, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "butay",
-      "brgy butay",
-      "barangay butay"
-    ],
-    "lat": 9.099,
-    "lng": 124.775,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Cabuan, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "cabuan",
-      "brgy cabuan",
-      "barangay cabuan"
-    ],
-    "lat": 9.105,
-    "lng": 124.782,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Cantaan, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "cantaan",
-      "brgy cantaan",
-      "barangay cantaan"
-    ],
-    "lat": 9.081,
-    "lng": 124.786,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Liong, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "liong",
-      "liongs",
-      "brgy liong",
-      "barangay liong"
-    ],
-    "lat": 9.091,
-    "lng": 124.772,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "Maac, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "maac",
-      "brgy maac",
-      "barangay maac"
-    ],
-    "lat": 9.112,
-    "lng": 124.785,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "North Poblacion, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "north poblacion",
-      "north poblacion guinsiliban",
-      "poblacion guinsiliban"
-    ],
-    "lat": 9.096,
-    "lng": 124.779,
-    "mun": "Guinsiliban"
-  },
-  {
-    "name": "South Poblacion, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "south poblacion",
-      "south poblacion guinsiliban"
-    ],
-    "lat": 9.092,
-    "lng": 124.777,
-    "mun": "Guinsiliban"
   }
 ];
 
@@ -2340,7 +3094,7 @@
       }
 
       if (score > 0) {
-        if (catLower === "barangay") score += 40;
+        if (catLower === "barangay" || catLower === "neighborhood") score += 40;
         else if (catLower === "transport" || catLower === "tourist" || catLower === "building" || catLower === "hospital") score += 15;
         scored.push({ place: p, score, idx });
       }
@@ -2382,8 +3136,8 @@
       return nearestLandmark.name;
     }
 
-    // 2. If in Poblacion Mambajao core (around 9.246-9.252, 124.694-124.704), prioritize town center / landmarks
-    if (lat >= 9.2460 && lng >= 124.6940 && nearestLandmark && minLandmarkDist < 0.005) {
+    // 2. If in Poblacion Mambajao core (9.2435-9.2565, 124.7120-124.7240), prioritize town center / landmarks
+    if (lat >= 9.2435 && lat <= 9.2565 && lng >= 124.7120 && lng <= 124.7240 && nearestLandmark && minLandmarkDist < 0.005) {
       return nearestLandmark.name;
     }
 
@@ -2898,6 +3652,7 @@
         food: "🍽️",
         market: "🏬",
         barangay: "🏘️",
+        neighborhood: "🏘️",
         resort: "🏖️",
         tourist: "🏝️",
         building: "🏛️",
@@ -3545,7 +4300,7 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast(`🏁 Drop-off Na-set: ${name}`);
+      showMapToast(`🏁 Drop-off set: ${name}`);
       updateRouteLine();
       recalculateFare();
     });
@@ -3576,7 +4331,7 @@
     });
   }
 
-  // Clean Map Boot - Inputs start 100% BLANK as requested!
+  // Clean Map Boot - Inputs start 100% BLANK unless prefilled by URL query params!
   function bootBookingMap() {
     initMap();
     if (pickupInput) pickupInput.value = "";
@@ -3587,7 +4342,43 @@
     if (dropoffLngInput) dropoffLngInput.value = "";
     updateClearBtn(pickupInput, clearPickupBtn);
     updateClearBtn(dropoffInput, clearDropoffBtn);
-    recalculateFare();
+
+    // Prefill from URL query params (e.g. from Island Tours) AFTER clearing
+    let hasPrefill = false;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const prefillDrop = (urlParams.get("dropoff") || "").trim();
+      const prefillPick = (urlParams.get("pickup") || "").trim();
+      const prefillNotes = (urlParams.get("notes") || "").trim();
+      if (prefillPick && pickupInput) {
+        const matchedPick = matchCamiguinPlace(prefillPick);
+        if (matchedPick) {
+          setPickupPoint(matchedPick.lat, matchedPick.lng, prefillPick);
+          hasPrefill = true;
+        } else {
+          pickupInput.value = prefillPick;
+          updateClearBtn(pickupInput, clearPickupBtn);
+        }
+      }
+      if (prefillDrop && dropoffInput) {
+        const matchedDrop = matchCamiguinPlace(prefillDrop);
+        if (matchedDrop) {
+          setDropoffPoint(matchedDrop.lat, matchedDrop.lng, prefillDrop);
+          hasPrefill = true;
+        } else {
+          dropoffInput.value = prefillDrop;
+          updateClearBtn(dropoffInput, clearDropoffBtn);
+        }
+      }
+      const itemNotesInput = document.getElementById("item-notes");
+      if (prefillNotes && itemNotesInput) {
+        itemNotesInput.value = prefillNotes;
+      }
+    } catch (_) {}
+
+    if (!hasPrefill) {
+      recalculateFare();
+    }
   }
 
   if (document.readyState === "loading") {
@@ -3805,26 +4596,6 @@
       });
     }
 
-    // Prefill from URL query params (e.g. from Island Tours)
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const prefillDrop = urlParams.get("dropoff");
-      const prefillPick = urlParams.get("pickup");
-      const prefillNotes = urlParams.get("notes");
-      const dropInput = document.getElementById("dropoff-address");
-      const pickInput = document.getElementById("pickup-address");
-      if (prefillDrop && dropInput) {
-        dropInput.value = prefillDrop;
-        dropInput.dispatchEvent(new Event("input"));
-      }
-      if (prefillPick && pickInput) {
-        pickInput.value = prefillPick;
-        pickInput.dispatchEvent(new Event("input"));
-      }
-      if (prefillNotes && document.getElementById("item-notes")) {
-        document.getElementById("item-notes").value = prefillNotes;
-      }
-    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------------

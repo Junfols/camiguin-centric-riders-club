@@ -53,12 +53,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v4
+        # 2. Service Worker v5
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v4", sw_text)
-        self.assertIn("/static/js/app.js?v=28", sw_text)
+        self.assertIn("ccrc-pwa-v5", sw_text)
+        self.assertIn("/static/js/app.js?v=29", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")
@@ -1301,6 +1301,95 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertTrue(len(places) >= 1)
         self.assertIn("Balbagon Port", places[0]["name"])
         self.assertTrue(any("Balbagon" in p["name"] for p in search_camiguin_places("Balbagon", limit=5)))
+
+        # Ardent Hot Spring must resolve to Sitio Esperanza foothills (~9.2270, 124.6880), NOT Yumbing coast
+        for q in ("Ardent Hot Spring", "Ardent Hot Springs"):
+            ardent = geocode_camiguin_location(q)
+            self.assertIsNotNone(ardent, q)
+            self.assertEqual(ardent["name"], "Ardent Hot Spring, Esperanza")
+            self.assertTrue(9.220 <= ardent["lat"] <= 9.230, ardent)
+            self.assertTrue(124.685 <= ardent["lng"] <= 124.692, ardent)
+
+        # Verified OSM/Plus-Code landmark coordinates (preventing sea-dumped or valley-shifted pins)
+        verified_checks = [
+            ("White Island", "White Island Boat Jump-off, Yumbing", (9.240, 9.246), (124.658, 124.663)),
+            ("Paras Beach Resort", "Paras Beach Resort, Yumbing", (9.241, 9.246), (124.659, 124.664)),
+            ("Sunken Cemetery", "Sunken Cemetery & Giant Cross, Bonbon", (9.205, 9.209), (124.630, 124.635)),
+            ("Old Church Ruins", "Old Church Ruins (Gui-ob Church), Bonbon", (9.200, 9.204), (124.632, 124.637)),
+            ("Mount Vulcan", "Mount Vulcan Daan / Walkway to Old Volcano", (9.208, 9.213), (124.638, 124.642)),
+            ("Benoni Port", "Benoni Port / Ferry Wharf, Mahinog", (9.137, 9.142), (124.792, 124.796)),
+            ("Benoni Passenger Terminal", "Benoni Passenger Terminal, Mahinog", (9.137, 9.142), (124.791, 124.796)),
+            ("Guinsiliban Port", "Guinsiliban Port / Ferry Terminal", (9.097, 9.101), (124.786, 124.791)),
+            ("Giant Clam Sanctuary", "Giant Clam Sanctuary, Cantaan", (9.104, 9.108), (124.801, 124.805)),
+            ("Katunggan Mangrove Park", "Katunggan Mangrove Park, Mahinog", (9.129, 9.134), (124.795, 124.799)),
+            ("Bura Soda Water", "Bura Soda Water Park, Catarman", (9.169, 9.173), (124.655, 124.659)),
+            ("Tuasan Falls", "Tuasan Falls, Mainit, Catarman", (9.174, 9.179), (124.678, 124.683)),
+            ("Katibawasan Falls", "Katibawasan Falls", (9.211, 9.216), (124.716, 124.721)),
+            ("Camiguin Highland Resort", "Camiguin Highland Resort, Soro-soro", (9.216, 9.220), (124.726, 124.731)),
+            ("Camiguin Lanzones Resort", "Camiguin Lanzones Resort, Balbagon", (9.239, 9.243), (124.734, 124.738)),
+            ("Lanzones Cabana", "Lanzones Cabana, Agoho", (9.240, 9.244), (124.665, 124.670)),
+            ("Camiguin Airport", "Camiguin Airport", (9.249, 9.253), (124.703, 124.707)),
+            ("Catarman Public Market", "Catarman Public Market", (9.123, 9.128), (124.671, 124.676)),
+            ("Somewhere Else Boutique Resort", "Somewhere Else Boutique Resort, Agoho", (9.248, 9.252), (124.669, 124.673)),
+            ("Balai sa Baibai", "Balai sa Baibai Dive Resort, Agoho", (9.248, 9.252), (124.668, 124.672)),
+        ]
+        for query, expected_name, (lat_lo, lat_hi), (lng_lo, lng_hi) in verified_checks:
+            hit = geocode_camiguin_location(query)
+            self.assertIsNotNone(hit, query)
+            self.assertEqual(hit["name"], expected_name, query)
+            self.assertTrue(lat_lo <= hit["lat"] <= lat_hi, (query, hit))
+            self.assertTrue(lng_lo <= hit["lng"] <= lng_hi, (query, hit))
+
+        # Exact 58 official PSA Camiguin barangays
+        from db import CAMIGUIN_HIGHWAY_WAYPOINTS, CAMIGUIN_KNOWN_PLACES, CAMIGUIN_TOUR_PACKAGES, compute_island_road_network_route
+
+        brgys = [p for p in CAMIGUIN_KNOWN_PLACES if p["cat"] == "barangay"]
+        self.assertEqual(len(brgys), 58)
+        self.assertEqual(len({p["name"] for p in brgys}), 58)
+
+        # Every tour package stop resolves accurately
+        for pkg in CAMIGUIN_TOUR_PACKAGES:
+            for stop in pkg["itinerary"]:
+                self.assertIsNotNone(geocode_camiguin_location(stop), f"Unresolved tour stop: {stop}")
+
+        # Circumferential highway loop integrity and offline routing sanity
+        self.assertEqual(CAMIGUIN_HIGHWAY_WAYPOINTS[0][:2], CAMIGUIN_HIGHWAY_WAYPOINTS[-1][:2])
+        self.assertEqual(CAMIGUIN_HIGHWAY_WAYPOINTS[0][3], 0.0)
+        self.assertAlmostEqual(CAMIGUIN_HIGHWAY_WAYPOINTS[-1][3], 63.85, places=1)
+        kms = [w[3] for w in CAMIGUIN_HIGHWAY_WAYPOINTS]
+        self.assertTrue(all(kms[i] < kms[i + 1] for i in range(len(kms) - 1)))
+        offline_km, _ = compute_island_road_network_route(9.25057, 124.70110, 9.24971, 124.71667)
+        self.assertGreater(offline_km, 1.0)
+        self.assertLessEqual(offline_km, 2.2)
+
+        # DB <-> JS directory parity & UI consistency
+        import html
+        import json
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        app_js = (root / "static/js/app.js").read_text(encoding="utf-8")
+        self.assertNotIn("Na-set", app_js)
+        js_match = re.search(r"let CAMIGUIN_PLACES = (\[.*?\r?\n\]);", app_js, re.S)
+        self.assertIsNotNone(js_match)
+        js_places = json.loads(js_match.group(1))
+        self.assertEqual(js_places, CAMIGUIN_KNOWN_PLACES)
+
+        index_html = (root / "templates/index.html").read_text(encoding="utf-8")
+        chips_block = re.search(r'id="quick-landmark-chips">(.*?)</div>', index_html, re.S)
+        self.assertIsNotNone(chips_block)
+        db_by_name = {p["name"]: p for p in CAMIGUIN_KNOWN_PLACES}
+        chip_attrs = re.findall(
+            r'data-name="([^"]+)"\s+data-lat="([^"]+)"\s+data-lng="([^"]+)"',
+            chips_block.group(1),
+        )
+        self.assertTrue(any("Ardent Hot Spring" in html.unescape(n) for n, _, _ in chip_attrs))
+        for raw_name, lat_s, lng_s in chip_attrs:
+            cname = html.unescape(raw_name)
+            self.assertIn(cname, db_by_name)
+            self.assertAlmostEqual(float(lat_s), db_by_name[cname]["lat"], places=4)
+            self.assertAlmostEqual(float(lng_s), db_by_name[cname]["lng"], places=4)
 
 
 if __name__ == "__main__":
