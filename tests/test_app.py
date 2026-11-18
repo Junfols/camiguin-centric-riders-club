@@ -163,6 +163,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Errand", html)
         self.assertIn("Port &amp; Bills", html)
         self.assertIn("Official Camiguin CRC Fare Matrix", html)
+        self.assertIn('id="ccrc-lang-select"', html)
+        self.assertIn("/static/js/i18n.js", html)
+        i18n_resp = self.client.get("/static/js/i18n.js")
+        self.assertEqual(i18n_resp.status_code, 200)
 
         # Fare estimate API
         est_resp = self.client.post(
@@ -327,7 +331,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         track_html_resp = self.client.get(f"/track/{code}")
         self.assertEqual(track_html_resp.status_code, 200)
         t_page = track_html_resp.get_data(as_text=True)
-        self.assertIn("Balik sa Dashboard", t_page)
+        self.assertIn("Back to Dashboard", t_page)
         self.assertIn("Delivered! Thank you for using CCRC", t_page)
 
     def test_rider_registration_and_login(self):
