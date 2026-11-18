@@ -574,7 +574,7 @@
               ₱{{ "%.2f"|format(c.total_spent|float if c.total_spent else 0.0) }}
             </td>
             <td style="padding:8px;font-size:0.8rem;color:#64748b;white-space:nowrap;">
-              {{ c.last_active_at[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
+                         {{ (c.last_active_at|string)[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
             </td>
             <td style="padding:8px;white-space:nowrap;">
               {% if c.is_verified %}
