@@ -1,16 +1,15 @@
-const CACHE_NAME = "ccrc-pwa-v2";
+const CACHE_NAME = "ccrc-pwa-v3";
 
 const PRECACHE_ASSETS = [
   "/",
-  "/rider",
   "/offline",
   "/manifest.webmanifest",
-  "/static/css/style.css?v=2",
-  "/static/js/app.js?v=2",
-  "/static/js/track.js?v=2",
-  "/static/js/rider.js?v=2",
+  "/static/css/style.css?v=22",
+  "/static/js/app.js?v=27",
   "/static/icons/icon.svg"
 ];
+
+const NO_CACHE_PREFIXES = ["/api/", "/admin", "/rider", "/history", "/track"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -42,17 +41,19 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Skip caching for API endpoints and non-GET requests
-  if (req.method !== "GET" || url.pathname.startsWith("/api/")) {
+  // Only handle same-origin GET requests; skip API endpoints
+  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
     return;
   }
 
-  // Network-first for pages, falling back to cache or offline.html
+  const isSensitivePage = NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p));
+
+  // Network-first for pages; never cache authenticated/sensitive pages
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
         .then((response) => {
-          if (response && response.status === 200) {
+          if (response && response.status === 200 && !isSensitivePage) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
           }
@@ -60,14 +61,14 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           return caches.match(req).then((cached) => {
-            return cached || caches.match("/offline");
+            return (!isSensitivePage && cached) || caches.match("/offline");
           });
         })
     );
     return;
   }
 
-  // Stale-while-revalidate for static assets
+  // Stale-while-revalidate for same-origin static assets
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)

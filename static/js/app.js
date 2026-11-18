@@ -3603,7 +3603,6 @@
           errorMsg.textContent = err.message;
           errorMsg.classList.remove("hidden");
         }
-      } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "Broadcast Booking to Active Riders 🛵 →";
       }
@@ -3784,7 +3783,13 @@
       if (riderInfoEl) riderInfoEl.classList.remove("hidden");
       if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
       if (riderBikeEl) {
-        riderBikeEl.innerHTML = `${b.rider_bike || "Island Express Bike"}${b.rider_plate ? ` &bull; Plate: <strong>${b.rider_plate}</strong>` : ""}`;
+        riderBikeEl.textContent = b.rider_bike || "Island Express Bike";
+        if (b.rider_plate) {
+          riderBikeEl.appendChild(document.createTextNode(" • Plate: "));
+          const strongPlate = document.createElement("strong");
+          strongPlate.textContent = b.rider_plate;
+          riderBikeEl.appendChild(strongPlate);
+        }
       }
       if (callBtnEl) {
         if (b.rider_phone) {
@@ -3795,8 +3800,13 @@
         }
       }
       if (riderAvatarEl) {
-        if (b.rider_avatar) {
-          riderAvatarEl.innerHTML = `<img src="${b.rider_avatar}" alt="Rider" style="width:100%;height:100%;object-fit:cover;">`;
+        riderAvatarEl.innerHTML = "";
+        if (b.rider_avatar && (/^https?:\/\//i.test(b.rider_avatar) || b.rider_avatar.startsWith("/"))) {
+          const img = document.createElement("img");
+          img.src = b.rider_avatar;
+          img.alt = "Rider";
+          img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+          riderAvatarEl.appendChild(img);
         } else {
           riderAvatarEl.textContent = (b.rider_name || "R")[0].toUpperCase();
         }

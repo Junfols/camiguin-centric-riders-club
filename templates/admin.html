@@ -15,7 +15,7 @@
     <form id="admin-login-form">
       <div class="form-group">
         <label for="admin-pwd">Admin Password *</label>
-        <input type="password" id="admin-pwd" required placeholder="Enter password (default: admin1234)" autofocus>
+        <input type="password" id="admin-pwd" required placeholder="Enter admin password" autofocus>
       </div>
       <div id="admin-login-err" class="alert-error hidden" style="margin-bottom:12px;"></div>
       <button type="submit" class="btn btn-primary btn-block btn-lg">Unlock Admin Dashboard &rarr;</button>
@@ -235,8 +235,8 @@
                 {% else %}
                   <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
                 {% endif %}
-                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="adminResetRiderPassword({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Reset Pwd 🔑</button>
-                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="deleteRider({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Delete 🗑️</button>
+                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;cursor:pointer;margin-left:4px;" data-name="{{ r.name }}" onclick="adminResetRiderPassword({{ r.id }}, this.dataset.name)">Reset Pwd 🔑</button>
+                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;margin-left:4px;" data-name="{{ r.name }}" onclick="deleteRider({{ r.id }}, this.dataset.name)">Delete 🗑️</button>
               </td>
             </tr>
             {% else %}
@@ -586,10 +586,10 @@
                   Mark as Verified Legit ✓
                 </button>
               {% endif %}
-              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;cursor:pointer;margin-left:6px;" onclick="adminResetCustomerPassword({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;cursor:pointer;margin-left:6px;" data-name="{{ c.name }}" onclick="adminResetCustomerPassword({{ c.id }}, this.dataset.name)">
                 Reset Pwd 🔑
               </button>
-              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;margin-left:6px;" onclick="deleteCustomer({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;margin-left:6px;" data-name="{{ c.name }}" onclick="deleteCustomer({{ c.id }}, this.dataset.name)">
                 Delete 🗑️
               </button>
             </td>
@@ -961,7 +961,18 @@
 
       if (serverData && serverData.configured && serverData.success) {
         statusEl.className = "alert-success";
-        statusEl.innerHTML = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} <br><a href="${serverData.file_url}" target="_blank" style="color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;">🔗 Ablihi ang File sa Google Drive &rarr;</a>`;
+        statusEl.textContent = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} `;
+        if (serverData.file_url && /^https?:\/\//i.test(String(serverData.file_url))) {
+          const br = document.createElement("br");
+          const link = document.createElement("a");
+          link.href = String(serverData.file_url);
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.style.cssText = "color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;";
+          link.textContent = "🔗 Ablihi ang File sa Google Drive →";
+          statusEl.appendChild(br);
+          statusEl.appendChild(link);
+        }
         return;
       }
 
@@ -1009,9 +1020,17 @@
       window.open("https://drive.google.com/drive/my-drive", "_blank");
 
       statusEl.className = "alert-success";
-      statusEl.innerHTML = `📥 Na-download ang <strong>${filename}</strong> ug naablihan ang <strong>Google Drive</strong> sa bag-ong tab!<br>
-      I-drag &amp; drop o i-upload lang kini ngadto sa imong Google Drive.<br>
-      <small class="text-muted"><a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;">Gusto ka'g 1-click Awtomatikong Cloud Sync? I-set up ang Webhook &rarr;</a></small>`;
+      statusEl.innerHTML = "";
+      const msgSpan = document.createElement("span");
+      msgSpan.textContent = `📥 Na-download ang ${filename} ug naablihan ang Google Drive sa bag-ong tab! I-drag & drop o i-upload lang kini ngadto sa imong Google Drive.`;
+      statusEl.appendChild(msgSpan);
+      statusEl.appendChild(document.createElement("br"));
+      const guideLink = document.createElement("a");
+      guideLink.href = "javascript:void(0)";
+      guideLink.style.cssText = "color:#0284c7;font-weight:600;font-size:0.85em;";
+      guideLink.textContent = "Gusto ka'g 1-click Awtomatikong Cloud Sync? I-set up ang Webhook →";
+      guideLink.onclick = () => openGdriveGuideModal();
+      statusEl.appendChild(guideLink);
 
     } catch (err) {
       statusEl.className = "alert-error";
@@ -1022,11 +1041,5 @@
       btn.innerHTML = originalText;
     }
   };
-
-  // Add event listener directly to button in addition to inline onclick
-  const gdriveBtn = document.getElementById("gdrive-backup-btn");
-  if (gdriveBtn) {
-    gdriveBtn.addEventListener("click", window.backupToGoogleDrive);
-  }
 </script>
 {% endblock %}

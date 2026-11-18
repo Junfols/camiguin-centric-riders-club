@@ -6,6 +6,7 @@
   <title>{% block title %}{{ club.name }} — On-Demand Island Express Riders{% endblock %}</title>
   <meta name="description" content="Passenger Ride-Hailing, Parcel Courier, & Buy-For-Me in Camiguin Island — Camiguin Centric Riders Club.">
   <meta name="theme-color" content="#f97316">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -28,6 +29,29 @@
         if (localStorage.getItem("ccrc_rider_session")) {
           document.documentElement.classList.add("is-rider-session");
         }
+      } catch(_) {}
+      try {
+        const origFetch = window.fetch;
+        window.fetch = function(input, init) {
+          const opts = init ? Object.assign({}, init) : {};
+          const method = (opts.method || (input && input.method) || "GET").toUpperCase();
+          if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+            const urlStr = typeof input === "string" ? input : (input && input.url) || "";
+            const isSameOrigin = !urlStr.startsWith("http") || urlStr.startsWith(window.location.origin);
+            if (isSameOrigin) {
+              const meta = document.querySelector('meta[name="csrf-token"]');
+              const token = meta ? meta.getAttribute("content") : "";
+              if (token) {
+                const headers = new Headers(opts.headers || {});
+                if (!headers.has("X-CSRF-Token")) {
+                  headers.set("X-CSRF-Token", token);
+                }
+                opts.headers = headers;
+              }
+            }
+          }
+          return origFetch.call(this, input, opts);
+        };
       } catch(_) {}
     })();
   </script>
@@ -81,7 +105,7 @@
           <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
         {% elif active_nav == 'rider' or session.get('rider_id') %}
           <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
-          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="try{localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">Log Out 🚪</button>
+          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">Log Out 🚪</button>
         {% else %}
           <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
           <a href="#" id="nav-active-trip-pill" class="nav-link nav-active-trip-pill" style="display:none;color:#ea580c;font-weight:700;align-items:center;gap:6px;">
@@ -103,7 +127,7 @@
             <span class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:20px;">
               🛵 Rider Hub
             </span>
-            <button type="button" id="header-rider-logout-btn2" onclick="try{localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
+            <button type="button" id="header-rider-logout-btn2" onclick="try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
               🚪
             </button>
           </div>
@@ -170,7 +194,7 @@
       <span class="bottom-nav-icon">🔄</span>
       <span>Refresh</span>
     </a>
-    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger" onclick="try{localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger" onclick="try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">
       <span class="bottom-nav-icon">🚪</span>
       <span>Log Out</span>
     </a>

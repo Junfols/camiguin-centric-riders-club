@@ -1105,6 +1105,7 @@
   if (jobInProgressBtn) {
     jobInProgressBtn.addEventListener("click", async () => {
       if (!activeJob) return;
+      const origText = jobInProgressBtn.textContent;
       jobInProgressBtn.disabled = true;
       jobInProgressBtn.textContent = "Updating status...";
       try {
@@ -1115,9 +1116,17 @@
         });
         if (res.ok) {
           checkActiveJob();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          alert(errData.error || "Could not update trip status.");
+          jobInProgressBtn.textContent = origText;
         }
-      } catch (_) {}
-      jobInProgressBtn.disabled = false;
+      } catch (_) {
+        alert("Network error updating trip status. Please try again.");
+        jobInProgressBtn.textContent = origText;
+      } finally {
+        jobInProgressBtn.disabled = false;
+      }
     });
   }
 
@@ -1125,6 +1134,7 @@
     jobCompleteBtn.addEventListener("click", async () => {
       if (!activeJob) return;
       if (!confirm("Are you sure this trip is completed and fare has been received?")) return;
+      const origText = jobCompleteBtn.textContent;
       jobCompleteBtn.disabled = true;
       jobCompleteBtn.textContent = "Completing trip...";
       try {
@@ -1140,9 +1150,17 @@
           renderJobOnRiderMap(null);
           fetchAvailableJobs();
           loadRiderTransactions();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          alert(errData.error || "Could not complete trip.");
+          jobCompleteBtn.textContent = origText;
         }
-      } catch (_) {}
-      jobCompleteBtn.disabled = false;
+      } catch (_) {
+        alert("Network error completing trip. Please try again.");
+        jobCompleteBtn.textContent = origText;
+      } finally {
+        jobCompleteBtn.disabled = false;
+      }
     });
   }
 

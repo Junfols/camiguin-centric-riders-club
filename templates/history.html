@@ -79,7 +79,7 @@
   // Auto-fill phone from localStorage if previously logged in or booked
   let savedPhone = "";
   try {
-    const custStored = JSON.parse(localStorage.getItem("ccrc_customer_user") || "null");
+    const custStored = JSON.parse(localStorage.getItem("ccrc_customer_session") || localStorage.getItem("ccrc_customer_user") || "null");
     if (custStored && custStored.phone) savedPhone = custStored.phone;
   } catch(_) {}
   if (!savedPhone) {

@@ -8,8 +8,11 @@ from __future__ import annotations
 import json
 import math
 import os
+import queue
+import random
 import secrets
 import sqlite3
+import string
 import urllib.request
 from datetime import datetime, timezone, timedelta
 from typing import Any
@@ -2516,9 +2519,7 @@ def calculate_road_km(
     ]
 
     import ssl
-    unverified_ctx = ssl.create_default_context()
-    unverified_ctx.check_hostname = False
-    unverified_ctx.verify_mode = ssl.CERT_NONE
+    verified_ctx = ssl.create_default_context()
 
     for ep in endpoints:
         try:
@@ -2529,7 +2530,7 @@ def calculate_road_km(
                     "Accept": "application/json",
                 },
             )
-            ctx = unverified_ctx if ep.startswith("https") else None
+            ctx = verified_ctx if ep.startswith("https") else None
             with urllib.request.urlopen(req, context=ctx, timeout=3.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("code") == "Ok" and data.get("routes"):
@@ -2539,6 +2540,8 @@ def calculate_road_km(
                     # OSRM coordinates are [lng, lat] GeoJSON format
                     formatted_coords = [[c[1], c[0]] for c in coords]
                     result = (road_km, formatted_coords)
+                    if len(_ROAD_ROUTE_CACHE) >= 512:
+                        _ROAD_ROUTE_CACHE.clear()
                     _ROAD_ROUTE_CACHE[cache_key] = result
                     return result
         except Exception:
@@ -2547,6 +2550,8 @@ def calculate_road_km(
     # Instant Fallback: Camiguin Topological Island Road Engine (100% Road Distance, Never Straight Air Line)
     road_km, road_coords = compute_island_road_network_route(lat1, lng1, lat2, lng2)
     result = (road_km, road_coords)
+    if len(_ROAD_ROUTE_CACHE) >= 512:
+        _ROAD_ROUTE_CACHE.clear()
     _ROAD_ROUTE_CACHE[cache_key] = result
     return result
 
@@ -2688,7 +2693,21 @@ class DatabaseConnection:
         self._raw.rollback()
 
     def close(self) -> None:
-        self._raw.close()
+        if self.backend == "postgresql" and getattr(self, "_pool_url", None):
+            try:
+                if not self._raw.closed:
+                    self._raw.rollback()
+                    _PG_POOLS.setdefault(self._pool_url, queue.Queue(maxsize=10)).put_nowait(self._raw)
+                    return
+            except Exception:
+                pass
+        try:
+            self._raw.close()
+        except Exception:
+            pass
+
+
+_PG_POOLS: dict[str, queue.Queue] = {}
 
 
 def get_connection(db_path: str = "riders_club.db") -> DatabaseConnection:
@@ -2698,8 +2717,26 @@ def get_connection(db_path: str = "riders_club.db") -> DatabaseConnection:
             raise RuntimeError("psycopg is required for PostgreSQL connections.")
         if db_url.startswith("postgres://"):
             db_url = "postgresql://" + db_url[len("postgres://") :]
-        raw_conn = psycopg.connect(db_url, row_factory=dict_row, autocommit=False)
-        return DatabaseConnection("postgresql", raw_conn)
+        pool = _PG_POOLS.setdefault(db_url, queue.Queue(maxsize=10))
+        raw_conn = None
+        while not pool.empty():
+            try:
+                candidate = pool.get_nowait()
+                if candidate and not candidate.closed:
+                    candidate.execute("SELECT 1")
+                    candidate.rollback()
+                    raw_conn = candidate
+                    break
+            except Exception:
+                try:
+                    candidate.close()
+                except Exception:
+                    pass
+        if raw_conn is None:
+            raw_conn = psycopg.connect(db_url, row_factory=dict_row, autocommit=False)
+        dc = DatabaseConnection("postgresql", raw_conn)
+        dc._pool_url = db_url  # type: ignore[attr-defined]
+        return dc
 
     raw_conn = sqlite3.connect(db_path, timeout=15.0)
     raw_conn.row_factory = sqlite3.Row
@@ -2953,10 +2990,13 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_booking ON booking_messages(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_customer_phone ON bookings(customer_phone)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer_phone)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_rider ON reviews(rider_id)")
     # Migrations for new columns on bookings
     for col_def in [
         ("scheduled_at", "TEXT DEFAULT NULL"),
@@ -3158,10 +3198,13 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_booking ON booking_messages(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_customer_phone ON bookings(customer_phone)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer_phone)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_rider ON reviews(rider_id)")
 
     # PostgreSQL migrations
     for col_def in [
@@ -3733,7 +3776,7 @@ def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> 
         """
         UPDATE bookings
         SET status = 'accepted', rider_id = ?, accepted_at = ?
-        WHERE id = ? AND (status = 'broadcast' OR rider_id IS NULL)
+        WHERE id = ? AND status = 'broadcast' AND rider_id IS NULL
         """,
         (rider_id, now, booking_id),
     )
@@ -3750,6 +3793,15 @@ def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> 
 
 
 def update_booking_status(conn: DatabaseConnection, booking_id: int, new_status: str) -> bool:
+    existing = get_booking_by_id(conn, booking_id)
+    if not existing:
+        return False
+    prev_status = existing.get("status")
+    if prev_status == new_status:
+        return True
+    if prev_status in ("completed", "cancelled"):
+        return False
+
     now = datetime.now().isoformat(timespec="seconds")
     extra_col = ""
     extra_params = []
@@ -3759,13 +3811,15 @@ def update_booking_status(conn: DatabaseConnection, booking_id: int, new_status:
     elif new_status == "completed":
         extra_col = ", completed_at = ?"
         extra_params.append(now)
-        # Update rider trip count
-        b = get_booking_by_id(conn, booking_id)
-        if b and b.get("rider_id"):
-            conn.execute("UPDATE riders SET total_trips = total_trips + 1 WHERE id = ?", (b["rider_id"],))
 
-    params = [new_status] + extra_params + [booking_id]
-    conn.execute(f"UPDATE bookings SET status = ?{extra_col} WHERE id = ?", tuple(params))
+    params = [new_status] + extra_params + [booking_id, new_status]
+    cur = conn.execute(f"UPDATE bookings SET status = ?{extra_col} WHERE id = ? AND status != ?", tuple(params))
+    rowcount = cur.rowcount if hasattr(cur, "rowcount") else 0
+    if rowcount == 0:
+        return False
+
+    if new_status == "completed" and existing.get("rider_id"):
+        conn.execute("UPDATE riders SET total_trips = COALESCE(total_trips, 0) + 1 WHERE id = ?", (existing["rider_id"],))
 
     # Synchronize transaction and customer stats
     try:
@@ -3915,16 +3969,31 @@ def export_full_backup(conn: DatabaseConnection) -> dict[str, Any]:
     tracking_rows = conn.execute("SELECT * FROM tracking_logs ORDER BY id DESC LIMIT 1000").fetchall()
     tracking_data = [dict(r) for r in reversed(tracking_rows)]
 
+    # 8. Customers
+    customers_rows = conn.execute("SELECT * FROM customers ORDER BY id ASC").fetchall()
+    customers_data = [dict(r) for r in customers_rows]
+
+    # 9. Promo Codes
+    promos_rows = conn.execute("SELECT * FROM promo_codes ORDER BY id ASC").fetchall()
+    promos_data = [dict(r) for r in promos_rows]
+
+    # 10. Transactions
+    txns_rows = conn.execute("SELECT * FROM transactions ORDER BY id ASC").fetchall()
+    txns_data = [dict(r) for r in txns_rows]
+
     now_iso = datetime.now(timezone.utc).isoformat()
     return {
         "app": "Camiguin Centric Riders Club",
         "system": "CCRC Admin Backup & Restore System",
-        "version": "1.0",
+        "version": "1.1",
         "exported_at": now_iso,
         "summary": {
             "settings_count": len(settings_data),
             "riders_count": len(riders_data),
+            "customers_count": len(customers_data),
             "bookings_count": len(bookings_data),
+            "transactions_count": len(txns_data),
+            "promo_codes_count": len(promos_data),
             "messages_count": len(messages_data),
             "reviews_count": len(reviews_data),
             "media_count": len(media_data),
@@ -3933,7 +4002,10 @@ def export_full_backup(conn: DatabaseConnection) -> dict[str, Any]:
         "tables": {
             "settings": settings_data,
             "riders": riders_data,
+            "customers": customers_data,
+            "promo_codes": promos_data,
             "bookings": bookings_data,
+            "transactions": txns_data,
             "booking_messages": messages_data,
             "reviews": reviews_data,
             "uploaded_media": media_data,
@@ -3964,7 +4036,10 @@ def restore_full_backup(
     restored_summary = {
         "settings": 0,
         "riders": 0,
+        "customers": 0,
+        "promo_codes": 0,
         "bookings": 0,
+        "transactions": 0,
         "booking_messages": 0,
         "reviews": 0,
         "uploaded_media": 0,
@@ -3977,10 +4052,13 @@ def restore_full_backup(
     try:
         if wipe_existing:
             # Wipe existing records in reverse dependency order
+            conn.execute("DELETE FROM transactions")
             conn.execute("DELETE FROM tracking_logs")
             conn.execute("DELETE FROM booking_messages")
             conn.execute("DELETE FROM reviews")
             conn.execute("DELETE FROM bookings")
+            conn.execute("DELETE FROM promo_codes")
+            conn.execute("DELETE FROM customers")
             conn.execute("DELETE FROM riders")
             conn.execute("DELETE FROM uploaded_media")
             conn.execute("DELETE FROM settings")
@@ -4310,9 +4388,104 @@ def restore_full_backup(
                 )
             restored_summary["tracking_logs"] += 1
 
+        # 8. Restore customers
+        for c in tables.get("customers", []):
+            c_id = c.get("id")
+            c_phone = (c.get("phone") or "").strip()
+            if not c_phone:
+                continue
+            if not wipe_existing:
+                conn.execute("DELETE FROM customers WHERE phone = ?", (c_phone,))
+            if c_id is not None:
+                conn.execute(
+                    """
+                    INSERT INTO customers (
+                        id, phone, name, password_hash, email, avatar_url, barangay,
+                        is_verified, status, total_rides, total_spent, saved_notes,
+                        created_at, last_active_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        c_id, c_phone, c.get("name", "Passenger"), c.get("password_hash", ""),
+                        c.get("email", ""), c.get("avatar_url", ""), c.get("barangay", ""),
+                        int(c.get("is_verified") or 0), c.get("status", "active"),
+                        int(c.get("total_rides") or 0), float(c.get("total_spent") or 0.0),
+                        c.get("saved_notes", ""), c.get("created_at") or datetime.now().isoformat(),
+                        c.get("last_active_at") or datetime.now().isoformat(),
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO customers (
+                        phone, name, password_hash, email, avatar_url, barangay,
+                        is_verified, status, total_rides, total_spent, saved_notes,
+                        created_at, last_active_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        c_phone, c.get("name", "Passenger"), c.get("password_hash", ""),
+                        c.get("email", ""), c.get("avatar_url", ""), c.get("barangay", ""),
+                        int(c.get("is_verified") or 0), c.get("status", "active"),
+                        int(c.get("total_rides") or 0), float(c.get("total_spent") or 0.0),
+                        c.get("saved_notes", ""), c.get("created_at") or datetime.now().isoformat(),
+                        c.get("last_active_at") or datetime.now().isoformat(),
+                    ),
+                )
+            restored_summary["customers"] += 1
+
+        # 9. Restore promo_codes
+        for p in tables.get("promo_codes", []):
+            p_code = (p.get("code") or "").strip().upper()
+            if not p_code:
+                continue
+            if not wipe_existing:
+                conn.execute("DELETE FROM promo_codes WHERE code = ?", (p_code,))
+            conn.execute(
+                """
+                INSERT INTO promo_codes (
+                    code, discount_amount, min_fare, max_uses, uses_count, is_active, expires_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    p_code, float(p.get("discount_amount") or 0.0), float(p.get("min_fare") or 0.0),
+                    int(p.get("max_uses") or 100), int(p.get("uses_count") or 0),
+                    int(p.get("is_active") if p.get("is_active") is not None else 1),
+                    p.get("expires_at"), p.get("created_at") or datetime.now().isoformat(),
+                ),
+            )
+            restored_summary["promo_codes"] += 1
+
+        # 10. Restore transactions
+        for tx in tables.get("transactions", []):
+            tx_code = (tx.get("transaction_code") or "").strip()
+            b_id = tx.get("booking_id")
+            if not (tx_code and b_id):
+                continue
+            if not wipe_existing:
+                conn.execute("DELETE FROM transactions WHERE transaction_code = ?", (tx_code,))
+            conn.execute(
+                """
+                INSERT INTO transactions (
+                    transaction_code, booking_id, booking_code, rider_id, rider_name,
+                    customer_name, customer_phone, service_type, amount, payment_method,
+                    status, notes, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    tx_code, b_id, tx.get("booking_code", ""), tx.get("rider_id"),
+                    tx.get("rider_name", ""), tx.get("customer_name", ""),
+                    tx.get("customer_phone", ""), tx.get("service_type", "pahatud"),
+                    float(tx.get("amount") or 0.0), tx.get("payment_method", "cash"),
+                    tx.get("status", "completed"), tx.get("notes", ""),
+                    tx.get("created_at") or datetime.now().isoformat(),
+                ),
+            )
+            restored_summary["transactions"] += 1
+
         # If Postgres backend, synchronize sequence values
         if conn.backend == "postgresql":
-            for seq_tbl in ("riders", "bookings", "booking_messages", "reviews", "tracking_logs"):
+            for seq_tbl in ("riders", "customers", "promo_codes", "bookings", "transactions", "booking_messages", "reviews", "tracking_logs"):
                 try:
                     conn.execute(
                         f"SELECT setval(pg_get_serial_sequence('{seq_tbl}', 'id'), COALESCE((SELECT MAX(id) FROM {seq_tbl}), 1));"
@@ -4505,17 +4678,17 @@ def update_customer_stats(conn: DatabaseConnection, customer_phone: str, fare_am
     except (ValueError, TypeError):
         fare = 0.0
     now_iso = datetime.now().isoformat(timespec="seconds")
-    row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
-    if row:
+    cust = get_customer_by_phone(conn, phone)
+    if cust:
         conn.execute(
             """
             UPDATE customers
-            SET total_rides = total_rides + 1,
-                total_spent = total_spent + ?,
+            SET total_rides = COALESCE(total_rides, 0) + 1,
+                total_spent = COALESCE(total_spent, 0.0) + ?,
                 last_active_at = ?
-            WHERE phone = ?
+            WHERE id = ?
             """,
-            (fare, now_iso, phone),
+            (fare, now_iso, cust["id"]),
         )
 
 def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int = 15) -> list[dict[str, Any]]:
@@ -4727,8 +4900,11 @@ def validate_promo_code(conn: DatabaseConnection, code: str, current_fare: float
         return {"valid": False, "error": "This promo code is no longer active."}
     if row["max_uses"] and row["uses_count"] >= row["max_uses"]:
         return {"valid": False, "error": "This promo code has reached its maximum redemptions."}
-    if row["expires_at"] and str(row["expires_at"]) < datetime.now().isoformat():
-        return {"valid": False, "error": "This promo code has already expired."}
+    if row["expires_at"]:
+        exp_str = str(row["expires_at"]).strip().replace(" ", "T")[:19]
+        now_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        if exp_str < now_str:
+            return {"valid": False, "error": "This promo code has already expired."}
     if row["min_fare"] and current_fare < float(row["min_fare"]):
         return {"valid": False, "error": f"Minimum fare of ₱{row['min_fare']:.0f} required to use this voucher."}
     
@@ -4742,9 +4918,19 @@ def validate_promo_code(conn: DatabaseConnection, code: str, current_fare: float
         "message": f"₱{discount:.0f} discount voucher applied!"
     }
 
-def apply_promo_code(conn: DatabaseConnection, code: str) -> None:
+def apply_promo_code(conn: DatabaseConnection, code: str) -> bool:
     code = (code or "").strip().upper()
-    conn.execute("UPDATE promo_codes SET uses_count = uses_count + 1 WHERE code = ?", (code,))
+    cur = conn.execute(
+        """
+        UPDATE promo_codes
+        SET uses_count = uses_count + 1
+        WHERE code = ?
+          AND is_active = 1
+          AND (max_uses IS NULL OR max_uses = 0 OR uses_count < max_uses)
+        """,
+        (code,),
+    )
+    return (cur.rowcount if hasattr(cur, "rowcount") else 0) > 0
 
 # -------------------------------------------------------------------------
 # Rider Ratings & Reviews
@@ -4759,10 +4945,10 @@ def create_review(conn: DatabaseConnection, booking_id: int | None, rider_id: in
         """,
         (booking_id, rider_id, customer_name.strip() or "Island Passenger", rating, comment.strip(), now_iso)
     )
-    # Recalculate average rating for rider
+    # Recalculate average rating for rider (do NOT increment total_trips here; handled on booking completion)
     avg_row = conn.execute("SELECT AVG(rating) as avg_r, COUNT(*) as cnt FROM reviews WHERE rider_id = ?", (rider_id,)).fetchone()
     if avg_row and avg_row["avg_r"]:
-        conn.execute("UPDATE riders SET rating_avg = ?, total_trips = COALESCE(total_trips, 0) + 1 WHERE id = ?", (round(float(avg_row["avg_r"]), 2), rider_id))
+        conn.execute("UPDATE riders SET rating_avg = ? WHERE id = ?", (round(float(avg_row["avg_r"]), 2), rider_id))
     return {"id": review_id, "rider_id": rider_id, "rating": rating, "comment": comment, "created_at": now_iso}
 
 def get_rider_reviews(conn: DatabaseConnection, rider_id: int, limit: int = 10) -> list[dict[str, Any]]:

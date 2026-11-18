@@ -53,10 +53,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v2
+        # 2. Service Worker v3
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
-        self.assertIn("ccrc-pwa-v2", sw_resp.get_data(as_text=True))
+        self.assertIn("ccrc-pwa-v3", sw_resp.get_data(as_text=True))
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")
@@ -253,7 +253,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         booking_id = booking["id"]
         code = booking["booking_code"]
 
-        # 2. Check available jobs feed
+        # 2. Check available jobs feed (as authenticated Rider 1)
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
         feed_resp = self.client.get("/api/rider/available-jobs")
         self.assertEqual(feed_resp.status_code, 200)
         jobs = feed_resp.get_json()["jobs"]
@@ -262,24 +264,27 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         # 3. Rider 1 accepts the booking atomically
         accept_resp = self.client.post(
             f"/api/bookings/{booking_id}/accept",
-            json={"rider_id": r1_id},
+            json={},
         )
         self.assertEqual(accept_resp.status_code, 200)
         self.assertTrue(accept_resp.get_json()["success"])
 
         # 4. Rider 2 tries to accept same booking -> should receive 409 Conflict
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
         second_accept = self.client.post(
             f"/api/bookings/{booking_id}/accept",
-            json={"rider_id": r2_id},
+            json={},
         )
         self.assertEqual(second_accept.status_code, 409)
         self.assertIn("already been claimed", second_accept.get_json()["error"])
 
         # 5. Rider 1 streams GPS coordinates while heading to pickup
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
         gps_resp = self.client.post(
             "/api/rider/location",
             json={
-                "rider_id": r1_id,
                 "lat": 9.1500,
                 "lng": 124.7800,
                 "speed": 35.0,
@@ -433,13 +438,13 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(settings["per_km_rate"], "18")
 
     def test_typed_address_geocoding_baylao_to_jollibee(self):
-        # User scenario: Pickup "Baylao", Dropoff "Jollibee"
-        # Actual road distance along Camiguin roads is ~1.82 km (within 1-2 km base tariff)
+        # User scenario: Pickup "Moonflower Garden, Baylao", Dropoff "Jollibee"
+        # Actual road distance along Camiguin roads is ~1.8 km (within 1-2 km base tariff)
         # In Camiguin CRC Fare matrix (1-2 km = 40.00), fare should be 40.00
         est_resp = self.client.post(
             "/api/fare-estimate",
             json={
-                "pickup_address": "Baylao",
+                "pickup_address": "Moonflower Garden, Baylao",
                 "dropoff_address": "Jollibee",
                 "service_type": "pahatud",
             },
@@ -459,7 +464,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
                 "customer_name": "Maria Santos",
                 "customer_phone": "09171234567",
                 "service_type": "pahatud",
-                "pickup_address": "Baylao, Mambajao",
+                "pickup_address": "Moonflower Garden, Baylao",
                 "dropoff_address": "Jollibee Camiguin",
             },
         )
@@ -686,7 +691,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         b_id = b["id"]
         b_code = b["booking_code"]
 
-        # Verify broadcast booking contains customer verification badge info
+        # Verify broadcast booking contains customer verification badge info (as authenticated rider)
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r_id
         avail_resp = self.client.get("/api/rider/available-jobs")
         self.assertEqual(avail_resp.status_code, 200)
         jobs = avail_resp.get_json()["jobs"]
@@ -695,7 +702,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(matching[0]["customer_verified"], 1)
 
         # 2. Rider accepts booking
-        accept_resp = self.client.post(f"/api/bookings/{b_id}/accept", json={"rider_id": r_id})
+        accept_resp = self.client.post(f"/api/bookings/{b_id}/accept", json={})
         self.assertEqual(accept_resp.status_code, 200)
 
         # 3. Rider completes booking
@@ -703,7 +710,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(comp_resp.status_code, 200)
 
         # 4. Check rider transactions endpoint
-        rider_txns_resp = self.client.get(f"/api/rider/transactions?rider_id={r_id}")
+        rider_txns_resp = self.client.get("/api/rider/transactions")
         self.assertEqual(rider_txns_resp.status_code, 200)
         tx_data = rider_txns_resp.get_json()
         self.assertTrue(tx_data["success"])
@@ -732,7 +739,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertTrue(toggle_resp.get_json()["success"])
 
     def test_unauthenticated_booking_blocked_in_production_mode(self):
-        prod_app = create_app({"TESTING": False, "DB_PATH": self.db_path})
+        prod_app = create_app({"TESTING": False, "CSRF_ENABLED": False, "DB_PATH": self.db_path})
         client = prod_app.test_client()
 
         # Attempt to broadcast without sign in
@@ -1003,20 +1010,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         )
         self.assertEqual(short_rider_fp.status_code, 400)
 
-        # Rider Forgot Password - Valid with Plate Number
-        ok_rider_fp = self.client.post(
+        # Rider Forgot Password - Public Plate Number should be rejected (security)
+        plate_rider_fp = self.client.post(
             "/api/rider/forgot-password",
             json={"phone": "09175551234", "identifier": "789CCRC", "new_password": "newriderpwd123"},
         )
-        self.assertEqual(ok_rider_fp.status_code, 200)
-        self.assertTrue(ok_rider_fp.get_json()["success"])
-
-        # Rider can now login with new password
-        rider_login_resp = self.client.post(
-            "/api/rider/login",
-            json={"phone": "09175551234", "password": "newriderpwd123"},
-        )
-        self.assertEqual(rider_login_resp.status_code, 200)
+        self.assertEqual(plate_rider_fp.status_code, 400)
 
         # Rider Forgot Password - Valid with Driver's License
         ok_rider_license_fp = self.client.post(
@@ -1024,6 +1023,13 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             json={"phone": "09175551234", "identifier": "D01-99-123456", "new_password": "licenseriderpwd456"},
         )
         self.assertEqual(ok_rider_license_fp.status_code, 200)
+
+        # Rider can now login with new password
+        rider_login_resp = self.client.post(
+            "/api/rider/login",
+            json={"phone": "09175551234", "password": "licenseriderpwd456"},
+        )
+        self.assertEqual(rider_login_resp.status_code, 200)
 
         # 2. Setup Customer for forgot-password tests
         c_id = self._create_customer(name="Customer Forgot Test", phone="09187778899", password="initialpass123")
@@ -1167,6 +1173,96 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("data-rider-job-layer", html)
         self.assertIn("rider-job-recenter-btn", html)
         self.assertIn("rider-job-fullscreen-btn", html)
+
+    def test_security_and_regression_fixes(self):
+        from db import accept_booking, export_full_backup, get_connection, restore_full_backup, update_booking_status
+
+        # 1. Admin settings requires admin auth
+        unauth_set = self.client.post("/api/admin/settings", json={"base_fare": 1})
+        self.assertEqual(unauth_set.status_code, 403)
+
+        # 2. Admin login rejects hardcoded backdoor once password hash is set
+        from werkzeug.security import generate_password_hash
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute(
+                "UPDATE settings SET value = ? WHERE key = 'admin_password_hash'",
+                (generate_password_hash("super-secret-admin-99"),),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        self.assertEqual(self.client.post("/api/admin/login", json={"password": "admin1234"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/admin/login", json={"password": "admin"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/admin/login", json={"password": "super-secret-admin-99"}).status_code, 200)
+
+        # 3. /tours renders all packages properly
+        tours_resp = self.client.get("/tours")
+        self.assertEqual(tours_resp.status_code, 200)
+        tours_html = tours_resp.get_data(as_text=True)
+        self.assertIn("White Island &amp; Mambajao Coast Tour", tours_html)
+        self.assertIn("450", tours_html)
+
+        # 4. Cancelled booking cannot be accepted, and completed + review does not double-count total_trips
+        r_id = self._create_active_rider(name="Rider Regression", phone="09179990001")
+        b_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Test User",
+                "customer_phone": "09179990002",
+                "service_type": "pahatud",
+                "pickup_address": "Mambajao Public Market",
+                "dropoff_address": "Jollibee Camiguin",
+            },
+        )
+        self.assertEqual(b_resp.status_code, 201)
+        b_id = b_resp.get_json()["booking"]["id"]
+
+        # Unauthenticated status update is blocked
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        self.assertEqual(self.client.post(f"/api/bookings/{b_id}/status", json={"status": "completed"}).status_code, 403)
+
+        # Cancel booking and verify accept_booking refuses it
+        conn = get_connection(self.db_path)
+        try:
+            self.assertTrue(update_booking_status(conn, b_id, "cancelled"))
+            self.assertFalse(accept_booking(conn, b_id, r_id))
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Backup & restore preserves customers, promo_codes, and transactions
+        conn = get_connection(self.db_path)
+        try:
+            snap = export_full_backup(conn)
+            self.assertIn("customers", snap["tables"])
+            self.assertIn("transactions", snap["tables"])
+            self.assertIn("promo_codes", snap["tables"])
+            res = restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+            self.assertTrue(res["success"])
+        finally:
+            conn.close()
+
+        # 5. CSRF protection rejects missing token and accepts valid token when enabled
+        csrf_app = create_app({"TESTING": True, "CSRF_ENABLED": True, "DB_PATH": self.db_path})
+        c_client = csrf_app.test_client()
+        home_html = c_client.get("/").get_data(as_text=True)
+        import re
+        m = re.search(r'<meta name="csrf-token" content="([^"]+)"', home_html)
+        self.assertIsNotNone(m)
+        csrf_tok = m.group(1)
+
+        no_csrf = c_client.post("/api/promo/validate", json={"code": "INVALID", "fare_amount": 100})
+        self.assertEqual(no_csrf.status_code, 403)
+
+        with_csrf = c_client.post(
+            "/api/promo/validate",
+            json={"code": "INVALID", "fare_amount": 100},
+            headers={"X-CSRF-Token": csrf_tok},
+        )
+        self.assertEqual(with_csrf.status_code, 400)
 
 
 if __name__ == "__main__":
