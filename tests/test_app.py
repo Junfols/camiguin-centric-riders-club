@@ -53,13 +53,13 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v13
+        # 2. Service Worker v14
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v13", sw_text)
-        self.assertIn("/static/css/style.css?v=26", sw_text)
-        self.assertIn("/static/js/i18n.js?v=6", sw_text)
+        self.assertIn("ccrc-pwa-v14", sw_text)
+        self.assertIn("/static/css/style.css?v=27", sw_text)
+        self.assertIn("/static/js/i18n.js?v=7", sw_text)
         self.assertIn("/static/js/app.js?v=34", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
         self.assertIn("/static/js/voice_call.js?v=1", sw_text)
@@ -2144,7 +2144,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="track-transfer-banner"', tr_html)
         self.assertIn("Transfer Rider One", tr_html)
         self.assertIn('id="rider-rating-wrap"', tr_html)
-        self.assertIn("track.js?v=30", tr_html)
+        self.assertIn("track.js?v=31", tr_html)
 
         # r2 sees transferred b_a prioritized BEFORE b_newer in broadcast feed, then claims and completes it
         with self.client.session_transaction() as sess:
@@ -2277,7 +2277,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="co-riders-transfer-hint"', rider_html)
         self.assertIn('id="rider-transfer-modal"', rider_html)
         self.assertIn("Transfer to Rider", rider_html)
-        self.assertIn("rider.js?v=31", rider_html)
+        self.assertIn("rider.js?v=32", rider_html)
         rider_js = self.client.get("/static/js/rider.js").get_data(as_text=True)
         self.assertIn("scheduled-transfer-btn", rider_js)
         self.assertIn("co-rider-transfer-btn", rider_js)
@@ -2396,9 +2396,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="chat-voice-recording-bar"',
             'id="chat-voice-btn"',
             "voice_call.js?v=1",
-            "track.js?v=30",
-            "style.css?v=26",
-            "i18n.js?v=6",
+            "track.js?v=31",
+            "style.css?v=27",
+            "i18n.js?v=7",
             "📞 Phone Call",
         ):
             self.assertIn(token, track_html)
@@ -2410,7 +2410,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="rider-chat-voice-recording-bar"',
             'id="rider-chat-voice-btn"',
             "voice_call.js?v=1",
-            "rider.js?v=31",
+            "rider.js?v=32",
             "📞 Phone Call",
         ):
             self.assertIn(token, rider_html)
@@ -2737,6 +2737,353 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         restored_media = self.client.get(v_cust_msg["media_url"])
         self.assertEqual(restored_media.status_code, 200)
         self.assertEqual(restored_media.data, sample_audio)
+
+    def test_gcash_qr_and_payment_completion_gate(self):
+        import base64
+        from db import export_full_backup, get_booking_messages, get_connection, restore_full_backup
+
+        cust_client = self.app.test_client()
+        rider_client = self.app.test_client()
+        r2_client = self.app.test_client()
+        admin_client = self.app.test_client()
+
+        r1 = self._create_active_rider(name="GCash Rider One", phone="09179990001", bike_model="Honda Click 125i")
+        r2 = self._create_active_rider(name="GCash Rider Two", phone="09179990002", bike_model="Yamaha Aerox")
+
+        sample_png = (
+            b"\x89PNG\r\n\x1a\n"
+            b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+            b"\x00\x00\x00\x0cIDATx\x9cc```\x00\x00\x00\x04\x00\x01\xf6\x178U"
+            b"\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        qr_data_uri = "data:image/png;base64," + base64.b64encode(sample_png).decode("ascii")
+
+        # 1. Auth guards on /api/rider/gcash-profile and optional GCash fields on /api/rider/register
+        self.assertEqual(self.client.get("/api/rider/gcash-profile").status_code, 401)
+        self.assertEqual(self.client.post("/api/rider/gcash-profile", json={"gcash_number": "09170001111"}).status_code, 401)
+
+        reg_resp = self.client.post(
+            "/api/rider/register",
+            json={
+                "name": "Pending GCash Applicant",
+                "phone": "09179990099",
+                "license_no": "G01-23-456789",
+                "bike_model": "Suzuki Raider 150",
+                "plate_number": "CCRC-GC99",
+                "municipality": "Mambajao",
+                "password": "password123",
+                "gcash_number": "09178889999",
+                "gcash_qr_base64": qr_data_uri,
+            },
+        )
+        self.assertEqual(reg_resp.status_code, 201)
+        reg_rider = reg_resp.get_json()["rider"]
+        self.assertEqual(reg_rider["gcash_number"], "09178889999")
+        self.assertTrue(reg_rider["gcash_qr_url"].startswith("/media/gcash_qr_"))
+
+        # 2. Validation and upload/clear flows for rider QR
+        with rider_client.session_transaction() as sess:
+            sess["rider_id"] = r1
+
+        self.assertEqual(
+            rider_client.post("/api/rider/gcash-profile", json={}).status_code,
+            400,
+        )
+        self.assertEqual(
+            rider_client.post("/api/rider/gcash-profile", json={"gcash_qr_base64": "not-base64!!!"}).status_code,
+            400,
+        )
+        self.assertEqual(
+            rider_client.post(
+                "/api/rider/gcash-profile",
+                json={"gcash_qr_base64": "data:text/plain;base64," + base64.b64encode(b"PLAIN TEXT FILE" * 4).decode("ascii")},
+            ).status_code,
+            400,
+        )
+
+        up_resp = rider_client.post(
+            "/api/rider/gcash-profile",
+            json={"gcash_number": "09179990001", "gcash_qr_base64": qr_data_uri},
+        )
+        self.assertEqual(up_resp.status_code, 200)
+        up_data = up_resp.get_json()
+        qr_url = up_data["gcash_qr_url"]
+        self.assertTrue(qr_url.startswith("/media/gcash_qr_"))
+        self.assertEqual(up_data["gcash_number"], "09179990001")
+
+        # Served QR image matches exact uploaded PNG bytes
+        qr_img_resp = self.client.get(qr_url)
+        self.assertEqual(qr_img_resp.status_code, 200)
+        self.assertEqual(qr_img_resp.data, sample_png)
+        self.assertEqual(qr_img_resp.mimetype, "image/png")
+
+        # Clear QR works, then re-upload for trip testing
+        clr_resp = rider_client.post("/api/rider/gcash-profile", json={"gcash_number": "09179990001", "clear_qr": True})
+        self.assertEqual(clr_resp.status_code, 200)
+        self.assertEqual(clr_resp.get_json()["gcash_qr_url"], "")
+        up_resp2 = rider_client.post(
+            "/api/rider/gcash-profile",
+            json={"gcash_number": "09179990001", "gcash_qr_base64": qr_data_uri},
+        )
+        self.assertEqual(up_resp2.status_code, 200)
+        qr_url = up_resp2.get_json()["gcash_qr_url"]
+
+        # 3. Customer creates GCash booking -> auth & UI checks
+        b_resp = cust_client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "GCash Passenger Ana",
+                "customer_phone": "09175554001",
+                "service_type": "pahatud",
+                "pickup_address": "Poblacion, Mambajao",
+                "dropoff_address": "Yumbing, Mambajao",
+                "payment_method": "gcash",
+            },
+        )
+        self.assertEqual(b_resp.status_code, 201)
+        b1 = b_resp.get_json()["booking"]
+        code1 = b1["booking_code"]
+        self.assertEqual(b1["payment_method"], "gcash")
+        self.assertEqual(b1["payment_status"], "pending")
+
+        # Unauthenticated customer-sent and confirm endpoints blocked
+        self.assertEqual(self.client.post(f"/api/bookings/{code1}/gcash/customer-sent", json={}).status_code, 401)
+        self.assertEqual(self.client.post(f"/api/bookings/{b1['id']}/gcash/confirm", json={}).status_code, 401)
+        # Cannot mark payment sent before a rider accepts
+        self.assertEqual(cust_client.post(f"/api/bookings/{code1}/gcash/customer-sent", json={"payment_ref": "EARLY-1"}).status_code, 400)
+
+        # Rider r1 accepts & starts trip
+        self.assertEqual(rider_client.post(f"/api/bookings/{b1['id']}/accept").status_code, 200)
+        self.assertEqual(rider_client.post(f"/api/bookings/{b1['id']}/status", json={"status": "in_progress"}).status_code, 200)
+
+        # Customer tracking page, tracking JSON, and active-booking API include GCash QR & official launcher UI
+        tr_json = cust_client.get(f"/api/bookings/track/{code1}").get_json()["booking"]
+        self.assertEqual(tr_json["payment_status"], "pending")
+        self.assertEqual(tr_json["rider_gcash_number"], "09179990001")
+        self.assertEqual(tr_json["rider_gcash_qr"], qr_url)
+
+        act_cust = cust_client.get("/api/customer/active-booking?phone=09175554001").get_json()["booking"]
+        self.assertEqual(act_cust["rider_gcash_qr"], qr_url)
+        self.assertEqual(act_cust["rider_gcash_number"], "09179990001")
+
+        track_html = cust_client.get(f"/track/{code1}").get_data(as_text=True)
+        for token in (
+            'id="gcash-payment-card"',
+            'id="open-official-gcash-btn"',
+            "Open Official GCash",
+            qr_url,
+            'id="gcash-sent-form"',
+            'id="mark-gcash-sent-btn"',
+            "track.js?v=31",
+            "style.css?v=27",
+            "i18n.js?v=7",
+        ):
+            self.assertIn(token, track_html)
+
+        track_js = self.client.get("/static/js/track.js").get_data(as_text=True)
+        self.assertIn("com.globe.gcash.android", track_js)
+        self.assertIn("gcash://", track_js)
+
+        rider_html = rider_client.get("/rider").get_data(as_text=True)
+        for token in (
+            'id="open-rider-gcash-setup-btn"',
+            'id="active-job-gcash-box"',
+            'id="job-show-gcash-qr-btn"',
+            'id="job-gcash-top-btn"',
+            'id="rider-gcash-qr-modal"',
+            'id="r-gcash-confirm-btn"',
+            'id="rider-gcash-gate-hint"',
+            "rider.js?v=32",
+        ):
+            self.assertIn(token, rider_html)
+
+        rider_js = self.client.get("/static/js/rider.js").get_data(as_text=True)
+        self.assertIn("requires_gcash_payment", rider_js)
+        self.assertIn("btn-complete-locked", rider_js)
+        css_text = self.client.get("/static/css/style.css").get_data(as_text=True)
+        self.assertIn(".btn-gcash-official", css_text)
+        self.assertIn(".btn-complete-locked", css_text)
+        i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
+        self.assertIn("Open Official GCash", i18n_js)
+        self.assertIn("Ablihi ang Opisyal nga GCash", i18n_js)
+
+        # Rider active-job returns sanitized rider with gcash_qr_url
+        r1_act = rider_client.get(f"/api/rider/active-job?rider_id={r1}").get_json()
+        self.assertEqual(r1_act["rider"]["gcash_qr_url"], qr_url)
+        self.assertEqual(r1_act["job"]["payment_status"], "pending")
+
+        # 4. Strict GCash completion gate: blocked while pending AND while customer_sent!
+        blk_pending = rider_client.post(f"/api/bookings/{b1['id']}/status", json={"status": "completed"})
+        self.assertEqual(blk_pending.status_code, 400)
+        blk_p_json = blk_pending.get_json()
+        self.assertTrue(blk_p_json["requires_gcash_payment"])
+        self.assertEqual(blk_p_json["payment_status"], "pending")
+
+        # Premature confirm rejected while still pending without verified_offline_receipt
+        self.assertEqual(
+            rider_client.post(f"/api/bookings/{b1['id']}/gcash/confirm", json={}).status_code,
+            400,
+        )
+
+        # Rider cannot spoof customer-sent endpoint (403)
+        self.assertEqual(
+            rider_client.post(f"/api/bookings/{b1['id']}/gcash/customer-sent", json={"payment_ref": "SPOOF"}).status_code,
+            403,
+        )
+
+        # Customer reports GCash payment sent with reference number
+        sent_resp = cust_client.post(
+            f"/api/bookings/{code1}/gcash/customer-sent",
+            json={"payment_ref": "90241184521"},
+        )
+        self.assertEqual(sent_resp.status_code, 200)
+        b1_sent = sent_resp.get_json()["booking"]
+        self.assertEqual(b1_sent["payment_status"], "customer_sent")
+        self.assertEqual(b1_sent["payment_ref"], "90241184521")
+
+        # Still blocked from completing until rider explicitly confirms receipt!
+        blk_sent = rider_client.post(f"/api/bookings/{b1['id']}/status", json={"status": "completed"})
+        self.assertEqual(blk_sent.status_code, 400)
+        self.assertTrue(blk_sent.get_json()["requires_gcash_payment"])
+        self.assertEqual(blk_sent.get_json()["payment_status"], "customer_sent")
+
+        # Unrelated rider r2 cannot confirm r1's GCash payment (403)
+        with r2_client.session_transaction() as sess:
+            sess["rider_id"] = r2
+        self.assertEqual(
+            r2_client.post(f"/api/bookings/{b1['id']}/gcash/confirm", json={}).status_code,
+            403,
+        )
+
+        # Assigned rider r1 confirms GCash receipt -> payment_status='paid' -> unlocks completion!
+        conf_resp = rider_client.post(f"/api/bookings/{b1['id']}/gcash/confirm", json={})
+        self.assertEqual(conf_resp.status_code, 200)
+        b1_paid = conf_resp.get_json()["booking"]
+        self.assertEqual(b1_paid["payment_status"], "paid")
+        self.assertIsNotNone(b1_paid["payment_confirmed_at"])
+
+        # Idempotent second confirm stays 200
+        self.assertEqual(rider_client.post(f"/api/bookings/{b1['id']}/gcash/confirm", json={}).status_code, 200)
+
+        # Now completion succeeds (200)
+        comp_resp = rider_client.post(f"/api/bookings/{b1['id']}/status", json={"status": "completed"})
+        self.assertEqual(comp_resp.status_code, 200)
+        self.assertEqual(comp_resp.get_json()["job"]["status"], "completed")
+
+        # 5. In-person QR scan flow (verified_offline_receipt=True) confirms directly from pending -> paid
+        b2 = cust_client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "GCash InPerson Ben",
+                "customer_phone": "09175554002",
+                "service_type": "pahatud",
+                "pickup_address": "Agoho, Mambajao",
+                "dropoff_address": "Balbagon Port",
+                "payment_method": "gcash",
+            },
+        ).get_json()["booking"]
+        self.assertEqual(rider_client.post(f"/api/bookings/{b2['id']}/accept").status_code, 200)
+        self.assertEqual(rider_client.post(f"/api/bookings/{b2['id']}/status", json={"status": "in_progress"}).status_code, 200)
+        self.assertEqual(rider_client.post(f"/api/bookings/{b2['id']}/status", json={"status": "completed"}).status_code, 400)
+
+        off_conf = rider_client.post(
+            f"/api/bookings/{b2['id']}/gcash/confirm",
+            json={"verified_offline_receipt": True, "payment_ref": "INPERSON-7788"},
+        )
+        self.assertEqual(off_conf.status_code, 200)
+        self.assertEqual(off_conf.get_json()["booking"]["payment_status"], "paid")
+        self.assertEqual(off_conf.get_json()["booking"]["payment_ref"], "INPERSON-7788")
+        self.assertEqual(rider_client.post(f"/api/bookings/{b2['id']}/status", json={"status": "completed"}).status_code, 200)
+
+        # 6. Emergency Transfer resets 'customer_sent' back to 'pending', but preserves 'paid'
+        b3 = cust_client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "GCash Transfer Carlos",
+                "customer_phone": "09175554003",
+                "service_type": "pahatud",
+                "pickup_address": "Tupsan, Mambajao",
+                "dropoff_address": "Benoni Port",
+                "payment_method": "gcash",
+            },
+        ).get_json()["booking"]
+        self.assertEqual(rider_client.post(f"/api/bookings/{b3['id']}/accept").status_code, 200)
+        self.assertEqual(
+            cust_client.post(f"/api/bookings/{b3['booking_code']}/gcash/customer-sent", json={"payment_ref": "OLD-R1-REF"}).status_code,
+            200,
+        )
+        tr_sent = rider_client.post(
+            f"/api/bookings/{b3['id']}/transfer",
+            json={"target_rider_id": r2, "reason": "Flat tire / tire puncture", "go_offline": False},
+        )
+        self.assertEqual(tr_sent.status_code, 200)
+        b3_tr = tr_sent.get_json()["booking"]
+        self.assertEqual(b3_tr["rider_id"], r2)
+        self.assertEqual(b3_tr["payment_status"], "pending")
+        self.assertEqual(b3_tr["payment_ref"], "")
+
+        # Also test transfer preserves already 'paid' booking (b4) & admin override completes unpaid booking
+        self.assertEqual(r2_client.post(f"/api/bookings/{b3['id']}/gcash/confirm", json={"verified_offline_receipt": True}).status_code, 200)
+        tr_paid = r2_client.post(
+            f"/api/bookings/{b3['id']}/transfer",
+            json={"target_rider_id": r1, "reason": "Relay handover", "go_offline": False},
+        )
+        self.assertEqual(tr_paid.status_code, 200)
+        self.assertEqual(tr_paid.get_json()["booking"]["payment_status"], "paid")
+
+        # Unpaid GCash booking b4 completed by Admin override
+        b4 = cust_client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "GCash Admin Override Dana",
+                "customer_phone": "09175554004",
+                "service_type": "pahatud",
+                "pickup_address": "Catarman Poblacion",
+                "dropoff_address": "Bonbon, Catarman",
+                "payment_method": "gcash",
+            },
+        ).get_json()["booking"]
+        with admin_client.session_transaction() as sess:
+            sess["is_admin"] = True
+        adm_html = admin_client.get("/admin").get_data(as_text=True)
+        self.assertIn("View GCash QR", adm_html)
+        self.assertIn("GCash Paid", adm_html)
+        self.assertIn("GCash Pending", adm_html)
+        self.assertEqual(
+            admin_client.post(f"/api/bookings/{b4['id']}/status", json={"status": "completed"}).status_code,
+            200,
+        )
+
+        # 7. Backup & Restore preserves GCash rider QR/number, booking payment audit columns, and QR PNG bytes
+        conn = get_connection(self.db_path)
+        try:
+            msgs_b1 = get_booking_messages(conn, b1["id"])
+            self.assertTrue(any("GCash payment" in m["message"] for m in msgs_b1))
+
+            snap = export_full_backup(conn)
+            res = restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+            self.assertTrue(res["success"])
+
+            restored_r1 = conn.execute("SELECT gcash_number, gcash_qr_url FROM riders WHERE id = ?", (r1,)).fetchone()
+            self.assertEqual(restored_r1["gcash_number"], "09179990001")
+            self.assertEqual(restored_r1["gcash_qr_url"], qr_url)
+
+            restored_b1 = conn.execute(
+                "SELECT payment_method, payment_status, payment_ref, payment_sent_at, payment_confirmed_at FROM bookings WHERE id = ?",
+                (b1["id"],),
+            ).fetchone()
+            self.assertEqual(restored_b1["payment_method"], "gcash")
+            self.assertEqual(restored_b1["payment_status"], "paid")
+            self.assertEqual(restored_b1["payment_ref"], "90241184521")
+            self.assertIsNotNone(restored_b1["payment_sent_at"])
+            self.assertIsNotNone(restored_b1["payment_confirmed_at"])
+        finally:
+            conn.close()
+
+        restored_qr_resp = self.client.get(qr_url)
+        self.assertEqual(restored_qr_resp.status_code, 200)
+        self.assertEqual(restored_qr_resp.data, sample_png)
 
 
 if __name__ == "__main__":

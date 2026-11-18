@@ -43,6 +43,32 @@
   const jobCompleteBtn = document.getElementById("job-complete-btn");
   const jobTransferBtn = document.getElementById("job-transfer-btn");
   const jobTransferTopBtn = document.getElementById("job-transfer-top-btn");
+  const jobGcashTopBtn = document.getElementById("job-gcash-top-btn");
+  const activeJobGcashBox = document.getElementById("active-job-gcash-box");
+  const activeJobGcashStatusPill = document.getElementById("active-job-gcash-status-pill");
+  const activeJobGcashAmount = document.getElementById("active-job-gcash-amount");
+  const activeJobGcashRef = document.getElementById("active-job-gcash-ref");
+  const jobShowGcashQrBtn = document.getElementById("job-show-gcash-qr-btn");
+  const riderGcashGateHint = document.getElementById("rider-gcash-gate-hint");
+
+  const gcashSetupModal = document.getElementById("rider-gcash-setup-modal");
+  const openGcashSetupBtn = document.getElementById("open-rider-gcash-setup-btn");
+  const gcashSetupForm = document.getElementById("rider-gcash-setup-form");
+  const gcashSetupNumberInput = document.getElementById("gcash-setup-number");
+  const gcashSetupQrFileInput = document.getElementById("gcash-setup-qr-file");
+  const gcashSetupQrPreview = document.getElementById("gcash-setup-qr-preview");
+  const gcashSetupQrPlaceholder = document.getElementById("gcash-setup-qr-placeholder");
+  const gcashSetupClearQrBtn = document.getElementById("gcash-setup-clear-qr-btn");
+  const gcashSetupMsg = document.getElementById("gcash-setup-msg");
+  const gcashSetupSaveBtn = document.getElementById("gcash-setup-save-btn");
+
+  const gcashQrModal = document.getElementById("rider-gcash-qr-modal");
+  const rGcashConfirmBtn = document.getElementById("r-gcash-confirm-btn");
+  const rGcashConfirmRefInput = document.getElementById("r-gcash-confirm-ref");
+  const rGcashOfflineChk = document.getElementById("r-gcash-offline-chk");
+  const rGcashConfirmError = document.getElementById("r-gcash-confirm-error");
+  const rGcashQuickUploadBtn = document.getElementById("r-gcash-quick-upload-btn");
+
   const transferModal = document.getElementById("rider-transfer-modal");
   const transferModalSubtitle = document.getElementById("transfer-modal-job-subtitle");
   const transferReasonSelect = document.getElementById("transfer-reason-select");
@@ -58,6 +84,8 @@
   const jobsCountPill = document.getElementById("jobs-count-pill");
   const refreshJobsBtn = document.getElementById("refresh-jobs-btn");
 
+  const tRider = (str) => (typeof window.ccrcT === "function" ? window.ccrcT(str) : str);
+
   let currentRider = null;
   let activeJob = null;
   let currentScheduledJobs = [];
@@ -66,6 +94,8 @@
   let cachedCoRiders = [];
   let knownJobKeys = new Set();
   let prevActiveJobKey = null;
+  let prevGcashPayStatus = null;
+  let reopenQrAfterSetup = false;
   let pollInterval = null;
   let gpsWatchId = null;
   let lastReminderChimeTime = 0;
@@ -86,6 +116,49 @@
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
+  }
+
+  function readQrImageAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        reject(new Error("No file selected."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read image file."));
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Invalid image file. Please select a PNG, JPG, or WebP screenshot."));
+        img.onload = () => {
+          const maxDim = 900;
+          let w = img.width || 600;
+          let h = img.height || 600;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.max(1, Math.round((h * maxDim) / w));
+              w = maxDim;
+            } else {
+              w = Math.max(1, Math.round((w * maxDim) / h));
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          let dataUrl = canvas.toDataURL("image/png");
+          if (dataUrl.length > 2_300_000) {
+            dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+          }
+          resolve(dataUrl);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   function syncRiderVoiceCallContext() {
@@ -343,6 +416,35 @@
     });
   }
 
+  // Optional Registration GCash QR Upload (sharp resolution)
+  let regGcashQrBase64 = "";
+  const regGcashQrInput = document.getElementById("reg-gcash-qr-file");
+  const regGcashQrPreview = document.getElementById("reg-gcash-qr-preview");
+  const regGcashQrPlaceholder = document.getElementById("reg-gcash-qr-placeholder");
+
+  if (regGcashQrInput) {
+    regGcashQrInput.addEventListener("change", async function () {
+      const file = this.files && this.files[0];
+      if (!file) {
+        regGcashQrBase64 = "";
+        if (regGcashQrPreview) regGcashQrPreview.classList.add("hidden");
+        if (regGcashQrPlaceholder) regGcashQrPlaceholder.classList.remove("hidden");
+        return;
+      }
+      try {
+        regGcashQrBase64 = await readQrImageAsDataUrl(file);
+        if (regGcashQrPreview) {
+          regGcashQrPreview.src = regGcashQrBase64;
+          regGcashQrPreview.classList.remove("hidden");
+        }
+        if (regGcashQrPlaceholder) regGcashQrPlaceholder.classList.add("hidden");
+      } catch (err) {
+        regGcashQrBase64 = "";
+        alert(err.message || "Could not load QR image.");
+      }
+    });
+  }
+
   // Register Handler
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
@@ -373,7 +475,11 @@
         municipality: document.getElementById("reg-mun").value,
         password: document.getElementById("reg-password").value,
         avatar_base64: currentAvatarBase64,
+        gcash_number: (document.getElementById("reg-gcash-number")?.value || "").trim(),
       };
+      if (regGcashQrBase64) {
+        payload.gcash_qr_base64 = regGcashQrBase64;
+      }
 
       const btn = document.getElementById("rider-register-btn");
       btn.disabled = true;
@@ -439,8 +545,11 @@
     transferHighlightRiderId = null;
     cachedCoRiders = [];
     prevActiveJobKey = null;
+    prevGcashPayStatus = null;
     knownJobKeys.clear();
     if (transferModal) transferModal.classList.add("hidden");
+    if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
+    if (gcashQrModal) gcashQrModal.classList.add("hidden");
     currentRider = null;
     syncRiderVoiceCallContext();
     setStoredRider(null);
@@ -482,8 +591,11 @@
       transferHighlightRiderId = null;
       cachedCoRiders = [];
       prevActiveJobKey = null;
+      prevGcashPayStatus = null;
       knownJobKeys.clear();
       if (transferModal) transferModal.classList.add("hidden");
+      if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
+      if (gcashQrModal) gcashQrModal.classList.add("hidden");
       currentRider = null;
       syncRiderVoiceCallContext();
       try {
@@ -501,6 +613,42 @@
   const bottomRiderRefresh = document.getElementById("bottom-rider-refresh-btn");
   if (bottomRiderRefresh) {
     bottomRiderRefresh.addEventListener("click", fetchAvailableJobs);
+  }
+
+  function renderRiderGcashProfileCard() {
+    if (!currentRider) return;
+    const thumbEl = document.getElementById("dash-gcash-qr-thumb");
+    const fallbackEl = document.getElementById("dash-gcash-qr-fallback");
+    const statusEl = document.getElementById("dash-gcash-status-text");
+
+    const qrUrl = String(currentRider.gcash_qr_url || "").trim();
+    const gNum = String(currentRider.gcash_number || "").trim();
+
+    if (thumbEl && fallbackEl) {
+      if (qrUrl) {
+        if (thumbEl.getAttribute("src") !== qrUrl) {
+          thumbEl.src = qrUrl;
+        }
+        thumbEl.classList.remove("hidden");
+        fallbackEl.classList.add("hidden");
+      } else {
+        thumbEl.classList.add("hidden");
+        thumbEl.removeAttribute("src");
+        fallbackEl.classList.remove("hidden");
+      }
+    }
+
+    if (statusEl) {
+      if (qrUrl && gNum) {
+        statusEl.textContent = `${tRider("Ready ✓ GCash:")} ${gNum} • ${tRider("QR code uploaded")}`;
+      } else if (qrUrl) {
+        statusEl.textContent = tRider("QR code uploaded ✓ — Add your GCash mobile number so customers can copy it.");
+      } else if (gNum) {
+        statusEl.textContent = `${tRider("GCash Number:")} ${gNum} — ${tRider("Please upload your GCash QR code image.")}`;
+      } else {
+        statusEl.textContent = tRider("No GCash QR uploaded yet — upload your QR so customers can pay via GCash.");
+      }
+    }
   }
 
   function initRiderSession(rider) {
@@ -539,6 +687,8 @@
         dashAvatar.classList.add("hidden");
       }
     }
+
+    renderRiderGcashProfileCard();
 
     // Online switch state
     onlineToggle.checked = rider.is_online === 1;
@@ -1097,12 +1247,91 @@
     }
   }
 
+  function syncActiveJobGcashState(job) {
+    if (!job) {
+      if (jobGcashTopBtn) jobGcashTopBtn.classList.add("hidden");
+      if (activeJobGcashBox) activeJobGcashBox.classList.add("hidden");
+      if (riderGcashGateHint) riderGcashGateHint.classList.add("hidden");
+      if (jobCompleteBtn) {
+        jobCompleteBtn.classList.remove("btn-complete-locked");
+        if (!jobCompleteBtn.disabled) {
+          jobCompleteBtn.textContent = tRider("✓ Delivered (Mark as Completed)");
+        }
+      }
+      if (gcashQrModal && !reopenQrAfterSetup) {
+        gcashQrModal.classList.add("hidden");
+      }
+      return;
+    }
+
+    const isGcash = String(job.payment_method || "").toLowerCase() === "gcash";
+    const pStat = String(job.payment_status || "pending").toLowerCase();
+    const isPaid = pStat === "paid";
+    const isLocked = isGcash && !isPaid;
+
+    if (jobGcashTopBtn) {
+      jobGcashTopBtn.classList.toggle("hidden", !isGcash);
+    }
+    if (activeJobGcashBox) {
+      activeJobGcashBox.classList.toggle("hidden", !isGcash);
+    }
+
+    if (isGcash) {
+      if (activeJobGcashAmount) {
+        activeJobGcashAmount.textContent = `₱${Math.round(Number(job.fare_amount || 0)).toLocaleString()}`;
+      }
+      if (activeJobGcashStatusPill) {
+        if (isPaid) {
+          activeJobGcashStatusPill.className = "gcash-status-pill paid";
+          activeJobGcashStatusPill.textContent = tRider("✅ GCash Paid & Confirmed");
+        } else if (pStat === "customer_sent") {
+          activeJobGcashStatusPill.className = "gcash-status-pill sent";
+          activeJobGcashStatusPill.textContent = tRider("📲 Customer Sent — Verify Now");
+        } else {
+          activeJobGcashStatusPill.className = "gcash-status-pill pending";
+          activeJobGcashStatusPill.textContent = tRider("⏳ Waiting Customer GCash");
+        }
+      }
+      if (activeJobGcashRef) {
+        if (job.payment_ref) {
+          activeJobGcashRef.textContent = `Ref: ${job.payment_ref}`;
+          activeJobGcashRef.classList.remove("hidden");
+        } else {
+          activeJobGcashRef.textContent = "Ref: -";
+          activeJobGcashRef.classList.add("hidden");
+        }
+      }
+      if (jobShowGcashQrBtn) {
+        if (isPaid) {
+          jobShowGcashQrBtn.textContent = tRider("✓ GCash Verified (View QR)");
+        } else if (pStat === "customer_sent") {
+          jobShowGcashQrBtn.textContent = tRider("✓ Verify Customer GCash / QR");
+        } else {
+          jobShowGcashQrBtn.textContent = tRider("📱 Show My GCash QR");
+        }
+      }
+    }
+
+    if (jobCompleteBtn) {
+      jobCompleteBtn.classList.toggle("btn-complete-locked", isLocked);
+      if (!jobCompleteBtn.disabled) {
+        jobCompleteBtn.textContent = isLocked
+          ? tRider("🔒 Locked Until GCash Paid (Show QR / Confirm)")
+          : tRider("✓ Delivered (Mark as Completed)");
+      }
+    }
+    if (riderGcashGateHint) {
+      riderGcashGateHint.classList.toggle("hidden", !(isLocked && job.status === "in_progress"));
+    }
+  }
+
   // Render Active Job Card
   function renderActiveJobCard(job) {
     if (!job) {
       if (activeJobBox) activeJobBox.classList.add("hidden");
       if (jobTransferTopBtn) jobTransferTopBtn.classList.add("hidden");
       if (jobTransferBtn) jobTransferBtn.classList.add("hidden");
+      syncActiveJobGcashState(null);
       if (transferModal && (!transferTargetJob || !transferTargetJob._fromScheduledList)) {
         transferModal.classList.add("hidden");
       }
@@ -1213,6 +1442,8 @@
       jobTransferTopBtn.classList.toggle("hidden", !canTransferActive);
     }
 
+    syncActiveJobGcashState(job);
+
     // Interactive Live GPS Route Map for Active Job
     renderJobOnRiderMap(job);
     renderCoRidersList(cachedCoRiders);
@@ -1234,6 +1465,11 @@
         handleExpiredRiderSession();
         return;
       }
+      if (data.rider && currentRider) {
+        currentRider = Object.assign({}, currentRider, data.rider);
+        setStoredRider(currentRider);
+        renderRiderGcashProfileCard();
+      }
       const nextJob = data.job;
       const nextKey = nextJob ? `${nextJob.id}:${nextJob.transfer_count || 0}:${nextJob.status}` : null;
       const isIncomingTransfer = Boolean(
@@ -1242,6 +1478,16 @@
         && nextKey !== prevActiveJobKey
         && (!activeJob || activeJob.id !== nextJob.id || Number(activeJob.transfer_count || 0) !== Number(nextJob.transfer_count || 0))
       );
+      const nextPayKey = nextJob
+        ? `${nextJob.id}:${String(nextJob.payment_status || "pending").toLowerCase()}`
+        : null;
+      const becameCustomerSent = Boolean(
+        nextJob
+        && String(nextJob.payment_method || "").toLowerCase() === "gcash"
+        && String(nextJob.payment_status || "").toLowerCase() === "customer_sent"
+        && nextPayKey !== prevGcashPayStatus
+      );
+      prevGcashPayStatus = nextPayKey;
       prevActiveJobKey = nextKey;
       activeJob = nextJob;
       const scheduledJobs = data.scheduled_jobs || [];
@@ -1251,6 +1497,18 @@
       renderScheduledJobs(scheduledJobs);
 
       renderActiveJobCard(activeJob);
+
+      if (gcashQrModal && !gcashQrModal.classList.contains("hidden")) {
+        if (activeJob && String(activeJob.payment_method || "").toLowerCase() === "gcash") {
+          renderRiderGcashQrModal();
+        } else if (!reopenQrAfterSetup) {
+          gcashQrModal.classList.add("hidden");
+        }
+      }
+
+      if (becameCustomerSent) {
+        playRiderBeep();
+      }
 
       if (isIncomingTransfer) {
         if (window.playDispatchChime) window.playDispatchChime();
@@ -1429,8 +1687,13 @@
   if (jobCompleteBtn) {
     jobCompleteBtn.addEventListener("click", async () => {
       if (!activeJob) return;
+      const isGcash = String(activeJob.payment_method || "").toLowerCase() === "gcash";
+      const pStat = String(activeJob.payment_status || "pending").toLowerCase();
+      if (isGcash && pStat !== "paid") {
+        openRiderGcashQrModal();
+        return;
+      }
       if (!confirm("Are you sure this trip is completed and fare has been received?")) return;
-      const origText = jobCompleteBtn.textContent;
       jobCompleteBtn.disabled = true;
       jobCompleteBtn.textContent = "Completing trip...";
       try {
@@ -1447,7 +1710,9 @@
           alert("✓ Trip successfully marked as Completed! Thank you for your service.");
           activeJob = null;
           prevActiveJobKey = null;
+          prevGcashPayStatus = null;
           activeJobBox.classList.add("hidden");
+          syncActiveJobGcashState(null);
           resetRiderChat(null);
           renderJobOnRiderMap(null);
           checkActiveJob();
@@ -1456,13 +1721,336 @@
           loadRiderReviews();
         } else {
           const errData = await res.json().catch(() => ({}));
+          if (errData && errData.requires_gcash_payment) {
+            await checkActiveJob();
+            openRiderGcashQrModal();
+            return;
+          }
           alert(errData.error || "Could not complete trip.");
         }
       } catch (_) {
         alert("Network error completing trip. Please try again.");
       } finally {
-        jobCompleteBtn.textContent = origText;
+        const lockedNow = Boolean(
+          activeJob
+          && String(activeJob.payment_method || "").toLowerCase() === "gcash"
+          && String(activeJob.payment_status || "pending").toLowerCase() !== "paid"
+        );
+        jobCompleteBtn.classList.toggle("btn-complete-locked", lockedNow);
+        jobCompleteBtn.textContent = lockedNow
+          ? tRider("🔒 Locked Until GCash Paid (Show QR / Confirm)")
+          : tRider("✓ Delivered (Mark as Completed)");
         jobCompleteBtn.disabled = false;
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rider Official GCash QR Setup & Collect Payment Modal Workflows
+  // ---------------------------------------------------------------------------
+  let setupQrPendingBase64 = null;
+  let setupQrPendingClear = false;
+
+  function showGcashSetupMessage(text, isError) {
+    if (!gcashSetupMsg) return;
+    if (!text) {
+      gcashSetupMsg.classList.add("hidden");
+      gcashSetupMsg.textContent = "";
+      return;
+    }
+    gcashSetupMsg.classList.remove("hidden");
+    gcashSetupMsg.style.background = isError ? "#fee2e2" : "#dcfce7";
+    gcashSetupMsg.style.color = isError ? "#991b1b" : "#166534";
+    gcashSetupMsg.style.border = isError ? "1px solid #fca5a5" : "1px solid #86efac";
+    gcashSetupMsg.textContent = text;
+  }
+
+  function renderGcashSetupPreview(qrSrc) {
+    const cleanSrc = String(qrSrc || "").trim();
+    if (gcashSetupQrPreview && gcashSetupQrPlaceholder) {
+      if (cleanSrc) {
+        gcashSetupQrPreview.src = cleanSrc;
+        gcashSetupQrPreview.classList.remove("hidden");
+        gcashSetupQrPlaceholder.classList.add("hidden");
+      } else {
+        gcashSetupQrPreview.classList.add("hidden");
+        gcashSetupQrPreview.removeAttribute("src");
+        gcashSetupQrPlaceholder.classList.remove("hidden");
+      }
+    }
+    if (gcashSetupClearQrBtn) {
+      gcashSetupClearQrBtn.classList.toggle("hidden", !cleanSrc);
+    }
+  }
+
+  function openRiderGcashSetupModal(fromQrModal = false) {
+    if (!currentRider || !gcashSetupModal) return;
+    reopenQrAfterSetup = Boolean(fromQrModal);
+    setupQrPendingBase64 = null;
+    setupQrPendingClear = false;
+    if (gcashSetupQrFileInput) gcashSetupQrFileInput.value = "";
+    if (gcashSetupNumberInput) {
+      gcashSetupNumberInput.value = currentRider.gcash_number || currentRider.phone || "";
+    }
+    showGcashSetupMessage("", false);
+    renderGcashSetupPreview(currentRider.gcash_qr_url || "");
+    gcashSetupModal.classList.remove("hidden");
+  }
+
+  if (openGcashSetupBtn) {
+    openGcashSetupBtn.addEventListener("click", () => openRiderGcashSetupModal(false));
+  }
+  if (rGcashQuickUploadBtn) {
+    rGcashQuickUploadBtn.addEventListener("click", () => {
+      if (gcashQrModal) gcashQrModal.classList.add("hidden");
+      openRiderGcashSetupModal(true);
+    });
+  }
+  if (gcashSetupQrFileInput) {
+    gcashSetupQrFileInput.addEventListener("change", async function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      showGcashSetupMessage("", false);
+      try {
+        setupQrPendingBase64 = await readQrImageAsDataUrl(file);
+        setupQrPendingClear = false;
+        renderGcashSetupPreview(setupQrPendingBase64);
+      } catch (err) {
+        setupQrPendingBase64 = null;
+        showGcashSetupMessage(err.message || "Could not load QR image.", true);
+      }
+    });
+  }
+  if (gcashSetupClearQrBtn) {
+    gcashSetupClearQrBtn.addEventListener("click", () => {
+      setupQrPendingBase64 = null;
+      setupQrPendingClear = true;
+      if (gcashSetupQrFileInput) gcashSetupQrFileInput.value = "";
+      renderGcashSetupPreview("");
+    });
+  }
+  if (gcashSetupForm) {
+    gcashSetupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentRider || !gcashSetupSaveBtn) return;
+      const gcashNumVal = (gcashSetupNumberInput ? gcashSetupNumberInput.value : "").trim();
+      const payload = { gcash_number: gcashNumVal };
+      if (setupQrPendingClear) {
+        payload.clear_qr = true;
+      } else if (setupQrPendingBase64) {
+        payload.gcash_qr_base64 = setupQrPendingBase64;
+      }
+
+      const origText = gcashSetupSaveBtn.textContent;
+      gcashSetupSaveBtn.disabled = true;
+      gcashSetupSaveBtn.textContent = tRider("Saving...");
+      showGcashSetupMessage("", false);
+
+      try {
+        const res = await fetch("/api/rider/gcash-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.status === 401) {
+          if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
+          reopenQrAfterSetup = false;
+          handleExpiredRiderSession();
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Could not save GCash details.");
+        }
+        if (data.rider) {
+          currentRider = Object.assign({}, currentRider, data.rider);
+          setStoredRider(currentRider);
+        }
+        renderRiderGcashProfileCard();
+        setupQrPendingBase64 = null;
+        setupQrPendingClear = false;
+        showGcashSetupMessage(data.message || "GCash QR & payment details saved!", false);
+
+        if (reopenQrAfterSetup && activeJob) {
+          reopenQrAfterSetup = false;
+          if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
+          openRiderGcashQrModal();
+        } else {
+          setTimeout(() => {
+            if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
+          }, 800);
+        }
+      } catch (err) {
+        showGcashSetupMessage(err.message || "Could not save GCash details.", true);
+      } finally {
+        gcashSetupSaveBtn.disabled = false;
+        gcashSetupSaveBtn.textContent = origText;
+      }
+    });
+  }
+
+  function renderRiderGcashQrModal() {
+    if (!gcashQrModal || !activeJob || !currentRider) return;
+    const codeEl = document.getElementById("r-gcash-booking-code");
+    const custEl = document.getElementById("r-gcash-cust-name");
+    const amtEl = document.getElementById("r-gcash-amount");
+    const pillEl = document.getElementById("r-gcash-status-pill");
+    const refEl = document.getElementById("r-gcash-ref-display");
+    const qrBoxEl = document.getElementById("r-gcash-qr-box");
+    const qrImgEl = document.getElementById("r-gcash-qr-img");
+    const numDispEl = document.getElementById("r-gcash-number-display");
+    const missingBoxEl = document.getElementById("r-gcash-missing-box");
+    const missingNumEl = document.getElementById("r-gcash-missing-number");
+    const confirmSectionEl = document.getElementById("r-gcash-confirm-section");
+    const offlineWrapEl = document.getElementById("r-gcash-offline-wrap");
+    const paidDoneBoxEl = document.getElementById("r-gcash-paid-done-box");
+
+    if (codeEl) codeEl.textContent = activeJob.booking_code || "CCRC-0000";
+    if (custEl) custEl.textContent = activeJob.customer_name || "Passenger";
+    if (amtEl) amtEl.textContent = `₱${Math.round(Number(activeJob.fare_amount || 0)).toLocaleString()}`;
+
+    const pStat = String(activeJob.payment_status || "pending").toLowerCase();
+    const isPaid = pStat === "paid";
+
+    if (pillEl) {
+      if (isPaid) {
+        pillEl.className = "gcash-status-pill paid";
+        pillEl.textContent = tRider("✅ GCash Paid & Verified");
+      } else if (pStat === "customer_sent") {
+        pillEl.className = "gcash-status-pill sent";
+        pillEl.textContent = tRider("📲 Customer Marked Payment Sent");
+      } else {
+        pillEl.className = "gcash-status-pill pending";
+        pillEl.textContent = tRider("⏳ Waiting Customer GCash");
+      }
+    }
+
+    if (refEl) {
+      if (activeJob.payment_ref) {
+        refEl.textContent = `Ref: ${activeJob.payment_ref}`;
+        refEl.classList.remove("hidden");
+      } else {
+        refEl.textContent = "Ref: -";
+        refEl.classList.add("hidden");
+      }
+    }
+
+    const qrUrl = String(currentRider.gcash_qr_url || "").trim();
+    const gNum = String(currentRider.gcash_number || currentRider.phone || "-").trim();
+
+    if (qrUrl) {
+      if (qrBoxEl) qrBoxEl.classList.remove("hidden");
+      if (missingBoxEl) missingBoxEl.classList.add("hidden");
+      if (qrImgEl && qrImgEl.getAttribute("src") !== qrUrl) {
+        qrImgEl.src = qrUrl;
+      }
+      if (numDispEl) numDispEl.textContent = gNum;
+    } else {
+      if (qrBoxEl) qrBoxEl.classList.add("hidden");
+      if (missingBoxEl) missingBoxEl.classList.remove("hidden");
+      if (missingNumEl) missingNumEl.textContent = gNum;
+    }
+
+    if (confirmSectionEl) confirmSectionEl.classList.toggle("hidden", isPaid);
+    if (paidDoneBoxEl) paidDoneBoxEl.classList.toggle("hidden", !isPaid);
+
+    if (!isPaid) {
+      if (offlineWrapEl) {
+        offlineWrapEl.classList.toggle("hidden", pStat !== "pending");
+      }
+      if (
+        rGcashConfirmRefInput
+        && document.activeElement !== rGcashConfirmRefInput
+        && !rGcashConfirmRefInput.dataset.dirty
+      ) {
+        rGcashConfirmRefInput.value = activeJob.payment_ref ? String(activeJob.payment_ref) : "";
+      }
+    }
+  }
+
+  function openRiderGcashQrModal() {
+    if (!activeJob || !currentRider || !gcashQrModal) return;
+    if (rGcashConfirmError) {
+      rGcashConfirmError.textContent = "";
+      rGcashConfirmError.classList.add("hidden");
+    }
+    if (rGcashConfirmRefInput) {
+      delete rGcashConfirmRefInput.dataset.dirty;
+      rGcashConfirmRefInput.value = activeJob.payment_ref ? String(activeJob.payment_ref) : "";
+    }
+    if (rGcashOfflineChk) {
+      rGcashOfflineChk.checked = false;
+    }
+    renderRiderGcashQrModal();
+    gcashQrModal.classList.remove("hidden");
+  }
+
+  if (jobShowGcashQrBtn) {
+    jobShowGcashQrBtn.addEventListener("click", openRiderGcashQrModal);
+  }
+  if (jobGcashTopBtn) {
+    jobGcashTopBtn.addEventListener("click", openRiderGcashQrModal);
+  }
+  if (rGcashConfirmRefInput) {
+    rGcashConfirmRefInput.addEventListener("input", () => {
+      rGcashConfirmRefInput.dataset.dirty = "1";
+    });
+  }
+  if (rGcashConfirmBtn) {
+    rGcashConfirmBtn.addEventListener("click", async () => {
+      if (!activeJob || !currentRider) return;
+      if (rGcashConfirmError) {
+        rGcashConfirmError.textContent = "";
+        rGcashConfirmError.classList.add("hidden");
+      }
+      const pStat = String(activeJob.payment_status || "pending").toLowerCase();
+      const verifiedOffline = Boolean(rGcashOfflineChk && rGcashOfflineChk.checked);
+      if (pStat === "pending" && !verifiedOffline) {
+        if (rGcashConfirmError) {
+          rGcashConfirmError.textContent = tRider(
+            "Wait for the customer to mark payment as sent, or check 'Verified GCash receipt in person' if you saw the GCash transfer complete beside you."
+          );
+          rGcashConfirmError.classList.remove("hidden");
+        }
+        return;
+      }
+
+      const refVal = (rGcashConfirmRefInput ? rGcashConfirmRefInput.value : "").trim();
+      rGcashConfirmBtn.disabled = true;
+      rGcashConfirmBtn.textContent = tRider("Confirming...");
+
+      try {
+        const res = await fetch(`/api/bookings/${activeJob.id}/gcash/confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payment_ref: refVal,
+            verified_offline_receipt: verifiedOffline,
+          }),
+        });
+        if (res.status === 401) {
+          if (gcashQrModal) gcashQrModal.classList.add("hidden");
+          handleExpiredRiderSession();
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Could not confirm GCash payment.");
+        }
+        if (rGcashConfirmRefInput) delete rGcashConfirmRefInput.dataset.dirty;
+        activeJob = data.job || data.booking || activeJob;
+        prevGcashPayStatus = `${activeJob.id}:${String(activeJob.payment_status || "paid").toLowerCase()}`;
+        renderActiveJobCard(activeJob);
+        renderRiderGcashQrModal();
+        checkActiveJob();
+      } catch (err) {
+        if (rGcashConfirmError) {
+          rGcashConfirmError.textContent = err.message || "Could not confirm GCash payment.";
+          rGcashConfirmError.classList.remove("hidden");
+        }
+      } finally {
+        rGcashConfirmBtn.disabled = false;
+        rGcashConfirmBtn.textContent = tRider("✓ Confirm GCash Payment Received");
       }
     });
   }
@@ -1957,7 +2545,7 @@
                 <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
                 <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
                 ${j.scheduled_at ? `<div style="background:#eff6ff;color:#1d4ed8;padding:4px 8px;border-radius:6px;font-size:0.8rem;font-weight:700;margin-top:6px;">📅 Scheduled Pickup: ${new Date(j.scheduled_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>` : ""}
-                ${j.payment_method ? `<div style="font-size:0.78rem;color:#475569;margin-top:2px;">💳 Payment: <strong style="text-transform:uppercase;">${escapeHtml(j.payment_method)}</strong></div>` : ""}
+                ${j.payment_method ? `<div style="font-size:0.78rem;color:#475569;margin-top:2px;">💳 Payment: ${String(j.payment_method).toLowerCase() === "gcash" ? `<span class="badge" style="background:#dbeafe;color:#0047b8;border:1px solid #93c5fd;font-size:0.74rem;font-weight:800;padding:1px 7px;">💙 GCASH</span>` : `<strong style="text-transform:uppercase;">${escapeHtml(j.payment_method)}</strong>`}</div>` : ""}
                 ${j.item_notes ? `<div style="margin-top:4px;color:#64748b;font-size:0.82rem;">🛒 <em>&ldquo;${escapeHtml(j.item_notes)}&rdquo;</em></div>` : ""}
                 ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Advance Cash: ₱${j.estimated_budget}</div>` : ""}
               </div>

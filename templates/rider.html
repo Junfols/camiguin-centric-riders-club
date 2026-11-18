@@ -109,6 +109,29 @@
         <input type="password" id="reg-password" required minlength="6" placeholder="Create your password">
       </div>
 
+      <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#0047b8;font-size:0.88rem;margin-bottom:6px;">
+          💙 GCash Payment Receiving Setup (Optional — can add later)
+        </div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label for="reg-gcash-number" style="font-size:0.82rem;">GCash Mobile Number (Optional)</label>
+          <input type="tel" id="reg-gcash-number" placeholder="e.g. 0917 123 4567 (defaults to mobile #)">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="reg-gcash-qr-file" style="font-size:0.82rem;">My Official GCash QR Code Image (Optional)</label>
+          <div style="display:flex;align-items:center;gap:10px;background:#ffffff;padding:8px 10px;border:1.5px dashed #93c5fd;border-radius:10px;">
+            <div style="width:52px;height:52px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+              <span id="reg-gcash-qr-placeholder" style="font-size:1.5rem;">📱</span>
+              <img id="reg-gcash-qr-preview" src="" alt="GCash QR Preview" class="hidden" style="width:100%;height:100%;object-fit:contain;">
+            </div>
+            <div style="flex:1;">
+              <input type="file" id="reg-gcash-qr-file" accept="image/*" style="font-size:0.82rem;width:100%;">
+              <small class="text-muted" style="display:block;margin-top:3px;font-size:0.73rem;">Upload your GCash QR screenshot so passengers paying via GCash can scan &amp; pay you.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="register-error-msg" class="alert-error hidden"></div>
 
       <button type="submit" id="rider-register-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:10px;">
@@ -213,6 +236,27 @@
       </div>
     </div>
 
+    <!-- Rider GCash QR & Account Profile Card -->
+    <div id="rider-gcash-profile-card" class="card rider-gcash-setup-banner" style="padding:14px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+          <div style="width:52px;height:52px;border-radius:10px;background:#dbeafe;border:1.5px solid #93c5fd;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+            <span id="dash-gcash-qr-fallback" style="font-size:1.5rem;">💙</span>
+            <img id="dash-gcash-qr-thumb" src="" alt="My GCash QR" class="hidden" style="width:100%;height:100%;object-fit:contain;background:#fff;">
+          </div>
+          <div style="min-width:0;">
+            <div style="font-weight:800;color:#0047b8;font-size:0.95rem;">My Official GCash QR &amp; Number</div>
+            <div id="dash-gcash-status-text" style="font-size:0.8rem;color:#334155;margin-top:2px;">
+              No GCash QR uploaded yet — upload your QR so customers can pay via GCash.
+            </div>
+          </div>
+        </div>
+        <button type="button" id="open-rider-gcash-setup-btn" class="btn btn-sm btn-gcash-qr" style="white-space:nowrap;padding:7px 12px;border-radius:10px;">
+          ⚙️ Setup / Update GCash QR
+        </button>
+      </div>
+    </div>
+
     <!-- Upcoming Advance Trip Reminder Banner (Minutes Before Alert) -->
     <div id="advance-reminder-banner" class="card hidden" style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:14px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
@@ -256,11 +300,34 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
         <div class="text-muted" id="active-job-fare" style="font-weight:700;color:var(--primary);font-size:1.05rem;">Fare: ₱0.00</div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button type="button" id="job-gcash-top-btn" class="btn btn-sm btn-gcash-qr hidden" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
+            📱 GCash QR
+          </button>
           <button type="button" id="job-transfer-top-btn" class="btn btn-sm btn-transfer-emergency" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
             🔄 Transfer to Rider
           </button>
           <button type="button" id="rider-view-receipt-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
             🧾 View Receipt
+          </button>
+        </div>
+      </div>
+
+      <!-- GCash Payment Verification Panel (Shown when active job uses GCash) -->
+      <div id="active-job-gcash-box" class="rider-active-gcash-box hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:1.25rem;">💙</span>
+            <strong style="color:#0047b8;font-size:0.95rem;">GCash Payment Verification Required</strong>
+          </div>
+          <span id="active-job-gcash-status-pill" class="gcash-status-pill pending">⏳ Waiting Customer GCash</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:0.84rem;color:#1e293b;">
+            <div>Exact GCash Fare: <strong id="active-job-gcash-amount" style="color:#0057d9;">₱0</strong></div>
+            <div id="active-job-gcash-ref" class="hidden" style="font-family:monospace;font-size:0.8rem;color:#1d4ed8;margin-top:2px;">Ref: -</div>
+          </div>
+          <button type="button" id="job-show-gcash-qr-btn" class="btn btn-sm btn-gcash-official" style="padding:7px 14px;border-radius:10px;font-size:0.84rem;">
+            📱 Show My GCash QR
           </button>
         </div>
       </div>
@@ -413,6 +480,9 @@
         <button type="button" id="job-complete-btn" class="btn btn-success btn-block btn-lg hidden" style="background:#15803d;border-color:#15803d;">
           ✓ Delivered (Mark as Completed)
         </button>
+        <div id="rider-gcash-gate-hint" class="hidden" style="margin-top:6px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:8px;padding:7px 10px;font-size:0.78rem;font-weight:600;text-align:center;">
+          🔒 Confirm GCash payment via "Show My GCash QR" above before marking this trip Delivered / Completed.
+        </div>
         <button type="button" id="job-transfer-btn" class="btn btn-outline btn-block btn-transfer-emergency" style="margin-top:8px;">
           ⚠️ Transfer to Rider (Flat / Emergency)
         </button>
@@ -618,9 +688,120 @@
     </div>
   </div>
 </div>
+
+<!-- Rider GCash QR & Account Setup Modal -->
+<div id="rider-gcash-setup-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-card modal-md" style="max-height:90vh;overflow-y:auto;background:#ffffff;border-radius:16px;border:2px solid #60a5fa;">
+    <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border-bottom:1px solid #bfdbfe;">
+      <div>
+        <h3 style="margin:0;font-size:1.08rem;color:#0047b8;display:flex;align-items:center;gap:6px;">
+          <span>💙</span> Official GCash QR &amp; Account Setup
+        </h3>
+        <small style="color:#1e40af;font-size:0.78rem;">Shown automatically to GCash passengers &amp; in your Show QR modal</small>
+      </div>
+      <button type="button" id="close-gcash-setup-btn" onclick="document.getElementById('rider-gcash-setup-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#0047b8;line-height:1;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:16px 18px;">
+      <form id="rider-gcash-setup-form">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label for="gcash-setup-number" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Registered GCash Mobile Number</label>
+          <input type="tel" id="gcash-setup-number" placeholder="09XX XXX XXXX" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.92rem;">
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label for="gcash-setup-qr-file" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Upload Your Official GCash QR Code Image</label>
+          <div class="gcash-qr-frame" style="margin-bottom:8px;">
+            <img id="gcash-setup-qr-preview" src="" alt="GCash QR Preview" class="gcash-qr-img hidden">
+            <div id="gcash-setup-qr-placeholder" style="font-size:0.82rem;color:#475569;padding:12px 6px;">
+              📱 No GCash QR uploaded yet. Open Official GCash &rarr; Generate QR &rarr; Save QR / Screenshot, then upload it here.
+            </div>
+          </div>
+          <input type="file" id="gcash-setup-qr-file" accept="image/*" style="font-size:0.85rem;width:100%;">
+          <div style="margin-top:8px;">
+            <button type="button" id="gcash-setup-clear-qr-btn" class="btn btn-sm btn-outline hidden" style="color:#dc2626;border-color:#fca5a5;">
+              🗑️ Remove Uploaded QR
+            </button>
+          </div>
+        </div>
+        <div id="gcash-setup-msg" class="hidden" style="margin-bottom:10px;padding:8px 10px;border-radius:8px;font-size:0.83rem;font-weight:600;"></div>
+        <button type="submit" id="gcash-setup-save-btn" class="btn btn-block btn-lg btn-gcash-official" style="padding:11px 14px;border-radius:10px;">
+          💾 Save GCash QR &amp; Details
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Rider Collect & Show GCash QR Modal (Active Trip) -->
+<div id="rider-gcash-qr-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.75);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-card modal-md" style="max-height:92vh;overflow-y:auto;background:#ffffff;border-radius:16px;border:2px solid #007dfe;">
+    <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border-bottom:1px solid #bfdbfe;">
+      <div>
+        <h3 style="margin:0;font-size:1.08rem;color:#0047b8;display:flex;align-items:center;gap:6px;">
+          <span>📱</span> Collect GCash Fare Payment
+        </h3>
+        <small id="r-gcash-booking-code" style="font-family:monospace;color:#1d4ed8;font-weight:700;font-size:0.82rem;">CCRC-0000</small>
+      </div>
+      <button type="button" id="close-rider-gcash-qr-btn" onclick="document.getElementById('rider-gcash-qr-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#0047b8;line-height:1;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:16px 18px;">
+      <div class="gcash-amount-box">
+        <div style="font-size:0.78rem;color:#475569;font-weight:600;">
+          Passenger: <strong id="r-gcash-cust-name">-</strong>
+        </div>
+        <div id="r-gcash-amount" style="font-size:1.85rem;font-weight:800;color:#0057d9;margin:2px 0;">₱0</div>
+        <div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;">
+          <span id="r-gcash-status-pill" class="gcash-status-pill pending">⏳ Waiting Customer GCash</span>
+          <span id="r-gcash-ref-display" class="hidden" style="font-family:monospace;font-size:0.8rem;color:#0f172a;background:#f1f5f9;padding:3px 8px;border-radius:8px;font-weight:700;">Ref: -</span>
+        </div>
+      </div>
+
+      <div id="r-gcash-qr-box" class="gcash-qr-frame">
+        <div style="font-size:0.8rem;font-weight:700;color:#0047b8;margin-bottom:8px;">Let your passenger scan this official GCash QR code:</div>
+        <img id="r-gcash-qr-img" src="" alt="Your GCash QR Code" class="gcash-qr-img" style="max-width:260px;">
+        <div style="margin-top:8px;font-size:0.84rem;color:#334155;">
+          GCash Number: <strong id="r-gcash-number-display" style="font-family:monospace;color:#0057d9;">-</strong>
+        </div>
+      </div>
+
+      <div id="r-gcash-missing-box" class="hidden" style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:12px;text-align:center;margin-bottom:12px;">
+        <div style="font-size:0.86rem;color:#92400e;font-weight:700;margin-bottom:6px;">
+          ⚠️ You haven't uploaded your GCash QR code yet.
+        </div>
+        <div style="font-size:0.8rem;color:#78350f;margin-bottom:10px;">
+          Your passenger can send to your GCash number <strong id="r-gcash-missing-number">-</strong>, or upload your QR screenshot now:
+        </div>
+        <button type="button" id="r-gcash-quick-upload-btn" class="btn btn-sm btn-gcash-qr">
+          ⚙️ Upload My GCash QR Now
+        </button>
+      </div>
+
+      <div id="r-gcash-confirm-section" style="border-top:1px dashed #cbd5e1;padding-top:12px;">
+        <div class="form-group" style="margin-bottom:10px;">
+          <label for="r-gcash-confirm-ref" style="font-size:0.82rem;font-weight:700;color:#1e293b;">GCash Reference No. (Optional / From Customer Receipt)</label>
+          <input type="text" id="r-gcash-confirm-ref" maxlength="64" placeholder="Enter or verify GCash Ref No." style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.88rem;">
+        </div>
+        <label id="r-gcash-offline-wrap" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.82rem;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px;margin-bottom:10px;">
+          <input type="checkbox" id="r-gcash-offline-chk" style="margin-top:2px;width:16px;height:16px;accent-color:#15803d;">
+          <span>
+            <strong>Verified GCash receipt in person</strong>
+            <small style="display:block;color:#64748b;font-size:0.75rem;">Check this if the customer scanned your QR right beside you and you checked the GCash amount arrived in your app.</small>
+          </span>
+        </label>
+        <div id="r-gcash-confirm-error" class="alert-error hidden" style="margin-bottom:10px;"></div>
+        <button type="button" id="r-gcash-confirm-btn" class="btn btn-block btn-lg" style="background:#15803d;border-color:#15803d;color:#ffffff;font-weight:800;border-radius:10px;padding:11px 14px;">
+          ✓ Confirm GCash Payment Received
+        </button>
+      </div>
+
+      <div id="r-gcash-paid-done-box" class="hidden" style="background:#dcfce7;border:1.5px solid #86efac;color:#15803d;border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:0.88rem;">
+        ✅ GCash Payment Verified &amp; Confirmed! You may now mark this trip as Delivered / Completed.
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/rider.js?v=31"></script>
+<script src="/static/js/rider.js?v=32"></script>
 {% endblock %}

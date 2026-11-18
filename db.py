@@ -4000,6 +4000,8 @@ def init_db(conn: DatabaseConnection) -> None:
         for migration in [
             "ALTER TABLE riders ADD COLUMN IF NOT EXISTS license_no VARCHAR(64) DEFAULT ''",
             "ALTER TABLE riders ADD COLUMN IF NOT EXISTS email VARCHAR(160) DEFAULT ''",
+            "ALTER TABLE riders ADD COLUMN IF NOT EXISTS gcash_number VARCHAR(32) DEFAULT ''",
+            "ALTER TABLE riders ADD COLUMN IF NOT EXISTS gcash_qr_url TEXT DEFAULT ''",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT ''",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS email VARCHAR(120) DEFAULT ''",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''",
@@ -4014,6 +4016,10 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transferred_from_rider_id INTEGER DEFAULT NULL",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transfer_reason TEXT DEFAULT ''",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transfer_count INTEGER DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status VARCHAR(32) DEFAULT 'pending'",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_ref VARCHAR(64) DEFAULT ''",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_sent_at VARCHAR(32) DEFAULT NULL",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_confirmed_at VARCHAR(32) DEFAULT NULL",
             "ALTER TABLE booking_messages ADD COLUMN IF NOT EXISTS msg_type VARCHAR(24) DEFAULT 'text'",
             "ALTER TABLE booking_messages ADD COLUMN IF NOT EXISTS media_url TEXT DEFAULT ''",
             "ALTER TABLE booking_messages ADD COLUMN IF NOT EXISTS media_duration DOUBLE PRECISION DEFAULT 0",
@@ -4031,6 +4037,8 @@ def init_db(conn: DatabaseConnection) -> None:
         for migration in [
             "ALTER TABLE riders ADD COLUMN license_no TEXT DEFAULT ''",
             "ALTER TABLE riders ADD COLUMN email TEXT DEFAULT ''",
+            "ALTER TABLE riders ADD COLUMN gcash_number TEXT DEFAULT ''",
+            "ALTER TABLE riders ADD COLUMN gcash_qr_url TEXT DEFAULT ''",
             "ALTER TABLE customers ADD COLUMN avatar_url TEXT DEFAULT ''",
             "ALTER TABLE customers ADD COLUMN email TEXT DEFAULT ''",
             "ALTER TABLE customers ADD COLUMN password_hash TEXT DEFAULT ''",
@@ -4091,6 +4099,8 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             license_no TEXT DEFAULT '',
             avatar_url TEXT DEFAULT '',
             email TEXT DEFAULT '',
+            gcash_number TEXT DEFAULT '',
+            gcash_qr_url TEXT DEFAULT '',
             status TEXT DEFAULT 'active', -- active, pending, suspended
             is_online INTEGER DEFAULT 0,
             last_lat REAL DEFAULT NULL,
@@ -4122,6 +4132,10 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             estimated_km REAL DEFAULT 0,
             fare_amount REAL NOT NULL,
             payment_method TEXT DEFAULT 'cash', -- cash, gcash
+            payment_status TEXT DEFAULT 'pending', -- pending, customer_sent, paid
+            payment_ref TEXT DEFAULT '',
+            payment_sent_at TEXT DEFAULT NULL,
+            payment_confirmed_at TEXT DEFAULT NULL,
             rider_id INTEGER DEFAULT NULL,
             accepted_at TEXT DEFAULT NULL,
             pickup_time TEXT DEFAULT NULL,
@@ -4304,6 +4318,10 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         ("transferred_from_rider_id", "INTEGER DEFAULT NULL"),
         ("transfer_reason", "TEXT DEFAULT ''"),
         ("transfer_count", "INTEGER DEFAULT 0"),
+        ("payment_status", "TEXT DEFAULT 'pending'"),
+        ("payment_ref", "TEXT DEFAULT ''"),
+        ("payment_sent_at", "TEXT DEFAULT NULL"),
+        ("payment_confirmed_at", "TEXT DEFAULT NULL"),
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN {col_def[0]} {col_def[1]}")
@@ -4348,6 +4366,8 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             license_no VARCHAR(64) DEFAULT '',
             avatar_url TEXT DEFAULT '',
             email VARCHAR(160) DEFAULT '',
+            gcash_number VARCHAR(32) DEFAULT '',
+            gcash_qr_url TEXT DEFAULT '',
             status VARCHAR(32) DEFAULT 'active',
             is_online INTEGER DEFAULT 0,
             last_lat DOUBLE PRECISION DEFAULT NULL,
@@ -4379,6 +4399,10 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             estimated_km DOUBLE PRECISION DEFAULT 0,
             fare_amount DOUBLE PRECISION NOT NULL,
             payment_method VARCHAR(32) DEFAULT 'cash',
+            payment_status VARCHAR(32) DEFAULT 'pending',
+            payment_ref VARCHAR(64) DEFAULT '',
+            payment_sent_at VARCHAR(32) DEFAULT NULL,
+            payment_confirmed_at VARCHAR(32) DEFAULT NULL,
             rider_id INTEGER DEFAULT NULL REFERENCES riders(id) ON DELETE SET NULL,
             accepted_at VARCHAR(32) DEFAULT NULL,
             pickup_time VARCHAR(32) DEFAULT NULL,
@@ -4565,6 +4589,19 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
                 pass
 
     for col_def in [
+        ("gcash_number", "VARCHAR(32) DEFAULT ''"),
+        ("gcash_qr_url", "TEXT DEFAULT ''"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE riders ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+    for col_def in [
         ("scheduled_at", "VARCHAR(64) DEFAULT NULL"),
         ("promo_code_id", "INTEGER DEFAULT NULL"),
         ("promo_code", "VARCHAR(64) DEFAULT ''"),
@@ -4572,6 +4609,10 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         ("transferred_from_rider_id", "INTEGER DEFAULT NULL"),
         ("transfer_reason", "TEXT DEFAULT ''"),
         ("transfer_count", "INTEGER DEFAULT 0"),
+        ("payment_status", "VARCHAR(32) DEFAULT 'pending'"),
+        ("payment_ref", "VARCHAR(64) DEFAULT ''"),
+        ("payment_sent_at", "VARCHAR(32) DEFAULT NULL"),
+        ("payment_confirmed_at", "VARCHAR(32) DEFAULT NULL"),
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
@@ -4776,20 +4817,64 @@ def register_rider(
     license_no: str = "",
     avatar_url: str = "",
     email: str = "",
+    gcash_number: str = "",
+    gcash_qr_url: str = "",
 ) -> int:
     clean_phone = normalize_ph_phone(phone)
     pwd_hash = generate_password_hash(password)
     now = get_now_pht().isoformat(timespec="seconds")
     clean_email = email.strip().lower()
+    clean_gcash_num = normalize_ph_phone(gcash_number) if (gcash_number or "").strip() else ""
+    clean_gcash_qr = (gcash_qr_url or "").strip()
     return conn.insert_returning_id(
         """
         INSERT INTO riders (
             name, phone, password_hash, bike_model, plate_number,
-            municipality, license_no, avatar_url, email, status, is_online, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
+            municipality, license_no, avatar_url, email, gcash_number, gcash_qr_url,
+            status, is_online, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
         """,
-        (name.strip(), clean_phone, pwd_hash, bike_model.strip(), plate_number.strip().upper(), municipality, license_no.strip().upper(), avatar_url.strip(), clean_email, now),
+        (
+            name.strip(),
+            clean_phone,
+            pwd_hash,
+            bike_model.strip(),
+            plate_number.strip().upper(),
+            municipality,
+            license_no.strip().upper(),
+            avatar_url.strip(),
+            clean_email,
+            clean_gcash_num,
+            clean_gcash_qr,
+            now,
+        ),
     )
+
+
+def update_rider_gcash_profile(
+    conn: DatabaseConnection,
+    rider_id: int,
+    gcash_number: str | None = None,
+    gcash_qr_url: str | None = None,
+) -> dict[str, Any] | None:
+    """Updates a rider's GCash mobile number and/or QR code URL."""
+    rider = get_rider_by_id(conn, rider_id)
+    if not rider:
+        return None
+    sets: list[str] = []
+    params: list[Any] = []
+    if gcash_number is not None:
+        raw_num = str(gcash_number).strip()
+        clean_num = normalize_ph_phone(raw_num) if raw_num else ""
+        sets.append("gcash_number = ?")
+        params.append(clean_num)
+    if gcash_qr_url is not None:
+        sets.append("gcash_qr_url = ?")
+        params.append(str(gcash_qr_url).strip())
+    if sets:
+        params.append(rider_id)
+        conn.execute(f"UPDATE riders SET {', '.join(sets)} WHERE id = ?", tuple(params))
+    return get_rider_by_id(conn, rider_id)
 
 
 def delete_rider(conn: DatabaseConnection, rider_id: int) -> bool:
@@ -4939,8 +5024,8 @@ def create_booking(
             booking_code, service_type, status, customer_name, customer_phone,
             pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng,
             item_notes, estimated_budget, estimated_km, fare_amount, payment_method,
-            scheduled_at, promo_code, discount_amount, created_at
-        ) VALUES (?, ?, 'broadcast', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            payment_status, scheduled_at, promo_code, discount_amount, created_at
+        ) VALUES (?, ?, 'broadcast', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
         """,
         (
             code,
@@ -4981,6 +5066,8 @@ def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, An
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
                r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(r.gcash_number, '') AS rider_gcash_number,
+               COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr,
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
@@ -5004,6 +5091,8 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
                r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(r.gcash_number, '') AS rider_gcash_number,
+               COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr,
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
@@ -5050,11 +5139,14 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
     rows = conn.execute(
         """
         SELECT b.*,
+               COALESCE(r.gcash_number, '') AS rider_gcash_number,
+               COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr,
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
                COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
+        LEFT JOIN riders r ON r.id = b.rider_id
         LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
         LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE b.rider_id = ? AND b.status IN ('accepted', 'in_progress')
@@ -5134,9 +5226,13 @@ def get_rider_scheduled_jobs(conn: DatabaseConnection, rider_id: int) -> list[di
     """
     rows = conn.execute(
         """
-        SELECT * FROM bookings
-        WHERE rider_id = ? AND status = 'accepted' AND scheduled_at IS NOT NULL AND scheduled_at != ''
-        ORDER BY scheduled_at ASC
+        SELECT b.*,
+               COALESCE(r.gcash_number, '') AS rider_gcash_number,
+               COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
+        FROM bookings b
+        LEFT JOIN riders r ON r.id = b.rider_id
+        WHERE b.rider_id = ? AND b.status = 'accepted' AND b.scheduled_at IS NOT NULL AND b.scheduled_at != ''
+        ORDER BY b.scheduled_at ASC
         """,
         (rider_id,),
     ).fetchall()
@@ -5269,6 +5365,17 @@ def transfer_booking(
     now = get_now_pht().isoformat(timespec="seconds")
     next_transfer_count = int(booking.get("transfer_count") or 0) + 1
 
+    # Preserve already-confirmed 'paid' GCash payments, but reset unconfirmed 'customer_sent'
+    # so a rescue rider won't rely on an unverified GCash notice meant for the previous rider.
+    pay_method_l = (booking.get("payment_method") or "").lower()
+    pay_status_l = (booking.get("payment_status") or "pending").lower()
+    reset_unconfirmed_gcash = (pay_method_l == "gcash" and pay_status_l == "customer_sent")
+    gcash_reset_sql = ""
+    gcash_note = ""
+    if reset_unconfirmed_gcash:
+        gcash_reset_sql = ", payment_status = 'pending', payment_ref = '', payment_sent_at = NULL, payment_confirmed_at = NULL"
+        gcash_note = " Unconfirmed GCash notice was reset — please send/confirm GCash with the rescue rider."
+
     coord_sql = ""
     coord_params: list[Any] = []
     if updated_coords is not None:
@@ -5311,7 +5418,7 @@ def transfer_booking(
                 pickup_time = NULL,
                 transferred_from_rider_id = ?,
                 transfer_reason = ?,
-                transfer_count = ?{coord_sql}
+                transfer_count = ?{gcash_reset_sql}{coord_sql}
             {guard_sql}
         """
         params = [target_rid, now, from_rider_id, combined_reason, next_transfer_count] + coord_params + guard_params
@@ -5336,7 +5443,7 @@ def transfer_booking(
         handover_gps_msg = " Handover pickup pin updated to rider's current location." if updated_coords else ""
         sys_msg = (
             f"🚨 Emergency transfer: {from_rider_name} handed this trip over to rescue rider "
-            f"{target_name}{plate_info}. Reason: {combined_reason}.{handover_gps_msg}"
+            f"{target_name}{plate_info}. Reason: {combined_reason}.{handover_gps_msg}{gcash_note}"
         )
         try:
             add_booking_message(conn, booking_id, "system", "CCRC Dispatch", sys_msg)
@@ -5357,7 +5464,7 @@ def transfer_booking(
             pickup_time = NULL,
             transferred_from_rider_id = ?,
             transfer_reason = ?,
-            transfer_count = ?{coord_sql}
+            transfer_count = ?{gcash_reset_sql}{coord_sql}
         {guard_sql}
     """
     params = [from_rider_id, combined_reason, next_transfer_count] + coord_params + guard_params
@@ -5388,7 +5495,7 @@ def transfer_booking(
     handover_gps_msg = " Handover pickup pin updated to rider's current location." if updated_coords else ""
     sys_msg = (
         f"🚨 {from_rider_name} requested an emergency transfer ({combined_reason}) and re-broadcasted "
-        f"this trip to all online CCRC riders.{handover_gps_msg} Finding the nearest available rider..."
+        f"this trip to all online CCRC riders.{handover_gps_msg} Finding the nearest available rider...{gcash_note}"
     )
     try:
         add_booking_message(conn, booking_id, "system", "CCRC Dispatch", sys_msg)
@@ -5447,6 +5554,153 @@ def update_booking_status(conn: DatabaseConnection, booking_id: int, new_status:
         pass
 
     return True
+
+
+def mark_gcash_payment_sent(
+    conn: DatabaseConnection,
+    booking_id: int,
+    payment_ref: str = "",
+) -> tuple[bool, str, dict[str, Any] | None, int]:
+    """Marks a GCash booking as sent by the customer so the rider can verify & confirm."""
+    booking = get_booking_by_id(conn, booking_id)
+    if not booking:
+        return False, "Booking not found.", None, 404
+
+    if (booking.get("payment_method") or "").lower() != "gcash":
+        return False, "This booking does not use GCash payment.", None, 400
+
+    status_l = (booking.get("status") or "").lower()
+    if status_l in ("cancelled", "completed"):
+        return False, f"Cannot report payment for a {status_l} booking.", None, 400
+    if not booking.get("rider_id"):
+        return False, "Please wait for a club rider to accept your booking before reporting GCash payment.", None, 400
+
+    pay_status = (booking.get("payment_status") or "pending").lower()
+    if pay_status == "paid":
+        return False, "GCash payment has already been confirmed as paid by the rider.", None, 400
+
+    clean_ref = (payment_ref or "").strip()[:64]
+    final_ref = clean_ref if clean_ref else (booking.get("payment_ref") or "").strip()[:64]
+    now = get_now_pht().isoformat(timespec="seconds")
+
+    conn.execute(
+        """
+        UPDATE bookings
+        SET payment_status = 'customer_sent',
+            payment_ref = ?,
+            payment_sent_at = ?
+        WHERE id = ? AND COALESCE(payment_status, 'pending') != 'paid'
+        """,
+        (final_ref, now, booking_id),
+    )
+
+    updated = get_booking_by_id(conn, booking_id)
+    fare_val = float((updated or booking).get("fare_amount") or 0.0)
+    ref_part = f" (Ref: {final_ref})" if final_ref else ""
+    try:
+        add_booking_message(
+            conn,
+            booking_id,
+            "system",
+            "CCRC Payment",
+            f"💙 Customer marked ₱{fare_val:,.0f} GCash payment as sent{ref_part}. Rider: verify in your GCash app and confirm receipt before completing the trip.",
+        )
+    except Exception:
+        pass
+
+    if updated:
+        try:
+            record_transaction(
+                conn,
+                updated,
+                status=updated.get("status") or "accepted",
+                notes=f"Customer marked GCash sent{ref_part}",
+            )
+        except Exception:
+            pass
+
+    return True, "GCash payment notice sent to your rider for confirmation!", updated, 200
+
+
+def confirm_gcash_payment_received(
+    conn: DatabaseConnection,
+    booking_id: int,
+    acting_rider_id: int | None = None,
+    is_admin: bool = False,
+    payment_ref: str = "",
+    verified_offline_receipt: bool = False,
+) -> tuple[bool, str, dict[str, Any] | None, int]:
+    """Confirms GCash payment receipt (by assigned rider or admin) so the trip can be completed."""
+    booking = get_booking_by_id(conn, booking_id)
+    if not booking:
+        return False, "Booking not found.", None, 404
+
+    if not is_admin:
+        if not acting_rider_id:
+            return False, "Rider authentication required.", None, 401
+        if booking.get("rider_id") != int(acting_rider_id):
+            return False, "You are not assigned to this booking.", None, 403
+
+    if (booking.get("payment_method") or "").lower() != "gcash":
+        return False, "This booking does not use GCash payment.", None, 400
+
+    status_l = (booking.get("status") or "").lower()
+    if status_l == "cancelled":
+        return False, "Cannot confirm payment on a cancelled booking.", None, 400
+
+    pay_status = (booking.get("payment_status") or "pending").lower()
+    if pay_status == "paid":
+        return True, "GCash payment is already confirmed.", booking, 200
+
+    if pay_status != "customer_sent" and not verified_offline_receipt and not is_admin:
+        return (
+            False,
+            "Customer has not marked GCash as sent yet. Show your GCash QR code first, or check 'Verified GCash receipt in person' after checking your GCash balance.",
+            None,
+            400,
+        )
+
+    clean_ref = (payment_ref or "").strip()[:64]
+    final_ref = clean_ref if clean_ref else (booking.get("payment_ref") or "").strip()[:64]
+    now = get_now_pht().isoformat(timespec="seconds")
+
+    conn.execute(
+        """
+        UPDATE bookings
+        SET payment_status = 'paid',
+            payment_ref = ?,
+            payment_confirmed_at = ?
+        WHERE id = ?
+        """,
+        (final_ref, now, booking_id),
+    )
+
+    updated = get_booking_by_id(conn, booking_id)
+    fare_val = float((updated or booking).get("fare_amount") or 0.0)
+    ref_part = f" (Ref: {final_ref})" if final_ref else ""
+    try:
+        add_booking_message(
+            conn,
+            booking_id,
+            "system",
+            "CCRC Payment",
+            f"✅ GCash payment of ₱{fare_val:,.0f} verified & confirmed received{ref_part}. Trip can now be completed!",
+        )
+    except Exception:
+        pass
+
+    if updated:
+        try:
+            record_transaction(
+                conn,
+                updated,
+                status=updated.get("status") or "in_progress",
+                notes=f"GCash payment verified & confirmed{ref_part}",
+            )
+        except Exception:
+            pass
+
+    return True, "GCash payment confirmed! You can now mark the trip as Completed.", updated, 200
 
 
 def get_booking_tracking_trail(conn: DatabaseConnection, booking_id: int, limit: int = 40) -> list[dict[str, Any]]:
@@ -6052,10 +6306,11 @@ def restore_full_backup(
                     """
                     INSERT INTO riders (
                         id, name, phone, password_hash, bike_model, plate_number,
-                        municipality, color, license_no, avatar_url, email, status,
+                        municipality, color, license_no, avatar_url, email,
+                        gcash_number, gcash_qr_url, status,
                         is_online, last_lat, last_lng, last_active_at, total_trips,
                         rating_avg, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         r_id,
@@ -6069,6 +6324,8 @@ def restore_full_backup(
                         r.get("license_no", ""),
                         r.get("avatar_url", ""),
                         r.get("email", ""),
+                        r.get("gcash_number", ""),
+                        r.get("gcash_qr_url", ""),
                         r.get("status", "active"),
                         int(r.get("is_online") or 0),
                         r.get("last_lat"),
@@ -6084,10 +6341,11 @@ def restore_full_backup(
                     """
                     INSERT INTO riders (
                         name, phone, password_hash, bike_model, plate_number,
-                        municipality, color, license_no, avatar_url, email, status,
+                        municipality, color, license_no, avatar_url, email,
+                        gcash_number, gcash_qr_url, status,
                         is_online, last_lat, last_lng, last_active_at, total_trips,
                         rating_avg, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         r.get("name", "Unknown Rider"),
@@ -6100,6 +6358,8 @@ def restore_full_backup(
                         r.get("license_no", ""),
                         r.get("avatar_url", ""),
                         r.get("email", ""),
+                        r.get("gcash_number", ""),
+                        r.get("gcash_qr_url", ""),
                         r.get("status", "active"),
                         int(r.get("is_online") or 0),
                         r.get("last_lat"),
@@ -6132,11 +6392,12 @@ def restore_full_backup(
                         customer_phone, pickup_address, pickup_lat, pickup_lng,
                         dropoff_address, dropoff_lat, dropoff_lng, item_notes,
                         estimated_budget, estimated_km, fare_amount, payment_method,
+                        payment_status, payment_ref, payment_sent_at, payment_confirmed_at,
                         rider_id, accepted_at, pickup_time, completed_at,
                         cancelled_reason, scheduled_at, promo_code_id, promo_code,
                         discount_amount, transferred_from_rider_id, transfer_reason,
                         transfer_count, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         b_id,
@@ -6156,6 +6417,10 @@ def restore_full_backup(
                         float(b.get("estimated_km") or 0.0),
                         float(b.get("fare_amount") or 0.0),
                         b.get("payment_method", "cash"),
+                        b.get("payment_status") or "pending",
+                        b.get("payment_ref") or "",
+                        b.get("payment_sent_at"),
+                        b.get("payment_confirmed_at"),
                         b.get("rider_id"),
                         b.get("accepted_at"),
                         b.get("pickup_time"),
@@ -6179,11 +6444,12 @@ def restore_full_backup(
                         customer_phone, pickup_address, pickup_lat, pickup_lng,
                         dropoff_address, dropoff_lat, dropoff_lng, item_notes,
                         estimated_budget, estimated_km, fare_amount, payment_method,
+                        payment_status, payment_ref, payment_sent_at, payment_confirmed_at,
                         rider_id, accepted_at, pickup_time, completed_at,
                         cancelled_reason, scheduled_at, promo_code_id, promo_code,
                         discount_amount, transferred_from_rider_id, transfer_reason,
                         transfer_count, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         code,
@@ -6202,6 +6468,10 @@ def restore_full_backup(
                         float(b.get("estimated_km") or 0.0),
                         float(b.get("fare_amount") or 0.0),
                         b.get("payment_method", "cash"),
+                        b.get("payment_status") or "pending",
+                        b.get("payment_ref") or "",
+                        b.get("payment_sent_at"),
+                        b.get("payment_confirmed_at"),
                         b.get("rider_id"),
                         b.get("accepted_at"),
                         b.get("pickup_time"),

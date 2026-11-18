@@ -163,6 +163,108 @@
     </div>
   </div>
 
+  <!-- Official GCash Payment Card (Shown when payment_method == 'gcash') -->
+  <div id="gcash-payment-card" class="card gcash-card {% if (booking.payment_method or '')|lower != 'gcash' or booking.status == 'cancelled' %}hidden{% endif %}">
+    <div class="gcash-brand-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.5rem;">💙</span>
+        <div>
+          <h3 style="margin:0;font-size:1.05rem;color:#0047b8;">Pay via Official GCash</h3>
+          <span class="text-muted" style="font-size:0.78rem;">Scan or send fare directly to your assigned rider's GCash</span>
+        </div>
+      </div>
+      {% set p_stat = (booking.payment_status or 'pending')|lower %}
+      <span id="gcash-track-status-badge" class="gcash-status-pill {% if p_stat == 'paid' %}paid{% elif p_stat == 'customer_sent' %}sent{% else %}pending{% endif %}">
+        {% if p_stat == 'paid' %}
+          ✅ GCash Verified &amp; Paid
+        {% elif p_stat == 'customer_sent' %}
+          📲 Sent — Awaiting Rider Confirmation
+        {% else %}
+          ⏳ Waiting for GCash Payment
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="gcash-amount-box">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;color:#475569;font-weight:700;">Exact Fare Amount to Send via GCash</div>
+      <div id="gcash-amount-due" style="font-size:1.65rem;font-weight:800;color:#0057d9;">₱{{ '{:,.0f}'.format(booking.fare_amount) }}</div>
+      {% if booking.estimated_budget and booking.estimated_budget > 0 %}
+        <div style="font-size:0.76rem;color:#92400e;margin-top:3px;">
+          + Shopping/Errand Budget ₱{{ '{:,.0f}'.format(booking.estimated_budget) }} (coordinate items &amp; receipt directly with rider)
+        </div>
+      {% endif %}
+    </div>
+
+    <div id="gcash-waiting-rider-msg" class="{% if booking.rider_id %}hidden{% endif %}" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:10px 12px;font-size:0.84rem;margin-bottom:12px;text-align:center;">
+      ⏳ Waiting for a club rider to accept your booking so their official GCash QR code &amp; number appear here.
+    </div>
+
+    <div id="gcash-rider-recipient-section" class="{% if not booking.rider_id %}hidden{% endif %}">
+      <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:0.75rem;color:#64748b;font-weight:700;">Rider's GCash Account</div>
+          <div id="gcash-rider-name" style="font-weight:700;color:#0f172a;font-size:0.95rem;">{{ booking.rider_name or 'Club Rider' }}</div>
+          <div id="gcash-rider-number" style="font-family:monospace;font-size:0.95rem;color:#0057d9;font-weight:700;">
+            {{ booking.rider_gcash_number or booking.rider_phone or 'No number listed' }}
+          </div>
+        </div>
+        <button type="button" id="copy-rider-gcash-btn" class="btn btn-sm btn-outline" style="white-space:nowrap;">
+          📋 Copy Number
+        </button>
+      </div>
+
+      <div class="gcash-qr-frame">
+        <div id="gcash-qr-img-wrap" class="{% if not booking.rider_gcash_qr %}hidden{% endif %}">
+          <img id="gcash-rider-qr-img" src="{{ booking.rider_gcash_qr or '' }}" alt="Rider GCash QR Code" class="gcash-qr-img">
+          <div style="margin-top:8px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+            <a id="download-rider-qr-btn" href="{{ booking.rider_gcash_qr or '#' }}" download="CCRC-GCash-QR-{{ booking.booking_code }}.png" class="btn btn-sm btn-outline">
+              💾 Save QR Image
+            </a>
+          </div>
+          <small class="text-muted" style="display:block;margin-top:6px;font-size:0.75rem;">
+            Same phone? Tap <strong>Save QR Image</strong>, then tap <strong>Open Official GCash</strong> &rarr; <strong>Pay QR</strong> &rarr; Upload QR from Gallery.
+          </small>
+        </div>
+        <div id="gcash-no-qr-hint" class="{% if booking.rider_gcash_qr %}hidden{% endif %}" style="font-size:0.84rem;color:#475569;padding:6px;">
+          📱 Rider hasn't uploaded a QR photo yet — tap <strong>Open Official GCash</strong> below and send to their GCash number above, or scan their phone's QR code in person.
+        </div>
+      </div>
+    </div>
+
+    <button type="button" id="open-official-gcash-btn" class="btn btn-block btn-lg btn-gcash-official" style="padding:12px 16px;border-radius:12px;font-size:1rem;">
+      <span>💙</span> <span>Open Official GCash</span>
+    </button>
+    <div id="gcash-launch-hint" style="text-align:center;margin-top:8px;font-size:0.76rem;color:#475569;line-height:1.4;">
+      Opens the official GCash app on your phone.
+      <span id="gcash-store-links" style="display:inline-block;margin-left:4px;">
+        (<a href="https://play.google.com/store/apps/details?id=com.globe.gcash.android" target="_blank" rel="noopener" style="color:#0057d9;">Google Play</a> &bull; <a href="https://apps.apple.com/ph/app/gcash/id520020791" target="_blank" rel="noopener" style="color:#0057d9;">App Store</a>)
+      </span>
+    </div>
+
+    <div id="gcash-sent-form-wrap" class="{% if not booking.rider_id or p_stat == 'paid' or booking.status == 'completed' %}hidden{% endif %}" style="margin-top:14px;padding-top:12px;border-top:1px dashed #93c5fd;">
+      <form id="gcash-sent-form">
+        <label for="gcash-ref-input" style="font-size:0.82rem;font-weight:700;color:#1e293b;display:block;margin-bottom:4px;">
+          GCash Reference No. (Optional — helps rider verify faster)
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="gcash-ref-input" value="{{ booking.payment_ref or '' }}" maxlength="64" placeholder="e.g. 9024 118 4521" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #93c5fd;border-radius:10px;font-size:0.88rem;background:#ffffff;">
+          <button type="submit" id="mark-gcash-sent-btn" class="btn btn-primary" style="background:#0f172a;border-color:#0f172a;white-space:nowrap;">
+            {% if p_stat == 'customer_sent' %}
+              🔄 Update Reference No.
+            {% else %}
+              ✓ I've Sent GCash Payment
+            {% endif %}
+          </button>
+        </div>
+      </form>
+      <div id="gcash-customer-feedback" class="hidden" style="margin-top:8px;font-size:0.82rem;font-weight:600;padding:8px 10px;border-radius:8px;"></div>
+    </div>
+
+    <div id="gcash-paid-banner" class="{% if p_stat != 'paid' %}hidden{% endif %}" style="margin-top:12px;background:#dcfce7;border:1.5px solid #86efac;color:#15803d;border-radius:10px;padding:10px 12px;font-size:0.86rem;font-weight:700;text-align:center;">
+      ✅ GCash payment confirmed by your rider!<span id="gcash-paid-ref-text">{% if booking.payment_ref %} (Ref: {{ booking.payment_ref }}){% endif %}</span>
+    </div>
+  </div>
+
 
   <!-- Live In-App Chat with Assigned Rider -->
   <div class="card chat-card" id="chat-section">
@@ -386,6 +488,6 @@
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
 <script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/track.js?v=30"></script>
+<script src="/static/js/track.js?v=31"></script>
 {% endif %}
 {% endblock %}

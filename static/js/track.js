@@ -462,6 +462,8 @@
         }
       }
 
+      Object.assign(booking, b);
+      syncGcashPaymentUI(b);
       syncCustomerVoiceCallContext(b);
 
       if (b.status === "completed" || b.status === "cancelled") {
@@ -752,9 +754,281 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Official GCash App Launch, QR Display & Customer Payment Reporting
+  // ---------------------------------------------------------------------------
+  const gcashCard = document.getElementById("gcash-payment-card");
+  const gcashStatusBadge = document.getElementById("gcash-track-status-badge");
+  const gcashAmountDue = document.getElementById("gcash-amount-due");
+  const gcashWaitingRiderMsg = document.getElementById("gcash-waiting-rider-msg");
+  const gcashRecipientSection = document.getElementById("gcash-rider-recipient-section");
+  const gcashRiderName = document.getElementById("gcash-rider-name");
+  const gcashRiderNumber = document.getElementById("gcash-rider-number");
+  const copyRiderGcashBtn = document.getElementById("copy-rider-gcash-btn");
+  const gcashQrImgWrap = document.getElementById("gcash-qr-img-wrap");
+  const gcashRiderQrImg = document.getElementById("gcash-rider-qr-img");
+  const downloadRiderQrBtn = document.getElementById("download-rider-qr-btn");
+  const gcashNoQrHint = document.getElementById("gcash-no-qr-hint");
+  const openOfficialGcashBtn = document.getElementById("open-official-gcash-btn");
+  const gcashSentFormWrap = document.getElementById("gcash-sent-form-wrap");
+  const gcashSentForm = document.getElementById("gcash-sent-form");
+  const gcashRefInput = document.getElementById("gcash-ref-input");
+  const markGcashSentBtn = document.getElementById("mark-gcash-sent-btn");
+  const gcashCustomerFeedback = document.getElementById("gcash-customer-feedback");
+  const gcashPaidBanner = document.getElementById("gcash-paid-banner");
+  const gcashPaidRefText = document.getElementById("gcash-paid-ref-text");
+
+  const tGcash = (str) => (typeof window.ccrcT === "function" ? window.ccrcT(str) : str);
+  let lastGcashPaymentStatus = String(booking.payment_status || "pending").toLowerCase();
+
+  function showGcashCustomerFeedback(msg, isError) {
+    if (!gcashCustomerFeedback) return;
+    gcashCustomerFeedback.textContent = msg;
+    gcashCustomerFeedback.style.background = isError ? "#fee2e2" : "#dbeafe";
+    gcashCustomerFeedback.style.color = isError ? "#b91c1c" : "#1e40af";
+    gcashCustomerFeedback.style.border = isError ? "1px solid #fca5a5" : "1px solid #93c5fd";
+    gcashCustomerFeedback.classList.remove("hidden");
+  }
+
+  async function copyRiderGcashNumber(silent) {
+    const rawNum = String(booking.rider_gcash_number || booking.rider_phone || "").trim();
+    if (!rawNum) return false;
+    let copied = false;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(rawNum);
+        copied = true;
+      }
+    } catch (_) {
+      copied = false;
+    }
+    if (!copied) {
+      try {
+        const tmp = document.createElement("textarea");
+        tmp.value = rawNum;
+        tmp.setAttribute("readonly", "");
+        tmp.style.cssText = "position:fixed;left:-9999px;opacity:0;";
+        document.body.appendChild(tmp);
+        tmp.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(tmp);
+      } catch (_) {
+        copied = false;
+      }
+    }
+    if (!silent && copyRiderGcashBtn) {
+      const orig = copyRiderGcashBtn.textContent;
+      copyRiderGcashBtn.textContent = copied ? tGcash("✓ Copied!") : rawNum;
+      setTimeout(() => {
+        if (copyRiderGcashBtn) copyRiderGcashBtn.textContent = orig;
+      }, 1800);
+    }
+    return copied;
+  }
+
+  function syncGcashPaymentUI(b) {
+    if (!b || !gcashCard) return;
+    const isGcash = String(b.payment_method || "").toLowerCase() === "gcash";
+    const isCancelled = String(b.status || "").toLowerCase() === "cancelled";
+    gcashCard.classList.toggle("hidden", !isGcash || isCancelled);
+    if (!isGcash || isCancelled) return;
+
+    const pStat = String(b.payment_status || "pending").toLowerCase();
+    const prevStat = lastGcashPaymentStatus;
+    lastGcashPaymentStatus = pStat;
+
+    if (prevStat !== "paid" && pStat === "paid") {
+      playChatBeep();
+    }
+
+    if (gcashAmountDue) {
+      gcashAmountDue.textContent = `₱${Math.round(Number(b.fare_amount || 0)).toLocaleString()}`;
+    }
+
+    if (gcashStatusBadge) {
+      if (pStat === "paid") {
+        gcashStatusBadge.className = "gcash-status-pill paid";
+        gcashStatusBadge.textContent = tGcash("✅ GCash Verified & Paid");
+      } else if (pStat === "customer_sent") {
+        gcashStatusBadge.className = "gcash-status-pill sent";
+        gcashStatusBadge.textContent = tGcash("📲 Sent — Awaiting Rider Confirmation");
+      } else {
+        gcashStatusBadge.className = "gcash-status-pill pending";
+        gcashStatusBadge.textContent = tGcash("⏳ Waiting for GCash Payment");
+      }
+    }
+
+    const hasRider = Boolean(b.rider_id);
+    if (gcashWaitingRiderMsg) gcashWaitingRiderMsg.classList.toggle("hidden", hasRider);
+    if (gcashRecipientSection) gcashRecipientSection.classList.toggle("hidden", !hasRider);
+
+    if (hasRider) {
+      if (gcashRiderName) gcashRiderName.textContent = b.rider_name || "Club Rider";
+      if (gcashRiderNumber) {
+        gcashRiderNumber.textContent = b.rider_gcash_number || b.rider_phone || "No number listed";
+      }
+      const qrUrl = String(b.rider_gcash_qr || "").trim();
+      if (qrUrl) {
+        if (gcashQrImgWrap) gcashQrImgWrap.classList.remove("hidden");
+        if (gcashNoQrHint) gcashNoQrHint.classList.add("hidden");
+        if (gcashRiderQrImg && gcashRiderQrImg.getAttribute("src") !== qrUrl) {
+          gcashRiderQrImg.src = qrUrl;
+        }
+        if (downloadRiderQrBtn) {
+          downloadRiderQrBtn.href = qrUrl;
+          downloadRiderQrBtn.setAttribute("download", `CCRC-GCash-QR-${b.booking_code || "RIDE"}.png`);
+        }
+      } else {
+        if (gcashQrImgWrap) gcashQrImgWrap.classList.add("hidden");
+        if (gcashNoQrHint) gcashNoQrHint.classList.remove("hidden");
+      }
+    }
+
+    if (gcashSentFormWrap) {
+      const showSentForm = hasRider && pStat !== "paid" && b.status !== "completed";
+      gcashSentFormWrap.classList.toggle("hidden", !showSentForm);
+    }
+
+    if (gcashRefInput) {
+      if (prevStat === "customer_sent" && pStat === "pending" && !b.payment_ref) {
+        gcashRefInput.value = "";
+        delete gcashRefInput.dataset.dirty;
+        showGcashCustomerFeedback(
+          tGcash("Trip transferred to a new rider. Please pay using the new rider's GCash details above."),
+          false
+        );
+      } else if (
+        document.activeElement !== gcashRefInput
+        && !gcashRefInput.dataset.dirty
+        && !gcashRefInput.value
+        && b.payment_ref
+      ) {
+        gcashRefInput.value = String(b.payment_ref);
+      }
+    }
+
+    if (markGcashSentBtn && !markGcashSentBtn.disabled) {
+      markGcashSentBtn.textContent = pStat === "customer_sent"
+        ? tGcash("🔄 Update Reference No.")
+        : tGcash("✓ I've Sent GCash Payment");
+    }
+
+    if (gcashPaidBanner) {
+      gcashPaidBanner.classList.toggle("hidden", pStat !== "paid");
+    }
+    if (gcashPaidRefText) {
+      gcashPaidRefText.textContent = b.payment_ref ? ` (Ref: ${b.payment_ref})` : "";
+    }
+  }
+
+  function openOfficialGcashApp() {
+    copyRiderGcashNumber(true);
+    const ua = navigator.userAgent || "";
+    const isAndroid = /android/i.test(ua);
+    const isIOS = /iphone|ipad|ipod/i.test(ua);
+    const riderNum = String(booking.rider_gcash_number || booking.rider_phone || "").trim();
+    const fareVal = Math.round(Number(booking.fare_amount || 0));
+
+    if (isAndroid) {
+      showGcashCustomerFeedback(
+        riderNum
+          ? `${tGcash("Opening Official GCash...")} ${tGcash("Rider GCash number copied:")} ${riderNum} (₱${fareVal.toLocaleString()})`
+          : `${tGcash("Opening Official GCash...")} (₱${fareVal.toLocaleString()})`,
+        false
+      );
+      window.location.href =
+        "intent://#Intent;package=com.globe.gcash.android;scheme=gcash;" +
+        "S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.globe.gcash.android;end";
+      return;
+    }
+
+    if (isIOS) {
+      showGcashCustomerFeedback(
+        riderNum
+          ? `${tGcash("Opening Official GCash...")} ${tGcash("Rider GCash number copied:")} ${riderNum} (₱${fareVal.toLocaleString()})`
+          : `${tGcash("Opening Official GCash...")} (₱${fareVal.toLocaleString()})`,
+        false
+      );
+      const startTs = Date.now();
+      window.location.href = "gcash://";
+      setTimeout(() => {
+        if (!document.hidden && Date.now() - startTs < 2400) {
+          showGcashCustomerFeedback(
+            tGcash("If GCash did not open automatically, switch to the GCash app manually or install it from the App Store link above."),
+            false
+          );
+        }
+      }, 1600);
+      return;
+    }
+
+    showGcashCustomerFeedback(
+      riderNum
+        ? `${tGcash("Open the official GCash app on your phone and scan the QR code above or send")} ₱${fareVal.toLocaleString()} ${tGcash("to")} ${riderNum} (${tGcash("copied!")}).`
+        : `${tGcash("Open the official GCash app on your phone and scan the rider's QR code above.")}`,
+      false
+    );
+  }
+
+  if (copyRiderGcashBtn) {
+    copyRiderGcashBtn.addEventListener("click", () => copyRiderGcashNumber(false));
+  }
+  if (openOfficialGcashBtn) {
+    openOfficialGcashBtn.addEventListener("click", openOfficialGcashApp);
+  }
+  if (gcashRefInput) {
+    gcashRefInput.addEventListener("input", () => {
+      gcashRefInput.dataset.dirty = "1";
+    });
+  }
+  if (gcashSentForm) {
+    gcashSentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!markGcashSentBtn) return;
+      const origText = markGcashSentBtn.textContent;
+      const refVal = (gcashRefInput ? gcashRefInput.value : "").trim();
+      markGcashSentBtn.disabled = true;
+      markGcashSentBtn.textContent = tGcash("Sending...");
+
+      try {
+        const res = await fetch(`/api/bookings/${encodeURIComponent(booking.booking_code)}/gcash/customer-sent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_ref: refVal }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Could not report GCash payment.");
+        }
+        if (gcashRefInput) delete gcashRefInput.dataset.dirty;
+        if (data.booking) {
+          Object.assign(booking, data.booking);
+          syncGcashPaymentUI(data.booking);
+        }
+        showGcashCustomerFeedback(
+          data.message || tGcash("GCash payment notice sent to your rider for confirmation!"),
+          false
+        );
+      } catch (err) {
+        showGcashCustomerFeedback(err.message || "Could not report GCash payment.", true);
+      } finally {
+        if (markGcashSentBtn) {
+          markGcashSentBtn.disabled = false;
+          const pStat = String(booking.payment_status || "pending").toLowerCase();
+          markGcashSentBtn.textContent = pStat === "customer_sent"
+            ? tGcash("🔄 Update Reference No.")
+            : tGcash("✓ I've Sent GCash Payment");
+        } else if (origText) {
+          // no-op
+        }
+      }
+    });
+  }
+
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
     pollChatMessages();
+    syncGcashPaymentUI(booking);
     syncCustomerVoiceCallContext(booking);
     if (booking.status !== "completed" && booking.status !== "cancelled") {
       livePollTimer = setInterval(pollLiveStatus, 3000);

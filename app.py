@@ -95,6 +95,9 @@ from db import (
     calculate_nearest_rider_eta,
     get_busy_rider_ids,
     transfer_booking,
+    update_rider_gcash_profile,
+    mark_gcash_payment_sent,
+    confirm_gcash_payment_received,
 )
 
 _INIT_DB_LOCK = threading.Lock()
@@ -564,7 +567,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                            r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                            r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                            r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-                           r.avatar_url AS rider_avatar
+                           r.avatar_url AS rider_avatar,
+                           COALESCE(r.gcash_number, '') AS rider_gcash_number,
+                           COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
                     FROM bookings b
                     LEFT JOIN riders r ON b.rider_id = r.id
                     WHERE (b.customer_phone = ? OR b.customer_phone = ? OR b.customer_phone LIKE ? OR b.customer_phone LIKE ?)
@@ -577,7 +582,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                            r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
                            r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                            r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-                           r.avatar_url AS rider_avatar
+                           r.avatar_url AS rider_avatar,
+                           COALESCE(r.gcash_number, '') AS rider_gcash_number,
+                           COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
                     FROM bookings b
                     LEFT JOIN riders r ON b.rider_id = r.id
                     WHERE (b.customer_phone = ? OR b.customer_phone = ?)
@@ -1614,6 +1621,32 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "message": "Your rider password has been reset successfully! You can now log in."
         })
 
+    _MAX_GCASH_QR_BYTES = 2_000_000
+
+    def _parse_gcash_qr_upload(qr_b64: str) -> tuple[bytes | None, str | None, str | None, str | None, int]:
+        raw_val = (qr_b64 or "").strip()
+        if not raw_val:
+            return None, None, None, "Please select a GCash QR code image.", 400
+        if raw_val.startswith("data:") and "," in raw_val:
+            _, b64_payload = raw_val.split(",", 1)
+        else:
+            b64_payload = raw_val
+        try:
+            raw_bytes = base64.b64decode(b64_payload, validate=True)
+        except Exception:
+            return None, None, None, "Invalid GCash QR image encoding. Please upload a PNG, JPG, or WebP image.", 400
+        if len(raw_bytes) < 20:
+            return None, None, None, "GCash QR image is empty or invalid.", 400
+        if len(raw_bytes) > _MAX_GCASH_QR_BYTES:
+            return None, None, None, "GCash QR image is too large (maximum 2 MB).", 413
+        if raw_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+            return raw_bytes, "image/png", "png", None, 200
+        if raw_bytes.startswith(b"\xff\xd8\xff"):
+            return raw_bytes, "image/jpeg", "jpg", None, 200
+        if len(raw_bytes) >= 12 and raw_bytes[:4] == b"RIFF" and raw_bytes[8:12] == b"WEBP":
+            return raw_bytes, "image/webp", "webp", None, 200
+        return None, None, None, "Unsupported GCash QR image format. Please upload a PNG, JPG, or WebP image.", 400
+
     @app.post("/api/rider/register")
     def rider_register():
         conn = get_db()
@@ -1627,6 +1660,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         plate_number = (data.get("plate_number") or "").strip()
         municipality = (data.get("municipality") or "Mambajao").strip()
         avatar_b64 = (data.get("avatar_base64") or "").strip()
+        gcash_number = (data.get("gcash_number") or "").strip()
+        gcash_qr_b64 = (data.get("gcash_qr_base64") or "").strip()
 
         if not name or not phone or not password or not bike_model or not plate_number:
             return jsonify({"error": "Please complete all required fields."}), 400
@@ -1643,10 +1678,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if existing_email:
                 return jsonify({"error": "This email address is already registered as a rider. Please log in."}), 409
 
+        qr_parsed: tuple[bytes, str, str] | None = None
+        if gcash_qr_b64:
+            qr_bytes, qr_mime, qr_ext, qr_err, qr_status = _parse_gcash_qr_upload(gcash_qr_b64)
+            if qr_err or not qr_bytes or not qr_mime or not qr_ext:
+                return jsonify({"error": qr_err or "Invalid GCash QR image."}), qr_status
+            qr_parsed = (qr_bytes, qr_mime, qr_ext)
+
         # Process and save profile picture
         avatar_url = ""
         if avatar_b64 and "," in avatar_b64:
-            import base64
             try:
                 head, b64str = avatar_b64.split(",", 1)
                 mimetype = "image/jpeg"
@@ -1673,7 +1714,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             license_no=license_no,
             avatar_url=avatar_url,
             email=email,
+            gcash_number=gcash_number,
         )
+        if qr_parsed:
+            qr_bytes, qr_mime, qr_ext = qr_parsed
+            ts = int(datetime.now().timestamp())
+            qr_fname = f"gcash_qr_{rider_id}_{ts}_{secrets.token_hex(3)}.{qr_ext}"
+            qr_url = save_uploaded_media(conn, qr_fname, qr_bytes, qr_mime)
+            update_rider_gcash_profile(conn, int(rider_id), gcash_qr_url=qr_url)
         conn.commit()
 
         rider = get_rider_by_id(conn, rider_id)
@@ -1687,6 +1735,61 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "message": f"✅ Your Rider Application has been submitted, {name}! Your account is currently PENDING APPROVAL. Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection, verification, and account activation."
         }), 201
 
+    @app.route("/api/rider/gcash-profile", methods=["GET", "POST"])
+    def rider_gcash_profile():
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Rider authentication required."}), 401
+        conn = get_db()
+        rider = get_rider_by_id(conn, int(rider_id))
+        if not rider:
+            return jsonify({"error": "Rider account not found."}), 404
+
+        if request.method == "GET":
+            clean_rider = {k: v for k, v in rider.items() if k != "password_hash"}
+            return jsonify({
+                "success": True,
+                "gcash_number": clean_rider.get("gcash_number") or "",
+                "gcash_qr_url": clean_rider.get("gcash_qr_url") or "",
+                "rider": clean_rider,
+            })
+
+        data = request.get_json(silent=True) or {}
+        new_number: str | None = None
+        if "gcash_number" in data:
+            new_number = str(data.get("gcash_number") or "").strip()
+
+        new_qr_url: str | None = None
+        clear_qr = bool(data.get("clear_qr"))
+        qr_b64 = (data.get("gcash_qr_base64") or "").strip()
+        if clear_qr:
+            new_qr_url = ""
+        elif qr_b64:
+            qr_bytes, qr_mime, qr_ext, qr_err, qr_status = _parse_gcash_qr_upload(qr_b64)
+            if qr_err or not qr_bytes or not qr_mime or not qr_ext:
+                return jsonify({"error": qr_err or "Invalid GCash QR image."}), qr_status
+            ts = int(datetime.now().timestamp())
+            qr_fname = f"gcash_qr_{rider_id}_{ts}_{secrets.token_hex(3)}.{qr_ext}"
+            new_qr_url = save_uploaded_media(conn, qr_fname, qr_bytes, qr_mime)
+
+        if new_number is None and new_qr_url is None:
+            return jsonify({"error": "Please enter your GCash mobile number or upload a GCash QR code image."}), 400
+
+        updated_rider = update_rider_gcash_profile(
+            conn,
+            int(rider_id),
+            gcash_number=new_number,
+            gcash_qr_url=new_qr_url,
+        )
+        conn.commit()
+        clean_rider = {k: v for k, v in (updated_rider or rider).items() if k != "password_hash"}
+        return jsonify({
+            "success": True,
+            "message": "Your GCash QR & payment details have been saved!",
+            "gcash_number": clean_rider.get("gcash_number") or "",
+            "gcash_qr_url": clean_rider.get("gcash_qr_url") or "",
+            "rider": clean_rider,
+        })
 
     @app.get("/api/rider/co-riders")
     def get_rider_co_riders():
@@ -1747,9 +1850,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"authenticated": False, "job": None, "scheduled_jobs": []})
         conn = get_db()
 
+        rider = get_rider_by_id(conn, int(rider_id))
+        clean_rider = {k: v for k, v in rider.items() if k != "password_hash"} if rider else None
         job = get_rider_active_job(conn, int(rider_id))
         scheduled_jobs = get_rider_scheduled_jobs(conn, int(rider_id))
-        return jsonify({"authenticated": True, "job": job, "scheduled_jobs": scheduled_jobs})
+        return jsonify({
+            "authenticated": True,
+            "rider": clean_rider,
+            "job": job,
+            "scheduled_jobs": scheduled_jobs,
+        })
 
     @app.post("/api/bookings/<int:booking_id>/accept")
     def rider_accept_booking(booking_id: int):
@@ -1850,11 +1960,85 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if not (new_status == "cancelled" and is_booking_customer):
                 return jsonify({"error": "Unauthorized to update this booking's status."}), 403
 
+        if (
+            new_status == "completed"
+            and (booking.get("payment_method") or "").strip().lower() == "gcash"
+            and (booking.get("payment_status") or "pending").strip().lower() != "paid"
+            and not is_admin
+        ):
+            return jsonify({
+                "error": "Cannot complete this GCash booking yet. Please show your GCash QR code and confirm that you received the customer's GCash payment first.",
+                "requires_gcash_payment": True,
+                "payment_status": booking.get("payment_status") or "pending",
+            }), 400
+
         if not update_booking_status(conn, booking_id, new_status):
             return jsonify({"error": "Cannot transition booking from its current status."}), 400
         conn.commit()
         updated_job = get_booking_by_id(conn, booking_id)
         return jsonify({"success": True, "job": updated_job})
+
+    @app.post("/api/bookings/<code_or_id>/gcash/customer-sent")
+    def booking_gcash_customer_sent(code_or_id: str):
+        conn = get_db()
+        booking = _resolve_booking_by_code_or_id(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        auth_role = _authorize_chat_role(booking)
+        if not auth_role:
+            return jsonify({"error": "Unauthorized to report GCash payment for this booking."}), 401
+        if auth_role == "rider":
+            return jsonify({"error": "Only the customer can mark GCash payment as sent."}), 403
+
+        data = request.get_json(silent=True) or {}
+        payment_ref = str(data.get("payment_ref") or "").strip()
+
+        ok, msg, updated, status_code = mark_gcash_payment_sent(
+            conn,
+            int(booking["id"]),
+            payment_ref=payment_ref,
+        )
+        if not ok:
+            conn.rollback()
+            return jsonify({"error": msg}), status_code
+        conn.commit()
+        return jsonify({"success": True, "message": msg, "booking": updated})
+
+    @app.post("/api/bookings/<code_or_id>/gcash/confirm")
+    def booking_gcash_confirm(code_or_id: str):
+        rider_id = session.get("rider_id")
+        is_admin = bool(session.get("is_admin"))
+        if not rider_id and not is_admin:
+            return jsonify({"error": "Rider authentication required."}), 401
+
+        conn = get_db()
+        booking = _resolve_booking_by_code_or_id(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        data = request.get_json(silent=True) or {}
+        payment_ref = str(data.get("payment_ref") or "").strip()
+        verified_offline_receipt = bool(data.get("verified_offline_receipt", False))
+
+        ok, msg, updated, status_code = confirm_gcash_payment_received(
+            conn,
+            int(booking["id"]),
+            acting_rider_id=int(rider_id) if rider_id else None,
+            is_admin=is_admin,
+            payment_ref=payment_ref,
+            verified_offline_receipt=verified_offline_receipt,
+        )
+        if not ok:
+            conn.rollback()
+            return jsonify({"error": msg}), status_code
+        conn.commit()
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "booking": updated,
+            "job": updated,
+        })
 
     @app.post("/api/bookings/<int:booking_id>/transfer")
     def transfer_job_booking(booking_id: int):

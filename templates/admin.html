@@ -219,6 +219,16 @@
                       <a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a>
                       <span style="margin-left:6px;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:10px;font-weight:700;font-size:0.72rem;">⭐ {{ "%.1f"|format(r.rating_avg or 5.0) }}</span>
                     </div>
+                    <div style="margin-top:3px;font-size:0.72rem;">
+                      {% if r.gcash_qr_url %}
+                        <a href="{{ r.gcash_qr_url }}" target="_blank" style="background:#eff6ff;color:#0057d9;border:1px solid #93c5fd;padding:1px 7px;border-radius:10px;font-weight:700;text-decoration:none;display:inline-block;">💙 View GCash QR</a>
+                        {% if r.gcash_number %}<span class="text-muted" style="margin-left:4px;">{{ r.gcash_number }}</span>{% endif %}
+                      {% elif r.gcash_number %}
+                        <span class="badge" style="background:#eff6ff;color:#0369a1;border:1px solid #bfdbfe;font-size:0.68rem;">💙 {{ r.gcash_number }} (No QR)</span>
+                      {% else %}
+                        <span class="text-muted">No GCash QR</span>
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
               </td>
@@ -387,7 +397,20 @@
               <small><strong>From:</strong> {{ b.pickup_address or b.pickup_location }}</small><br>
               <small><strong>To:</strong> {{ b.dropoff_address or b.dropoff_location }}</small>
             </td>
-            <td style="padding:8px;font-weight:700;color:var(--primary);">₱{{ "%.2f"|format((b.fare_amount or b.estimated_fare or 0)|float) }}</td>
+            <td style="padding:8px;font-weight:700;color:var(--primary);">
+              ₱{{ "%.2f"|format((b.fare_amount or b.estimated_fare or 0)|float) }}
+              {% if (b.payment_method or '')|lower == 'gcash' %}
+                <div style="margin-top:4px;">
+                  {% if b.payment_status == 'paid' %}
+                    <span class="badge badge-success" style="font-size:0.68rem;">💙 GCash Paid</span>
+                  {% elif b.payment_status == 'customer_sent' %}
+                    <span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #60a5fa;font-size:0.68rem;">📲 GCash Sent</span>
+                  {% else %}
+                    <span class="badge badge-warning" style="font-size:0.68rem;">⏳ GCash Pending</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </td>
             <td style="padding:8px;">
               {% if b.rider_name %}
                 <strong>{{ b.rider_name }}</strong><br>
