@@ -975,6 +975,50 @@
     "full_address": "Sitio Balintawak, Poblacion, Mambajao"
   },
   {
+    "name": "Timogsay, Bug-ong, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "timogsay",
+      "timugsay",
+      "timogsai",
+      "timugsai",
+      "sitio timogsay",
+      "sitio timugsay",
+      "timogsay bug-ong",
+      "timugsay bug-ong",
+      "upper bug-ong",
+      "upper bug ong",
+      "bug-ong upland",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2375,
+    "lng": 124.6795,
+    "mun": "Mambajao",
+    "full_address": "Sitio Timogsay (Timugsay), Upper Bug-ong, Mambajao"
+  },
+  {
+    "name": "Upper Cogon, Agoho, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "upper cogon",
+      "cogon",
+      "cogon agoho",
+      "sitio cogon",
+      "upper cogon agoho",
+      "lower cogon",
+      "upper agoho",
+      "sibato",
+      "sibato road",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2358,
+    "lng": 124.6738,
+    "mun": "Mambajao",
+    "full_address": "Sitio Upper Cogon, Agoho, Mambajao"
+  },
+  {
     "name": "Ardent Hot Spring, Esperanza",
     "cat": "tourist",
     "keywords": [

@@ -445,11 +445,17 @@
       zh: "山地 / 陡坡路段 (+₱30)",
       ja: "山岳・急坂ルート (+₱30)",
     },
-    "Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran": {
-      ceb: "Awtomatikong dugang sa mga tungason: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran",
-      fil: "Awtomatikong idinaragdag sa matatarik na ruta: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran",
-      zh: "陡坡路段自动加收：Soro-soro、Utopia、Highland、Ardent、Katibawasan、Binunsaran",
-      ja: "急坂エリア自動適用：Soro-soro、Utopia、Highland、Ardent、Katibawasan、Binunsaran",
+    "Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon": {
+      ceb: "Awtomatikong dugang sa mga tungason: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon",
+      fil: "Awtomatikong idinaragdag sa matatarik na ruta: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon",
+      zh: "陡坡路段自动加收：Soro-soro、Utopia、Highland、Ardent、Katibawasan、Binunsaran、Timogsay、Upper Cogon",
+      ja: "急坂エリア自動適用：Soro-soro、Utopia、Highland、Ardent、Katibawasan、Binunsaran、Timogsay、Upper Cogon",
+    },
+    "+₱30 auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon, etc.)": {
+      ceb: "+₱30 awtomatikong dugang sa mga tungason (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon, uban pa)",
+      fil: "+₱30 awtomatikong idinaragdag sa matatarik na ruta (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon, atbp.)",
+      zh: "陡坡路段自动加收 +₱30（Soro-soro、Utopia、Highland、Ardent、Katibawasan、Binunsaran、Timogsay、Upper Cogon 等）",
+      ja: "急坂ルートで自動加算 +₱30（Soro-soro、Utopia、Highland、Ardent、Katibawasan、Binunsaran、Timogsay、Upper Cogon など）",
     },
     "🛣️ Road Route": {
       ceb: "🛣️ Ruta sa Kalsada",

@@ -940,6 +940,50 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "full_address": "Sitio Balintawak, Poblacion, Mambajao"
     },
     {
+        "name": "Timogsay, Bug-ong, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "timogsay",
+            "timugsay",
+            "timogsai",
+            "timugsai",
+            "sitio timogsay",
+            "sitio timugsay",
+            "timogsay bug-ong",
+            "timugsay bug-ong",
+            "upper bug-ong",
+            "upper bug ong",
+            "bug-ong upland",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2375,
+        "lng": 124.6795,
+        "mun": "Mambajao",
+        "full_address": "Sitio Timogsay (Timugsay), Upper Bug-ong, Mambajao"
+    },
+    {
+        "name": "Upper Cogon, Agoho, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "upper cogon",
+            "cogon",
+            "cogon agoho",
+            "sitio cogon",
+            "upper cogon agoho",
+            "lower cogon",
+            "upper agoho",
+            "sibato",
+            "sibato road",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2358,
+        "lng": 124.6738,
+        "mun": "Mambajao",
+        "full_address": "Sitio Upper Cogon, Agoho, Mambajao"
+    },
+    {
         "name": "Ardent Hot Spring, Esperanza",
         "cat": "tourist",
         "keywords": [
@@ -3346,6 +3390,17 @@ HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
     "hinterland",
     "ardent",
     "sitio esperanza",
+    "timogsay",
+    "timugsay",
+    "timogsai",
+    "timugsai",
+    "upper cogon",
+    "sitio cogon",
+    "lower cogon",
+    "upper agoho",
+    "upper bug-ong",
+    "upper bug ong",
+    "sibato",
     "katibawasan",
     "hibok-hibok",
     "hibok hibok",
@@ -3366,7 +3421,7 @@ HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
     "steep uphill",
 )
 
-_HINTERLAND_BOUNDARY_RE = re.compile(r"\b(?:itum|esperanza|saay)\b")
+_HINTERLAND_BOUNDARY_RE = re.compile(r"\b(?:itum|esperanza|saay|cogon)\b")
 
 
 def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
@@ -3376,6 +3431,8 @@ def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
       - Mambajao Uplands: Soro-soro, Highland Resort, Katibawasan Falls, Quiboro,
         Utopia, PHIVOLCS, Sa-ay Cold Spring, Binunsaran, Nanaw, Itum / Hibok-Hibok Trail,
         Sitio Esperanza & Ardent Hot Spring.
+      - Agoho & Bug-ong Uplands: Upper Cogon (above Agoho / Sibato foothills) and
+        Timogsay / Timugsay (above Bug-ong), clear of Tagdo & coastal resorts.
       - Catarman Mountain Uplands: Tuasan Falls / Upper Mainit.
       - Sagay Uplands: Binangawan Falls interior.
     """
@@ -3388,6 +3445,8 @@ def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
         return False
 
     if 9.185 <= lat_f <= 9.2355 and 124.682 <= lng_f <= 124.734:
+        return True
+    if 9.215 <= lat_f <= 9.2400 and 124.6680 <= lng_f <= 124.6845:
         return True
     if 9.168 <= lat_f <= 9.205 and 124.668 <= lng_f <= 124.695:
         return True
@@ -3438,7 +3497,7 @@ def calculate_fare(
     - Queuing at large establishments / groceries (Gaisano, Davilett, Nene Uy): +₱30.00
     - Extra store stops: +₱20.00 per additional store
     - Bulky orders / Shopping orders >= ₱2,000: +₱20.00
-    - Hinterland / Mountain route (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Quiboro, Sa-ay, Tuasan, Binangawan, Itum, etc.): +₱30.00
+    - Hinterland / Mountain route (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Timogsay, Upper Cogon, Quiboro, Sa-ay, Tuasan, Binangawan, Itum, etc.): +₱30.00
     """
     clean_km = max(1.0, round(km, 2))
     base_fare = float(settings.get("base_fare") or 40.0)
