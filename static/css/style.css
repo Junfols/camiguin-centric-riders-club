@@ -2052,6 +2052,28 @@ body.rider-logged-in .nav-rider-logged-item {
   border-bottom-left-radius: 3px;
 }
 
+.chat-bubble-wrap.system {
+  align-self: center;
+  align-items: center;
+  max-width: 96%;
+  margin: 4px 0;
+}
+
+.chat-bubble-wrap.system .chat-sender-label {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.chat-bubble-wrap.system .chat-bubble {
+  background: #fffbeb;
+  color: #78350f;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .chat-time {
   font-size: 0.65rem;
   opacity: 0.75;
@@ -2680,3 +2702,45 @@ body.rider-logged-in .nav-rider-logged-item {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   user-select: none;
 }
+
+/* Emergency Transfer / Re-Broadcast UI */
+.btn-transfer-emergency {
+  border: 1.5px solid #f59e0b;
+  color: #b45309;
+  background: #fffbeb;
+  font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-transfer-emergency:hover {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+.transfer-urgency-banner {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px solid #f59e0b;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #78350f;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.transfer-corider-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.transfer-corider-option.is-busy {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  opacity: 0.72;
+}
+

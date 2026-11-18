@@ -4011,6 +4011,9 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code_id INTEGER DEFAULT NULL",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code VARCHAR(64) DEFAULT ''",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS discount_amount DOUBLE PRECISION DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transferred_from_rider_id INTEGER DEFAULT NULL",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transfer_reason TEXT DEFAULT ''",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transfer_count INTEGER DEFAULT 0",
         ]:
             try:
                 conn.execute(migration)
@@ -4122,6 +4125,9 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             promo_code_id INTEGER DEFAULT NULL,
             promo_code TEXT DEFAULT '',
             discount_amount REAL DEFAULT 0,
+            transferred_from_rider_id INTEGER DEFAULT NULL,
+            transfer_reason TEXT DEFAULT '',
+            transfer_count INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
             FOREIGN KEY (rider_id) REFERENCES riders(id) ON DELETE SET NULL
         )
@@ -4252,6 +4258,9 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         ("promo_code_id", "INTEGER DEFAULT NULL"),
         ("promo_code", "TEXT DEFAULT ''"),
         ("discount_amount", "REAL DEFAULT 0"),
+        ("transferred_from_rider_id", "INTEGER DEFAULT NULL"),
+        ("transfer_reason", "TEXT DEFAULT ''"),
+        ("transfer_count", "INTEGER DEFAULT 0"),
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN {col_def[0]} {col_def[1]}")
@@ -4336,6 +4345,9 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             promo_code_id INTEGER DEFAULT NULL,
             promo_code VARCHAR(64) DEFAULT '',
             discount_amount DOUBLE PRECISION DEFAULT 0,
+            transferred_from_rider_id INTEGER DEFAULT NULL,
+            transfer_reason TEXT DEFAULT '',
+            transfer_count INTEGER DEFAULT 0,
             created_at VARCHAR(32) NOT NULL
         )
         """
@@ -4477,6 +4489,9 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         ("promo_code_id", "INTEGER DEFAULT NULL"),
         ("promo_code", "VARCHAR(64) DEFAULT ''"),
         ("discount_amount", "DOUBLE PRECISION DEFAULT 0"),
+        ("transferred_from_rider_id", "INTEGER DEFAULT NULL"),
+        ("transfer_reason", "TEXT DEFAULT ''"),
+        ("transfer_count", "INTEGER DEFAULT 0"),
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
@@ -4707,6 +4722,10 @@ def delete_rider(conn: DatabaseConnection, rider_id: int) -> bool:
     except Exception:
         pass
     try:
+        conn.execute("UPDATE bookings SET transferred_from_rider_id = NULL WHERE transferred_from_rider_id = ?", (rider_id,))
+    except Exception:
+        pass
+    try:
         conn.execute("DELETE FROM tracking_logs WHERE rider_id = ?", (rider_id,))
     except Exception:
         pass
@@ -4773,6 +4792,40 @@ def get_online_riders(conn: DatabaseConnection) -> list[dict[str, Any]]:
         """
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_busy_rider_ids(conn: DatabaseConnection) -> set[int]:
+    """Returns rider IDs currently committed to an in-progress or on-demand/imminent trip."""
+    rows = conn.execute(
+        """
+        SELECT rider_id, status, scheduled_at
+        FROM bookings
+        WHERE rider_id IS NOT NULL AND status IN ('accepted', 'in_progress')
+        """
+    ).fetchall()
+    now = get_now_pht()
+    busy: set[int] = set()
+    for r in rows:
+        rid = r["rider_id"]
+        if not rid:
+            continue
+        if r["status"] == "in_progress":
+            busy.add(int(rid))
+            continue
+        sched_str = (r["scheduled_at"] or "").strip()
+        if not sched_str:
+            busy.add(int(rid))
+            continue
+        try:
+            sched_dt = datetime.fromisoformat(sched_str)
+            if sched_dt.tzinfo is not None:
+                sched_dt = sched_dt.replace(tzinfo=None)
+            mins_left = (sched_dt - now).total_seconds() / 60
+            if mins_left <= 15:
+                busy.add(int(rid))
+        except Exception:
+            busy.add(int(rid))
+    return busy
 
 
 # -----------------------------------------------------------------------------
@@ -4848,11 +4901,13 @@ def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, An
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
                r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
                COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
+        LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
         LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE b.id = ?
         """,
@@ -4869,11 +4924,13 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
                r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
                r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
                r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
                COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
+        LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
         LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE UPPER(b.booking_code) = ?
         """,
@@ -4886,13 +4943,15 @@ def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str,
     rows = conn.execute(
         """
         SELECT b.*,
+               COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
                COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
+        LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
         LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE b.status = 'broadcast' AND b.rider_id IS NULL
-        ORDER BY b.id DESC
+        ORDER BY CASE WHEN COALESCE(b.transfer_count, 0) > 0 THEN 0 ELSE 1 END, b.id DESC
         LIMIT 20
         """
     ).fetchall()
@@ -4911,10 +4970,12 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
     rows = conn.execute(
         """
         SELECT b.*,
+               COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
                COALESCE(c.barangay, '') AS customer_barangay
         FROM bookings b
+        LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
         LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE b.rider_id = ? AND b.status IN ('accepted', 'in_progress')
         ORDER BY b.id DESC
@@ -4925,27 +4986,31 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
     if not rows:
         return None
 
+    dict_rows = [dict(r) for r in rows]
+
     # Priority 1: in_progress job
-    for r in rows:
+    for r in dict_rows:
         if r["status"] == "in_progress":
-            return dict(r)
+            return r
 
     now = get_now_pht()
 
     # Priority 2: on-demand accepted job (no schedule)
-    for r in rows:
+    for r in dict_rows:
         if r["status"] == "accepted":
             sched_str = (r.get("scheduled_at") or "").strip()
             if not sched_str:
-                return dict(r)
+                return r
 
     # Priority 3: advance accepted job due within 30 mins
-    for r in rows:
+    for r in dict_rows:
         if r["status"] == "accepted":
             sched_str = (r.get("scheduled_at") or "").strip()
             if sched_str:
                 try:
                     sched_dt = datetime.fromisoformat(sched_str)
+                    if sched_dt.tzinfo is not None:
+                        sched_dt = sched_dt.replace(tzinfo=None)
                     mins_left = (sched_dt - now).total_seconds() / 60
                     if mins_left <= 30:
                         d = dict(r)
@@ -4953,12 +5018,12 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
                         d["is_advance"] = True
                         return d
                 except Exception:
-                    return dict(r)
+                    return r
 
     # Priority 4 Fallback: If rider has accepted advance jobs, show the earliest one
     # so the dashboard NEVER appears blank right after accepting a booking!
     advance_jobs = []
-    for r in rows:
+    for r in dict_rows:
         if r["status"] == "accepted":
             d = dict(r)
             sched_str = (d.get("scheduled_at") or "").strip()
@@ -4966,6 +5031,8 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
             if sched_str:
                 try:
                     sched_dt = datetime.fromisoformat(sched_str)
+                    if sched_dt.tzinfo is not None:
+                        sched_dt = sched_dt.replace(tzinfo=None)
                     mins_left = int((sched_dt - now).total_seconds() / 60)
                 except Exception:
                     pass
@@ -5029,9 +5096,219 @@ def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> 
             b = get_booking_by_id(conn, booking_id)
             if b:
                 record_transaction(conn, b, status="accepted", notes=f"Accepted by rider #{rider_id}")
+                if int(b.get("transfer_count") or 0) > 0:
+                    rider_label = b.get("rider_name") or f"Rider #{rider_id}"
+                    plate = f" ({b['rider_plate']})" if b.get("rider_plate") else ""
+                    add_booking_message(
+                        conn,
+                        booking_id,
+                        "system",
+                        "CCRC Dispatch",
+                        f"🛵 Rescue rider {rider_label}{plate} has accepted your transferred trip and is now heading over!",
+                    )
         except Exception:
             pass
     return rowcount > 0
+
+
+def transfer_booking(
+    conn: DatabaseConnection,
+    booking_id: int,
+    target_rider_id: int | None = None,
+    reason: str = "",
+    note: str = "",
+    new_pickup_lat: float | None = None,
+    new_pickup_lng: float | None = None,
+    acting_rider_id: int | None = None,
+    is_admin: bool = False,
+) -> tuple[bool, str, dict[str, Any] | None, int]:
+    """
+    Emergency Transfer / Re-Broadcast for a rider experiencing a flat tire,
+    mechanical trouble, or urgent emergency (whether 'accepted' or 'in_progress').
+
+    - If target_rider_id is provided: atomically hands over directly to that online, available co-rider
+      in 'accepted' status so the replacement rider can confirm pickup/handover and complete the trip.
+    - If target_rider_id is None: returns the booking to the 'broadcast' dispatch pool with priority
+      so any online co-rider can claim it.
+
+    Returns (ok, mode_or_error, updated_booking_or_None, http_status).
+    """
+    booking = get_booking_by_id(conn, booking_id)
+    if not booking:
+        return False, "Booking not found.", None, 404
+
+    current_status = (booking.get("status") or "").lower()
+    if current_status not in ("accepted", "in_progress"):
+        return False, "Only active trips (accepted or in_progress) can be transferred.", None, 400
+
+    if not is_admin:
+        if not acting_rider_id:
+            return False, "Rider authentication required.", None, 401
+        if booking.get("rider_id") != int(acting_rider_id):
+            return False, "You are not assigned to this booking.", None, 403
+
+    from_rider_id = booking.get("rider_id")
+    from_rider_name = booking.get("rider_name") or (f"Rider #{from_rider_id}" if from_rider_id else "Previous Rider")
+
+    clean_reason = (reason or "Flat tire / vehicle emergency").strip()[:120]
+    clean_note = (note or "").strip()[:240]
+    combined_reason = f"{clean_reason} — {clean_note}" if clean_note else clean_reason
+
+    # Optional updated handover pickup GPS coordinates
+    updated_coords: tuple[float, float] | None = None
+    if new_pickup_lat is not None and new_pickup_lng is not None and str(new_pickup_lat).strip() != "" and str(new_pickup_lng).strip() != "":
+        try:
+            plat = float(new_pickup_lat)
+            plng = float(new_pickup_lng)
+            if (
+                math.isfinite(plat)
+                and math.isfinite(plng)
+                and -90.0 <= plat <= 90.0
+                and -180.0 <= plng <= 180.0
+                and not (plat == 0.0 and plng == 0.0)
+            ):
+                updated_coords = (round(plat, 6), round(plng, 6))
+        except (ValueError, TypeError):
+            updated_coords = None
+
+    # Check if this is a future scheduled reservation (> 30m away and not in_progress)
+    is_future_scheduled = False
+    sched_str = (booking.get("scheduled_at") or "").strip()
+    if sched_str and current_status != "in_progress":
+        try:
+            sched_dt = datetime.fromisoformat(sched_str)
+            if sched_dt.tzinfo is not None:
+                sched_dt = sched_dt.replace(tzinfo=None)
+            if (sched_dt - get_now_pht()).total_seconds() / 60 > 30:
+                is_future_scheduled = True
+        except Exception:
+            pass
+
+    now = get_now_pht().isoformat(timespec="seconds")
+    next_transfer_count = int(booking.get("transfer_count") or 0) + 1
+
+    coord_sql = ""
+    coord_params: list[Any] = []
+    if updated_coords is not None:
+        coord_sql = ", pickup_lat = ?, pickup_lng = ?"
+        coord_params = [updated_coords[0], updated_coords[1]]
+
+    guard_sql = "WHERE id = ? AND status IN ('accepted', 'in_progress')"
+    guard_params: list[Any] = [booking_id]
+    if from_rider_id is not None:
+        guard_sql += " AND rider_id = ?"
+        guard_params.append(int(from_rider_id))
+
+    if target_rider_id is not None:
+        try:
+            target_rid = int(target_rider_id)
+        except (ValueError, TypeError):
+            return False, "Invalid target rider ID.", None, 400
+
+        if from_rider_id is not None and target_rid == int(from_rider_id):
+            return False, "Cannot transfer a trip to yourself.", None, 400
+
+        target_rider = get_rider_by_id(conn, target_rid)
+        if not target_rider:
+            return False, "Selected co-rider was not found.", None, 404
+        if (target_rider.get("status") or "").lower() != "active":
+            return False, "Selected co-rider account is not active.", None, 400
+        if int(target_rider.get("is_online") or 0) != 1:
+            return False, f"{target_rider.get('name', 'Selected co-rider')} is currently offline. Choose an online rider or Re-Broadcast to all riders.", None, 400
+
+        if not is_future_scheduled:
+            busy_ids = get_busy_rider_ids(conn)
+            if target_rid in busy_ids:
+                return False, f"{target_rider.get('name', 'Selected co-rider')} already has an active trip. Choose another rider or Re-Broadcast to all riders.", None, 409
+
+        sql = f"""
+            UPDATE bookings
+            SET status = 'accepted',
+                rider_id = ?,
+                accepted_at = ?,
+                pickup_time = NULL,
+                transferred_from_rider_id = ?,
+                transfer_reason = ?,
+                transfer_count = ?{coord_sql}
+            {guard_sql}
+        """
+        params = [target_rid, now, from_rider_id, combined_reason, next_transfer_count] + coord_params + guard_params
+        cur = conn.execute(sql, tuple(params))
+        rowcount = cur.rowcount if hasattr(cur, "rowcount") else 0
+        if rowcount == 0:
+            return False, "Booking could no longer be transferred (status changed concurrently).", None, 409
+
+        updated = get_booking_by_id(conn, booking_id)
+        target_name = (target_rider.get("name") or f"Rider #{target_rid}").strip()
+        plate_info = f" ({target_rider.get('plate_number')})" if target_rider.get("plate_number") else ""
+        if updated:
+            try:
+                record_transaction(
+                    conn,
+                    updated,
+                    status="accepted",
+                    notes=f"Emergency transfer from {from_rider_name} to {target_name}: {combined_reason}",
+                )
+            except Exception:
+                pass
+        handover_gps_msg = " Handover pickup pin updated to rider's current location." if updated_coords else ""
+        sys_msg = (
+            f"🚨 Emergency transfer: {from_rider_name} handed this trip over to rescue rider "
+            f"{target_name}{plate_info}. Reason: {combined_reason}.{handover_gps_msg}"
+        )
+        try:
+            add_booking_message(conn, booking_id, "system", "CCRC Dispatch", sys_msg)
+        except Exception:
+            pass
+        return True, "direct", updated, 200
+
+    # Branch B: Re-Broadcast back to all online riders
+    sql = f"""
+        UPDATE bookings
+        SET status = 'broadcast',
+            rider_id = NULL,
+            accepted_at = NULL,
+            pickup_time = NULL,
+            transferred_from_rider_id = ?,
+            transfer_reason = ?,
+            transfer_count = ?{coord_sql}
+        {guard_sql}
+    """
+    params = [from_rider_id, combined_reason, next_transfer_count] + coord_params + guard_params
+    cur = conn.execute(sql, tuple(params))
+    rowcount = cur.rowcount if hasattr(cur, "rowcount") else 0
+    if rowcount == 0:
+        return False, "Booking could no longer be re-broadcast (status changed concurrently).", None, 409
+
+    updated = get_booking_by_id(conn, booking_id)
+    tx_note = f"Emergency re-broadcast from {from_rider_name}: {combined_reason}"
+    try:
+        cur_tx = conn.execute(
+            """
+            UPDATE transactions
+            SET rider_id = NULL,
+                rider_name = '',
+                status = 'broadcast',
+                notes = ?
+            WHERE booking_id = ?
+            """,
+            (tx_note, booking_id),
+        )
+        if (cur_tx.rowcount if hasattr(cur_tx, "rowcount") else 0) == 0 and updated:
+            record_transaction(conn, updated, status="broadcast", notes=tx_note)
+    except Exception:
+        pass
+
+    handover_gps_msg = " Handover pickup pin updated to rider's current location." if updated_coords else ""
+    sys_msg = (
+        f"🚨 {from_rider_name} requested an emergency transfer ({combined_reason}) and re-broadcasted "
+        f"this trip to all online CCRC riders.{handover_gps_msg} Finding the nearest available rider..."
+    )
+    try:
+        add_booking_message(conn, booking_id, "system", "CCRC Dispatch", sys_msg)
+    except Exception:
+        pass
+    return True, "broadcast", updated, 200
 
 
 def update_booking_status(conn: DatabaseConnection, booking_id: int, new_status: str) -> bool:
@@ -5414,8 +5691,9 @@ def restore_full_backup(
                         estimated_budget, estimated_km, fare_amount, payment_method,
                         rider_id, accepted_at, pickup_time, completed_at,
                         cancelled_reason, scheduled_at, promo_code_id, promo_code,
-                        discount_amount, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        discount_amount, transferred_from_rider_id, transfer_reason,
+                        transfer_count, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         b_id,
@@ -5444,6 +5722,9 @@ def restore_full_backup(
                         b.get("promo_code_id"),
                         b.get("promo_code") or "",
                         float(b.get("discount_amount") or 0.0),
+                        b.get("transferred_from_rider_id"),
+                        b.get("transfer_reason") or "",
+                        int(b.get("transfer_count") or 0),
                         b.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
@@ -5457,8 +5738,9 @@ def restore_full_backup(
                         estimated_budget, estimated_km, fare_amount, payment_method,
                         rider_id, accepted_at, pickup_time, completed_at,
                         cancelled_reason, scheduled_at, promo_code_id, promo_code,
-                        discount_amount, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        discount_amount, transferred_from_rider_id, transfer_reason,
+                        transfer_count, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         code,
@@ -5486,6 +5768,9 @@ def restore_full_backup(
                         b.get("promo_code_id"),
                         b.get("promo_code") or "",
                         float(b.get("discount_amount") or 0.0),
+                        b.get("transferred_from_rider_id"),
+                        b.get("transfer_reason") or "",
+                        int(b.get("transfer_count") or 0),
                         b.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )

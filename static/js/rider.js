@@ -34,6 +34,17 @@
   const navDropoffBtn = document.getElementById("nav-dropoff-btn");
   const jobInProgressBtn = document.getElementById("job-in-progress-btn");
   const jobCompleteBtn = document.getElementById("job-complete-btn");
+  const jobTransferBtn = document.getElementById("job-transfer-btn");
+  const transferModal = document.getElementById("rider-transfer-modal");
+  const transferModalSubtitle = document.getElementById("transfer-modal-job-subtitle");
+  const transferReasonSelect = document.getElementById("transfer-reason-select");
+  const transferNoteInput = document.getElementById("transfer-note-input");
+  const transferUpdateGpsChk = document.getElementById("transfer-update-gps-chk");
+  const transferGoOfflineChk = document.getElementById("transfer-go-offline-chk");
+  const transferStatusError = document.getElementById("transfer-status-error");
+  const transferCoridersList = document.getElementById("transfer-coriders-list");
+  const transferRefreshCoridersBtn = document.getElementById("transfer-refresh-coriders-btn");
+  const transferRebroadcastBtn = document.getElementById("transfer-rebroadcast-btn");
 
   const jobsFeedList = document.getElementById("available-jobs-feed");
   const jobsCountPill = document.getElementById("jobs-count-pill");
@@ -41,7 +52,8 @@
 
   let currentRider = null;
   let activeJob = null;
-  let knownJobIds = new Set();
+  let knownJobKeys = new Set();
+  let prevActiveJobKey = null;
   let pollInterval = null;
   let gpsWatchId = null;
   let lastReminderChimeTime = 0;
@@ -365,6 +377,9 @@
     }
     resetRiderChat(null);
     activeJob = null;
+    prevActiveJobKey = null;
+    knownJobKeys.clear();
+    if (transferModal) transferModal.classList.add("hidden");
     currentRider = null;
     setStoredRider(null);
     document.documentElement.classList.remove("is-rider-session");
@@ -400,6 +415,9 @@
       }
       resetRiderChat(null);
       activeJob = null;
+      prevActiveJobKey = null;
+      knownJobKeys.clear();
+      if (transferModal) transferModal.classList.add("hidden");
       currentRider = null;
       try {
         await fetch("/api/rider/logout", { method: "POST" });
@@ -842,6 +860,20 @@
     }
   }
 
+  function calculateHaversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371.0;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
   function renderJobOnRiderMap(job) {
     if (!job) {
       if (riderJobPickupMarker && riderJobMap) { riderJobMap.removeLayer(riderJobPickupMarker); riderJobPickupMarker = null; }
@@ -859,8 +891,9 @@
       if (riderJobMap) riderJobMap.invalidateSize();
     }, 150);
 
-    const hasNewJob = currentJobIdOnMap !== job.id;
-    currentJobIdOnMap = job.id;
+    const jobMapKey = `${job.id}:${job.pickup_lat || ""},${job.pickup_lng || ""}`;
+    const hasNewJob = currentJobIdOnMap !== jobMapKey;
+    currentJobIdOnMap = jobMapKey;
 
     // Check if coordinates need resolving
     if ((!job.pickup_lat || !job.dropoff_lat) && (job.pickup_address || job.dropoff_address)) {
@@ -1001,6 +1034,7 @@
   function renderActiveJobCard(job) {
     if (!job) {
       if (activeJobBox) activeJobBox.classList.add("hidden");
+      if (transferModal) transferModal.classList.add("hidden");
       resetRiderChat(null);
       renderJobOnRiderMap(null);
       return;
@@ -1009,6 +1043,20 @@
 
     if (activeJobBox) activeJobBox.classList.remove("hidden");
     if (activeJobCode) activeJobCode.textContent = job.booking_code;
+
+    const transferAlert = document.getElementById("active-job-transfer-alert");
+    const transferMeta = document.getElementById("active-job-transfer-meta");
+    if (transferAlert && transferMeta) {
+      if (Number(job.transfer_count || 0) > 0) {
+        const fromName = job.transferred_from_rider_name || "a fellow rider";
+        const reasonPart = job.transfer_reason ? ` (${job.transfer_reason})` : "";
+        transferMeta.textContent = `Handed over from ${fromName}${reasonPart}. Fare stays ₱${Math.round(job.fare_amount)}.`;
+        transferAlert.classList.remove("hidden");
+      } else {
+        transferAlert.classList.add("hidden");
+      }
+    }
+
     if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}`;
     if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}`;
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
@@ -1084,6 +1132,9 @@
         jobCompleteBtn.classList.remove("hidden");
       }
     }
+    if (jobTransferBtn) {
+      jobTransferBtn.classList.toggle("hidden", !["accepted", "in_progress"].includes(job.status));
+    }
 
     // Interactive Live GPS Route Map for Active Job
     renderJobOnRiderMap(job);
@@ -1104,13 +1155,29 @@
         handleExpiredRiderSession();
         return;
       }
-      activeJob = data.job;
+      const nextJob = data.job;
+      const nextKey = nextJob ? `${nextJob.id}:${nextJob.transfer_count || 0}:${nextJob.status}` : null;
+      const isIncomingTransfer = Boolean(
+        nextJob
+        && Number(nextJob.transfer_count || 0) > 0
+        && nextKey !== prevActiveJobKey
+        && (!activeJob || activeJob.id !== nextJob.id || Number(activeJob.transfer_count || 0) !== Number(nextJob.transfer_count || 0))
+      );
+      prevActiveJobKey = nextKey;
+      activeJob = nextJob;
       const scheduledJobs = data.scheduled_jobs || [];
 
       // Render Scheduled Jobs Card & Reminder
       renderScheduledJobs(scheduledJobs);
 
       renderActiveJobCard(activeJob);
+
+      if (isIncomingTransfer) {
+        if (window.playDispatchChime) window.playDispatchChime();
+        if ("vibrate" in navigator) {
+          try { navigator.vibrate([120, 60, 120, 60, 180]); } catch (_) {}
+        }
+      }
     } catch (_) {}
   }
 
@@ -1283,6 +1350,7 @@
         if (res.ok) {
           alert("✓ Trip successfully marked as Completed! Thank you for your service.");
           activeJob = null;
+          prevActiveJobKey = null;
           activeJobBox.classList.add("hidden");
           resetRiderChat(null);
           renderJobOnRiderMap(null);
@@ -1299,6 +1367,294 @@
       } finally {
         jobCompleteBtn.textContent = origText;
         jobCompleteBtn.disabled = false;
+      }
+    });
+  }
+
+  // Emergency Booking Transfer / Re-Broadcast Modal & Handlers
+  function getCurrentRiderGpsForTransfer() {
+    if (
+      lastRiderGpsPos
+      && Number.isFinite(Number(lastRiderGpsPos.lat))
+      && Number.isFinite(Number(lastRiderGpsPos.lng))
+    ) {
+      return { lat: Number(lastRiderGpsPos.lat), lng: Number(lastRiderGpsPos.lng) };
+    }
+    if (
+      currentRider
+      && Number.isFinite(Number(currentRider.last_lat))
+      && Number.isFinite(Number(currentRider.last_lng))
+      && Number(currentRider.last_lat) !== 0
+      && Number(currentRider.last_lng) !== 0
+    ) {
+      return { lat: Number(currentRider.last_lat), lng: Number(currentRider.last_lng) };
+    }
+    return null;
+  }
+
+  async function loadTransferCoRiders() {
+    if (!transferCoridersList || !currentRider) return;
+    transferCoridersList.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Checking online co-riders...</div>`;
+
+    try {
+      const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("Unable to load online co-riders.");
+      }
+      const data = await res.json();
+      const rawList = Array.isArray(data.co_riders) ? data.co_riders : [];
+      const refGps = getCurrentRiderGpsForTransfer()
+        || (
+          activeJob
+          && Number.isFinite(Number(activeJob.pickup_lat))
+          && Number.isFinite(Number(activeJob.pickup_lng))
+          && Number(activeJob.pickup_lat) !== 0
+            ? { lat: Number(activeJob.pickup_lat), lng: Number(activeJob.pickup_lng) }
+            : null
+        );
+
+      const candidates = rawList
+        .filter((r) => !r.is_self && Number(r.id) !== Number(currentRider.id))
+        .map((r) => {
+          let distKm = null;
+          if (
+            refGps
+            && Number.isFinite(Number(r.last_lat))
+            && Number.isFinite(Number(r.last_lng))
+            && Number(r.last_lat) !== 0
+          ) {
+            distKm = calculateHaversineKm(refGps.lat, refGps.lng, Number(r.last_lat), Number(r.last_lng));
+          }
+          return { ...r, distKm };
+        })
+        .sort((a, b) => {
+          const busyDiff = Number(Boolean(a.has_active_job)) - Number(Boolean(b.has_active_job));
+          if (busyDiff !== 0) return busyDiff;
+          if (a.distKm !== null && b.distKm !== null) return a.distKm - b.distKm;
+          if (a.distKm !== null) return -1;
+          if (b.distKm !== null) return 1;
+          return Number(b.rating_avg || 5.0) - Number(a.rating_avg || 5.0);
+        });
+
+      if (candidates.length === 0) {
+        transferCoridersList.innerHTML = `<div class="empty-state" style="padding:12px;font-size:0.84rem;">No other online CCRC riders found right now. Use Option 2 below to urgently re-broadcast!</div>`;
+        return;
+      }
+
+      transferCoridersList.innerHTML = candidates.map((r) => {
+        const isBusy = Boolean(r.has_active_job);
+        const distLabel = r.distKm !== null ? `📍 ${r.distKm.toFixed(1)} km away` : `📍 ${escapeHtml(r.municipality || "Camiguin")}`;
+        const statusBadge = isBusy
+          ? `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">Busy</span>`
+          : `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Available</span>`;
+
+        return `
+          <div class="transfer-corider-option ${isBusy ? "is-busy" : ""}">
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <strong style="font-size:0.88rem;color:#0f172a;">${escapeHtml(r.name)}</strong>
+                ${statusBadge}
+              </div>
+              <div class="text-muted" style="font-size:0.76rem;margin-top:2px;">
+                🏍️ ${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)}) &bull; ⭐ ${Number(r.rating_avg || 5.0).toFixed(1)}
+              </div>
+              <div style="font-size:0.76rem;color:#0284c7;font-weight:600;margin-top:2px;">
+                ${distLabel}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm ${isBusy ? "btn-outline" : "btn-primary"} execute-direct-transfer-btn"
+              data-rider-id="${r.id}"
+              data-busy="${isBusy ? "1" : "0"}"
+              ${isBusy ? "disabled" : ""}
+              style="white-space:nowrap;"
+            >${isBusy ? "Busy" : "Transfer Now"}</button>
+          </div>
+        `;
+      }).join("");
+    } catch (err) {
+      transferCoridersList.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">${escapeHtml(err.message || "Failed to load online co-riders.")}</div>`;
+    }
+  }
+
+  function openEmergencyTransferModal() {
+    if (!activeJob || !currentRider || !transferModal) return;
+    if (transferStatusError) {
+      transferStatusError.textContent = "";
+      transferStatusError.classList.add("hidden");
+    }
+    if (transferModalSubtitle) {
+      transferModalSubtitle.textContent = `${activeJob.booking_code} • ${activeJob.dropoff_address} • ₱${Math.round(activeJob.fare_amount || 0)}`;
+    }
+    if (transferNoteInput) {
+      transferNoteInput.value = "";
+    }
+    if (transferUpdateGpsChk) {
+      transferUpdateGpsChk.checked = activeJob.status === "in_progress";
+    }
+    if (transferGoOfflineChk) {
+      transferGoOfflineChk.checked = true;
+    }
+
+    transferModal.classList.remove("hidden");
+    loadTransferCoRiders();
+
+    if (!lastRiderGpsPos && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (currentRider) {
+            currentRider.last_lat = pos.coords.latitude;
+            currentRider.last_lng = pos.coords.longitude;
+          }
+          lastRiderGpsPos = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            speed: pos.coords.speed || 0,
+            heading: pos.coords.heading || currentRiderBearing || 0,
+          };
+          if (!transferModal.classList.contains("hidden")) {
+            loadTransferCoRiders();
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 4000, maximumAge: 10000 }
+      );
+    }
+  }
+
+  async function executeBookingTransfer(targetRiderId) {
+    if (!activeJob || !currentRider) return;
+    if (transferStatusError) {
+      transferStatusError.textContent = "";
+      transferStatusError.classList.add("hidden");
+    }
+
+    const reason = transferReasonSelect ? transferReasonSelect.value : "Flat tire / tire puncture";
+    const note = transferNoteInput ? transferNoteInput.value.trim() : "";
+    const useGps = transferUpdateGpsChk ? transferUpdateGpsChk.checked : false;
+    const goOffline = transferGoOfflineChk ? transferGoOfflineChk.checked : true;
+
+    const payload = {
+      reason,
+      note,
+      go_offline: goOffline,
+    };
+    if (targetRiderId) {
+      payload.target_rider_id = Number(targetRiderId);
+    }
+    if (useGps) {
+      const gps = getCurrentRiderGpsForTransfer();
+      if (gps) {
+        payload.new_pickup_lat = gps.lat;
+        payload.new_pickup_lng = gps.lng;
+      }
+    }
+
+    const origRebroadcastText = transferRebroadcastBtn ? transferRebroadcastBtn.textContent : "";
+    if (transferRebroadcastBtn) {
+      transferRebroadcastBtn.disabled = true;
+      if (!targetRiderId) {
+        transferRebroadcastBtn.textContent = "Re-broadcasting...";
+      }
+    }
+    const directBtns = transferCoridersList
+      ? Array.from(transferCoridersList.querySelectorAll(".execute-direct-transfer-btn[data-busy='0']"))
+      : [];
+    directBtns.forEach((b) => {
+      b.disabled = true;
+      if (targetRiderId && Number(b.getAttribute("data-rider-id")) === Number(targetRiderId)) {
+        b.textContent = "Transferring...";
+      }
+    });
+
+    try {
+      const res = await fetch(`/api/bookings/${activeJob.id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 401) {
+        if (transferModal) transferModal.classList.add("hidden");
+        handleExpiredRiderSession();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Could not complete trip transfer.");
+      }
+
+      if (transferModal) transferModal.classList.add("hidden");
+      activeJob = null;
+      prevActiveJobKey = null;
+      if (activeJobBox) activeJobBox.classList.add("hidden");
+      resetRiderChat(null);
+      renderJobOnRiderMap(null);
+
+      if (data.is_online !== null && data.is_online !== undefined) {
+        const nowOnline = Number(data.is_online) === 1;
+        if (onlineToggle) onlineToggle.checked = nowOnline;
+        updateOnlineBadge(nowOnline);
+        if (currentRider) {
+          currentRider.is_online = nowOnline ? 1 : 0;
+          setStoredRider(currentRider);
+        }
+        if (!nowOnline) {
+          if (jobsFeedList) {
+            jobsFeedList.innerHTML = `<div class="empty-state">You are currently OFFLINE. Turn the switch above ON to receive booking requests in Camiguin.</div>`;
+          }
+          if (jobsCountPill) jobsCountPill.textContent = "0";
+        } else {
+          fetchAvailableJobs();
+          fetchCoRiders();
+        }
+      } else {
+        fetchAvailableJobs();
+        fetchCoRiders();
+      }
+
+      checkActiveJob();
+      alert("✅ " + (data.message || "Booking transferred successfully!"));
+    } catch (err) {
+      if (transferStatusError) {
+        transferStatusError.textContent = err.message || "Could not complete trip transfer.";
+        transferStatusError.classList.remove("hidden");
+      } else {
+        alert(err.message || "Could not complete trip transfer.");
+      }
+      loadTransferCoRiders();
+    } finally {
+      if (transferRebroadcastBtn) {
+        transferRebroadcastBtn.disabled = false;
+        transferRebroadcastBtn.textContent = origRebroadcastText || "📡 Re-Broadcast to All Online Riders (Urgent)";
+      }
+      directBtns.forEach((b) => {
+        b.disabled = false;
+        b.textContent = "Transfer Now";
+      });
+    }
+  }
+
+  if (jobTransferBtn) {
+    jobTransferBtn.addEventListener("click", openEmergencyTransferModal);
+  }
+  if (transferRefreshCoridersBtn) {
+    transferRefreshCoridersBtn.addEventListener("click", loadTransferCoRiders);
+  }
+  if (transferRebroadcastBtn) {
+    transferRebroadcastBtn.addEventListener("click", () => executeBookingTransfer(null));
+  }
+  if (transferCoridersList) {
+    transferCoridersList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".execute-direct-transfer-btn");
+      if (!btn || btn.disabled) return;
+      const targetId = btn.getAttribute("data-rider-id");
+      if (targetId) {
+        executeBookingTransfer(targetId);
       }
     });
   }
@@ -1412,17 +1768,27 @@
 
       jobsCountPill.textContent = jobs.length;
 
-      // Check if new incoming job arrived -> Play Sound Alert!
+      // Check if new incoming job (or urgent re-broadcast) arrived -> Play Sound Alert!
       let hasNewJob = false;
+      let hasUrgentRebroadcast = false;
+      const nextKeys = new Set();
       jobs.forEach((j) => {
-        if (!knownJobIds.has(j.id)) {
+        const key = `${j.id}:${j.transfer_count || 0}`;
+        nextKeys.add(key);
+        if (!knownJobKeys.has(key)) {
           hasNewJob = true;
-          knownJobIds.add(j.id);
+          if (Number(j.transfer_count || 0) > 0) {
+            hasUrgentRebroadcast = true;
+          }
         }
       });
+      knownJobKeys = nextKeys;
 
       if (hasNewJob && window.playDispatchChime) {
         window.playDispatchChime();
+      }
+      if (hasUrgentRebroadcast && "vibrate" in navigator) {
+        try { navigator.vibrate([150, 70, 150, 70, 220]); } catch (_) {}
       }
 
       if (!jobs.length) {
@@ -1437,9 +1803,18 @@
       }
 
       jobsFeedList.innerHTML = jobs
-        .map(
-          (j) => `
+        .map((j) => {
+          const isTransferred = Number(j.transfer_count || 0) > 0;
+          const transferFrom = j.transferred_from_rider_name ? ` from ${escapeHtml(j.transferred_from_rider_name)}` : "";
+          const transferReason = j.transfer_reason ? `: ${escapeHtml(j.transfer_reason)}` : "";
+          return `
             <div class="job-card" data-job-id="${j.id}">
+              ${isTransferred ? `
+                <div class="transfer-urgency-banner" style="margin-bottom:8px;">
+                  <strong>🚨 EMERGENCY TRANSFER</strong>
+                  <div style="font-size:0.78rem;margin-top:2px;">Handed over${transferFrom}${transferReason}. Original fare ₱${Math.round(j.fare_amount)}.</div>
+                </div>
+              ` : ""}
               <div class="job-card-top">
                 <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
                 <span class="job-fare-tag">₱${Math.round(j.fare_amount)}</span>
@@ -1474,8 +1849,8 @@
                 </button>
               </div>
             </div>
-          `
-        )
+          `;
+        })
         .join("");
     } catch (_) {}
   }
@@ -1567,11 +1942,14 @@
   function appendRiderChatMessage(msg, isSelf) {
     if (riderChatEmptyHint) riderChatEmptyHint.style.display = "none";
 
+    const isSystem = msg.sender_role === "system";
     const wrap = document.createElement("div");
-    wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
+    wrap.className = `chat-bubble-wrap ${isSystem ? "system" : (isSelf ? "self" : "other")}`;
 
-    const sender = isSelf ? "You (Rider)" : (msg.sender_name || "Customer");
-    const roleIcon = isSelf ? "🛵" : "👤";
+    const sender = isSystem
+      ? (msg.sender_name || "CCRC Dispatch")
+      : (isSelf ? "You (Rider)" : (msg.sender_name || "Customer"));
+    const roleIcon = isSystem ? "🚨" : (isSelf ? "🛵" : "👤");
     const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
 
     wrap.innerHTML = `

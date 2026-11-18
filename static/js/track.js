@@ -43,6 +43,9 @@
   let satGroup = null;
   let currentTileLayer = "street";
   let lastRiderPosition = null;
+  let lastPickupCoords = (booking.pickup_lat && booking.pickup_lng)
+    ? { lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) }
+    : null;
   let currentRiderBearing = 0;
   let livePollTimer = null;
   let chatPollTimer = null;
@@ -54,6 +57,45 @@
               Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
     let brng = Math.atan2(y, x) * 180 / Math.PI;
     return (brng + 360) % 360;
+  }
+
+  function refreshTrackingRoute(pLat, pLng, dLat, dLng) {
+    if (!map || !pLat || !pLng || !dLat || !dLng) return;
+
+    // Initial bold red line while road geometry loads
+    if (routeLine) map.removeLayer(routeLine);
+    routeLine = L.polyline(
+      [
+        [pLat, pLng],
+        [dLat, dLng],
+      ],
+      { color: "#ef4444", weight: 5, opacity: 0.9 }
+    ).addTo(map);
+    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+    // Fetch actual road path from backend road engine
+    fetch(`/api/road-route?p_lat=${pLat}&p_lng=${pLng}&d_lat=${dLat}&d_lng=${dLng}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.code === "Ok" && data.route_coords && data.route_coords.length > 0) {
+          const roadCoords = data.route_coords.map((pt) => {
+            const n1 = parseFloat(pt[0]);
+            const n2 = parseFloat(pt[1]);
+            if (n1 > 50 && n2 < 50) return [n2, n1];
+            return [n1, n2];
+          });
+          if (routeLine) map.removeLayer(routeLine);
+          routeLine = L.polyline(roadCoords, {
+            color: "#ef4444", // BOLD RED LINE
+            weight: 5,
+            opacity: 1.0,
+            lineCap: "round",
+            lineJoin: "round",
+          }).addTo(map);
+          map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+        }
+      })
+      .catch(() => {});
   }
 
   function initMap() {
@@ -163,45 +205,7 @@
 
     // Polyline (Road Route)
     if (booking.pickup_lat && booking.dropoff_lat) {
-      const pLat = booking.pickup_lat;
-      const pLng = booking.pickup_lng;
-      const dLat = booking.dropoff_lat;
-      const dLng = booking.dropoff_lng;
-
-      // Initial bold red line
-      if (routeLine) map.removeLayer(routeLine);
-      routeLine = L.polyline(
-        [
-          [pLat, pLng],
-          [dLat, dLng],
-        ],
-        { color: "#ef4444", weight: 5, opacity: 0.9 }
-      ).addTo(map);
-      map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-
-      // Fetch actual road path from backend road engine
-      fetch(`/api/road-route?p_lat=${pLat}&p_lng=${pLng}&d_lat=${dLat}&d_lng=${dLng}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data && data.code === "Ok" && data.route_coords && data.route_coords.length > 0) {
-            const roadCoords = data.route_coords.map((pt) => {
-              const n1 = parseFloat(pt[0]);
-              const n2 = parseFloat(pt[1]);
-              if (n1 > 50 && n2 < 50) return [n2, n1];
-              return [n1, n2];
-            });
-            if (routeLine) map.removeLayer(routeLine);
-            routeLine = L.polyline(roadCoords, {
-              color: "#ef4444", // BOLD RED LINE
-              weight: 5,
-              opacity: 1.0,
-              lineCap: "round",
-              lineJoin: "round",
-            }).addTo(map);
-            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-          }
-        })
-        .catch(() => {});
+      refreshTrackingRoute(booking.pickup_lat, booking.pickup_lng, booking.dropoff_lat, booking.dropoff_lng);
     }
 
     // Rider Icon (if rider coordinates exist)
@@ -287,19 +291,44 @@
 
       // Sync hidden review rider ID & chat status subtitle dynamically
       const reviewRiderInput = document.getElementById("review-rider-id");
-      if (reviewRiderInput && b.rider_id) {
-        reviewRiderInput.value = b.rider_id;
+      if (reviewRiderInput) {
+        reviewRiderInput.value = b.rider_id ? String(b.rider_id) : "";
       }
       const chatStatusText = document.getElementById("chat-rider-status-text");
-      if (chatStatusText && b.rider_name) {
-        chatStatusText.textContent = `Direct in-app messaging with ${b.rider_name}`;
+      if (chatStatusText) {
+        chatStatusText.textContent = b.rider_name
+          ? `Direct in-app messaging with ${b.rider_name}`
+          : "Waiting for an available CCRC rider to accept...";
+      }
+
+      // Sync emergency handover / transfer banner
+      const transferBanner = document.getElementById("track-transfer-banner");
+      const transferBannerText = document.getElementById("track-transfer-banner-text");
+      if (transferBanner && transferBannerText) {
+        const tCount = Number(b.transfer_count || 0);
+        if (tCount > 0) {
+          const fromName = b.transferred_from_rider_name || "Previous rider";
+          const reasonPart = b.transfer_reason ? ` (${b.transfer_reason})` : "";
+          if (b.status === "broadcast" && !b.rider_id) {
+            transferBannerText.textContent = `${fromName} requested an emergency rider transfer${reasonPart}. Finding the nearest available club rider now...`;
+          } else if (b.rider_name) {
+            transferBannerText.textContent = `Transferred from ${fromName} to rescue rider ${b.rider_name}${reasonPart}.`;
+          } else {
+            transferBannerText.textContent = `Transferred to a rescue rider${reasonPart}.`;
+          }
+          transferBanner.classList.remove("hidden");
+        } else {
+          transferBanner.classList.add("hidden");
+        }
       }
 
       // Update status pill
       if (statusPill) {
         statusPill.className = `status-pill status-${b.status}`;
         if (b.status === "broadcast") {
-          statusPill.textContent = "⏳ Waiting for an available rider to accept...";
+          statusPill.textContent = Number(b.transfer_count || 0) > 0
+            ? "🚨 Finding nearest rescue rider to take over your trip..."
+            : "⏳ Waiting for an available rider to accept...";
         } else if (b.status === "accepted") {
           statusPill.textContent = "🛵 Accepted! Rider is heading to pickup point...";
         } else if (b.status === "in_progress") {
@@ -319,7 +348,26 @@
         }
       }
 
-      // Update Rider Card
+      // Update pickup pin & road route if handover location changed
+      if (b.pickup_lat && b.pickup_lng && map) {
+        const newPLat = Number(b.pickup_lat);
+        const newPLng = Number(b.pickup_lng);
+        const changedPickup = !lastPickupCoords
+          || Math.abs(newPLat - lastPickupCoords.lat) > 0.00005
+          || Math.abs(newPLng - lastPickupCoords.lng) > 0.00005;
+        if (changedPickup) {
+          lastPickupCoords = { lat: newPLat, lng: newPLng };
+          if (pickupMarker) {
+            pickupMarker.setLatLng([newPLat, newPLng]);
+          }
+          if (b.dropoff_lat && b.dropoff_lng) {
+            refreshTrackingRoute(newPLat, newPLng, Number(b.dropoff_lat), Number(b.dropoff_lng));
+          }
+        }
+      }
+
+      // Update Rider Card (or hide & clear marker when re-broadcasted)
+      const riderRatingWrap = document.getElementById("rider-rating-wrap");
       if (b.rider_id && assignedRiderCard) {
         assignedRiderCard.classList.remove("hidden");
         if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
@@ -333,18 +381,32 @@
         if (riderBikeText) {
           riderBikeText.innerHTML = `${escapeHtml(b.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(b.rider_plate || "")}</strong>`;
         }
+        if (riderRatingWrap) {
+          riderRatingWrap.innerHTML = `★ <strong>${escapeHtml(String(b.rider_rating || 5.0))}</strong> (Verified CCRC Member)`;
+        }
         if (riderCallBtn && b.rider_phone) riderCallBtn.href = `tel:${b.rider_phone}`;
         if (riderSmsBtn && b.rider_phone) riderSmsBtn.href = `sms:${b.rider_phone}`;
+      } else if (!b.rider_id) {
+        if (assignedRiderCard) assignedRiderCard.classList.add("hidden");
+        if (riderMarker && map) {
+          map.removeLayer(riderMarker);
+          riderMarker = null;
+          lastRiderPosition = null;
+        }
       }
 
       // Update Live GPS coordinates of rider
-      if (b.rider_lat && b.rider_lng) {
+      if (b.rider_id && b.rider_lat && b.rider_lng) {
         updateRiderMarker(b.rider_lat, b.rider_lng, b.rider_name, b.rider_speed || 0, b.rider_heading || 0);
       }
 
       // Update distance indicator
       if (liveDistanceIndicator) {
-        if (b.status === "accepted" && data.distance_to_pickup_km !== null) {
+        if (b.status === "broadcast") {
+          liveDistanceIndicator.innerHTML = Number(b.transfer_count || 0) > 0
+            ? `🚨 <strong>Finding nearest replacement rider...</strong>`
+            : `📡 <strong>Waiting for rider acceptance...</strong>`;
+        } else if (b.status === "accepted" && data.distance_to_pickup_km !== null) {
           liveDistanceIndicator.innerHTML = `📍 Rider distance from Pickup: <strong>~${data.distance_to_pickup_km} km</strong>`;
         } else if (b.status === "in_progress" && data.distance_to_dropoff_km !== null) {
           liveDistanceIndicator.innerHTML = `📍 Rider distance from Destination: <strong>~${data.distance_to_dropoff_km} km</strong>`;
@@ -402,11 +464,14 @@
   function appendChatMessage(msg, isSelf) {
     if (chatEmptyHint) chatEmptyHint.style.display = "none";
 
+    const isSystem = msg.sender_role === "system";
     const wrap = document.createElement("div");
-    wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
+    wrap.className = `chat-bubble-wrap ${isSystem ? "system" : (isSelf ? "self" : "other")}`;
 
-    const sender = isSelf ? "You" : (msg.sender_name || "Club Rider");
-    const roleIcon = isSelf ? "👤" : "🛵";
+    const sender = isSystem
+      ? (msg.sender_name || "CCRC Dispatch")
+      : (isSelf ? "You" : (msg.sender_name || "Club Rider"));
+    const roleIcon = isSystem ? "🚨" : (isSelf ? "👤" : "🛵");
     const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
 
     wrap.innerHTML = `

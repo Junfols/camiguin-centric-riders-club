@@ -53,11 +53,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v10
+        # 2. Service Worker v11
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v10", sw_text)
+        self.assertIn("ccrc-pwa-v11", sw_text)
+        self.assertIn("/static/css/style.css?v=24", sw_text)
         self.assertIn("/static/js/app.js?v=34", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
 
@@ -1946,6 +1947,342 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertEqual(restored_booking["promo_code"], "WELCOME20")
             self.assertEqual(restored_booking["promo_code_id"], b_promo["promo_code_id"])
             self.assertEqual(float(restored_booking["discount_amount"]), float(b_promo["discount_amount"]))
+        finally:
+            conn.close()
+
+    def test_emergency_booking_transfer_and_rebroadcast(self):
+        from datetime import timedelta
+        from pathlib import Path
+        from db import (
+            accept_booking,
+            export_full_backup,
+            get_booking_messages,
+            get_connection,
+            get_now_pht,
+            get_rider_by_id,
+            restore_full_backup,
+            update_rider_location,
+            update_rider_online_status,
+        )
+
+        # Create riders with varied online/GPS/busy states
+        r1 = self._create_active_rider(name="Transfer Rider One", phone="09175550101")
+        r2 = self._create_active_rider(name="Transfer Rescue Two", phone="09175550102")
+        r3 = self._create_active_rider(name="Offline Rider Three", phone="09175550103")
+        r4 = self._create_active_rider(name="Busy Rider Four", phone="09175550104")
+        r5 = self._create_active_rider(name="Advance Only Five", phone="09175550105")
+
+        conn = get_connection(self.db_path)
+        try:
+            update_rider_online_status(conn, r1, True)
+            update_rider_location(conn, r1, 9.24958, 124.71654)
+            update_rider_online_status(conn, r2, True)
+            update_rider_location(conn, r2, 9.24100, 124.66100)
+            update_rider_online_status(conn, r3, False)
+            update_rider_online_status(conn, r4, True)
+            update_rider_online_status(conn, r5, True)
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Assign an ongoing trip to r4, and a distant future scheduled booking to r5
+        b_busy = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Busy Cust",
+                "customer_phone": "09175551004",
+                "service_type": "pahatud",
+                "pickup_address": "Mambajao Town Plaza",
+                "dropoff_address": "Balbagon Port",
+            },
+        ).get_json()["booking"]
+        future_iso = (get_now_pht() + timedelta(hours=4)).isoformat(timespec="seconds")
+        b_adv = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Future Advance Cust",
+                "customer_phone": "09175551005",
+                "service_type": "pahatud",
+                "pickup_address": "Agoho, Mambajao",
+                "dropoff_address": "Mambajao Town Plaza",
+                "scheduled_at": future_iso,
+            },
+        ).get_json()["booking"]
+
+        conn = get_connection(self.db_path)
+        try:
+            self.assertTrue(accept_booking(conn, b_busy["id"], r4))
+            self.assertTrue(accept_booking(conn, b_adv["id"], r5))
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Booking A: customer ride to upland Ardent Hot Spring (fare includes auto highland fee)
+        b_a = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Emergency Passenger A",
+                "customer_phone": "09175552001",
+                "service_type": "pahatud",
+                "pickup_address": "Poblacion, Mambajao",
+                "dropoff_address": "Ardent Hot Spring, Esperanza",
+            },
+        ).get_json()["booking"]
+        orig_fare_a = b_a["fare_amount"]
+
+        # 1. Auth & ownership guards
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={}).status_code, 401)
+        self.assertEqual(self.client.post("/api/bookings/999999/transfer", json={}).status_code, 401)
+
+        with self.client.session_transaction() as sess:
+            sess["customer_phone"] = "09175552001"
+            sess["active_booking_code"] = b_a["booking_code"]
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={}).status_code, 401)
+
+        # Cannot transfer while still broadcast
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r1
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={}).status_code, 400)
+
+        # r1 accepts b_a
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/accept").status_code, 200)
+
+        # Wrong rider r2 rejected with 403; nonexistent booking returns 404
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={}).status_code, 403)
+        self.assertEqual(self.client.post("/api/bookings/999999/transfer", json={}).status_code, 404)
+
+        # r1 checks co-riders busy flags and validation errors (self, offline, busy)
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1
+        cor_resp = self.client.get("/api/rider/co-riders").get_json()
+        by_id = {c["id"]: c for c in cor_resp["co_riders"]}
+        self.assertFalse(by_id[r2]["has_active_job"])
+        self.assertTrue(by_id[r4]["has_active_job"])
+        self.assertFalse(by_id[r5]["has_active_job"])  # Future advance trip should not block
+
+        self.assertEqual(
+            self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={"target_rider_id": r1}).status_code,
+            400,
+        )
+        self.assertEqual(
+            self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={"target_rider_id": r3}).status_code,
+            400,
+        )
+        self.assertEqual(
+            self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={"target_rider_id": r4}).status_code,
+            409,
+        )
+
+        # Create a newer broadcast booking AFTER b_a so we can verify Urgent Re-Broadcast priority sort
+        b_newer = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Regular Later Cust",
+                "customer_phone": "09175552999",
+                "service_type": "pahatud",
+                "pickup_address": "Balbagon Port",
+                "dropoff_address": "Agoho, Mambajao",
+            },
+        ).get_json()["booking"]
+
+        # 2. r1 triggers Urgent Re-Broadcast with auto go_offline
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r1
+        re_resp = self.client.post(
+            f"/api/bookings/{b_a['id']}/transfer",
+            json={
+                "target_rider_id": None,
+                "reason": "Flat tire / tire puncture",
+                "note": "Waiting outside customer gate",
+                "go_offline": True,
+            },
+        )
+        self.assertEqual(re_resp.status_code, 200)
+        re_data = re_resp.get_json()
+        self.assertEqual(re_data["mode"], "broadcast")
+        self.assertEqual(re_data["is_online"], 0)
+        b_after_re = re_data["booking"]
+        self.assertEqual(b_after_re["status"], "broadcast")
+        self.assertIsNone(b_after_re["rider_id"])
+        self.assertEqual(b_after_re["fare_amount"], orig_fare_a)
+        self.assertEqual(b_after_re["transferred_from_rider_id"], r1)
+        self.assertEqual(b_after_re["transferred_from_rider_name"], "Transfer Rider One")
+        self.assertEqual(b_after_re["transfer_count"], 1)
+        self.assertIn("Flat tire / tire puncture", b_after_re["transfer_reason"])
+        self.assertIn("Waiting outside customer gate", b_after_re["transfer_reason"])
+
+        # r1 should now be offline, have no active job, and lose pending transaction ownership
+        conn = get_connection(self.db_path)
+        try:
+            self.assertEqual(get_rider_by_id(conn, r1)["is_online"], 0)
+            tx_row = conn.execute("SELECT * FROM transactions WHERE booking_id = ?", (b_a["id"],)).fetchone()
+            self.assertIsNone(tx_row["rider_id"])
+            self.assertEqual(tx_row["status"], "broadcast")
+            msgs = get_booking_messages(conn, b_a["id"])
+            self.assertTrue(
+                any(m["sender_role"] == "system" and "Transfer Rider One" in m["message"] for m in msgs)
+            )
+        finally:
+            conn.close()
+
+        self.assertIsNone(self.client.get("/api/rider/active-job").get_json()["job"])
+
+        # Customer tracking API & HTML reflect the emergency handover
+        tr_json = self.client.get(f"/api/bookings/track/{b_a['booking_code']}").get_json()["booking"]
+        self.assertIsNone(tr_json["rider_id"])
+        self.assertEqual(tr_json["transfer_count"], 1)
+        self.assertEqual(tr_json["transferred_from_rider_name"], "Transfer Rider One")
+        tr_html = self.client.get(f"/track/{b_a['booking_code']}").get_data(as_text=True)
+        self.assertIn('id="track-transfer-banner"', tr_html)
+        self.assertIn("Transfer Rider One", tr_html)
+        self.assertIn('id="rider-rating-wrap"', tr_html)
+        self.assertIn("track.js?v=29", tr_html)
+
+        # r2 sees transferred b_a prioritized BEFORE b_newer in broadcast feed, then claims and completes it
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r2
+        avail_jobs = self.client.get("/api/rider/available-jobs").get_json()["jobs"]
+        avail_ids = [j["id"] for j in avail_jobs]
+        self.assertIn(b_a["id"], avail_ids)
+        self.assertIn(b_newer["id"], avail_ids)
+        self.assertLess(avail_ids.index(b_a["id"]), avail_ids.index(b_newer["id"]))
+
+        claim_resp = self.client.post(f"/api/bookings/{b_a['id']}/accept")
+        self.assertEqual(claim_resp.status_code, 200)
+        conn = get_connection(self.db_path)
+        try:
+            msgs = get_booking_messages(conn, b_a["id"])
+            self.assertTrue(
+                any(m["sender_role"] == "system" and "Rescue rider Transfer Rescue Two" in m["message"] for m in msgs)
+            )
+        finally:
+            conn.close()
+
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/status", json={"status": "in_progress"}).status_code, 200)
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/status", json={"status": "completed"}).status_code, 200)
+
+        # Ledger earnings credit r2, not r1
+        r2_txns = self.client.get("/api/rider/transactions").get_json()["transactions"]
+        self.assertTrue(any(t["booking_id"] == b_a["id"] and t["status"] == "completed" for t in r2_txns))
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1
+        r1_txns = self.client.get("/api/rider/transactions").get_json()["transactions"]
+        self.assertFalse(any(t["booking_id"] == b_a["id"] for t in r1_txns))
+
+        # Cannot transfer completed booking
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2
+        self.assertEqual(self.client.post(f"/api/bookings/{b_a['id']}/transfer", json={}).status_code, 400)
+
+        # 3. Direct Co-Rider Transfer mid-trip (in_progress) with handover GPS + stay online (go_offline=False)
+        conn = get_connection(self.db_path)
+        try:
+            update_rider_online_status(conn, r1, True)
+            conn.commit()
+        finally:
+            conn.close()
+
+        b_b = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Emergency Passenger B",
+                "customer_phone": "09175552002",
+                "service_type": "pahatud",
+                "pickup_address": "Balbagon Port",
+                "dropoff_address": "Catibawasan Falls",
+            },
+        ).get_json()["booking"]
+        orig_fare_b = b_b["fare_amount"]
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r1
+        self.assertEqual(self.client.post(f"/api/bookings/{b_b['id']}/accept").status_code, 200)
+        self.assertEqual(self.client.post(f"/api/bookings/{b_b['id']}/status", json={"status": "in_progress"}).status_code, 200)
+
+        dir_resp = self.client.post(
+            f"/api/bookings/{b_b['id']}/transfer",
+            json={
+                "target_rider_id": r2,
+                "reason": "Engine / mechanical trouble",
+                "note": "Near Pandan intersection",
+                "new_pickup_lat": 9.231234,
+                "new_pickup_lng": 124.695678,
+                "go_offline": False,
+            },
+        )
+        self.assertEqual(dir_resp.status_code, 200)
+        dir_data = dir_resp.get_json()
+        self.assertEqual(dir_data["mode"], "direct")
+        self.assertEqual(dir_data["is_online"], 1)
+        b_b_after = dir_data["booking"]
+        self.assertEqual(b_b_after["status"], "accepted")
+        self.assertEqual(b_b_after["rider_id"], r2)
+        self.assertIsNone(b_b_after["pickup_time"])
+        self.assertAlmostEqual(float(b_b_after["pickup_lat"]), 9.231234, places=5)
+        self.assertAlmostEqual(float(b_b_after["pickup_lng"]), 124.695678, places=5)
+        self.assertEqual(b_b_after["fare_amount"], orig_fare_b)
+        self.assertEqual(b_b_after["transfer_count"], 1)
+        self.assertEqual(b_b_after["transferred_from_rider_id"], r1)
+
+        # r1 no longer has active job; r2 immediately sees it
+        self.assertIsNone(self.client.get("/api/rider/active-job").get_json()["job"])
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2
+        r2_active = self.client.get("/api/rider/active-job").get_json()["job"]
+        self.assertIsNotNone(r2_active)
+        self.assertEqual(r2_active["id"], b_b["id"])
+        self.assertEqual(r2_active["transferred_from_rider_name"], "Transfer Rider One")
+
+        # 4. Admin override transfer (without rider_id in session) -> r5 (only has future advance trip)
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["is_admin"] = True
+        adm_tr = self.client.post(
+            f"/api/bookings/{b_b['id']}/transfer",
+            json={"target_rider_id": r5, "reason": "Dispatch swap"},
+        )
+        self.assertEqual(adm_tr.status_code, 200)
+        b_b_adm = adm_tr.get_json()["booking"]
+        self.assertEqual(b_b_adm["rider_id"], r5)
+        self.assertEqual(b_b_adm["transferred_from_rider_id"], r2)
+        self.assertEqual(b_b_adm["transfer_count"], 2)
+
+        admin_html = self.client.get("/admin").get_data(as_text=True)
+        self.assertIn("Transferred x2", admin_html)
+        self.assertIn("Transferred x1", admin_html)
+        self.assertIn("Flat tire / tire puncture", admin_html)
+
+        # 5. Rider Portal HTML & i18n checks
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="job-transfer-btn"', rider_html)
+        self.assertIn('id="rider-transfer-modal"', rider_html)
+        self.assertIn("rider.js?v=29", rider_html)
+        i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
+        self.assertIn("Flat Tire / Emergency Transfer", i18n_js)
+
+        # 6. Backup & restore fidelity for transfer audit columns
+        conn = get_connection(self.db_path)
+        try:
+            snap = export_full_backup(conn)
+            res = restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+            self.assertTrue(res["success"])
+            restored_b = conn.execute(
+                "SELECT * FROM bookings WHERE booking_code = ?",
+                (b_b["booking_code"],),
+            ).fetchone()
+            self.assertIsNotNone(restored_b)
+            self.assertEqual(restored_b["transferred_from_rider_id"], r2)
+            self.assertEqual(restored_b["transfer_reason"], "Dispatch swap")
+            self.assertEqual(restored_b["transfer_count"], 2)
         finally:
             conn.close()
 

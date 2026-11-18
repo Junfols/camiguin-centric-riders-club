@@ -86,6 +86,8 @@ from db import (
     get_review_by_booking_id,
     get_rider_reviews,
     calculate_nearest_rider_eta,
+    get_busy_rider_ids,
+    transfer_booking,
 )
 
 _INIT_DB_LOCK = threading.Lock()
@@ -1296,6 +1298,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"error": "Rider authentication required."}), 401
         conn = get_db()
         riders = get_online_riders(conn)
+        busy_ids = get_busy_rider_ids(conn)
         clean_list = []
         for r in riders:
             clean_list.append({
@@ -1311,6 +1314,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "last_lng": r.get("last_lng"),
                 "last_active_at": r.get("last_active_at"),
                 "is_self": bool(current_rider_id and r["id"] == current_rider_id),
+                "has_active_job": int(r["id"]) in busy_ids,
             })
         return jsonify({
             "success": True,
@@ -1455,6 +1459,68 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         updated_job = get_booking_by_id(conn, booking_id)
         return jsonify({"success": True, "job": updated_job})
 
+    @app.post("/api/bookings/<int:booking_id>/transfer")
+    def transfer_job_booking(booking_id: int):
+        rider_id = session.get("rider_id")
+        is_admin = bool(session.get("is_admin"))
+        if not rider_id and not is_admin:
+            return jsonify({"error": "Rider authentication required."}), 401
+
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+
+        raw_target = data.get("target_rider_id")
+        target_rid: int | None = None
+        if raw_target not in (None, "", 0, "0"):
+            try:
+                target_rid = int(raw_target)
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid target rider selected."}), 400
+
+        reason = str(data.get("reason") or "").strip()
+        note = str(data.get("note") or "").strip()
+        new_pickup_lat = data.get("new_pickup_lat")
+        new_pickup_lng = data.get("new_pickup_lng")
+        go_offline = bool(data.get("go_offline", True))
+
+        ok, res_or_err, updated_booking, status_code = transfer_booking(
+            conn,
+            booking_id,
+            target_rider_id=target_rid,
+            reason=reason,
+            note=note,
+            new_pickup_lat=new_pickup_lat,
+            new_pickup_lng=new_pickup_lng,
+            acting_rider_id=int(rider_id) if rider_id else None,
+            is_admin=is_admin,
+        )
+        if not ok:
+            conn.rollback()
+            return jsonify({"error": res_or_err}), status_code
+
+        resulting_is_online = None
+        if rider_id and not is_admin:
+            if go_offline:
+                update_rider_online_status(conn, int(rider_id), False)
+                resulting_is_online = 0
+            else:
+                acting_rider = get_rider_by_id(conn, int(rider_id))
+                resulting_is_online = int(acting_rider.get("is_online") or 0) if acting_rider else 1
+
+        conn.commit()
+        if res_or_err == "direct" and updated_booking:
+            msg = f"Trip transferred to {updated_booking.get('rider_name') or 'fellow rider'}!"
+        else:
+            msg = "Urgent re-broadcast sent to all online CCRC riders!"
+
+        return jsonify({
+            "success": True,
+            "mode": res_or_err,
+            "message": msg,
+            "booking": updated_booking,
+            "is_online": resulting_is_online,
+        })
+
     @app.post("/api/rider/location")
     def stream_rider_location():
         rider_id = session.get("rider_id")
@@ -1597,9 +1663,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         recent_bookings = conn.execute(
             """
             SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike,
+                   COALESCE(tr.name, '') AS transferred_from_rider_name,
                    COALESCE(c.is_verified, 0) AS customer_verified
             FROM bookings b
             LEFT JOIN riders r ON r.id = b.rider_id
+            LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
             LEFT JOIN customers c ON b.customer_phone = c.phone
             ORDER BY b.id DESC
             LIMIT 50

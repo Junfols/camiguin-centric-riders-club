@@ -366,6 +366,13 @@
               {% else %}
                 <span class="badge">{{ b.status }}</span>
               {% endif %}
+              {% if b.transfer_count and b.transfer_count > 0 %}
+                <div style="margin-top:4px;">
+                  <span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:0.7rem;" title="{{ b.transfer_reason or 'Emergency rider transfer' }}">
+                    🔄 Transferred x{{ b.transfer_count }}
+                  </span>
+                </div>
+              {% endif %}
             </td>
             <td style="padding:8px;">
               <div style="display:flex;align-items:center;gap:4px;">
@@ -387,6 +394,12 @@
                 <small class="text-muted">{{ b.rider_bike }}</small>
               {% else %}
                 <span class="text-muted">Unassigned</span>
+              {% endif %}
+              {% if b.transfer_count and b.transfer_count > 0 and (b.transferred_from_rider_name or b.transfer_reason) %}
+                <div style="margin-top:3px;font-size:0.72rem;color:#b45309;">
+                  {% if b.transferred_from_rider_name %}From: <strong>{{ b.transferred_from_rider_name }}</strong>{% endif %}
+                  {% if b.transfer_reason %}<div>{{ b.transfer_reason }}</div>{% endif %}
+                </div>
               {% endif %}
             </td>
             <td style="padding:8px;">

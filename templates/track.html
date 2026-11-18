@@ -30,6 +30,19 @@
       <span class="booking-code-pill">{{ booking.booking_code }}</span>
     </div>
 
+    <div id="track-transfer-banner" class="transfer-urgency-banner {% if not (booking.transfer_count and booking.transfer_count > 0) %}hidden{% endif %}" style="margin-top:10px;text-align:left;">
+      <strong>🚨 Rider Emergency Handover Notice</strong>
+      <div id="track-transfer-banner-text" style="font-size:0.82rem;margin-top:2px;">
+        {% if booking.status == 'broadcast' and booking.transferred_from_rider_name %}
+          {{ booking.transferred_from_rider_name }} requested an emergency rider transfer{% if booking.transfer_reason %} ({{ booking.transfer_reason }}){% endif %}. Finding the nearest available club rider now...
+        {% elif booking.transferred_from_rider_name and booking.rider_name %}
+          Transferred from {{ booking.transferred_from_rider_name }} to rescue rider {{ booking.rider_name }}{% if booking.transfer_reason %} ({{ booking.transfer_reason }}){% endif %}.
+        {% elif booking.transfer_reason %}
+          Transferred to a rescue rider ({{ booking.transfer_reason }}).
+        {% endif %}
+      </div>
+    </div>
+
     <h1 style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
       {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
     </h1>
@@ -129,7 +142,7 @@
         <div class="text-muted" id="rider-bike-text" style="font-size:0.85rem;">
           {{ booking.rider_bike }} &bull; Plate: <strong>{{ booking.rider_plate }}</strong>
         </div>
-        <div class="rider-stars" style="color:#f59e0b;font-size:0.85rem;">
+        <div class="rider-stars" id="rider-rating-wrap" style="color:#f59e0b;font-size:0.85rem;">
           ★ <strong>{{ booking.rider_rating or 5.0 }}</strong> (Verified CCRC Member)
         </div>
       </div>
@@ -348,6 +361,6 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=28"></script>
+<script src="/static/js/track.js?v=29"></script>
 {% endif %}
 {% endblock %}

@@ -817,6 +817,134 @@
       zh: "退出骑手账号",
       ja: "ライダーアカウントからログアウト",
     },
+
+    // --- Emergency Transfer / Re-Broadcast ---
+    "⚠️ Flat Tire / Emergency Transfer": {
+      ceb: "⚠️ Na-flat / Emergency Transfer",
+      fil: "⚠️ Na-flat / Emergency Transfer",
+      zh: "⚠️ 爆胎 / 紧急转单",
+      ja: "⚠️ パンク・緊急引き継ぎ",
+    },
+    "🔄 Emergency Transfer / Handover Trip": {
+      ceb: "🔄 Emergency Transfer / Puli nga Biyahe",
+      fil: "🔄 Emergency Transfer / Salong Biyahe",
+      zh: "🔄 紧急转单 / 行程交接",
+      ja: "🔄 緊急引き継ぎ・交代配車",
+    },
+    "🚨 Rider Emergency Handover Notice": {
+      ceb: "🚨 Pahibalo sa Emergency Rider Handover",
+      fil: "🚨 Abiso sa Emergency Rider Handover",
+      zh: "🚨 骑手紧急交接通知",
+      ja: "🚨 ライダー緊急引き継ぎのお知らせ",
+    },
+    "Emergency Transfer / Re-Broadcast": {
+      ceb: "Emergency Transfer / I-Broadcast Pag-usab",
+      fil: "Emergency Transfer / I-Broadcast Muli",
+      zh: "紧急转单 / 重新广播派单",
+      ja: "緊急引き継ぎ / 再ブロードキャスト",
+    },
+    "Hand over this trip safely to another CCRC rider": {
+      ceb: "Ipasa kini nga biyahe nga luwas ngadto sa laing CCRC rider",
+      fil: "Ipasa nang ligtas ang biyaheng ito sa ibang CCRC rider",
+      zh: "安全地将此订单交接给另一位 CCRC 骑手",
+      ja: "この乗車を他のCCRCライダーへ安全に引き継ぎます",
+    },
+    "Reason for Transfer *": {
+      ceb: "Rason sa Pag-transfer *",
+      fil: "Dahilan ng Pag-transfer *",
+      zh: "转单原因 *",
+      ja: "引き継ぎ理由 *",
+    },
+    "Exact Meetup Note for Rescue Rider & Customer (Optional)": {
+      ceb: "Detalye sa Lugar para sa Mopuli nga Rider ug Pasahero (Opsyonal)",
+      fil: "Eksaktong Lugar para sa Sasalo na Rider at Pasahero (Opsyonal)",
+      zh: "给接替骑手和乘客的具体碰面说明（可选）",
+      ja: "交代ライダーと乗客への待ち合わせメモ（任意）",
+    },
+    "e.g., Waiting near Balbagon Crossing sari-sari store...": {
+      ceb: "pananglitan: Naghulat duol sa Balbagon Crossing tindahan...",
+      fil: "halimbawa: Naghihintay malapit sa tindahan sa Balbagon Crossing...",
+      zh: "例如：在 Balbagon Crossing 小店附近等候...",
+      ja: "例：Balbagon Crossingの売店付近で待機中...",
+    },
+    "Update pickup pin to my current GPS location": {
+      ceb: "I-update ang pickup pin sa akong karon nga GPS location",
+      fil: "I-update ang pickup pin sa kasalukuyan kong lokasyon ng GPS",
+      zh: "将上车点位置更新为我当前的 GPS 位置",
+      ja: "ピックアップ地点を現在のGPS位置に更新する",
+    },
+    "Useful if you already picked up the passenger or stopped along the road.": {
+      ceb: "Gamit kini kung nakasakay na ang pasahero o nihunong ka sa daplin sa dalan.",
+      fil: "Gamitin ito kung nakasakay na ang pasahero o huminto ka sa daan.",
+      zh: "若已接到乘客或在路边停车等待交接，建议勾选此项。",
+      ja: "すでに乗客を乗せている場合や路肩で待機している場合に便利です。",
+    },
+    "Set my status to Offline after transfer": {
+      ceb: "Himoon nga Offline akong status pagkahuman sa transfer",
+      fil: "Gawing Offline ang status ko pagkatapos ng transfer",
+      zh: "转单后将我的状态设为离线",
+      ja: "引き継ぎ後にステータスをオフラインにする",
+    },
+    "Prevents new dispatch alerts while you fix your motorcycle.": {
+      ceb: "Aron dili na mag-alert samtang nag-ayo pa ka sa imong motor.",
+      fil: "Para hindi makatanggap ng bagong alert habang inaayos ang motor.",
+      zh: "防止您在修车期间收到新的派单提醒。",
+      ja: "バイク修理中に新しい配車通知が届かないようにします。",
+    },
+    "Option 1: Direct Transfer to Nearby Co-Rider": {
+      ceb: "Opsyon 1: Direkta nga Transfer sa Duol nga Kauban nga Rider",
+      fil: "Opsyon 1: Direktang Transfer sa Malapit na Kasamang Rider",
+      zh: "方式 1：直接转交附近的在线骑手",
+      ja: "方法1：近くの仲間ライダーへ直接引き継ぎ",
+    },
+    "Checking online co-riders...": {
+      ceb: "Nagsusi sa mga online nga kauban nga riders...",
+      fil: "Sinusuri ang mga online na kasamang rider...",
+      zh: "正在查看在线骑手伙伴...",
+      ja: "オンラインの仲間ライダーを確認中...",
+    },
+    "Option 2: Urgent Broadcast to All Online Riders": {
+      ceb: "Opsyon 2: Dalian nga Broadcast sa Tanang Online Riders",
+      fil: "Opsyon 2: Agarang Broadcast sa Lahat ng Online na Rider",
+      zh: "方式 2：向所有在线骑手紧急重新广播",
+      ja: "方法2：全オンラインライダーへ緊急再ブロードキャスト",
+    },
+    "📡 Re-Broadcast to All Online Riders (Urgent)": {
+      ceb: "📡 I-Broadcast Pag-usab sa Tanang Online Riders (Urgent)",
+      fil: "📡 I-Broadcast Muli sa Lahat ng Online na Rider (Urgent)",
+      zh: "📡 向所有在线骑手紧急重新广播",
+      ja: "📡 全オンラインライダーへ緊急再配信",
+    },
+    "Original fare stays unchanged and the customer will be notified automatically.": {
+      ceb: "Magpabilin ang orihinal nga plete ug awtomatikong pahibal-on ang pasahero.",
+      fil: "Mananatili ang orihinal na pamasahe at awtomatikong aabisuhan ang pasahero.",
+      zh: "原车费保持不变，系统将自动通知乘客。",
+      ja: "元の料金は変更されず、乗客にも自動で通知されます。",
+    },
+    "Transfer Now": {
+      ceb: "I-transfer Karon",
+      fil: "I-transfer Ngayon",
+      zh: "立即转交",
+      ja: "今すぐ引き継ぐ",
+    },
+    "Busy": {
+      ceb: "Naa pay Biyahe",
+      fil: "May Biyahe Pa",
+      zh: "忙碌中",
+      ja: "対応中",
+    },
+    "Available": {
+      ceb: "Bakante",
+      fil: "Bakante",
+      zh: "空闲可接单",
+      ja: "空き",
+    },
+    "🚨 EMERGENCY TRANSFER": {
+      ceb: "🚨 EMERGENCY TRANSFER",
+      fil: "🚨 EMERGENCY TRANSFER",
+      zh: "🚨 紧急转单",
+      ja: "🚨 緊急引き継ぎ",
+    },
   };
 
   function getStoredLang() {
