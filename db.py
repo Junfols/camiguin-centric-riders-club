@@ -3332,6 +3332,94 @@ def calculate_road_km(
 
 
 
+HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
+    "sorosoro",
+    "soro'soro",
+    "soro-soro",
+    "soro soro",
+    "highland",
+    "utopia",
+    "binunsaran",
+    "granelandia",
+    "itum road",
+    "mambajao-itum",
+    "hinterland",
+    "ardent",
+    "sitio esperanza",
+    "katibawasan",
+    "hibok-hibok",
+    "hibok hibok",
+    "mount hibok",
+    "mt. hibok",
+    "mt hibok",
+    "volcano observatory",
+    "phivolcs",
+    "sa-ay",
+    "sa ay cold",
+    "quipasa",
+    "quiboro",
+    "nanaw",
+    "tuasan",
+    "binangawan",
+    "tungason",
+    "upland",
+    "steep uphill",
+)
+
+_HINTERLAND_BOUNDARY_RE = re.compile(r"\b(?:itum|esperanza|saay)\b")
+
+
+def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
+    """
+    Detect Camiguin upland / steep uphill (tungason) elevation zones by GPS coordinates,
+    strictly clear of the coastal Circumferential Highway ring:
+      - Mambajao Uplands: Soro-soro, Highland Resort, Katibawasan Falls, Quiboro,
+        Utopia, PHIVOLCS, Sa-ay Cold Spring, Binunsaran, Nanaw, Itum / Hibok-Hibok Trail,
+        Sitio Esperanza & Ardent Hot Spring.
+      - Catarman Mountain Uplands: Tuasan Falls / Upper Mainit.
+      - Sagay Uplands: Binangawan Falls interior.
+    """
+    try:
+        lat_f = float(lat) if lat else 0.0
+        lng_f = float(lng) if lng else 0.0
+    except (TypeError, ValueError):
+        return False
+    if not lat_f or not lng_f:
+        return False
+
+    if 9.185 <= lat_f <= 9.2355 and 124.682 <= lng_f <= 124.734:
+        return True
+    if 9.168 <= lat_f <= 9.205 and 124.668 <= lng_f <= 124.695:
+        return True
+    if 9.138 <= lat_f <= 9.175 and 124.715 <= lng_f <= 124.750:
+        return True
+    return False
+
+
+def is_hinterland_route(
+    pickup_address: str = "",
+    dropoff_address: str = "",
+    item_notes: str = "",
+    pickup_lat: float | None = None,
+    pickup_lng: float | None = None,
+    dropoff_lat: float | None = None,
+    dropoff_lng: float | None = None,
+) -> bool:
+    """
+    Auto-detect whether a trip traverses or ends in Camiguin's steep upland / mountain
+    ('tungason' / hinterland) areas so +₱30 surcharge applies consistently for ALL services.
+    Checks both place names/keywords and resolved pickup/dropoff coordinates.
+    """
+    full_addr = f"{pickup_address or ''} {dropoff_address or ''} {item_notes or ''}".lower()
+    if any(k in full_addr for k in HINTERLAND_ROUTE_KEYWORDS):
+        return True
+    if _HINTERLAND_BOUNDARY_RE.search(full_addr):
+        return True
+    if _is_hinterland_coord(pickup_lat, pickup_lng) or _is_hinterland_coord(dropoff_lat, dropoff_lng):
+        return True
+    return False
+
+
 def calculate_fare(
     km: float,
     service_type: str,
@@ -3350,7 +3438,7 @@ def calculate_fare(
     - Queuing at large establishments / groceries (Gaisano, Davilett, Nene Uy): +₱30.00
     - Extra store stops: +₱20.00 per additional store
     - Bulky orders / Shopping orders >= ₱2,000: +₱20.00
-    - Hinterland / Mountain route (Soro-soro, Highland, Utopia, Binunsaran, Granelandia, Itum Road, etc.): +₱30.00
+    - Hinterland / Mountain route (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Quiboro, Sa-ay, Tuasan, Binangawan, Itum, etc.): +₱30.00
     """
     clean_km = max(1.0, round(km, 2))
     base_fare = float(settings.get("base_fare") or 40.0)

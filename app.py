@@ -52,6 +52,7 @@ from db import (
     get_settings,
     get_uploaded_media,
     init_db,
+    is_hinterland_route,
     normalize_ph_phone,
     register_rider,
     save_uploaded_media,
@@ -315,12 +316,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         d_lng = float(data.get("dropoff_lng") or 0.0)
         p_addr = (data.get("pickup_address") or "").strip()
         d_addr = (data.get("dropoff_address") or "").strip()
+        item_notes = (data.get("item_notes") or "").strip()
         service = (data.get("service_type") or "pahatud").lower()
 
         is_large_store = bool(data.get("is_large_store", False))
         extra_stores_count = int(data.get("extra_stores_count") or 0)
         is_bulky = bool(data.get("is_bulky_or_high_value", False))
-        is_hinterland = bool(data.get("is_hinterland", False))
+        manual_hinterland = bool(data.get("is_hinterland", False))
 
         # Auto-geocode text addresses if coordinates are missing
         if (not p_lat or not p_lng) and p_addr:
@@ -332,6 +334,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             geo_d = geocode_camiguin_location(d_addr)
             if geo_d:
                 d_lat, d_lng = geo_d["lat"], geo_d["lng"]
+
+        auto_hinterland = is_hinterland_route(
+            pickup_address=p_addr,
+            dropoff_address=d_addr,
+            item_notes=item_notes,
+            pickup_lat=p_lat,
+            pickup_lng=p_lng,
+            dropoff_lat=d_lat,
+            dropoff_lng=d_lng,
+        )
+        is_hinterland = manual_hinterland or auto_hinterland
 
         # Client may have provided pre-fetched road route distance from browser OSRM
         client_road_km = None
@@ -365,6 +378,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "road_km": estimated_km,
             "fare_amount": fare,
             "service_type": service,
+            "auto_hinterland": auto_hinterland,
             "breakdown": breakdown,
             "resolved_pickup": {"lat": p_lat, "lng": p_lng} if p_lat and p_lng else None,
             "resolved_dropoff": {"lat": d_lat, "lng": d_lng} if d_lat and d_lng else None,
@@ -831,10 +845,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         extra_stores_count = int(data.get("extra_stores_count") or 0)
         is_bulky = bool(data.get("is_bulky_or_high_value", False)) or (estimated_budget >= 2000.0)
 
-        # Auto-detect hinterland route
-        full_addr = f"{pickup_address} {dropoff_address} {item_notes}".lower()
-        hinterland_keywords = ["sorosoro", "soro'soro", "soro-soro", "highland", "utopia", "binunsaran", "granelandia", "itum", "hinterland"]
-        is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
+        # Auto-detect upland / steep (tungason) route by keywords or coordinates
+        manual_hinterland = bool(data.get("is_hinterland", False))
+        auto_hinterland = is_hinterland_route(
+            pickup_address=pickup_address,
+            dropoff_address=dropoff_address,
+            item_notes=item_notes,
+            pickup_lat=pickup_lat,
+            pickup_lng=pickup_lng,
+            dropoff_lat=dropoff_lat,
+            dropoff_lng=dropoff_lng,
+        )
+        is_hinterland = manual_hinterland or auto_hinterland
 
         fare_amount, estimated_km, breakdown = calculate_fare(
             km=km,

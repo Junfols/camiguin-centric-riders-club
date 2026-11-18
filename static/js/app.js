@@ -34,6 +34,7 @@
   const notesLabel = document.getElementById("notes-label");
   const fareDisplay = document.getElementById("fare-display");
   const fareKmDisplay = document.getElementById("fare-km-display");
+  const fareBreakdownBadges = document.getElementById("fare-breakdown-badges");
   const fareHintText = document.getElementById("fare-hint-text");
   const bookingForm = document.getElementById("booking-request-form");
   const submitBtn = document.getElementById("submit-booking-btn");
@@ -55,6 +56,7 @@
   const optExtraStores = document.getElementById("opt-extra-stores");
   const optHinterland = document.getElementById("opt-hinterland");
   const estimatedBudgetInput = document.getElementById("estimated-budget");
+  const itemNotesField = document.getElementById("item-notes");
   const openMatrixBtn = document.getElementById("open-matrix-btn");
   const closeMatrixBtn = document.getElementById("close-matrix-btn");
   const fareMatrixModal = document.getElementById("fare-matrix-modal");
@@ -3225,12 +3227,22 @@
   });
 
   // Re-calculate when options change
-  [optLargeStore, optExtraStores, optHinterland, estimatedBudgetInput].forEach((el) => {
+  [optLargeStore, optExtraStores, estimatedBudgetInput].forEach((el) => {
     if (el) {
-      el.addEventListener("change", recalculateFare);
-      el.addEventListener("input", recalculateFare);
+      el.addEventListener("change", () => recalculateFare());
+      el.addEventListener("input", () => recalculateFare());
     }
   });
+  if (optHinterland) {
+    optHinterland.addEventListener("change", () => {
+      optHinterland.dataset.manual = optHinterland.checked ? "1" : "";
+      optHinterland.dataset.autoApplied = "";
+      recalculateFare();
+    });
+  }
+  if (itemNotesField) {
+    itemNotesField.addEventListener("change", () => recalculateFare());
+  }
 
   // Resolve coordinates on explicit commit (Enter / blur after typing) WITHOUT overwriting user text
   function handleTypedAddress(isPickup, shouldFlyMap) {
@@ -4152,7 +4164,57 @@
     recalculateFare();
   }
 
+  let fareReqSeq = 0;
+
+  function renderFareBreakdownBadges(breakdown, autoHinterland) {
+    if (!fareBreakdownBadges) return;
+    if (!breakdown) {
+      fareBreakdownBadges.innerHTML = "";
+      fareBreakdownBadges.classList.add("hidden");
+      return;
+    }
+    const serviceFee = Number(breakdown.service_fee || 0);
+    const queuingFee = Number(breakdown.queuing_fee || 0);
+    const extraStoresFee = Number(breakdown.extra_stores_fee || 0);
+    const bulkyFee = Number(breakdown.bulky_fee || 0);
+    const hinterlandFee = Number(breakdown.hinterland_fee || 0);
+    const hasExtras = serviceFee > 0 || queuingFee > 0 || extraStoresFee > 0 || bulkyFee > 0 || hinterlandFee > 0;
+
+    if (!hasExtras) {
+      fareBreakdownBadges.innerHTML = "";
+      fareBreakdownBadges.classList.add("hidden");
+      return;
+    }
+
+    const pills = [];
+    pills.push(
+      `<span class="fare-pill-item"><span>Meter Fare:</span> ₱${Math.round(Number(breakdown.meter_fare || 0))}</span>`
+    );
+    if (serviceFee > 0) {
+      pills.push(`<span class="fare-pill-item"><span>Service Fee:</span> +₱${Math.round(serviceFee)}</span>`);
+    }
+    if (queuingFee > 0) {
+      pills.push(`<span class="fare-pill-item"><span>Supermarket Queue:</span> +₱${Math.round(queuingFee)}</span>`);
+    }
+    if (extraStoresFee > 0) {
+      pills.push(`<span class="fare-pill-item"><span>Extra Stops:</span> +₱${Math.round(extraStoresFee)}</span>`);
+    }
+    if (bulkyFee > 0) {
+      pills.push(`<span class="fare-pill-item"><span>Bulky Order:</span> +₱${Math.round(bulkyFee)}</span>`);
+    }
+    if (hinterlandFee > 0) {
+      const uplandLabel = autoHinterland ? "Steep / Upland Route (Auto-Added)" : "Mountain / Steep Route";
+      pills.push(
+        `<span class="fare-pill-item fare-pill-upland">⛰️ +₱${Math.round(hinterlandFee)} <span>${uplandLabel}</span></span>`
+      );
+    }
+
+    fareBreakdownBadges.innerHTML = pills.join("");
+    fareBreakdownBadges.classList.remove("hidden");
+  }
+
   async function recalculateFare(overrideRoadKm) {
+    const reqId = ++fareReqSeq;
     const pLat = parseFloat(pickupLatInput.value);
     const pLng = parseFloat(pickupLngInput.value);
     const dLat = parseFloat(dropoffLatInput.value);
@@ -4160,7 +4222,7 @@
     const service = serviceTypeInput.value;
     const isLarge = optLargeStore ? optLargeStore.checked : false;
     const extraStores = optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0;
-    const isHinterland = optHinterland ? optHinterland.checked : false;
+    const isHinterland = optHinterland ? (optHinterland.checked && optHinterland.dataset.manual === "1") : false;
     const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
     const isBulky = budgetVal >= 2000;
     const roadKmToSend = typeof overrideRoadKm === "number" ? overrideRoadKm : currentRoadKm;
@@ -4177,6 +4239,11 @@
       currentRoadKm = null;
       if (fareDisplay) fareDisplay.textContent = "40";
       if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Select Location)";
+      renderFareBreakdownBadges(null, false);
+      if (optHinterland && optHinterland.dataset.autoApplied === "1" && !optHinterland.dataset.manual) {
+        optHinterland.checked = false;
+        optHinterland.dataset.autoApplied = "";
+      }
       return;
     }
 
@@ -4192,6 +4259,7 @@
           road_km: roadKmToSend,
           pickup_address: pickupInput ? pickupInput.value.trim() : "",
           dropoff_address: dropoffInput ? dropoffInput.value.trim() : "",
+          item_notes: itemNotesField ? itemNotesField.value.trim() : "",
           service_type: service,
           is_large_store: isLarge,
           extra_stores_count: extraStores,
@@ -4200,9 +4268,21 @@
         }),
       });
       const data = await res.json();
+      if (reqId !== fareReqSeq) return;
       if (data && data.fare_amount) {
         if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
         if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Road Distance)`;
+
+        renderFareBreakdownBadges(data.breakdown, Boolean(data.auto_hinterland));
+        if (optHinterland) {
+          if (data.auto_hinterland) {
+            optHinterland.checked = true;
+            optHinterland.dataset.autoApplied = "1";
+          } else if (optHinterland.dataset.autoApplied === "1" && !optHinterland.dataset.manual) {
+            optHinterland.checked = false;
+            optHinterland.dataset.autoApplied = "";
+          }
+        }
 
         // If backend resolved coordinates that were missing, update markers & inputs
         let hasNewCoords = false;
@@ -4340,6 +4420,11 @@
     if (pickupLngInput) pickupLngInput.value = "";
     if (dropoffLatInput) dropoffLatInput.value = "";
     if (dropoffLngInput) dropoffLngInput.value = "";
+    if (optHinterland) {
+      optHinterland.checked = false;
+      optHinterland.dataset.manual = "";
+      optHinterland.dataset.autoApplied = "";
+    }
     updateClearBtn(pickupInput, clearPickupBtn);
     updateClearBtn(dropoffInput, clearDropoffBtn);
 
@@ -4415,7 +4500,7 @@
         estimated_budget: budgetVal,
         is_large_store: optLargeStore ? optLargeStore.checked : false,
         extra_stores_count: optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0,
-        is_hinterland: optHinterland ? optHinterland.checked : false,
+        is_hinterland: optHinterland ? (optHinterland.checked && optHinterland.dataset.manual === "1") : false,
         is_bulky_or_high_value: budgetVal >= 2000,
         payment_method: document.querySelector('input[name="payment_method"]:checked')?.value || "cash",
         scheduled_at: (document.querySelector('input[name="ride_timing"]:checked')?.value === "later") ? (document.getElementById("scheduled-at")?.value || "") : "",

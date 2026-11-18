@@ -53,12 +53,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v5
+        # 2. Service Worker v6
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v5", sw_text)
-        self.assertIn("/static/js/app.js?v=29", sw_text)
+        self.assertIn("ccrc-pwa-v6", sw_text)
+        self.assertIn("/static/js/app.js?v=30", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")
@@ -1390,6 +1390,105 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertIn(cname, db_by_name)
             self.assertAlmostEqual(float(lat_s), db_by_name[cname]["lat"], places=4)
             self.assertAlmostEqual(float(lng_s), db_by_name[cname]["lng"], places=4)
+
+    def test_auto_hinterland_surcharge_upland_routes(self):
+        from db import CAMIGUIN_HIGHWAY_WAYPOINTS, CAMIGUIN_KNOWN_PLACES, is_hinterland_route
+
+        # 1. Verify zero false positives on coastal Circumferential Highway waypoints
+        for lat, lng, label, _ in CAMIGUIN_HIGHWAY_WAYPOINTS:
+            self.assertFalse(
+                is_hinterland_route(pickup_lat=lat, pickup_lng=lng),
+                f"Coastal highway waypoint falsely flagged upland: {label}",
+            )
+
+        # 2. Verify Mambajao Centro -> Soro-soro / Utopia / Highland / Ardent / Katibawasan / Binunsaran
+        # automatically add +₱30 across BOTH /api/fare-estimate AND /api/bookings (including Passenger rides!)
+        upland_cases = [
+            ("Mambajao Town Plaza", "Soro-soro, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Utopia Café, Mambajao", "pahatud"),
+            ("Poblacion, Mambajao", "Camiguin Highland Resort, Soro-soro", "pabili"),
+            ("Mambajao Town Plaza", "Ardent Hot Spring, Esperanza", "pahatud"),
+            ("Gaisano Capital Camiguin", "Katibawasan Falls", "pasugo"),
+            ("Mambajao Town Plaza", "Binunsaran, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Sa-ay Cold Spring, Mambajao", "pahatud"),
+        ]
+        for idx, (pickup_q, dropoff_q, svc) in enumerate(upland_cases):
+            est_resp = self.client.post(
+                "/api/fare-estimate",
+                json={
+                    "pickup_address": pickup_q,
+                    "dropoff_address": dropoff_q,
+                    "service_type": svc,
+                },
+            )
+            self.assertEqual(est_resp.status_code, 200)
+            est = est_resp.get_json()
+            self.assertTrue(est["auto_hinterland"], (pickup_q, dropoff_q, est))
+            self.assertEqual(est["breakdown"]["hinterland_fee"], 30.0, (pickup_q, dropoff_q))
+            expected_service_fee = 20.0 if svc in ("pabili", "pasugo", "pabayad") else 0.0
+            self.assertEqual(est["breakdown"]["service_fee"], expected_service_fee)
+            self.assertEqual(
+                est["fare_amount"],
+                round(est["breakdown"]["meter_fare"] + expected_service_fee + 30.0),
+            )
+
+            book_resp = self.client.post(
+                "/api/bookings",
+                json={
+                    "customer_name": f"Upland Passenger {idx}",
+                    "customer_phone": f"0917000110{idx}",
+                    "pickup_address": pickup_q,
+                    "dropoff_address": dropoff_q,
+                    "service_type": svc,
+                    "is_hinterland": False,  # Server MUST auto-enforce even if omitted/false
+                },
+            )
+            self.assertEqual(book_resp.status_code, 201)
+            booked = book_resp.get_json()
+            self.assertEqual(booked["breakdown"]["hinterland_fee"], 30.0)
+            self.assertEqual(booked["booking"]["fare_amount"], est["fare_amount"])
+
+        # 3. Map-pinned coordinates inside Soro-soro / Utopia without place keywords still auto-add +₱30
+        pin_est = self.client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_address": "Pinned Pickup",
+                "pickup_lat": 9.24958,
+                "pickup_lng": 124.71654,
+                "dropoff_address": "Pinned Dropoff",
+                "dropoff_lat": 9.22741,
+                "dropoff_lng": 124.70748,
+                "service_type": "pahatud",
+            },
+        )
+        self.assertEqual(pin_est.status_code, 200)
+        pin_data = pin_est.get_json()
+        self.assertTrue(pin_data["auto_hinterland"])
+        self.assertEqual(pin_data["breakdown"]["hinterland_fee"], 30.0)
+
+        # 4. Flat coastal routes must NOT receive upland surcharge
+        for pickup_q, dropoff_q in [
+            ("Moonflower Garden, Baylao", "Jollibee Camiguin"),
+            ("Balbagon Port", "White Island Boat Jump-off, Yumbing"),
+            ("Pandan, Mambajao", "Mambajao Town Plaza"),
+            ("Tagdo, Mambajao", "Agoho, Mambajao"),
+        ]:
+            flat_est = self.client.post(
+                "/api/fare-estimate",
+                json={
+                    "pickup_address": pickup_q,
+                    "dropoff_address": dropoff_q,
+                    "service_type": "pahatud",
+                },
+            ).get_json()
+            self.assertFalse(flat_est["auto_hinterland"], (pickup_q, dropoff_q))
+            self.assertEqual(flat_est["breakdown"]["hinterland_fee"], 0.0, (pickup_q, dropoff_q))
+
+        # 5. Home template has breakdown strip and i18n includes upland badge labels
+        home_html = self.client.get("/").get_data(as_text=True)
+        self.assertIn('id="fare-breakdown-badges"', home_html)
+        i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
+        self.assertIn("Steep / Upland Route (Auto-Added)", i18n_js)
 
 
 if __name__ == "__main__":

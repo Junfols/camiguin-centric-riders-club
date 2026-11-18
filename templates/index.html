@@ -215,7 +215,7 @@
               <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
               <div>
                 <strong>Hinterland / Mountain Route (+₱30)</strong>
-                <small class="text-muted">Soro-soro, Highland, Utopia, Binunsaran, Granelandia</small>
+                <small class="text-muted">Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran</small>
               </div>
             </label>
           </div>
@@ -355,6 +355,8 @@
               <small class="text-muted">🛣️ Road Route</small>
             </div>
           </div>
+
+          <div id="fare-breakdown-badges" class="fare-breakdown-badges hidden"></div>
 
           <div id="promo-discount-row" class="hidden" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;color:#16a34a;font-weight:600;font-size:0.9rem;">
             <span>🎟️ Voucher Discount:</span>
@@ -541,7 +543,7 @@
           <li><strong>Large Store Queuing:</strong> +₱30 when queuing at Gaisano, Davilett, Nene Uy</li>
           <li><strong>Additional Store Stops:</strong> +₱20 per extra store</li>
           <li><strong>Bulky Orders (&gt;=₱2,000):</strong> +₱20</li>
-          <li><strong>Hinterland / Mountain Route:</strong> +₱30 in Soro-soro, Highland, Utopia, etc.</li>
+          <li><strong>Hinterland / Mountain Route:</strong> +₱30 auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, etc.)</li>
         </ul>
       </div>
     </div>
@@ -573,5 +575,5 @@
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
 </script>
-<script src="/static/js/app.js?v=29"></script>
+<script src="/static/js/app.js?v=30"></script>
 {% endblock %}
