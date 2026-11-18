@@ -346,7 +346,7 @@
             <th style="padding:8px;">Pickup &rarr; Dropoff</th>
             <th style="padding:8px;">Fare</th>
             <th style="padding:8px;">Rider</th>
-            <th style="padding:8px;">Live Track</th>
+            <th style="padding:8px;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -402,8 +402,27 @@
                 </div>
               {% endif %}
             </td>
-            <td style="padding:8px;">
-              <a href="/track/{{ b.booking_code or b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
+            <td style="padding:8px;white-space:nowrap;">
+              <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start;">
+                <a href="/track/{{ b.booking_code or b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
+                {% if b.status in ['accepted', 'in_progress'] %}
+                  <button
+                    type="button"
+                    class="btn btn-sm admin-open-transfer-btn"
+                    data-booking-id="{{ b.id }}"
+                    data-booking-code="{{ b.booking_code or b.code }}"
+                    data-rider-id="{{ b.rider_id or '' }}"
+                    data-rider-name="{{ b.rider_name or 'Unassigned' }}"
+                    data-dropoff="{{ b.dropoff_address or b.dropoff_location or '' }}"
+                    data-fare="{{ '%.2f'|format((b.fare_amount or b.estimated_fare or 0)|float) }}"
+                    data-status="{{ b.status }}"
+                    data-scheduled-at="{{ b.scheduled_at or '' }}"
+                    style="background:#fffbeb;border:1.5px solid #f59e0b;color:#b45309;font-weight:700;font-size:0.75rem;padding:4px 9px;cursor:pointer;"
+                  >
+                    🔄 Transfer to Rider
+                  </button>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% else %}
@@ -663,6 +682,55 @@
   </div>
 
 
+</div>
+
+<!-- Admin Transfer Booking to Rider Modal -->
+<div id="admin-transfer-modal" class="modal-backdrop hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem;" role="dialog" aria-modal="true">
+  <div class="card" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:1.35rem;border-radius:16px;background:#ffffff;border:2px solid #f59e0b;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid #fde68a;margin-bottom:12px;">
+      <div>
+        <h3 style="margin:0;font-size:1.1rem;color:#92400e;display:flex;align-items:center;gap:6px;">
+          <span>🔄</span> Transfer Booking to Rider
+        </h3>
+        <small id="admin-transfer-subtitle" style="color:#b45309;font-size:0.78rem;">Select an online rider or re-broadcast this trip</small>
+      </div>
+      <button type="button" id="admin-close-transfer-btn" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#92400e;line-height:1;">&times;</button>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px;">
+      <label for="admin-transfer-reason" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Reason for Transfer *</label>
+      <select id="admin-transfer-reason" style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.88rem;background:#fff;">
+        <option value="Club dispatch reassignment">📋 Club dispatch reassignment</option>
+        <option value="Flat tire / tire puncture">🛞 Flat tire / tire puncture</option>
+        <option value="Engine / mechanical trouble">🔧 Engine / mechanical trouble</option>
+        <option value="Fuel / battery issue">⛽ Fuel / battery issue</option>
+        <option value="Personal / family emergency">🚨 Personal / family emergency</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label for="admin-transfer-note" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Handover Note (Optional)</label>
+      <input type="text" id="admin-transfer-note" maxlength="200" placeholder="Optional instructions for replacement rider & passenger..." style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.86rem;">
+    </div>
+
+    <div id="admin-transfer-error" class="alert-error hidden" style="margin-bottom:10px;"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <strong style="font-size:0.86rem;color:#0f172a;">Option 1: Direct Transfer to Online Rider</strong>
+      <button type="button" id="admin-refresh-coriders-btn" class="btn btn-sm btn-outline" style="font-size:0.74rem;padding:3px 9px;">🔄 Refresh</button>
+    </div>
+
+    <div id="admin-transfer-riders-list" style="display:grid;gap:8px;max-height:220px;overflow-y:auto;margin-bottom:14px;">
+      <div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Loading online riders...</div>
+    </div>
+
+    <div style="border-top:1px dashed #cbd5e1;padding-top:12px;">
+      <strong style="font-size:0.84rem;color:#0f172a;display:block;margin-bottom:6px;">Option 2: Broadcast to All Online Riders</strong>
+      <button type="button" id="admin-transfer-rebroadcast-btn" class="btn btn-block" style="background:#dc2626;color:#ffffff;border:none;font-weight:700;padding:10px 14px;border-radius:10px;cursor:pointer;">
+        📡 Re-Broadcast to All Online Riders (Urgent)
+      </button>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -1057,5 +1125,203 @@
       btn.innerHTML = originalText;
     }
   };
+
+  // Admin Transfer Booking to Rider Handlers
+  let adminTransferState = null;
+
+  function escapeAdminHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function isAdminFutureScheduled(status, scheduledAt) {
+    if (!scheduledAt || status === "in_progress") return false;
+    try {
+      const schedMs = new Date(scheduledAt).getTime();
+      if (!Number.isFinite(schedMs)) return false;
+      return (schedMs - Date.now()) / 60000 > 30;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  window.closeAdminTransferModal = function() {
+    const modal = document.getElementById("admin-transfer-modal");
+    if (modal) {
+      modal.style.display = "none";
+      modal.classList.add("hidden");
+    }
+    adminTransferState = null;
+  };
+
+  async function loadAdminTransferRiders() {
+    const listEl = document.getElementById("admin-transfer-riders-list");
+    if (!listEl || !adminTransferState) return;
+    listEl.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Loading online riders...</div>`;
+    try {
+      const res = await fetch("/api/rider/co-riders");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Unable to fetch online riders.");
+
+      const currentRid = Number(adminTransferState.riderId || 0);
+      const allowBusy = isAdminFutureScheduled(adminTransferState.status, adminTransferState.scheduledAt);
+      const candidates = (Array.isArray(data.co_riders) ? data.co_riders : [])
+        .filter((r) => !currentRid || Number(r.id) !== currentRid)
+        .sort((a, b) => Number(Boolean(a.has_active_job)) - Number(Boolean(b.has_active_job)));
+
+      if (candidates.length === 0) {
+        listEl.innerHTML = `<div class="empty-state" style="padding:12px;font-size:0.84rem;">No other online riders found right now. Use Option 2 to Re-Broadcast to all online riders.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = candidates.map((r) => {
+        const isBusy = Boolean(r.has_active_job);
+        const isDisabled = isBusy && !allowBusy;
+        const badge = isBusy
+          ? `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">Busy</span>`
+          : `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Available</span>`;
+        return `
+          <div class="transfer-corider-option ${isDisabled ? "is-busy" : ""}">
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <strong style="font-size:0.88rem;color:#0f172a;">${escapeAdminHtml(r.name)}</strong>
+                ${badge}
+              </div>
+              <div class="text-muted" style="font-size:0.76rem;margin-top:2px;">
+                🏍️ ${escapeAdminHtml(r.bike_model)} (${escapeAdminHtml(r.plate_number)}) &bull; 📍 ${escapeAdminHtml(r.municipality || "Camiguin")}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm ${isDisabled ? "btn-outline" : "btn-primary"} admin-exec-transfer-btn"
+              data-rider-id="${r.id}"
+              data-can-transfer="${isDisabled ? "0" : "1"}"
+              ${isDisabled ? "disabled" : ""}
+              style="white-space:nowrap;"
+            >${isDisabled ? "Busy" : "Transfer Now"}</button>
+          </div>
+        `;
+      }).join("");
+    } catch (err) {
+      listEl.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">${escapeAdminHtml(err.message || "Error loading riders.")}</div>`;
+    }
+  }
+
+  async function executeAdminBookingTransfer(targetRiderId) {
+    if (!adminTransferState) return;
+    const errEl = document.getElementById("admin-transfer-error");
+    const rebroadcastBtn = document.getElementById("admin-transfer-rebroadcast-btn");
+    const listEl = document.getElementById("admin-transfer-riders-list");
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.classList.add("hidden");
+    }
+
+    const reason = document.getElementById("admin-transfer-reason")?.value || "Club dispatch reassignment";
+    const note = document.getElementById("admin-transfer-note")?.value.trim() || "";
+    const payload = { reason, note };
+    if (targetRiderId) payload.target_rider_id = Number(targetRiderId);
+
+    const origBtnText = rebroadcastBtn ? rebroadcastBtn.textContent : "";
+    if (rebroadcastBtn) {
+      rebroadcastBtn.disabled = true;
+      if (!targetRiderId) rebroadcastBtn.textContent = "Re-broadcasting...";
+    }
+    const execBtns = listEl
+      ? Array.from(listEl.querySelectorAll(".admin-exec-transfer-btn[data-can-transfer='1']"))
+      : [];
+    execBtns.forEach((b) => {
+      b.disabled = true;
+      if (targetRiderId && Number(b.getAttribute("data-rider-id")) === Number(targetRiderId)) {
+        b.textContent = "Transferring...";
+      }
+    });
+
+    try {
+      const res = await fetch(`/api/bookings/${adminTransferState.bookingId}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to transfer booking.");
+      }
+      closeAdminTransferModal();
+      alert("✅ " + (data.message || "Booking transferred successfully!"));
+      window.location.reload();
+    } catch (err) {
+      if (errEl) {
+        errEl.textContent = err.message || "Failed to transfer booking.";
+        errEl.classList.remove("hidden");
+      } else {
+        alert(err.message || "Failed to transfer booking.");
+      }
+      loadAdminTransferRiders();
+    } finally {
+      if (rebroadcastBtn) {
+        rebroadcastBtn.disabled = false;
+        rebroadcastBtn.textContent = origBtnText || "📡 Re-Broadcast to All Online Riders (Urgent)";
+      }
+      execBtns.forEach((b) => {
+        b.disabled = false;
+        b.textContent = "Transfer Now";
+      });
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const openBtn = e.target.closest(".admin-open-transfer-btn");
+    if (openBtn) {
+      adminTransferState = {
+        bookingId: Number(openBtn.dataset.bookingId),
+        bookingCode: openBtn.dataset.bookingCode || "",
+        riderId: openBtn.dataset.riderId ? Number(openBtn.dataset.riderId) : null,
+        riderName: openBtn.dataset.riderName || "Unassigned",
+        dropoff: openBtn.dataset.dropoff || "",
+        fare: openBtn.dataset.fare || "0.00",
+        status: openBtn.dataset.status || "",
+        scheduledAt: openBtn.dataset.scheduledAt || "",
+      };
+      const sub = document.getElementById("admin-transfer-subtitle");
+      if (sub) {
+        sub.textContent = `${adminTransferState.bookingCode} • Current: ${adminTransferState.riderName} • → ${adminTransferState.dropoff} • ₱${adminTransferState.fare}`;
+      }
+      const noteEl = document.getElementById("admin-transfer-note");
+      if (noteEl) noteEl.value = "";
+      const errEl = document.getElementById("admin-transfer-error");
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.classList.add("hidden");
+      }
+      const modal = document.getElementById("admin-transfer-modal");
+      if (modal) {
+        modal.style.display = "flex";
+        modal.classList.remove("hidden");
+      }
+      loadAdminTransferRiders();
+      return;
+    }
+
+    const execBtn = e.target.closest(".admin-exec-transfer-btn");
+    if (execBtn && !execBtn.disabled) {
+      const targetId = execBtn.getAttribute("data-rider-id");
+      if (targetId) executeAdminBookingTransfer(targetId);
+      return;
+    }
+
+    if (e.target.id === "admin-transfer-modal") {
+      closeAdminTransferModal();
+    }
+  });
+
+  document.getElementById("admin-close-transfer-btn")?.addEventListener("click", closeAdminTransferModal);
+  document.getElementById("admin-refresh-coriders-btn")?.addEventListener("click", loadAdminTransferRiders);
+  document.getElementById("admin-transfer-rebroadcast-btn")?.addEventListener("click", () => executeAdminBookingTransfer(null));
 </script>
 {% endblock %}

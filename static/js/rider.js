@@ -35,6 +35,7 @@
   const jobInProgressBtn = document.getElementById("job-in-progress-btn");
   const jobCompleteBtn = document.getElementById("job-complete-btn");
   const jobTransferBtn = document.getElementById("job-transfer-btn");
+  const jobTransferTopBtn = document.getElementById("job-transfer-top-btn");
   const transferModal = document.getElementById("rider-transfer-modal");
   const transferModalSubtitle = document.getElementById("transfer-modal-job-subtitle");
   const transferReasonSelect = document.getElementById("transfer-reason-select");
@@ -52,6 +53,10 @@
 
   let currentRider = null;
   let activeJob = null;
+  let currentScheduledJobs = [];
+  let transferTargetJob = null;
+  let transferHighlightRiderId = null;
+  let cachedCoRiders = [];
   let knownJobKeys = new Set();
   let prevActiveJobKey = null;
   let pollInterval = null;
@@ -377,6 +382,10 @@
     }
     resetRiderChat(null);
     activeJob = null;
+    currentScheduledJobs = [];
+    transferTargetJob = null;
+    transferHighlightRiderId = null;
+    cachedCoRiders = [];
     prevActiveJobKey = null;
     knownJobKeys.clear();
     if (transferModal) transferModal.classList.add("hidden");
@@ -415,6 +424,10 @@
       }
       resetRiderChat(null);
       activeJob = null;
+      currentScheduledJobs = [];
+      transferTargetJob = null;
+      transferHighlightRiderId = null;
+      cachedCoRiders = [];
       prevActiveJobKey = null;
       knownJobKeys.clear();
       if (transferModal) transferModal.classList.add("hidden");
@@ -489,10 +502,10 @@
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
+      checkActiveJob();
+      fetchCoRiders();
       if (onlineToggle.checked) {
         fetchAvailableJobs();
-        fetchCoRiders();
-        checkActiveJob();
       }
     }, 3500);
   }
@@ -1034,9 +1047,14 @@
   function renderActiveJobCard(job) {
     if (!job) {
       if (activeJobBox) activeJobBox.classList.add("hidden");
-      if (transferModal) transferModal.classList.add("hidden");
+      if (jobTransferTopBtn) jobTransferTopBtn.classList.add("hidden");
+      if (jobTransferBtn) jobTransferBtn.classList.add("hidden");
+      if (transferModal && (!transferTargetJob || !transferTargetJob._fromScheduledList)) {
+        transferModal.classList.add("hidden");
+      }
       resetRiderChat(null);
       renderJobOnRiderMap(null);
+      renderCoRidersList(cachedCoRiders);
       return;
     }
     resetRiderChat(job);
@@ -1132,12 +1150,17 @@
         jobCompleteBtn.classList.remove("hidden");
       }
     }
+    const canTransferActive = ["accepted", "in_progress"].includes(job.status);
     if (jobTransferBtn) {
-      jobTransferBtn.classList.toggle("hidden", !["accepted", "in_progress"].includes(job.status));
+      jobTransferBtn.classList.toggle("hidden", !canTransferActive);
+    }
+    if (jobTransferTopBtn) {
+      jobTransferTopBtn.classList.toggle("hidden", !canTransferActive);
     }
 
     // Interactive Live GPS Route Map for Active Job
     renderJobOnRiderMap(job);
+    renderCoRidersList(cachedCoRiders);
   }
 
   // Check Active Job
@@ -1166,6 +1189,7 @@
       prevActiveJobKey = nextKey;
       activeJob = nextJob;
       const scheduledJobs = data.scheduled_jobs || [];
+      currentScheduledJobs = scheduledJobs;
 
       // Render Scheduled Jobs Card & Reminder
       renderScheduledJobs(scheduledJobs);
@@ -1179,6 +1203,19 @@
         }
       }
     } catch (_) {}
+  }
+
+  const scheduledListEl = document.getElementById("rider-scheduled-list");
+  if (scheduledListEl) {
+    scheduledListEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".scheduled-transfer-btn");
+      if (!btn) return;
+      const bId = Number(btn.getAttribute("data-booking-id"));
+      const target = currentScheduledJobs.find((item) => Number(item.id) === bId);
+      if (target) {
+        openEmergencyTransferModal(Object.assign({ _fromScheduledList: true }, target), null);
+      }
+    });
   }
 
   function renderScheduledJobs(jobs) {
@@ -1240,9 +1277,12 @@
             <div>👤 <strong>Passenger:</strong> ${escapeHtml(j.customer_name)} (${escapeHtml(j.customer_phone)})</div>
             <div style="font-weight:700;color:var(--primary);margin-top:2px;">Fare: ₱${Math.round(j.fare_amount)}</div>
           </div>
-          <div style="display:flex;gap:8px;margin-top:4px;">
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center;">
             <a href="tel:${escapeHtml(j.customer_phone)}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">📞 Call</a>
             <a href="sms:${escapeHtml(j.customer_phone)}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">💬 SMS</a>
+            <button type="button" class="btn btn-sm btn-transfer-emergency scheduled-transfer-btn" data-booking-id="${j.id}" style="padding:4px 10px;font-size:0.78rem;">
+              🔄 Transfer to Rider
+            </button>
             <button type="button" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;margin-left:auto;" onclick="startScheduledJobNow(${j.id})">
               🚀 Start Trip Now
             </button>
@@ -1392,6 +1432,17 @@
     return null;
   }
 
+  function isJobFutureScheduled(job) {
+    if (!job || !job.scheduled_at || job.status === "in_progress") return false;
+    try {
+      const schedMs = new Date(job.scheduled_at).getTime();
+      if (!Number.isFinite(schedMs)) return false;
+      return (schedMs - Date.now()) / 60000 > 30;
+    } catch (_) {
+      return false;
+    }
+  }
+
   async function loadTransferCoRiders() {
     if (!transferCoridersList || !currentRider) return;
     transferCoridersList.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Checking online co-riders...</div>`;
@@ -1407,13 +1458,15 @@
       }
       const data = await res.json();
       const rawList = Array.isArray(data.co_riders) ? data.co_riders : [];
+      const targetJob = transferTargetJob || activeJob;
+      const allowBusy = isJobFutureScheduled(targetJob);
       const refGps = getCurrentRiderGpsForTransfer()
         || (
-          activeJob
-          && Number.isFinite(Number(activeJob.pickup_lat))
-          && Number.isFinite(Number(activeJob.pickup_lng))
-          && Number(activeJob.pickup_lat) !== 0
-            ? { lat: Number(activeJob.pickup_lat), lng: Number(activeJob.pickup_lng) }
+          targetJob
+          && Number.isFinite(Number(targetJob.pickup_lat))
+          && Number.isFinite(Number(targetJob.pickup_lng))
+          && Number(targetJob.pickup_lat) !== 0
+            ? { lat: Number(targetJob.pickup_lat), lng: Number(targetJob.pickup_lng) }
             : null
         );
 
@@ -1432,6 +1485,11 @@
           return { ...r, distKm };
         })
         .sort((a, b) => {
+          if (transferHighlightRiderId) {
+            const aSel = Number(a.id) === transferHighlightRiderId ? 1 : 0;
+            const bSel = Number(b.id) === transferHighlightRiderId ? 1 : 0;
+            if (aSel !== bSel) return bSel - aSel;
+          }
           const busyDiff = Number(Boolean(a.has_active_job)) - Number(Boolean(b.has_active_job));
           if (busyDiff !== 0) return busyDiff;
           if (a.distKm !== null && b.distKm !== null) return a.distKm - b.distKm;
@@ -1447,17 +1505,24 @@
 
       transferCoridersList.innerHTML = candidates.map((r) => {
         const isBusy = Boolean(r.has_active_job);
+        const isDisabled = isBusy && !allowBusy;
+        const isHighlighted = Boolean(transferHighlightRiderId && Number(r.id) === transferHighlightRiderId);
         const distLabel = r.distKm !== null ? `📍 ${r.distKm.toFixed(1)} km away` : `📍 ${escapeHtml(r.municipality || "Camiguin")}`;
         const statusBadge = isBusy
           ? `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">Busy</span>`
           : `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Available</span>`;
+        const selectedBadge = isHighlighted
+          ? `<span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fb923c;font-size:0.7rem;padding:2px 6px;">⭐ Selected</span>`
+          : "";
+        const highlightStyle = isHighlighted ? "border:2px solid #f97316;background:#fff7ed;" : "";
 
         return `
-          <div class="transfer-corider-option ${isBusy ? "is-busy" : ""}">
+          <div class="transfer-corider-option ${isDisabled ? "is-busy" : ""}" style="${highlightStyle}">
             <div style="min-width:0;flex:1;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 <strong style="font-size:0.88rem;color:#0f172a;">${escapeHtml(r.name)}</strong>
                 ${statusBadge}
+                ${selectedBadge}
               </div>
               <div class="text-muted" style="font-size:0.76rem;margin-top:2px;">
                 🏍️ ${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)}) &bull; ⭐ ${Number(r.rating_avg || 5.0).toFixed(1)}
@@ -1468,12 +1533,12 @@
             </div>
             <button
               type="button"
-              class="btn btn-sm ${isBusy ? "btn-outline" : "btn-primary"} execute-direct-transfer-btn"
+              class="btn btn-sm ${isDisabled ? "btn-outline" : "btn-primary"} execute-direct-transfer-btn"
               data-rider-id="${r.id}"
-              data-busy="${isBusy ? "1" : "0"}"
-              ${isBusy ? "disabled" : ""}
+              data-can-transfer="${isDisabled ? "0" : "1"}"
+              ${isDisabled ? "disabled" : ""}
               style="white-space:nowrap;"
-            >${isBusy ? "Busy" : "Transfer Now"}</button>
+            >${isDisabled ? "Busy" : "Transfer Now"}</button>
           </div>
         `;
       }).join("");
@@ -1482,23 +1547,27 @@
     }
   }
 
-  function openEmergencyTransferModal() {
-    if (!activeJob || !currentRider || !transferModal) return;
+  function openEmergencyTransferModal(targetJob = null, highlightRiderId = null) {
+    const job = (targetJob && targetJob.id) ? targetJob : activeJob;
+    if (!job || !currentRider || !transferModal) return;
+    transferTargetJob = job;
+    transferHighlightRiderId = highlightRiderId ? Number(highlightRiderId) : null;
+
     if (transferStatusError) {
       transferStatusError.textContent = "";
       transferStatusError.classList.add("hidden");
     }
     if (transferModalSubtitle) {
-      transferModalSubtitle.textContent = `${activeJob.booking_code} • ${activeJob.dropoff_address} • ₱${Math.round(activeJob.fare_amount || 0)}`;
+      transferModalSubtitle.textContent = `${job.booking_code} • ${job.dropoff_address} • ₱${Math.round(job.fare_amount || 0)}`;
     }
     if (transferNoteInput) {
       transferNoteInput.value = "";
     }
     if (transferUpdateGpsChk) {
-      transferUpdateGpsChk.checked = activeJob.status === "in_progress";
+      transferUpdateGpsChk.checked = job.status === "in_progress";
     }
     if (transferGoOfflineChk) {
-      transferGoOfflineChk.checked = true;
+      transferGoOfflineChk.checked = !isJobFutureScheduled(job);
     }
 
     transferModal.classList.remove("hidden");
@@ -1528,7 +1597,8 @@
   }
 
   async function executeBookingTransfer(targetRiderId) {
-    if (!activeJob || !currentRider) return;
+    const job = transferTargetJob || activeJob;
+    if (!job || !currentRider) return;
     if (transferStatusError) {
       transferStatusError.textContent = "";
       transferStatusError.classList.add("hidden");
@@ -1563,7 +1633,7 @@
       }
     }
     const directBtns = transferCoridersList
-      ? Array.from(transferCoridersList.querySelectorAll(".execute-direct-transfer-btn[data-busy='0']"))
+      ? Array.from(transferCoridersList.querySelectorAll(".execute-direct-transfer-btn[data-can-transfer='1']"))
       : [];
     directBtns.forEach((b) => {
       b.disabled = true;
@@ -1573,7 +1643,7 @@
     });
 
     try {
-      const res = await fetch(`/api/bookings/${activeJob.id}/transfer`, {
+      const res = await fetch(`/api/bookings/${job.id}/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1588,12 +1658,18 @@
         throw new Error(data.error || "Could not complete trip transfer.");
       }
 
+      const wasActiveBoxJob = Boolean(activeJob && Number(activeJob.id) === Number(job.id));
+      transferTargetJob = null;
+      transferHighlightRiderId = null;
       if (transferModal) transferModal.classList.add("hidden");
-      activeJob = null;
-      prevActiveJobKey = null;
-      if (activeJobBox) activeJobBox.classList.add("hidden");
-      resetRiderChat(null);
-      renderJobOnRiderMap(null);
+
+      if (wasActiveBoxJob) {
+        activeJob = null;
+        prevActiveJobKey = null;
+        if (activeJobBox) activeJobBox.classList.add("hidden");
+        resetRiderChat(null);
+        renderJobOnRiderMap(null);
+      }
 
       if (data.is_online !== null && data.is_online !== undefined) {
         const nowOnline = Number(data.is_online) === 1;
@@ -1610,13 +1686,12 @@
           if (jobsCountPill) jobsCountPill.textContent = "0";
         } else {
           fetchAvailableJobs();
-          fetchCoRiders();
         }
       } else {
         fetchAvailableJobs();
-        fetchCoRiders();
       }
 
+      fetchCoRiders();
       checkActiveJob();
       alert("✅ " + (data.message || "Booking transferred successfully!"));
     } catch (err) {
@@ -1640,7 +1715,10 @@
   }
 
   if (jobTransferBtn) {
-    jobTransferBtn.addEventListener("click", openEmergencyTransferModal);
+    jobTransferBtn.addEventListener("click", () => openEmergencyTransferModal(activeJob, null));
+  }
+  if (jobTransferTopBtn) {
+    jobTransferTopBtn.addEventListener("click", () => openEmergencyTransferModal(activeJob, null));
   }
   if (transferRefreshCoridersBtn) {
     transferRefreshCoridersBtn.addEventListener("click", loadTransferCoRiders);
@@ -2158,6 +2236,94 @@
     });
   }
 
+  function renderCoRidersList(list) {
+    cachedCoRiders = Array.isArray(list) ? list : [];
+
+    const targetForCoRider = (activeJob && ["accepted", "in_progress"].includes(activeJob.status))
+      ? activeJob
+      : (currentScheduledJobs && currentScheduledJobs.length > 0
+          ? Object.assign({ _fromScheduledList: true }, currentScheduledJobs[0])
+          : null);
+
+    const hintEl = document.getElementById("co-riders-transfer-hint");
+    if (hintEl) {
+      hintEl.classList.toggle("hidden", Boolean(targetForCoRider));
+    }
+
+    if (!coRidersList) return;
+
+    if (cachedCoRiders.length === 0) {
+      coRidersList.innerHTML = `
+        <div class="empty-state" style="padding:1rem;">
+          <span class="text-muted">No other online riders found right now. Waiting for fellow riders!</span>
+        </div>
+      `;
+      return;
+    }
+
+    const allowBusy = isJobFutureScheduled(targetForCoRider);
+
+    coRidersList.innerHTML = cachedCoRiders.map((r) => {
+      const isSelf = r.is_self;
+      const isBusy = Boolean(r.has_active_job);
+      const isDisabled = isBusy && !allowBusy;
+      const avatarHtml = r.avatar_url
+        ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
+        : `<div class="co-rider-avatar-placeholder">🛵</div>`;
+
+      const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">You</span>` : '';
+      const availBadge = !isSelf
+        ? (isBusy
+            ? `<span class="badge badge-warning" style="font-size:0.68rem;padding:2px 6px;">Busy</span>`
+            : `<span class="badge badge-success" style="font-size:0.68rem;padding:2px 6px;">Available</span>`)
+        : '';
+      const town = escapeHtml(r.municipality || 'Camiguin');
+      const phoneBtn = (!isSelf && r.phone)
+        ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Call</a>`
+        : '';
+      const transferBtn = (!isSelf && targetForCoRider)
+        ? `<button type="button" class="btn btn-sm btn-transfer-emergency co-rider-transfer-btn" data-rider-id="${r.id}" ${isDisabled ? "disabled" : ""} style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${isDisabled ? 'Rider currently has an active trip' : 'Transfer active trip to this rider'}">${isDisabled ? "Busy" : "🔄 Transfer to Rider"}</button>`
+        : '';
+
+      return `
+        <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
+          ${avatarHtml}
+          <div class="co-rider-info">
+            <div class="co-rider-name-row">
+              <span class="co-rider-name">${escapeHtml(r.name)}</span>
+              ${selfBadge}
+              ${availBadge}
+            </div>
+            <div class="co-rider-sub">
+              🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
+            </div>
+            <span class="co-rider-town">📍 ${town}</span>
+          </div>
+          <div class="co-rider-actions">
+            ${transferBtn}
+            ${phoneBtn}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  if (coRidersList) {
+    coRidersList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".co-rider-transfer-btn");
+      if (!btn || btn.disabled) return;
+      const rid = Number(btn.getAttribute("data-rider-id"));
+      const targetJob = (activeJob && ["accepted", "in_progress"].includes(activeJob.status))
+        ? activeJob
+        : (currentScheduledJobs && currentScheduledJobs.length > 0
+            ? Object.assign({ _fromScheduledList: true }, currentScheduledJobs[0])
+            : null);
+      if (targetJob && rid) {
+        openEmergencyTransferModal(targetJob, rid);
+      }
+    });
+  }
+
   async function fetchCoRiders() {
     if (!currentRider) return;
     try {
@@ -2174,48 +2340,7 @@
         coRidersCountPill.textContent = `${list.length} Online`;
       }
 
-      if (!coRidersList) return;
-
-      if (list.length === 0) {
-        coRidersList.innerHTML = `
-          <div class="empty-state" style="padding:1rem;">
-            <span class="text-muted">You are the only online rider right now. Waiting for fellow riders!</span>
-          </div>
-        `;
-        return;
-      }
-
-      coRidersList.innerHTML = list.map((r) => {
-        const isSelf = r.is_self;
-        const avatarHtml = r.avatar_url
-          ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
-          : `<div class="co-rider-avatar-placeholder">🛵</div>`;
-
-        const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">You</span>` : '';
-        const town = escapeHtml(r.municipality || 'Camiguin');
-        const phoneBtn = (!isSelf && r.phone)
-          ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Call</a>`
-          : '';
-
-        return `
-          <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
-            ${avatarHtml}
-            <div class="co-rider-info">
-              <div class="co-rider-name-row">
-                <span class="co-rider-name">${escapeHtml(r.name)}</span>
-                ${selfBadge}
-              </div>
-              <div class="co-rider-sub">
-                🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
-              </div>
-              <span class="co-rider-town">📍 ${town}</span>
-            </div>
-            <div class="co-rider-actions">
-              ${phoneBtn}
-            </div>
-          </div>
-        `;
-      }).join("");
+      renderCoRidersList(list);
 
       // Update Radar Map Pins if map initialized
       if (radarMap) {

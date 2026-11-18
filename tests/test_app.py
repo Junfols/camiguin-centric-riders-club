@@ -53,12 +53,13 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v11
+        # 2. Service Worker v12
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v11", sw_text)
-        self.assertIn("/static/css/style.css?v=24", sw_text)
+        self.assertIn("ccrc-pwa-v12", sw_text)
+        self.assertIn("/static/css/style.css?v=25", sw_text)
+        self.assertIn("/static/js/i18n.js?v=5", sw_text)
         self.assertIn("/static/js/app.js?v=34", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
 
@@ -2255,18 +2256,34 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(b_b_adm["transferred_from_rider_id"], r2)
         self.assertEqual(b_b_adm["transfer_count"], 2)
 
-        admin_html = self.client.get("/admin").get_data(as_text=True)
+        admin_resp = self.client.get("/admin")
+        self.assertIn("no-store", admin_resp.headers.get("Cache-Control", ""))
+        admin_html = admin_resp.get_data(as_text=True)
         self.assertIn("Transferred x2", admin_html)
         self.assertIn("Transferred x1", admin_html)
         self.assertIn("Flat tire / tire puncture", admin_html)
+        self.assertIn("admin-open-transfer-btn", admin_html)
+        self.assertIn("Transfer to Rider", admin_html)
+        self.assertIn('id="admin-transfer-modal"', admin_html)
+        self.assertIn(f'data-booking-id="{b_b["id"]}"', admin_html)
 
-        # 5. Rider Portal HTML & i18n checks
-        rider_html = self.client.get("/rider").get_data(as_text=True)
+        # 5. Rider Portal HTML, JS hooks, cache headers & i18n checks
+        rider_resp = self.client.get("/rider")
+        self.assertIn("no-store", rider_resp.headers.get("Cache-Control", ""))
+        rider_html = rider_resp.get_data(as_text=True)
+        self.assertIn('id="job-transfer-top-btn"', rider_html)
         self.assertIn('id="job-transfer-btn"', rider_html)
+        self.assertIn('id="co-riders-transfer-hint"', rider_html)
         self.assertIn('id="rider-transfer-modal"', rider_html)
-        self.assertIn("rider.js?v=29", rider_html)
+        self.assertIn("Transfer to Rider", rider_html)
+        self.assertIn("rider.js?v=30", rider_html)
+        rider_js = self.client.get("/static/js/rider.js").get_data(as_text=True)
+        self.assertIn("scheduled-transfer-btn", rider_js)
+        self.assertIn("co-rider-transfer-btn", rider_js)
         i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
         self.assertIn("Flat Tire / Emergency Transfer", i18n_js)
+        self.assertIn("🔄 Transfer to Rider", i18n_js)
+        self.assertIn("⚠️ Transfer to Rider (Flat / Emergency)", i18n_js)
 
         # 6. Backup & restore fidelity for transfer audit columns
         conn = get_connection(self.db_path)

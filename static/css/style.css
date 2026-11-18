@@ -2360,6 +2360,8 @@ body.rider-logged-in .nav-rider-logged-item {
 .co-rider-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
   flex-shrink: 0;
 }

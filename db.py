@@ -5068,6 +5068,8 @@ def get_rider_scheduled_jobs(conn: DatabaseConnection, rider_id: int) -> list[di
         sched_str = (d.get("scheduled_at") or "").strip()
         try:
             sched_dt = datetime.fromisoformat(sched_str)
+            if sched_dt.tzinfo is not None:
+                sched_dt = sched_dt.replace(tzinfo=None)
             mins_left = (sched_dt - now).total_seconds() / 60
             d["minutes_left"] = int(mins_left)
             d["is_due_soon"] = mins_left <= 30

@@ -1,11 +1,11 @@
-const CACHE_NAME = "ccrc-pwa-v11";
+const CACHE_NAME = "ccrc-pwa-v12";
 
 const PRECACHE_ASSETS = [
   "/",
   "/offline",
   "/manifest.webmanifest",
-  "/static/css/style.css?v=24",
-  "/static/js/i18n.js?v=4",
+  "/static/css/style.css?v=25",
+  "/static/js/i18n.js?v=5",
   "/static/js/auth.js?v=1",
   "/static/js/app.js?v=34",
   "/static/icons/icon.svg"

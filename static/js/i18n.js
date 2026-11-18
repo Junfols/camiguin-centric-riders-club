@@ -945,6 +945,54 @@
       zh: "🚨 紧急转单",
       ja: "🚨 緊急引き継ぎ",
     },
+    "🔄 Transfer to Rider": {
+      ceb: "🔄 Ipasa sa Laing Rider",
+      fil: "🔄 Ilipat sa Ibang Rider",
+      zh: "🔄 转单给其他骑手",
+      ja: "🔄 他のライダーへ引き継ぐ",
+    },
+    "⚠️ Transfer to Rider (Flat / Emergency)": {
+      ceb: "⚠️ Ipasa sa Laing Rider (Na-flat / Emergency)",
+      fil: "⚠️ Ilipat sa Ibang Rider (Na-flat / Emergency)",
+      zh: "⚠️ 转单给其他骑手（爆胎 / 紧急情况）",
+      ja: "⚠️ 他のライダーへ引き継ぐ（パンク・緊急）",
+    },
+    "Transfer Booking to Rider": {
+      ceb: "Ipasa ang Booking sa Laing Rider",
+      fil: "Ilipat ang Booking sa Ibang Rider",
+      zh: "将订单转交给其他骑手",
+      ja: "予約を他のライダーへ引き継ぐ",
+    },
+    "Select an online rider or re-broadcast this trip": {
+      ceb: "Pilia ang online rider o i-broadcast pag-usab kining biyahe",
+      fil: "Pumili ng online rider o i-broadcast muli ang biyaheng ito",
+      zh: "选择一位在线骑手或重新广播此订单",
+      ja: "オンラインのライダーを選択するか再配信してください",
+    },
+    "Option 1: Direct Transfer to Online Rider": {
+      ceb: "Opsyon 1: Direkta nga Transfer sa Online Rider",
+      fil: "Opsyon 1: Direktang Transfer sa Online Rider",
+      zh: "方式 1：直接转交在线骑手",
+      ja: "方法1：オンラインライダーへ直接引き継ぎ",
+    },
+    "Option 2: Broadcast to All Online Riders": {
+      ceb: "Opsyon 2: I-Broadcast sa Tanang Online Riders",
+      fil: "Opsyon 2: I-Broadcast sa Lahat ng Online na Rider",
+      zh: "方式 2：向所有在线骑手广播",
+      ja: "方法2：全オンラインライダーへ配信",
+    },
+    "Actions": {
+      ceb: "Mga Aksyon",
+      fil: "Mga Aksyon",
+      zh: "操作",
+      ja: "操作",
+    },
+    "Accept a booking or select an active/scheduled trip to enable direct emergency trip transfer to an online co-rider.": {
+      ceb: "Pagdawat una og booking o ablihi ang aktibo/naka-schedule nga biyahe aron ma-enable ang direkta nga pagpasa sa kauban nga online rider.",
+      fil: "Tumanggap muna ng booking o pumili ng aktibo/naka-schedule na biyahe upang ma-enable ang direktang paglipat sa online na kasamang rider.",
+      zh: "接单或选择进行中/预约行程后，即可直接将订单转交给在线骑手伙伴。",
+      ja: "予約を受注するか進行中・予約済みの乗車を選択すると、オンラインの仲間ライダーへ直接引き継ぎできます。",
+    },
   };
 
   function getStoredLang() {

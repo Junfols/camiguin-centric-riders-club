@@ -253,11 +253,16 @@
       </div>
 
       <h3 id="active-job-title" style="margin:8px 0 4px;font-size:1.25rem;">Service &rarr; Destination</h3>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
         <div class="text-muted" id="active-job-fare" style="font-weight:700;color:var(--primary);font-size:1.05rem;">Fare: ₱0.00</div>
-        <button type="button" id="rider-view-receipt-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
-          🧾 View Receipt
-        </button>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button type="button" id="job-transfer-top-btn" class="btn btn-sm btn-transfer-emergency" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
+            🔄 Transfer to Rider
+          </button>
+          <button type="button" id="rider-view-receipt-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
+            🧾 View Receipt
+          </button>
+        </div>
       </div>
 
       <div class="active-locations-box">
@@ -385,7 +390,7 @@
           ✓ Delivered (Mark as Completed)
         </button>
         <button type="button" id="job-transfer-btn" class="btn btn-outline btn-block btn-transfer-emergency" style="margin-top:8px;">
-          ⚠️ Flat Tire / Emergency Transfer
+          ⚠️ Transfer to Rider (Flat / Emergency)
         </button>
       </div>
     </div>
@@ -439,6 +444,11 @@
           <span>🟢 Green = Active Rider &bull; 🛵 Centric Emblem = Your Location</span>
           <span>Auto-syncs live GPS</span>
         </div>
+      </div>
+
+      <!-- Contextual Transfer to Rider Tip -->
+      <div id="co-riders-transfer-hint" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:8px 11px;font-size:0.78rem;margin-bottom:10px;line-height:1.4;">
+        🔄 <strong>Transfer to Rider:</strong> Accept a booking or select an active/scheduled trip to enable direct emergency trip transfer to an online co-rider.
       </div>
 
       <!-- Online Co-Riders Grid/List -->
@@ -587,5 +597,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=29"></script>
+<script src="/static/js/rider.js?v=30"></script>
 {% endblock %}
