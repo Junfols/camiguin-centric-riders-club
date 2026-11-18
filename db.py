@@ -2669,15 +2669,10 @@ class DatabaseConnection:
                 cur.executemany(pg_sql, seq_of_params)
             return
         return self._raw.executemany(sql, seq_of_params)
+git add db.py app.py tests/test_app.py
+git commit -m "fix: support PostgreSQL dict_row in insert_returning_id for rider registration"
+git push origin main
 
-    def insert_returning_id(self, sql: str, params: tuple | list = ()) -> int:
-        if self.backend == "postgresql":
-            pg_sql = translate_sql_to_postgres(sql.strip().rstrip(";")) + " RETURNING id"
-            cur = self._raw.execute(pg_sql, params or None)
-            row = cur.fetchone()
-            return int(row[0])
-        cur = self._raw.execute(sql, params)
-        return int(cur.lastrowid)
 
     def commit(self) -> None:
         self._raw.commit()
