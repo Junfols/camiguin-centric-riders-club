@@ -2904,7 +2904,7 @@ body.rider-logged-in .nav-rider-logged-item {
 .gcash-brand-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 12px;
@@ -2918,6 +2918,9 @@ body.rider-logged-in .nav-rider-logged-item {
   border-radius: 20px;
   font-size: 0.76rem;
   font-weight: 700;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
 }
 
 .gcash-status-pill.pending {
@@ -2960,13 +2963,51 @@ body.rider-logged-in .nav-rider-logged-item {
 .gcash-qr-img {
   display: block;
   margin: 0 auto;
-  max-width: 240px;
-  width: 100%;
-  max-height: 280px;
+  width: auto;
+  height: auto;
+  max-width: min(260px, 100%);
+  max-height: 360px;
   object-fit: contain;
   border-radius: 10px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
+}
+
+.gcash-recipient-row {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gcash-recipient-info {
+  flex: 1 1 180px;
+  min-width: min(180px, 100%);
+  word-break: break-word;
+}
+
+.gcash-copy-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.gcash-sent-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.gcash-sent-submit-btn {
+  background: #0f172a;
+  border-color: #0f172a;
+  white-space: nowrap;
 }
 
 .btn-gcash-official {
@@ -2998,11 +3039,61 @@ body.rider-logged-in .nav-rider-logged-item {
   background: #dbeafe !important;
 }
 
+.rider-earnings-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
 .rider-gcash-setup-banner {
   border: 1.5px solid #93c5fd;
   background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
   border-radius: 14px;
   margin-bottom: 1.2rem;
+}
+
+.rider-gcash-profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rider-gcash-profile-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 240px;
+  min-width: min(240px, 100%);
+}
+
+.rider-gcash-profile-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: #dbeafe;
+  border: 1.5px solid #93c5fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rider-gcash-profile-text {
+  flex: 1 1 0%;
+  min-width: 0;
+  line-height: 1.38;
+  word-break: break-word;
+}
+
+.rider-gcash-setup-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-align: center;
 }
 
 .rider-active-gcash-box {
@@ -3013,9 +3104,65 @@ body.rider-logged-in .nav-rider-logged-item {
   margin-bottom: 12px;
 }
 
+.rider-active-gcash-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.rider-active-gcash-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .btn-complete-locked {
   background: #64748b !important;
   border-color: #64748b !important;
   color: #ffffff !important;
   opacity: 0.94;
+}
+
+@media (max-width: 600px) {
+  .rider-gcash-profile-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rider-gcash-profile-info {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rider-gcash-setup-btn {
+    width: 100%;
+    white-space: normal;
+    justify-content: center;
+    padding: 10px 14px;
+  }
+
+  .rider-active-gcash-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #job-show-gcash-qr-btn {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+  }
+
+  .gcash-copy-btn,
+  .gcash-sent-submit-btn {
+    width: 100%;
+    white-space: normal;
+    justify-content: center;
+  }
 }

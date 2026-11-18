@@ -1693,6 +1693,24 @@
       zh: "💙 官方 GCash 收款码：",
       ja: "💙 公式GCash QR：",
     },
+    "💙 GCash Payment Receiving Setup (Optional — can add later)": {
+      ceb: "💙 Setup sa Pagdawat og Bayad sa GCash (Opsyonal — pwede idugang unya)",
+      fil: "💙 Setup sa Pagtanggap ng Bayad sa GCash (Opsyonal — pwedeng idagdag mamaya)",
+      zh: "💙 GCash 收款设置（选填 — 之后再填亦可）",
+      ja: "💙 GCash受取設定（任意 — 後から設定可能）",
+    },
+    "GCash Mobile Number (Optional)": {
+      ceb: "Numero sa GCash (Opsyonal)",
+      fil: "Numero sa GCash (Opsyonal)",
+      zh: "GCash 手机号（选填）",
+      ja: "GCash携帯番号（任意）",
+    },
+    "My Official GCash QR Code Image (Optional)": {
+      ceb: "Akong Opisyal nga GCash QR Code Image (Opsyonal)",
+      fil: "Aking Opisyal na GCash QR Code Image (Opsyonal)",
+      zh: "我的官方 GCash 收款码图片（选填）",
+      ja: "自分の公式GCash QRコード画像（任意）",
+    },
   };
 
   function getStoredLang() {

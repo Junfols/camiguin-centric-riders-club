@@ -53,12 +53,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v14
+        # 2. Service Worker v15
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v14", sw_text)
-        self.assertIn("/static/css/style.css?v=27", sw_text)
+        self.assertIn("ccrc-pwa-v15", sw_text)
+        self.assertIn("/static/css/style.css?v=28", sw_text)
         self.assertIn("/static/js/i18n.js?v=7", sw_text)
         self.assertIn("/static/js/app.js?v=34", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
@@ -2397,7 +2397,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="chat-voice-btn"',
             "voice_call.js?v=1",
             "track.js?v=31",
-            "style.css?v=27",
+            "style.css?v=28",
             "i18n.js?v=7",
             "📞 Phone Call",
         ):
@@ -2874,8 +2874,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             qr_url,
             'id="gcash-sent-form"',
             'id="mark-gcash-sent-btn"',
+            "gcash-recipient-row",
+            "gcash-sent-row",
             "track.js?v=31",
-            "style.css?v=27",
+            "style.css?v=28",
             "i18n.js?v=7",
         ):
             self.assertIn(token, track_html)
@@ -2893,6 +2895,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="rider-gcash-qr-modal"',
             'id="r-gcash-confirm-btn"',
             'id="rider-gcash-gate-hint"',
+            "rider-gcash-profile-row",
+            "rider-gcash-profile-info",
+            "rider-active-gcash-footer",
             "rider.js?v=32",
         ):
             self.assertIn(token, rider_html)
@@ -2903,6 +2908,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         css_text = self.client.get("/static/css/style.css").get_data(as_text=True)
         self.assertIn(".btn-gcash-official", css_text)
         self.assertIn(".btn-complete-locked", css_text)
+        self.assertIn(".rider-gcash-profile-row", css_text)
+        self.assertIn(".rider-gcash-profile-info", css_text)
         i18n_js = self.client.get("/static/js/i18n.js").get_data(as_text=True)
         self.assertIn("Open Official GCash", i18n_js)
         self.assertIn("Ablihi ang Opisyal nga GCash", i18n_js)
