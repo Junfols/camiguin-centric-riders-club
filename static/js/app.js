@@ -221,10 +221,7 @@
       "pandan",
       "pandan mambajao",
       "brgy pandan",
-      "barangay pandan",
-      "pandayan",
-      "brgy pandayan",
-      "barangay pandayan"
+      "barangay pandan"
     ],
     "lat": 9.23818,
     "lng": 124.72698,
@@ -942,7 +939,6 @@
     "keywords": [
       "lakas",
       "sitio lakas",
-      "upper lakas",
       "lakas mambajao"
     ],
     "lat": 9.24794,
@@ -1020,6 +1016,179 @@
     "lng": 124.6738,
     "mun": "Mambajao",
     "full_address": "Sitio Upper Cogon, Agoho, Mambajao"
+  },
+  {
+    "name": "Upper Pandan (Kanangkaan / Maubog), Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "upper pandan",
+      "kanangkaan",
+      "maubog",
+      "pandayan",
+      "brgy pandayan",
+      "barangay pandayan",
+      "pandan upland",
+      "sitio kanangkaan",
+      "sitio maubog",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2285,
+    "lng": 124.7215,
+    "mun": "Mambajao",
+    "full_address": "Upper Pandan (Sitio Kanangkaan / Maubog), Mambajao"
+  },
+  {
+    "name": "Litican, Upper Balbagon, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "litican",
+      "sitio litican",
+      "upper balbagon",
+      "tinago",
+      "sitio tinago",
+      "tinago balbagon",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2275,
+    "lng": 124.733,
+    "mun": "Mambajao",
+    "full_address": "Sitio Litican / Tinago, Upper Balbagon, Mambajao"
+  },
+  {
+    "name": "Upper Lakas, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "upper lakas",
+      "sitio upper lakas",
+      "lakas upland",
+      "upper anito",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2355,
+    "lng": 124.732,
+    "mun": "Mambajao",
+    "full_address": "Upper Lakas, Poblacion, Mambajao"
+  },
+  {
+    "name": "Upper Magting, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "upper magting",
+      "sitio magting",
+      "magting bukid",
+      "magting upland",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.211,
+    "lng": 124.7485,
+    "mun": "Mambajao",
+    "full_address": "Upper Magting, Mambajao, Camiguin"
+  },
+  {
+    "name": "Sitio Bas-iao, Yumbing, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "bas-iao",
+      "basiao",
+      "sitio bas-iao",
+      "sitio basiao",
+      "upper yumbing",
+      "upper naasag",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2315,
+    "lng": 124.661,
+    "mun": "Mambajao",
+    "full_address": "Sitio Bas-iao, Upper Yumbing / Naasag, Mambajao"
+  },
+  {
+    "name": "Katobli / Sibato Reservoir, Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "katobli",
+      "kaolyong",
+      "sibato reservoir",
+      "sitio katobli",
+      "sitio kaolyong",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2295,
+    "lng": 124.6765,
+    "mun": "Mambajao",
+    "full_address": "Sitio Katobli / Sibato Reservoir, Agoho, Mambajao"
+  },
+  {
+    "name": "Volcano House (Km 11 Itum), Mambajao",
+    "cat": "neighborhood",
+    "keywords": [
+      "volcano house",
+      "km 11",
+      "km 11 itum",
+      "itum volcano house",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2055,
+    "lng": 124.6975,
+    "mun": "Mambajao",
+    "full_address": "Volcano House, Km 11 Itum, Baylao, Mambajao"
+  },
+  {
+    "name": "Piyakong / Tres Marias Slopes, Catarman",
+    "cat": "neighborhood",
+    "keywords": [
+      "piyakong",
+      "tres marias",
+      "mount vulcan slopes",
+      "mt vulcan slopes",
+      "old volcano slopes",
+      "sitio piyakong",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.2085,
+    "lng": 124.648,
+    "mun": "Catarman",
+    "full_address": "Sitio Piyakong / Tres Marias Slopes, Bonbon, Catarman"
+  },
+  {
+    "name": "Sitio Kital-is, Cuna, Sagay",
+    "cat": "neighborhood",
+    "keywords": [
+      "kital-is",
+      "kitalis",
+      "sitio kital-is",
+      "sitio kitalis",
+      "upper cuna",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.131,
+    "lng": 124.742,
+    "mun": "Sagay",
+    "full_address": "Sitio Kital-is, Cuna, Sagay, Camiguin"
+  },
+  {
+    "name": "Upper Cantaan, Guinsiliban",
+    "cat": "neighborhood",
+    "keywords": [
+      "upper cantaan",
+      "cantaan upland",
+      "sitio upper cantaan",
+      "ibabaw cantaan",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.1135,
+    "lng": 124.782,
+    "mun": "Guinsiliban",
+    "full_address": "Upper Cantaan, Guinsiliban, Camiguin"
   },
   {
     "name": "Ardent Hot Spring, Esperanza",
@@ -1299,6 +1468,22 @@
     "lng": 124.77407,
     "mun": "Mambajao",
     "full_address": "Tupsan, Mambajao, Camiguin"
+  },
+  {
+    "name": "Mantalaga Falls, Sagay",
+    "cat": "tourist",
+    "keywords": [
+      "mantalaga",
+      "mantalaga falls",
+      "busay mantalaga",
+      "upper sagay",
+      "hinterland",
+      "tungason"
+    ],
+    "lat": 9.1425,
+    "lng": 124.7265,
+    "mun": "Sagay",
+    "full_address": "Mantalaga Falls, Sagay Uplands, Camiguin"
   },
   {
     "name": "Hibok-Hibok Volcano Observatory (PHIVOLCS)",

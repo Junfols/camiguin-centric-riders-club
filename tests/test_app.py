@@ -53,12 +53,12 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v9
+        # 2. Service Worker v10
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v9", sw_text)
-        self.assertIn("/static/js/app.js?v=33", sw_text)
+        self.assertIn("ccrc-pwa-v10", sw_text)
+        self.assertIn("/static/js/app.js?v=34", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
 
         # 3. Offline fallback in English
@@ -1418,9 +1418,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
                 f"Coastal highway waypoint falsely flagged upland: {label}",
             )
 
-        # 2. Verify Mambajao Centro -> Soro-soro / Utopia / Highland / Ardent / Katibawasan / Binunsaran / Tagdo / Timogsay / Upper Cogon
+        # 2. Verify Mambajao, Catarman, Mahinog, Sagay & Guinsiliban upland / hinterland places
         # automatically add +₱30 across BOTH /api/fare-estimate AND /api/bookings (including Passenger rides!)
         upland_cases = [
+            # Mambajao
             ("Mambajao Town Plaza", "Soro-soro, Mambajao", "pahatud"),
             ("Mambajao Town Plaza", "Utopia Café, Mambajao", "pahatud"),
             ("Poblacion, Mambajao", "Camiguin Highland Resort, Soro-soro", "pabili"),
@@ -1433,7 +1434,60 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             ("Mambajao Town Plaza", "Timogsay, Bug-ong, Mambajao", "pahatud"),
             ("Mambajao Town Plaza", "Timugsay, Bug-ong", "pabili"),
             ("Mambajao Town Plaza", "Upper Cogon, Agoho, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Benhaan, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Upper Pandan (Kanangkaan / Maubog), Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Litican, Upper Balbagon, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Upper Lakas, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Upper Magting, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Macao Cold Spring, Tupsan", "pahatud"),
+            ("Mambajao Town Plaza", "Sitio Bas-iao, Yumbing, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Katobli / Sibato Reservoir, Mambajao", "pahatud"),
+            ("Mambajao Town Plaza", "Volcano House (Km 11 Itum), Mambajao", "pahatud"),
+            # Catarman
+            ("Catarman Public Market", "Tuasan Falls, Mainit, Catarman", "pahatud"),
+            ("Catarman Public Market", "Sto. Niño Cold Spring, Catarman", "pahatud"),
+            ("Catarman Public Market", "Santo Niño, Catarman", "pahatud"),
+            ("Catarman Public Market", "Mainit, Catarman", "pahatud"),
+            ("Catarman Public Market", "Manduao, Catarman", "pahatud"),
+            ("Catarman Public Market", "Bura Soda Water Park, Catarman", "pahatud"),
+            ("Catarman Public Market", "Liloan, Catarman", "pahatud"),
+            ("Catarman Public Market", "Mount Vulcan Daan / Walkway to Old Volcano", "pahatud"),
+            ("Catarman Public Market", "Piyakong / Tres Marias Slopes, Catarman", "pahatud"),
+            # Mahinog
+            ("Benoni Port / Ferry Wharf, Mahinog", "Owakan, Mahinog", "pahatud"),
+            ("Benoni Port / Ferry Wharf, Mahinog", "Puntod, Mahinog", "pahatud"),
+            ("Benoni Port / Ferry Wharf, Mahinog", "San Isidro, Mahinog", "pahatud"),
+            ("Benoni Port / Ferry Wharf, Mahinog", "San Miguel, Mahinog", "pahatud"),
+            ("Benoni Port / Ferry Wharf, Mahinog", "Tubod, Mahinog", "pahatud"),
+            ("Benoni Port / Ferry Wharf, Mahinog", "Tupsan Pequeño, Mahinog", "pahatud"),
+            # Sagay
+            ("Sagay Municipal Hall", "Binangawan Falls, Sagay", "pahatud"),
+            ("Sagay Municipal Hall", "Mantalaga Falls, Sagay", "pahatud"),
+            ("Sagay Municipal Hall", "Cuna, Sagay", "pahatud"),
+            ("Sagay Municipal Hall", "Sitio Kital-is, Cuna, Sagay", "pahatud"),
+            ("Sagay Municipal Hall", "Bacnit, Sagay", "pahatud"),
+            ("Sagay Municipal Hall", "Bugang, Sagay", "pahatud"),
+            ("Sagay Municipal Hall", "Mayana, Sagay", "pahatud"),
+            # Guinsiliban
+            ("Guinsiliban Port / Ferry Terminal", "Butay, Guinsiliban", "pahatud"),
+            ("Guinsiliban Port / Ferry Terminal", "Cabuan, Guinsiliban", "pahatud"),
+            ("Guinsiliban Port / Ferry Terminal", "Upper Cantaan, Guinsiliban", "pahatud"),
         ]
+        booking_check_dropoffs = {
+            "Soro-soro, Mambajao",
+            "Utopia Café, Mambajao",
+            "Camiguin Highland Resort, Soro-soro",
+            "Ardent Hot Spring, Esperanza",
+            "Katibawasan Falls",
+            "Tagdo, Mambajao",
+            "Timogsay, Bug-ong, Mambajao",
+            "Upper Cogon, Agoho, Mambajao",
+            "Upper Pandan (Kanangkaan / Maubog), Mambajao",
+            "Sto. Niño Cold Spring, Catarman",
+            "Owakan, Mahinog",
+            "Mantalaga Falls, Sagay",
+            "Upper Cantaan, Guinsiliban",
+        }
         for idx, (pickup_q, dropoff_q, svc) in enumerate(upland_cases):
             est_resp = self.client.post(
                 "/api/fare-estimate",
@@ -1454,28 +1508,60 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
                 round(est["breakdown"]["meter_fare"] + expected_service_fee + 30.0),
             )
 
-            book_resp = self.client.post(
-                "/api/bookings",
-                json={
-                    "customer_name": f"Upland Passenger {idx}",
-                    "customer_phone": f"091700011{idx:02d}",
-                    "pickup_address": pickup_q,
-                    "dropoff_address": dropoff_q,
-                    "service_type": svc,
-                    "is_hinterland": False,  # Server MUST auto-enforce even if omitted/false
-                },
-            )
-            self.assertEqual(book_resp.status_code, 201)
-            booked = book_resp.get_json()
-            self.assertEqual(booked["breakdown"]["hinterland_fee"], 30.0)
-            self.assertEqual(booked["booking"]["fare_amount"], est["fare_amount"])
+            if dropoff_q in booking_check_dropoffs:
+                book_resp = self.client.post(
+                    "/api/bookings",
+                    json={
+                        "customer_name": f"Upland Passenger {idx}",
+                        "customer_phone": f"091700011{idx:02d}",
+                        "pickup_address": pickup_q,
+                        "dropoff_address": dropoff_q,
+                        "service_type": svc,
+                        "is_hinterland": False,  # Server MUST auto-enforce even if omitted/false
+                    },
+                )
+                self.assertEqual(book_resp.status_code, 201)
+                booked = book_resp.get_json()
+                self.assertEqual(booked["breakdown"]["hinterland_fee"], 30.0)
+                self.assertEqual(booked["booking"]["fare_amount"], est["fare_amount"])
 
-        # 3. Map-pinned coordinates inside Soro-soro / Utopia, Tagdo, Upper Cogon, and Timogsay without place keywords still auto-add +₱30
+        # 3. Map-pinned coordinates across all 5 municipalities without place keywords still auto-add +₱30
         for d_lat, d_lng in [
-            (9.22741, 124.70748),  # Utopia / Quiboro
-            (9.23840, 124.68850),  # Tagdo, Mambajao
-            (9.23580, 124.67380),  # Upper Cogon (above Agoho)
-            (9.23750, 124.67950),  # Timogsay (above Bug-ong)
+            (9.22741, 124.70748),  # Utopia / Quiboro (Mambajao)
+            (9.23453, 124.69148),  # Tagdo (Mambajao)
+            (9.23580, 124.67380),  # Upper Cogon (Mambajao)
+            (9.23750, 124.67950),  # Timogsay (Mambajao)
+            (9.20322, 124.76773),  # Benhaan (Mambajao)
+            (9.22850, 124.72150),  # Upper Pandan / Kanangkaan (Mambajao)
+            (9.22750, 124.73300),  # Litican, Upper Balbagon (Mambajao)
+            (9.23550, 124.73200),  # Upper Lakas (Mambajao)
+            (9.21100, 124.74850),  # Upper Magting (Mambajao)
+            (9.19586, 124.77407),  # Macao Cold Spring (Mambajao)
+            (9.23150, 124.66100),  # Sitio Bas-iao (Mambajao)
+            (9.22950, 124.67650),  # Katobli / Sibato Reservoir (Mambajao)
+            (9.20550, 124.69750),  # Volcano House Km 11 Itum (Mambajao)
+            (9.15019, 124.67424),  # Sto. Niño Cold Spring (Catarman)
+            (9.17107, 124.65697),  # Bura Soda Water Park (Catarman)
+            (9.15517, 124.65775),  # Mainit (Catarman)
+            (9.13813, 124.67337),  # Manduao (Catarman)
+            (9.14331, 124.67926),  # Liloan (Catarman)
+            (9.21068, 124.64015),  # Mount Vulcan Walkway (Catarman)
+            (9.20850, 124.64800),  # Piyakong / Tres Marias (Catarman)
+            (9.15373, 124.76255),  # Owakan (Mahinog)
+            (9.15603, 124.77313),  # Puntod (Mahinog)
+            (9.18171, 124.76971),  # San Isidro (Mahinog)
+            (9.13051, 124.78384),  # San Miguel (Mahinog)
+            (9.16090, 124.78326),  # Tubod (Mahinog)
+            (9.19518, 124.77836),  # Tupsan Pequeño (Mahinog)
+            (9.12148, 124.74358),  # Cuna (Sagay)
+            (9.13100, 124.74200),  # Sitio Kital-is (Sagay)
+            (9.12643, 124.70861),  # Bacnit (Sagay)
+            (9.10841, 124.70507),  # Bugang (Sagay)
+            (9.10524, 124.71876),  # Mayana (Sagay)
+            (9.14250, 124.72650),  # Mantalaga Falls (Sagay)
+            (9.10476, 124.76919),  # Butay (Guinsiliban)
+            (9.11881, 124.79810),  # Cabuan (Guinsiliban)
+            (9.11350, 124.78200),  # Upper Cantaan (Guinsiliban)
         ]:
             pin_est = self.client.post(
                 "/api/fare-estimate",
@@ -1499,12 +1585,19 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             ("Moonflower Garden, Baylao", "Jollibee Camiguin"),
             ("Balbagon Port", "White Island Boat Jump-off, Yumbing"),
             ("Pandan, Mambajao", "Mambajao Town Plaza"),
+            ("Lakas, Poblacion, Mambajao", "Mambajao Town Plaza"),
+            ("Magting, Mambajao", "Mambajao Town Plaza"),
+            ("Tupsan, Mambajao", "Mambajao Town Plaza"),
             ("Kuguita, Mambajao", "Agoho, Mambajao"),
             ("Poblacion, Mambajao", "Agoho, Mambajao"),
             ("Poblacion, Mambajao", "Bug-ong, Mambajao"),
             ("Mambajao Town Plaza", "Lanzones Cabana, Agoho"),
             ("Mambajao Town Plaza", "Nype Stile Resort, Bug-ong"),
             ("Mambajao Town Plaza", "Paradiso Restaurant, Agoho"),
+            ("Sunken Cemetery & Giant Cross, Bonbon", "Old Church Ruins (Gui-ob Church), Bonbon"),
+            ("Benoni Port / Ferry Wharf, Mahinog", "Hubangon, Mahinog"),
+            ("Cantaan, Guinsiliban", "Giant Clam Sanctuary, Cantaan"),
+            ("Sagay Municipal Hall", "Bonbon, Sagay"),
         ]:
             flat_est = self.client.post(
                 "/api/fare-estimate",

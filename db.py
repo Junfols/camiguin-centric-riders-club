@@ -194,10 +194,7 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "pandan",
             "pandan mambajao",
             "brgy pandan",
-            "barangay pandan",
-            "pandayan",
-            "brgy pandayan",
-            "barangay pandayan"
+            "barangay pandan"
         ],
         "lat": 9.23818,
         "lng": 124.72698,
@@ -915,7 +912,6 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "keywords": [
             "lakas",
             "sitio lakas",
-            "upper lakas",
             "lakas mambajao"
         ],
         "lat": 9.24794,
@@ -993,6 +989,179 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "lng": 124.6738,
         "mun": "Mambajao",
         "full_address": "Sitio Upper Cogon, Agoho, Mambajao"
+    },
+    {
+        "name": "Upper Pandan (Kanangkaan / Maubog), Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "upper pandan",
+            "kanangkaan",
+            "maubog",
+            "pandayan",
+            "brgy pandayan",
+            "barangay pandayan",
+            "pandan upland",
+            "sitio kanangkaan",
+            "sitio maubog",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2285,
+        "lng": 124.7215,
+        "mun": "Mambajao",
+        "full_address": "Upper Pandan (Sitio Kanangkaan / Maubog), Mambajao"
+    },
+    {
+        "name": "Litican, Upper Balbagon, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "litican",
+            "sitio litican",
+            "upper balbagon",
+            "tinago",
+            "sitio tinago",
+            "tinago balbagon",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2275,
+        "lng": 124.733,
+        "mun": "Mambajao",
+        "full_address": "Sitio Litican / Tinago, Upper Balbagon, Mambajao"
+    },
+    {
+        "name": "Upper Lakas, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "upper lakas",
+            "sitio upper lakas",
+            "lakas upland",
+            "upper anito",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2355,
+        "lng": 124.732,
+        "mun": "Mambajao",
+        "full_address": "Upper Lakas, Poblacion, Mambajao"
+    },
+    {
+        "name": "Upper Magting, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "upper magting",
+            "sitio magting",
+            "magting bukid",
+            "magting upland",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.211,
+        "lng": 124.7485,
+        "mun": "Mambajao",
+        "full_address": "Upper Magting, Mambajao, Camiguin"
+    },
+    {
+        "name": "Sitio Bas-iao, Yumbing, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "bas-iao",
+            "basiao",
+            "sitio bas-iao",
+            "sitio basiao",
+            "upper yumbing",
+            "upper naasag",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2315,
+        "lng": 124.661,
+        "mun": "Mambajao",
+        "full_address": "Sitio Bas-iao, Upper Yumbing / Naasag, Mambajao"
+    },
+    {
+        "name": "Katobli / Sibato Reservoir, Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "katobli",
+            "kaolyong",
+            "sibato reservoir",
+            "sitio katobli",
+            "sitio kaolyong",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2295,
+        "lng": 124.6765,
+        "mun": "Mambajao",
+        "full_address": "Sitio Katobli / Sibato Reservoir, Agoho, Mambajao"
+    },
+    {
+        "name": "Volcano House (Km 11 Itum), Mambajao",
+        "cat": "neighborhood",
+        "keywords": [
+            "volcano house",
+            "km 11",
+            "km 11 itum",
+            "itum volcano house",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2055,
+        "lng": 124.6975,
+        "mun": "Mambajao",
+        "full_address": "Volcano House, Km 11 Itum, Baylao, Mambajao"
+    },
+    {
+        "name": "Piyakong / Tres Marias Slopes, Catarman",
+        "cat": "neighborhood",
+        "keywords": [
+            "piyakong",
+            "tres marias",
+            "mount vulcan slopes",
+            "mt vulcan slopes",
+            "old volcano slopes",
+            "sitio piyakong",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.2085,
+        "lng": 124.648,
+        "mun": "Catarman",
+        "full_address": "Sitio Piyakong / Tres Marias Slopes, Bonbon, Catarman"
+    },
+    {
+        "name": "Sitio Kital-is, Cuna, Sagay",
+        "cat": "neighborhood",
+        "keywords": [
+            "kital-is",
+            "kitalis",
+            "sitio kital-is",
+            "sitio kitalis",
+            "upper cuna",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.131,
+        "lng": 124.742,
+        "mun": "Sagay",
+        "full_address": "Sitio Kital-is, Cuna, Sagay, Camiguin"
+    },
+    {
+        "name": "Upper Cantaan, Guinsiliban",
+        "cat": "neighborhood",
+        "keywords": [
+            "upper cantaan",
+            "cantaan upland",
+            "sitio upper cantaan",
+            "ibabaw cantaan",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.1135,
+        "lng": 124.782,
+        "mun": "Guinsiliban",
+        "full_address": "Upper Cantaan, Guinsiliban, Camiguin"
     },
     {
         "name": "Ardent Hot Spring, Esperanza",
@@ -1272,6 +1441,22 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "lng": 124.77407,
         "mun": "Mambajao",
         "full_address": "Tupsan, Mambajao, Camiguin"
+    },
+    {
+        "name": "Mantalaga Falls, Sagay",
+        "cat": "tourist",
+        "keywords": [
+            "mantalaga",
+            "mantalaga falls",
+            "busay mantalaga",
+            "upper sagay",
+            "hinterland",
+            "tungason"
+        ],
+        "lat": 9.1425,
+        "lng": 124.7265,
+        "mun": "Sagay",
+        "full_address": "Mantalaga Falls, Sagay Uplands, Camiguin"
     },
     {
         "name": "Hibok-Hibok Volcano Observatory (PHIVOLCS)",
@@ -3428,25 +3613,152 @@ HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
     "nanaw",
     "tuasan",
     "binangawan",
+    "benhaan",
+    "upper pandan",
+    "pandan upland",
+    "kanangkaan",
+    "maubog",
+    "pandayan",
+    "litican",
+    "upper balbagon",
+    "sitio tinago",
+    "tinago balbagon",
+    "upper lakas",
+    "lakas upland",
+    "upper anito",
+    "upper magting",
+    "sitio magting",
+    "magting bukid",
+    "magting upland",
+    "macao cold spring",
+    "macao spring",
+    "bas-iao",
+    "basiao",
+    "upper yumbing",
+    "upper naasag",
+    "katobli",
+    "kaolyong",
+    "sibato reservoir",
+    "volcano house",
+    "km 11 itum",
+    "santo nino",
+    "santo niño",
+    "sto. nino",
+    "sto. niño",
+    "sto nino",
+    "sto niño",
+    "mainit",
+    "manduao",
+    "mandawa",
+    "bura",
+    "soda water",
+    "liloan",
+    "licoan",
+    "mount vulcan",
+    "mt. vulcan",
+    "mt vulcan",
+    "volcano walkway",
+    "walkway to old volcano",
+    "old volcano",
+    "stations of the cross",
+    "piyakong",
+    "tres marias",
+    "owakan",
+    "puntod",
+    "san isidro",
+    "san miguel",
+    "tubod",
+    "tupsan pequeno",
+    "tupsan pequeño",
+    "tupsan mahinog",
+    "cuna",
+    "cuña",
+    "kital-is",
+    "kitalis",
+    "upper cuna",
+    "bacnit",
+    "bugang",
+    "bug-ang",
+    "mayana",
+    "mantalaga",
+    "upper sagay",
+    "butay",
+    "cabuan",
+    "upper cantaan",
+    "cantaan upland",
+    "ibabaw cantaan",
     "tungason",
     "upland",
     "steep uphill",
 )
 
-_HINTERLAND_BOUNDARY_RE = re.compile(r"\b(?:itum|esperanza|saay|cogon|tagdo)\b")
+_HINTERLAND_BOUNDARY_RE = re.compile(
+    r"\b(?:itum|esperanza|saay|cogon|tagdo|benhaan|kanangkaan|maubog|pandayan|litican|"
+    r"katobli|kaolyong|owakan|puntod|tubod|mainit|manduao|mandawa|bura|liloan|licoan|"
+    r"piyakong|cuna|bacnit|bugang|mayana|mantalaga|butay|cabuan)\b"
+)
+
+_HINTERLAND_PLACE_ZONES: tuple[tuple[float, float, float], ...] = (
+    # Mambajao inland & upland barangays, sitios, springs & mountain trails
+    (9.20322, 124.76773, 0.45),  # Benhaan, Mambajao
+    (9.19586, 124.77407, 0.45),  # Macao Cold Spring, Tupsan
+    (9.22850, 124.72150, 0.45),  # Upper Pandan (Kanangkaan / Maubog)
+    (9.22750, 124.73300, 0.45),  # Litican, Upper Balbagon
+    (9.23550, 124.73200, 0.45),  # Upper Lakas, Mambajao
+    (9.21100, 124.74850, 0.45),  # Upper Magting, Mambajao
+    (9.23150, 124.66100, 0.45),  # Sitio Bas-iao, Upper Yumbing / Naasag
+    (9.22950, 124.67650, 0.45),  # Katobli / Sibato Reservoir, Agoho
+    (9.20550, 124.69750, 0.45),  # Volcano House (Km 11 Itum)
+    (9.23453, 124.69148, 0.45),  # Tagdo, Mambajao
+    (9.23750, 124.67950, 0.45),  # Timogsay, Upper Bug-ong
+    (9.23580, 124.67380, 0.45),  # Upper Cogon, Agoho
+    # Catarman inland barangays, springs & volcano slopes
+    (9.14845, 124.67332, 0.45),  # Santo Niño, Catarman
+    (9.15019, 124.67424, 0.45),  # Sto. Niño Cold Spring, Catarman
+    (9.15517, 124.65775, 0.45),  # Mainit, Catarman
+    (9.13813, 124.67337, 0.45),  # Manduao, Catarman
+    (9.17620, 124.65194, 0.45),  # Bura, Catarman
+    (9.17107, 124.65697, 0.45),  # Bura Soda Water Park, Catarman
+    (9.14331, 124.67926, 0.45),  # Liloan, Catarman
+    (9.21068, 124.64015, 0.35),  # Mount Vulcan Daan / Walkway to Old Volcano
+    (9.20850, 124.64800, 0.45),  # Piyakong / Tres Marias Slopes, Catarman
+    # Mahinog inland & hillside barangays
+    (9.15373, 124.76255, 0.45),  # Owakan, Mahinog
+    (9.15603, 124.77313, 0.45),  # Puntod, Mahinog
+    (9.18171, 124.76971, 0.45),  # San Isidro, Mahinog
+    (9.13051, 124.78384, 0.45),  # San Miguel, Mahinog
+    (9.16090, 124.78326, 0.45),  # Tubod, Mahinog
+    (9.19518, 124.77836, 0.45),  # Tupsan Pequeño, Mahinog
+    # Sagay inland barangays, sitios & waterfalls
+    (9.12148, 124.74358, 0.45),  # Cuna, Sagay
+    (9.13100, 124.74200, 0.45),  # Sitio Kital-is, Cuna, Sagay
+    (9.12643, 124.70861, 0.45),  # Bacnit, Sagay
+    (9.10841, 124.70507, 0.45),  # Bugang, Sagay
+    (9.10524, 124.71876, 0.45),  # Mayana, Sagay
+    (9.14250, 124.72650, 0.45),  # Mantalaga Falls, Sagay
+    # Guinsiliban inland & upland barangays / sitios
+    (9.10476, 124.76919, 0.45),  # Butay, Guinsiliban
+    (9.11881, 124.79810, 0.45),  # Cabuan, Guinsiliban
+    (9.11350, 124.78200, 0.45),  # Upper Cantaan, Guinsiliban
+)
 
 
 def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
     """
     Detect Camiguin upland / steep uphill (tungason) elevation zones by GPS coordinates,
-    strictly clear of the coastal Circumferential Highway ring:
+    strictly clear of the coastal Circumferential Highway ring across all 5 municipalities:
       - Mambajao Uplands: Soro-soro, Highland Resort, Katibawasan Falls, Quiboro,
         Utopia, PHIVOLCS, Sa-ay Cold Spring, Binunsaran, Nanaw, Itum / Hibok-Hibok Trail,
-        Sitio Esperanza & Ardent Hot Spring.
-      - Agoho, Bug-ong & Tagdo Uplands: Upper Cogon (above Agoho / Sibato foothills),
-        Timogsay / Timugsay (above Bug-ong), and Barangay Tagdo, clear of coastal resorts.
-      - Catarman Mountain Uplands: Tuasan Falls / Upper Mainit.
-      - Sagay Uplands: Binangawan Falls interior.
+        Volcano House, Sitio Esperanza, Ardent Hot Spring, Tagdo, Timogsay (Upper Bug-ong),
+        Upper Cogon & Katobli (Agoho), Sitio Bas-iao (Upper Yumbing/Naasag), Upper Pandan
+        (Kanangkaan/Maubog), Litican (Upper Balbagon), Upper Lakas, Upper Magting, Benhaan,
+        and Macao Cold Spring.
+      - Catarman Uplands: Tuasan Falls, Mainit, Santo Niño & Sto. Niño Cold Spring,
+        Bura & Soda Water Park, Manduao, Liloan, Mount Vulcan Walkway, and Piyakong / Tres Marias.
+      - Mahinog Uplands: Owakan, Puntod, San Isidro, San Miguel, Tubod, and Tupsan Pequeño.
+      - Sagay Uplands: Binangawan Falls, Mantalaga Falls, Cuna, Sitio Kital-is, Bacnit,
+        Bugang, and Mayana.
+      - Guinsiliban Uplands: Butay, Cabuan, and Upper Cantaan.
     """
     try:
         lat_f = float(lat) if lat else 0.0
@@ -3464,6 +3776,9 @@ def _is_hinterland_coord(lat: float | None, lng: float | None) -> bool:
         return True
     if 9.138 <= lat_f <= 9.175 and 124.715 <= lng_f <= 124.750:
         return True
+    for z_lat, z_lng, radius_km in _HINTERLAND_PLACE_ZONES:
+        if calculate_haversine_km(lat_f, lng_f, z_lat, z_lng) <= radius_km:
+            return True
     return False
 
 
