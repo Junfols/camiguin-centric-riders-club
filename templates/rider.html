@@ -22,7 +22,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <label for="login-password" style="margin:0;">Password *</label>
           <button type="button" id="switch-to-forgot-btn" class="text-btn" style="font-size:0.8rem;color:#0284c7;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;">
-            Nakalimot sa Password?
+            Forgot Password?
           </button>
         </div>
         <input type="password" id="login-password" name="password" required placeholder="Enter your password">
@@ -42,12 +42,12 @@
     <!-- Register Form (hidden initially) -->
     <form id="rider-register-form" class="hidden" style="margin-top:1.5rem;">
       <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#1e40af;line-height:1.45;">
-        <strong>ℹ️ Pahibalo sa Mag-apply:</strong><br>
-        Human nimo mapasa kining application, ang imong account ma-save isip <strong>PENDING APPROVAL</strong>. Aron ma-inspeksyon ug ma-activate isip <strong>Verified CCRC Rider</strong>, palihug bisitaha ang <strong>CCRC Club Admin sa personal</strong> dala ang imong:
+        <strong>ℹ️ Applicant Notice:</strong><br>
+        After submitting this application, your account will be saved as <strong>PENDING APPROVAL</strong>. To be inspected and activated as a <strong>Verified CCRC Rider</strong>, please visit the <strong>CCRC Club Admin in person</strong> with your:
         <ul style="margin:4px 0 0 16px;padding:0;font-size:0.8rem;">
           <li>Driver's License</li>
-          <li>OR/CR sa Motorsiklo</li>
-          <li>Motorsiklo para sa physical inspection</li>
+          <li>Motorcycle OR/CR</li>
+          <li>Motorcycle for physical inspection</li>
         </ul>
       </div>
       <div class="form-group">
@@ -61,7 +61,7 @@
       <div class="form-group">
         <label for="reg-email">Email Address (Optional / Recommended)</label>
         <input type="email" id="reg-email" placeholder="e.g. rider@gmail.com">
-        <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">Maka-log in ka gamit ang email o mobile number.</small>
+        <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">You can log in using either your email or mobile number.</small>
       </div>
 
       <!-- Driver's License Number & Profile Picture -->
@@ -124,7 +124,7 @@
     <form id="rider-forgot-form" class="hidden" style="margin-top:1.5rem;">
       <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#166534;line-height:1.45;">
         <strong>🔑 Reset Rider Password:</strong><br>
-        Ibutang ang imong rehistradong <strong>Mobile Number</strong> ug ang imong <strong>Plate Number</strong> o <strong>Driver's License Number</strong> aron ma-verify ang imong pagka-rider ug maka-set og bag-ong password.
+        Enter your registered <strong>Mobile Number</strong> and your <strong>Driver's License Number</strong> to verify your rider account and set a new password.
       </div>
 
       <div class="form-group">
@@ -133,28 +133,28 @@
       </div>
 
       <div class="form-group">
-        <label for="forgot-identifier">Plate Number O Driver's License Number *</label>
-        <input type="text" id="forgot-identifier" required placeholder="e.g. 123-XYZ o K01-12-123456" style="text-transform:uppercase;">
+        <label for="forgot-identifier">Driver's License Number *</label>
+        <input type="text" id="forgot-identifier" required placeholder="e.g. K01-12-123456" style="text-transform:uppercase;">
       </div>
 
       <div class="form-group">
-        <label for="forgot-new-pwd">Bag-ong Password (min. 6 characters) *</label>
+        <label for="forgot-new-pwd">New Password (min. 6 characters) *</label>
         <input type="password" id="forgot-new-pwd" required minlength="6" placeholder="Choose a new password">
       </div>
 
       <div class="form-group">
-        <label for="forgot-confirm-pwd">I-kumpirma ang Bag-ong Password *</label>
+        <label for="forgot-confirm-pwd">Confirm New Password *</label>
         <input type="password" id="forgot-confirm-pwd" required minlength="6" placeholder="Re-type new password">
       </div>
 
       <div id="forgot-status-msg" class="hidden" style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;"></div>
 
       <button type="submit" id="rider-reset-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:8px;">
-        I-save ang Bag-ong Password &rarr;
+        Save New Password &rarr;
       </button>
 
       <div style="text-align:center;margin-top:14px;">
-        <button type="button" id="switch-forgot-to-login-btn" class="text-btn">&larr; Balik sa Log In</button>
+        <button type="button" id="switch-forgot-to-login-btn" class="text-btn">&larr; Back to Log In</button>
       </div>
     </form>
   </div>
@@ -171,8 +171,8 @@
               <span class="badge badge-accent">CCRC Verified Rider</span>
               <span id="dash-rider-rating-badge" class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-weight:700;">⭐ 5.0</span>
             </div>
-            <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
-            <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
+            <h2 id="dash-rider-name" style="margin:4px 0 2px;">Club Rider</h2>
+            <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motorcycle &bull; Plate #</div>
             <div class="text-muted" id="dash-rider-license" style="font-size:0.78rem;color:#64748b;margin-top:2px;">License: #</div>
           </div>
         </div>
@@ -305,16 +305,16 @@
         <!-- Floating Quick Controls on Rider Map -->
         <div class="map-floating-bar" style="position:absolute;top:18px;right:18px;z-index:1000;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <div class="map-layer-pill" style="display:flex;background:rgba(255,255,255,0.95);border-radius:20px;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,0.15);border:1px solid #cbd5e1;">
-            <button type="button" class="layer-pill-btn active" id="rider-job-layer-street" data-rider-job-layer="street" style="border:none;background:#f97316;color:#fff;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🗺️ Kalsada</button>
+            <button type="button" class="layer-pill-btn active" id="rider-job-layer-street" data-rider-job-layer="street" style="border:none;background:#f97316;color:#fff;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🗺️ Street</button>
             <button type="button" class="layer-pill-btn" id="rider-job-layer-sat" data-rider-job-layer="satellite" style="border:none;background:transparent;color:#475569;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🛰️ Satellite</button>
           </div>
-          <button type="button" id="rider-job-recenter-btn" class="map-float-btn" title="I-focus sa Akong Lokasyon" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <span>🎯</span> Akong GPS
+          <button type="button" id="rider-job-recenter-btn" class="map-float-btn" title="Focus on My Location" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>🎯</span> My GPS
           </button>
-          <button type="button" id="rider-job-fit-route-btn" class="map-float-btn" title="I-fit ang tibuok ruta" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <span>🗺️</span> Ruta
+          <button type="button" id="rider-job-fit-route-btn" class="map-float-btn" title="Fit entire route" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>🗺️</span> Route
           </button>
-          <button type="button" id="rider-job-fullscreen-btn" class="map-float-btn" title="Padak-a ang Mapa para sa Celpon / Motor" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 9px;font-size:0.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <button type="button" id="rider-job-fullscreen-btn" class="map-float-btn" title="Expand Map for Mobile" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 9px;font-size:0.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
             <span>⛶</span>
           </button>
         </div>
@@ -323,10 +323,10 @@
 
         <div class="tracking-legend" style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px 2px;font-size:0.78rem;color:#334155;flex-wrap:wrap;gap:8px;">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f97316;margin-right:4px;vertical-align:middle;box-shadow:0 0 4px #f97316;"></span> <strong>Ikaw (Rider 🛵)</strong></span>
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f97316;margin-right:4px;vertical-align:middle;box-shadow:0 0 4px #f97316;"></span> <strong>You (Rider 🛵)</strong></span>
             <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#16a34a;margin-right:4px;vertical-align:middle;"></span> <strong>Pickup 🟢</strong></span>
             <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#dc2626;margin-right:4px;vertical-align:middle;"></span> <strong>Dropoff 🏁</strong></span>
-            <span><span style="display:inline-block;width:18px;height:4px;background:#ef4444;border-radius:2px;margin-right:4px;vertical-align:middle;"></span> <strong>Ruta</strong></span>
+            <span><span style="display:inline-block;width:18px;height:4px;background:#ef4444;border-radius:2px;margin-right:4px;vertical-align:middle;"></span> <strong>Route</strong></span>
           </div>
           <span id="rider-job-distance-info" style="font-weight:700;color:#0284c7;font-size:0.82rem;"></span>
         </div>
@@ -348,11 +348,11 @@
 
         <!-- Quick Canned Replies for Rider -->
         <div class="canned-replies" id="rider-canned-replies" style="margin:8px 0;">
-          <button type="button" class="canned-btn" data-msg="Padulong nako Ma'am/Sir!">🛵 Padulong nako!</button>
-          <button type="button" class="canned-btn" data-msg="Naa nako sa pickup point Ma'am/Sir.">📍 Naa nako sa pickup point.</button>
-          <button type="button" class="canned-btn" data-msg="Paabot lang kadali Ma'am/Sir.">⏳ Paabot lang kadali.</button>
-          <button type="button" class="canned-btn" data-msg="Naa nako sa gawas!">🏠 Naa nako sa gawas!</button>
-          <button type="button" class="canned-btn" data-msg="Salamat Ma'am/Sir!">👍 Salamat Ma'am/Sir!</button>
+          <button type="button" class="canned-btn" data-msg="I'm on my way, Ma'am/Sir!">🛵 On my way!</button>
+          <button type="button" class="canned-btn" data-msg="I'm at the pickup point, Ma'am/Sir.">📍 At pickup point.</button>
+          <button type="button" class="canned-btn" data-msg="Please wait a moment, Ma'am/Sir.">⏳ Please wait a moment.</button>
+          <button type="button" class="canned-btn" data-msg="I'm outside now!">🏠 I'm outside now!</button>
+          <button type="button" class="canned-btn" data-msg="Thank you, Ma'am/Sir!">👍 Thank you!</button>
         </div>
 
         <!-- Messages Container -->
@@ -399,13 +399,13 @@
       </div>
     </div>
 
-    <!-- Fellow Online Riders Roster (Kauban nga Online) -->
+    <!-- Fellow Online Riders Roster -->
     <div class="card co-riders-card" style="margin-top:1.5rem;">
       <div class="dispatch-feed-header" style="margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:1.4rem;">🛵</span>
           <div>
-            <h3 style="margin:0;font-size:1.1rem;">Kauban nga Online Riders</h3>
+            <h3 style="margin:0;font-size:1.1rem;">Fellow Online Riders</h3>
             <span class="text-muted" style="font-size:0.8rem;">Active on-duty club riders across Camiguin</span>
           </div>
         </div>
@@ -419,10 +419,10 @@
       <div id="radar-map-container" class="hidden" style="margin-bottom:14px;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1;position:relative;">
         <div class="map-floating-bar" style="top:8px;right:8px;">
           <div class="map-layer-pill">
-            <button type="button" class="layer-pill-btn active" data-radar-layer="street">🗺️ Kalsada</button>
+            <button type="button" class="layer-pill-btn active" data-radar-layer="street">🗺️ Street</button>
             <button type="button" class="layer-pill-btn" data-radar-layer="satellite">🛰️ Satellite</button>
           </div>
-          <button type="button" id="radar-recenter-btn" class="map-float-btn" title="I-focus sa Camiguin">
+          <button type="button" id="radar-recenter-btn" class="map-float-btn" title="Focus on Camiguin">
             <span>🎯</span> Center
           </button>
         </div>
@@ -447,7 +447,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
         <div>
           <h3 style="margin:0;font-size:1.05rem;">⭐ Customer Ratings &amp; Feedback</h3>
-          <span class="text-muted" style="font-size:0.8rem;">Mga komento ug grado gikan sa imong mga pasahero</span>
+          <span class="text-muted" style="font-size:0.8rem;">Comments and star ratings from your passengers</span>
         </div>
         <span id="rider-reviews-summary-pill" class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:700;">⭐ 5.0 (0 reviews)</span>
       </div>

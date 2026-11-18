@@ -242,7 +242,7 @@
     if (!riderMarker) {
       riderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
         .addTo(map)
-        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>Padung sa lokasyon`);
+        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>On the way to location`);
     } else {
       riderMarker.setIcon(bikeIcon);
       riderMarker.setLatLng([lat, lng]);
@@ -369,7 +369,7 @@
     const wrap = document.createElement("div");
     wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
 
-    const sender = isSelf ? "You" : (msg.sender_name || "Kuya Rider");
+    const sender = isSelf ? "You" : (msg.sender_name || "Club Rider");
     const roleIcon = isSelf ? "👤" : "🛵";
     const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
 
@@ -546,7 +546,7 @@
         const data = await res.json();
         if (res.ok && data.success) {
           if (reviewFeedback) {
-            reviewFeedback.innerHTML = `✓ Salamat kaayo! Your review has been submitted.<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Balik sa Dashboard</a></div>`;
+            reviewFeedback.innerHTML = `✓ Thank you very much! Your review has been submitted.<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Back to Dashboard</a></div>`;
             reviewFeedback.classList.remove("hidden");
           }
           if (btn) btn.style.display = "none";

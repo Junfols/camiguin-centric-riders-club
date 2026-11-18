@@ -35,7 +35,7 @@
         </div>
       {% else %}
         <div style="margin-top:6px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 12px;font-size:0.78rem;color:#b45309;display:inline-block;">
-          ⚠️ <strong>Database: SQLite (Temporary Disk)</strong> &bull; Aron ma-permanente ang tanang rider ug customer bisan mag-redeploy sa Render, ikonekta ang Render PostgreSQL Database (ibutang ang <code>DATABASE_URL</code> sa Render Environment).
+          ⚠️ <strong>Database: SQLite (Temporary Disk)</strong> &bull; To keep all riders and customers permanently across Render redeployments, connect a Render PostgreSQL Database (set <code>DATABASE_URL</code> in Render Environment).
         </div>
       {% endif %}
     </div>
@@ -149,13 +149,13 @@
           <label for="set-gdrive-webhook">Google Drive Webhook / Apps Script URL</label>
           <input type="url" id="set-gdrive-webhook" name="google_drive_webhook_url" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec">
           <small class="text-muted" style="display:block;margin-top:4px;">
-            Awtomatikong i-upload ang backup diretso sa imong Google Drive.
-            <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">Unsaon kini pag-set up? (1 ka minuto) &rarr;</a>
+            Automatically upload backups directly to your Google Drive.
+            <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">How to set this up? (1 minute) &rarr;</a>
           </small>
         </div>
 
         <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
-        <button type="submit" id="save-settings-btn" class="btn btn-primary" style="margin-top:12px;">Save Taripa Settings</button>
+        <button type="submit" id="save-settings-btn" class="btn btn-primary" style="margin-top:12px;">Save Tariff Settings</button>
       </form>
     </div>
 
@@ -174,9 +174,9 @@
       {% set pending_riders = riders | selectattr('status', 'equalto', 'pending') | list %}
       {% if pending_riders | length > 0 %}
         <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#78350f;line-height:1.45;">
-          <strong>⚠️ Mahinungdanong Pahibalo sa Admin:</strong>
-          May <strong>{{ pending_riders | length }}</strong> ka nag-apply nga rider nga naghulat sa imong pag-aproba.<br>
-          Palihug seguroha nga <strong>personal silang moadto sa opisina</strong> dala ang ilang <strong>Driver's License, OR/CR, ug motorsiklo</strong> para sa physical inspection sa dili pa i-click ang <span style="background:#16a34a;color:white;padding:2px 6px;border-radius:3px;font-weight:600;font-size:0.75rem;">Approve ✅</span>.
+          <strong>⚠️ Important Admin Notice:</strong>
+          There {{ 'is' if pending_riders | length == 1 else 'are' }} <strong>{{ pending_riders | length }}</strong> rider applicant{{ '' if pending_riders | length == 1 else 's' }} waiting for your approval.<br>
+          Please ensure they <strong>visit the office in person</strong> with their <strong>Driver's License, OR/CR, and motorcycle</strong> for physical inspection before clicking <span style="background:#16a34a;color:white;padding:2px 6px;border-radius:3px;font-weight:600;font-size:0.75rem;">Approve ✅</span>.
         </div>
       {% endif %}
 
@@ -261,7 +261,7 @@
           <span style="font-size:1.4rem;">💾</span> System Data Backup &amp; Restore
         </h3>
         <p class="text-muted" style="margin:4px 0 0;font-size:0.88rem;">
-          I-backup o i-restore ang tanan nga data sa club (Riders, Bookings, Chat Messages, Reviews, Settings, &amp; Media Photos).
+          Back up or restore all club data (Riders, Bookings, Chat Messages, Reviews, Settings, &amp; Media Photos).
         </p>
       </div>
       <span class="badge" style="background:#0284c7;color:#ffffff;font-size:0.75rem;padding:4px 10px;border-radius:12px;">
@@ -282,14 +282,14 @@
           </div>
         </div>
         <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
-          I-download ang tibuok kopya sa database lakip ang riders list, registration records, license numbers, active/past trips, chat history, ug custom taripa settings.
+          Download a complete copy of the database including the riders list, registration records, license numbers, active/past trips, chat history, and custom tariff settings.
         </p>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <a href="/api/admin/backup" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;text-decoration:none;">
             <span>⬇️</span> Download Full Backup (.JSON)
           </a>
           <button type="button" id="gdrive-backup-btn" class="btn btn-block" onclick="backupToGoogleDrive(event)" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;background:#0f172a;color:#ffffff;border:1px solid #334155;border-radius:var(--radius-md);cursor:pointer;touch-action:manipulation;">
-            <span>☁️</span> I-Save sa Google Drive
+            <span>☁️</span> Save to Google Drive
           </button>
         </div>
         <div id="gdrive-status-msg" class="hidden" style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
@@ -303,27 +303,27 @@
           </div>
           <div>
             <strong style="font-size:1rem;color:#0f172a;">Restore from Backup File</strong>
-            <div class="text-muted" style="font-size:0.8rem;">I-balik ang database gikan sa na-download nga .json</div>
+            <div class="text-muted" style="font-size:0.8rem;">Restore the database from a downloaded .json file</div>
           </div>
         </div>
 
         <form id="admin-restore-form" enctype="multipart/form-data">
           <div class="form-group" style="margin-bottom:10px;">
-            <label for="restore-file-input" style="font-size:0.82rem;font-weight:600;color:#334155;">Pilia ang Backup File (.json) *</label>
+            <label for="restore-file-input" style="font-size:0.82rem;font-weight:600;color:#334155;">Select Backup File (.json) *</label>
             <input type="file" id="restore-file-input" name="backup_file" accept=".json,application/json" required style="font-size:0.85rem;padding:6px;width:100%;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;">
           </div>
 
           <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
             <input type="checkbox" id="restore-wipe-mode" name="wipe_existing" value="true" checked style="width:16px;height:16px;accent-color:var(--primary);">
             <label for="restore-wipe-mode" style="font-size:0.8rem;color:#475569;cursor:pointer;user-select:none;">
-              <strong>Clean Sync</strong> (I-overwrite ug i-synchronize tanan records sumala sa backup)
+              <strong>Clean Sync</strong> (Overwrite and synchronize all records to match the backup)
             </label>
           </div>
 
           <div id="restore-status-msg" class="hidden" style="margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
 
           <button type="submit" id="restore-submit-btn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#b45309;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <span>⬆️</span> I-restore Kini nga Backup
+            <span>⬆️</span> Restore This Backup
           </button>
         </form>
       </div>
@@ -614,19 +614,19 @@
   <div class="card" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);border-radius:14px;background:#ffffff;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
-        <span>☁️</span> Giya: Libre nga Google Drive Auto-Backup
+        <span>☁️</span> Guide: Free Google Drive Auto-Backup
       </h3>
       <button type="button" onclick="closeGdriveGuideModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;">&times;</button>
     </div>
     <p style="font-size:0.86rem;color:#475569;margin-bottom:12px;">
-      Gusto ka nga sa matag click nimo ug <strong>"I-Save sa Google Drive"</strong>, awtomatikong mosulod ang file sa imong Google Drive folder nga walay bayad? Sunda kining 3 ka sayon nga lakang:
+      Want every click of <strong>"Save to Google Drive"</strong> to automatically upload the backup file to your Google Drive folder for free? Follow these 3 easy steps:
     </p>
     <ol style="font-size:0.84rem;color:#334155;padding-left:1.2rem;line-height:1.5;margin-bottom:14px;">
       <li style="margin-bottom:8px;">
-        Ablihi ang <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> gamit ang imong Gmail account, unya i-click ang <strong>"New Project"</strong>.
+        Open <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> using your Gmail account, then click <strong>"New Project"</strong>.
       </li>
       <li style="margin-bottom:8px;">
-        I-delete ang sulod sa editor ug i-paste kining mubo nga code:
+        Delete the existing code in the editor and paste this short snippet:
         <pre style="background:#0f172a;color:#f8fafc;padding:10px;border-radius:8px;font-size:0.75rem;overflow-x:auto;margin:6px 0;">function doPost(e) {
   var data = JSON.parse(e.postData.contents);
   var folder = DriveApp.getRootFolder();
@@ -638,14 +638,14 @@
 }</pre>
       </li>
       <li style="margin-bottom:8px;">
-        I-click ang <strong>Deploy &gt; New deployment</strong>. Pilia ang <strong>Web app</strong>, ibutang sa <em>Who has access</em>: <strong>Anyone</strong>, unya i-click ang <strong>Deploy</strong>.
+        Click <strong>Deploy &gt; New deployment</strong>. Select <strong>Web app</strong>, set <em>Who has access</em> to <strong>Anyone</strong>, then click <strong>Deploy</strong>.
       </li>
       <li>
-        Kopyaha ang gihatag nga <strong>Web App URL</strong> ug i-paste kini sa kahon sa <strong>Google Drive Webhook / Apps Script URL</strong> dinhi sa Admin Settings, dayon i-save!
+        Copy the generated <strong>Web App URL</strong>, paste it into the <strong>Google Drive Webhook / Apps Script URL</strong> field here in Admin Settings, and save!
       </li>
     </ol>
     <div style="text-align:right;">
-      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
+      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Got it / Close</button>
     </div>
   </div>
 
@@ -691,7 +691,7 @@
 
   // Admin Permanent Delete Rider Handler
   window.deleteRider = async function(riderId, riderName) {
-    if (!confirm(`Sigurado ka ba nga gusto nimo i-delete ang account ni Rider "${riderName}"?\n\nKini permanente ug dili na mabalik.`)) {
+    if (!confirm(`Are you sure you want to delete Rider "${riderName}"'s account?\n\nThis action is permanent and cannot be undone.`)) {
       return;
     }
     try {
@@ -710,7 +710,7 @@
 
   // Admin Permanent Delete Customer Handler
   window.deleteCustomer = async function(customerId, customerName) {
-    if (!confirm(`Sigurado ka ba nga gusto nimo i-delete ang customer account ni "${customerName}"?\n\nKini permanente ug dili na mabalik.`)) {
+    if (!confirm(`Are you sure you want to delete "${customerName}"'s customer account?\n\nThis action is permanent and cannot be undone.`)) {
       return;
     }
     try {
@@ -729,10 +729,10 @@
 
   // Admin Quick Password Reset for Rider
   window.adminResetRiderPassword = async function(riderId, riderName) {
-    const newPwd = prompt(`Ibutang ang bag-ong password para sa Rider "${riderName}" (labing menos 6 ka characters):`, "rider1234");
+    const newPwd = prompt(`Enter the new password for Rider "${riderName}" (at least 6 characters):`, "rider1234");
     if (!newPwd) return;
     if (newPwd.length < 6) {
-      alert("Ang password kinahanglan labing menos 6 ka characters.");
+      alert("Password must be at least 6 characters long.");
       return;
     }
     try {
@@ -743,7 +743,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reset rider password");
-      alert(`Malampusong na-set ang bag-ong password para kang Rider "${riderName}"!`);
+      alert(`New password has been set successfully for Rider "${riderName}"!`);
     } catch (err) {
       alert("Error: " + err.message);
     }
@@ -751,10 +751,10 @@
 
   // Admin Quick Password Reset for Customer
   window.adminResetCustomerPassword = async function(customerId, customerName) {
-    const newPwd = prompt(`Ibutang ang bag-ong password para sa Customer "${customerName}" (labing menos 6 ka characters):`, "pass1234");
+    const newPwd = prompt(`Enter the new password for Customer "${customerName}" (at least 6 characters):`, "pass1234");
     if (!newPwd) return;
     if (newPwd.length < 6) {
-      alert("Ang password kinahanglan labing menos 6 ka characters.");
+      alert("Password must be at least 6 characters long.");
       return;
     }
     try {
@@ -765,7 +765,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reset customer password");
-      alert(`Malampusong na-set ang bag-ong password para kang Customer "${customerName}"!`);
+      alert(`New password has been set successfully for Customer "${customerName}"!`);
     } catch (err) {
       alert("Error: " + err.message);
     }
@@ -858,15 +858,15 @@
       e.preventDefault();
       const fileInput = document.getElementById("restore-file-input");
       if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Palihug pagpili una ug .json backup file nga i-restore!");
+        alert("Please select a .json backup file to restore first!");
         return;
       }
 
       const file = fileInput.files[0];
       const wipeMode = document.getElementById("restore-wipe-mode").checked;
       const wipeWarning = wipeMode 
-        ? "⚠️ PAHIBALO: Ang Clean Sync mag-overwrite sa existing database data aron motakdo sa sulod sa backup file.\n\nSigurado ba ka nga gusto nimong i-restore ang: " + file.name + "?"
-        : "Sigurado ba ka nga gusto nimong i-merge/i-restore ang data gikan sa: " + file.name + "?";
+        ? "⚠️ NOTICE: Clean Sync will overwrite existing database data to match the backup file.\n\nAre you sure you want to restore: " + file.name + "?"
+        : "Are you sure you want to merge/restore data from: " + file.name + "?";
 
       if (!confirm(wipeWarning)) {
         return;
@@ -875,9 +875,9 @@
       const submitBtn = document.getElementById("restore-submit-btn");
       const statusMsg = document.getElementById("restore-status-msg");
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "<span>⏳</span> Gapa-restore sa database... Palihug hulata...";
+      submitBtn.innerHTML = "<span>⏳</span> Restoring database... Please wait...";
       statusMsg.className = "alert-warning";
-      statusMsg.textContent = "Processing backup data transaction. Palihug ayaw i-close ang browser...";
+      statusMsg.textContent = "Processing backup data transaction. Please do not close your browser...";
       statusMsg.classList.remove("hidden");
 
       try {
@@ -897,7 +897,7 @@
 
         statusMsg.className = "alert-success";
         statusMsg.textContent = "✅ " + (data.message || "Database successfully restored!");
-        alert("✅ Malampusong na-restore ang Database!\n\n" + (data.message || ""));
+        alert("✅ Database restored successfully!\n\n" + (data.message || ""));
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -907,7 +907,7 @@
         alert("❌ Restore Error: " + err.message);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = "<span>⬆️</span> I-restore Kini nga Backup";
+        submitBtn.innerHTML = "<span>⬆️</span> Restore This Backup";
       }
     });
   }
@@ -942,9 +942,9 @@
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.style.opacity = "0.75";
-    btn.innerHTML = "<span>⏳</span> Naga-konektar sa Google Drive...";
+    btn.innerHTML = "<span>⏳</span> Connecting to Google Drive...";
     statusEl.className = "alert-warning";
-    statusEl.textContent = "Naga-andam sa database snapshot para sa Google Drive...";
+    statusEl.textContent = "Preparing database snapshot for Google Drive...";
     statusEl.classList.remove("hidden");
 
     try {
@@ -964,7 +964,7 @@
 
       if (serverData && serverData.configured && serverData.success) {
         statusEl.className = "alert-success";
-        statusEl.textContent = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} `;
+        statusEl.textContent = `✅ ${serverData.message || 'Successfully saved to Google Drive!'} `;
         if (serverData.file_url && /^https?:\/\//i.test(String(serverData.file_url))) {
           const br = document.createElement("br");
           const link = document.createElement("a");
@@ -972,7 +972,7 @@
           link.target = "_blank";
           link.rel = "noopener noreferrer";
           link.style.cssText = "color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;";
-          link.textContent = "🔗 Ablihi ang File sa Google Drive →";
+          link.textContent = "🔗 Open File in Google Drive →";
           statusEl.appendChild(br);
           statusEl.appendChild(link);
         }
@@ -981,7 +981,7 @@
 
       // 2. Fetch the backup file blob for mobile share or direct upload
       const backupBlobRes = await fetch("/api/admin/backup");
-      if (!backupBlobRes.ok) throw new Error("Dili ma-download ang backup gikan sa server.");
+      if (!backupBlobRes.ok) throw new Error("Unable to download backup from server.");
       const blob = await backupBlobRes.blob();
       const nowStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
       const filename = (serverData && serverData.filename) || `ccrc_backup_${nowStr}.json`;
@@ -990,7 +990,7 @@
       // 3. Android Mobile: Web Share API (Save to Drive option)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         statusEl.className = "alert-warning";
-        statusEl.textContent = "📱 Gina-abli ang Android Share Sheet... Pilia ang 'Google Drive' / 'Save to Drive'.";
+        statusEl.textContent = "📱 Opening Android Share Sheet... Select 'Google Drive' / 'Save to Drive'.";
         try {
           await navigator.share({
             title: "Camiguin Centric Riders Club - Backup",
@@ -998,12 +998,12 @@
             files: [file]
           });
           statusEl.className = "alert-success";
-          statusEl.textContent = "✅ Malampusong na-share / na-save sa Google Drive!";
+          statusEl.textContent = "✅ Successfully shared / saved to Google Drive!";
           return;
         } catch (shareErr) {
           if (shareErr.name === "AbortError") {
             statusEl.className = "alert-warning";
-            statusEl.textContent = "Gikanselar ang share dialog. Na-save gihapon ang backup file.";
+            statusEl.textContent = "Share dialog canceled. The backup file was still downloaded.";
           }
         }
       }
@@ -1025,13 +1025,13 @@
       statusEl.className = "alert-success";
       statusEl.innerHTML = "";
       const msgSpan = document.createElement("span");
-      msgSpan.textContent = `📥 Na-download ang ${filename} ug naablihan ang Google Drive sa bag-ong tab! I-drag & drop o i-upload lang kini ngadto sa imong Google Drive.`;
+      msgSpan.textContent = `📥 Downloaded ${filename} and opened Google Drive in a new tab! Just drag & drop or upload it to your Google Drive.`;
       statusEl.appendChild(msgSpan);
       statusEl.appendChild(document.createElement("br"));
       const guideLink = document.createElement("a");
       guideLink.href = "javascript:void(0)";
       guideLink.style.cssText = "color:#0284c7;font-weight:600;font-size:0.85em;";
-      guideLink.textContent = "Gusto ka'g 1-click Awtomatikong Cloud Sync? I-set up ang Webhook →";
+      guideLink.textContent = "Want 1-click Automatic Cloud Sync? Set up Webhook →";
       guideLink.onclick = () => openGdriveGuideModal();
       statusEl.appendChild(guideLink);
 

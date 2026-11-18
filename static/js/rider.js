@@ -125,13 +125,13 @@
         forgotStatusMsg.style.background = "#fee2e2";
         forgotStatusMsg.style.color = "#991b1b";
         forgotStatusMsg.style.border = "1px solid #fca5a5";
-        forgotStatusMsg.textContent = "Dili pareho ang bag-ong password ug ang confirmation password.";
+        forgotStatusMsg.textContent = "New password and confirmation password do not match.";
         forgotStatusMsg.classList.remove("hidden");
         return;
       }
 
       resetBtn.disabled = true;
-      resetBtn.textContent = "Ginasusi ug gina-save...";
+      resetBtn.textContent = "Verifying and saving...";
 
       try {
         const res = await fetch("/api/rider/forgot-password", {
@@ -151,7 +151,7 @@
         forgotStatusMsg.style.background = "#dcfce7";
         forgotStatusMsg.style.color = "#166534";
         forgotStatusMsg.style.border = "1px solid #86efac";
-        forgotStatusMsg.innerHTML = "✅ <strong>Malampuson!</strong> " + (data.message || "Na-reset na ang imong password.") + "<br><small>Ibalik na tika sa Log In...</small>";
+        forgotStatusMsg.innerHTML = "✅ <strong>Success!</strong> " + (data.message || "Your password has been reset.") + "<br><small>Redirecting you to Log In...</small>";
         forgotStatusMsg.classList.remove("hidden");
 
         // Prefill login phone
@@ -173,7 +173,7 @@
         forgotStatusMsg.classList.remove("hidden");
       } finally {
         resetBtn.disabled = false;
-        resetBtn.textContent = "I-save ang Bag-ong Password →";
+        resetBtn.textContent = "Save New Password →";
       }
     });
   }
@@ -203,7 +203,7 @@
             loginErrorMsg.style.color = "#854d0e";
             loginErrorMsg.style.backgroundColor = "#fef9c3";
             loginErrorMsg.style.borderColor = "#facc15";
-            loginErrorMsg.innerHTML = "⏳ <strong>ACCOUNT PENDING APPROVAL</strong><br>" + (data.error || "Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon ug ma-activate ang imong account.");
+            loginErrorMsg.innerHTML = "⏳ <strong>ACCOUNT PENDING APPROVAL</strong><br>" + (data.error || "Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection and account activation.");
             loginErrorMsg.classList.remove("hidden");
             return;
           }
@@ -320,7 +320,7 @@
         if (!res.ok) throw new Error(data.error || "Registration failed");
 
         if (data.pending) {
-          alert("✅ Malampusong napasa ang imong Rider Application!\n\nStatus: PENDING APPROVAL\n\nPalihug bisitaha ang CCRC Club Admin sa personal dala ang imong:\n1. Driver's License\n2. OR/CR sa Motor\n3. Imong Motorsiklo para sa physical inspection\n\nInig ma-aprobahan na sa Admin, pwede na ka maka-log in dinhi.");
+          alert("✅ Your Rider Application has been submitted!\n\nStatus: PENDING APPROVAL\n\nPlease visit the CCRC Club Admin in person with your:\n1. Driver's License\n2. Motorcycle OR/CR\n3. Motorcycle for physical inspection\n\nOnce approved by Admin, you can log in here.");
           // Switch to login tab and pre-fill phone
           registerForm.classList.add("hidden");
           loginForm.classList.remove("hidden");
@@ -332,7 +332,7 @@
             loginErrorMsg.style.color = "#854d0e";
             loginErrorMsg.style.backgroundColor = "#fef9c3";
             loginErrorMsg.style.borderColor = "#facc15";
-            loginErrorMsg.innerHTML = "⏳ <strong>Application Submitted (PENDING APPROVAL)</strong><br>Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon ug ma-activate.";
+            loginErrorMsg.innerHTML = "⏳ <strong>Application Submitted (PENDING APPROVAL)</strong><br>Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection and activation.";
             loginErrorMsg.classList.remove("hidden");
           }
           return;
@@ -461,7 +461,7 @@
         const empty = document.createElement("div");
         empty.className = "text-muted";
         empty.style.cssText = "font-size:0.85rem;padding:8px 0;";
-        empty.textContent = "Wala pay customer review. Kompletoha ang mga biyahe aron makadawat ug 5-star ratings!";
+        empty.textContent = "No customer reviews yet. Complete trips to start receiving 5-star ratings!";
         listEl.appendChild(empty);
         return;
       }
@@ -763,7 +763,7 @@
         <div class="rider-3d-wrap">
           <div class="rider-radar-pulse"></div>
           <div class="rider-heading-cone" style="transform: rotate(${currentRiderBearing}deg);"></div>
-          <div class="rider-3d-avatar" title="${escapeHtml(currentRider?.name || 'Ikaw (Rider)')}">
+          <div class="rider-3d-avatar" title="${escapeHtml(currentRider?.name || 'You (Rider)')}">
             <span>🏍️</span>
           </div>
           ${speedDisplay ? `<span class="rider-speed-badge">${speedDisplay}</span>` : ''}
@@ -776,7 +776,7 @@
     if (!riderJobRiderMarker) {
       riderJobRiderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
         .addTo(riderJobMap)
-        .bindPopup(`<strong>🛵 ${escapeHtml(currentRider?.name || 'Ikaw (Rider)')}</strong><br>Imong live GPS lokasyon`);
+        .bindPopup(`<strong>🛵 ${escapeHtml(currentRider?.name || 'You (Rider)')}</strong><br>Your live GPS location`);
     } else {
       riderJobRiderMarker.setIcon(bikeIcon);
       riderJobRiderMarker.setLatLng([lat, lng]);
@@ -907,7 +907,7 @@
             if (distInfo) {
               const km = Number(data.distance_km).toFixed(1);
               const mins = Math.max(2, Math.round((data.distance_km / 30) * 60));
-              distInfo.textContent = `📍 ${km} km (~${mins} mins biyahe)`;
+              distInfo.textContent = `📍 ${km} km (~${mins} mins trip)`;
             }
           }
         })
@@ -1534,7 +1534,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sender_role: "rider",
-          sender_name: currentRider ? currentRider.name : "Kuya Rider",
+          sender_name: currentRider ? currentRider.name : "Club Rider",
           message: msgText,
         }),
       });
@@ -1705,7 +1705,7 @@
       if (list.length === 0) {
         coRidersList.innerHTML = `
           <div class="empty-state" style="padding:1rem;">
-            <span class="text-muted">Ikaw pa lang ang online rider karon. Paabota ang imong mga kauban!</span>
+            <span class="text-muted">You are the only online rider right now. Waiting for fellow riders!</span>
           </div>
         `;
         return;
@@ -1717,10 +1717,10 @@
           ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
           : `<div class="co-rider-avatar-placeholder">🛵</div>`;
 
-        const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">Ikaw</span>` : '';
+        const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">You</span>` : '';
         const town = escapeHtml(r.municipality || 'Camiguin');
         const phoneBtn = (!isSelf && r.phone)
-          ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Tawag</a>`
+          ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Call</a>`
           : '';
 
         return `

@@ -159,8 +159,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertIn("Camiguin Centric Riders Club", html)
         self.assertIn("Passenger", html)
-        self.assertIn("Padala", html)
-        self.assertIn("Pabili", html)
+        self.assertIn("Courier", html)
+        self.assertIn("Errand", html)
         self.assertIn("Port &amp; Bills", html)
         self.assertIn("Official Camiguin CRC Fare Matrix", html)
 
@@ -754,7 +754,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             },
         )
         self.assertEqual(resp.status_code, 401)
-        self.assertIn("Kinahanglan mo-Sign In o mag-Register una", resp.get_json()["error"])
+        self.assertIn("Please Sign In or Register first", resp.get_json()["error"])
 
         # Broadcast with inline registration password succeeds
         resp2 = client.post(

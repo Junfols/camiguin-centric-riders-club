@@ -598,11 +598,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         password = (data.get("password") or "").strip()
 
         if not identifier or not password:
-            return jsonify({"success": False, "error": "Palihug ibutang ang imong Phone Number o Email ug Password."}), 400
+            return jsonify({"success": False, "error": "Please enter your Phone Number or Email and Password."}), 400
 
         cust = authenticate_customer(conn, identifier, password)
         if not cust:
-            return jsonify({"success": False, "error": "Incorrect phone number/email or password. Palihug susiha ang imong phone number/email ug password."}), 401
+            return jsonify({"success": False, "error": "Incorrect phone number/email or password. Please check your credentials and try again."}), 401
 
         conn.commit()
         session["customer_phone"] = cust["phone"]
@@ -628,28 +628,28 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         new_password = (data.get("new_password") or "").strip()
 
         if not phone:
-            return jsonify({"success": False, "error": "Palihug ibutang ang imong rehistradong mobile phone number."}), 400
+            return jsonify({"success": False, "error": "Please enter your registered mobile phone number."}), 400
         if not email:
-            return jsonify({"success": False, "error": "Palihug ibutang ang imong rehistradong email address para sa verification."}), 400
+            return jsonify({"success": False, "error": "Please enter your registered email address for verification."}), 400
         if not new_password or len(new_password) < 6:
-            return jsonify({"success": False, "error": "Ang bag-ong password kinahanglan labing menos 6 ka characters."}), 400
+            return jsonify({"success": False, "error": "New password must be at least 6 characters long."}), 400
 
         cust = get_customer_by_phone(conn, phone)
         if not cust:
-            return jsonify({"success": False, "error": "Wala makit-i ang customer account alang niining numero."}), 404
+            return jsonify({"success": False, "error": "No customer account found for this phone number."}), 404
 
         cust_email = (cust.get("email") or "").strip().lower()
         if not cust_email or cust_email != email:
             return jsonify({
                 "success": False,
-                "error": "Wala motukma ang Email Address alang niining account. Palihug susiha o kontaka ang Admin."
+                "error": "Email address does not match this account. Please check or contact Admin."
             }), 400
 
         pwd_hash = generate_password_hash(new_password)
         update_customer_password(conn, cust["id"], pwd_hash)
         return jsonify({
             "success": True,
-            "message": "Malampusong na-reset ang imong passenger password! Pwede na ka mag-login."
+            "message": "Your passenger password has been reset successfully! You can now log in."
         })
 
     @app.get("/api/customer/me")
@@ -870,7 +870,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         if not app.config.get("TESTING") and not is_authenticated and not customer_password:
             return jsonify({
-                "error": "Kinahanglan mo-Sign In o mag-Register una aron ma-verify ang imong account sa dili pa mo-broadcast sa mga riders."
+                "error": "Please Sign In or Register first to verify your account before broadcasting a ride request."
             }), 401
 
         if customer_password and not is_authenticated:
@@ -990,7 +990,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         sender_role = auth_role
         if sender_role == "rider":
             rider = get_rider_by_id(conn, int(session["rider_id"]))
-            sender_name = (rider.get("name") if rider else None) or "Kuya Rider"
+            sender_name = (rider.get("name") if rider else None) or "Club Rider"
         elif sender_role == "system":
             sender_name = "CCRC Dispatch"
         else:
@@ -1078,25 +1078,25 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         password = (data.get("password") or "").strip()
 
         if not identifier or not password:
-            return jsonify({"error": "Palihug ibutang ang imong Mobile Phone Number o Email ug Password."}), 400
+            return jsonify({"error": "Please enter your Mobile Phone Number or Email and Password."}), 400
 
         rider = get_rider_by_phone(conn, identifier)
         if not rider:
-            return jsonify({"error": "Wala makit-i ang rider account nga adunay maong Phone Number o Email. Palihug pagsusi o pag-register."}), 404
+            return jsonify({"error": "No rider account found with that Phone Number or Email. Please check your details or register."}), 404
 
         if not check_password_hash(rider["password_hash"], password):
-            return jsonify({"error": "Incorrect password. Sayop ang imong password."}), 401
+            return jsonify({"error": "Incorrect password. Please check your password and try again."}), 401
 
         status = (rider.get("status") or "").lower()
         if status == "pending":
             return jsonify({
-                "error": "Ang imong account anaa pa sa PENDING APPROVAL. Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motorsiklo aron ma-inspeksyon, ma-verify ug ma-activate ang imong account.",
+                "error": "Your account is currently PENDING APPROVAL. Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection, verification, and account activation.",
                 "pending": True,
             }), 403
 
         if status in ("suspended", "rejected"):
             return jsonify({
-                "error": "Ang imong account nasuspenso o gibalibaran sa Club Admin. Palihug pakigkita sa CCRC Admin.",
+                "error": "Your account has been suspended or rejected by the Club Admin. Please contact the CCRC Admin.",
                 "suspended": True,
             }), 403
 
@@ -1118,15 +1118,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         new_password = (data.get("new_password") or "").strip()
 
         if not phone:
-            return jsonify({"success": False, "error": "Palihug ibutang ang imong rehistradong mobile phone number."}), 400
+            return jsonify({"success": False, "error": "Please enter your registered mobile phone number."}), 400
         if not identifier:
-            return jsonify({"success": False, "error": "Palihug ibutang ang imong Plate Number o Driver's License Number para sa verification."}), 400
+            return jsonify({"success": False, "error": "Please enter your Driver's License Number for verification."}), 400
         if not new_password or len(new_password) < 6:
-            return jsonify({"success": False, "error": "Ang bag-ong password kinahanglan labing menos 6 ka characters."}), 400
+            return jsonify({"success": False, "error": "New password must be at least 6 characters long."}), 400
 
         rider = get_rider_by_phone(conn, phone)
         if not rider:
-            return jsonify({"success": False, "error": "Wala makit-i ang rider account alang niining numero."}), 404
+            return jsonify({"success": False, "error": "No rider account found for this phone number."}), 404
 
         clean_input = identifier.replace(" ", "").replace("-", "").upper()
         clean_license = (rider.get("license_no") or "").replace(" ", "").replace("-", "").upper()
@@ -1134,14 +1134,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not clean_license or clean_input != clean_license:
             return jsonify({
                 "success": False,
-                "error": "Wala motukma ang Driver's License Number alang niining account. Palihug susiha o kontaka ang Admin."
+                "error": "Driver's License Number does not match this account. Please check or contact Admin."
             }), 400
 
         pwd_hash = generate_password_hash(new_password)
         update_rider_password(conn, rider["id"], pwd_hash)
         return jsonify({
             "success": True,
-            "message": "Malampusong na-reset ang imong rider password! Pwede na ka mag-login."
+            "message": "Your rider password has been reset successfully! You can now log in."
         })
 
     @app.post("/api/rider/register")
@@ -1214,7 +1214,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "success": True,
             "pending": True,
             "rider": clean_rider,
-            "message": f"✅ Malampusong napasa ang imong Rider Application, {name}! Ang imong account anaa pa sa PENDING APPROVAL. Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon, ma-verify ug ma-activate ang imong account."
+            "message": f"✅ Your Rider Application has been submitted, {name}! Your account is currently PENDING APPROVAL. Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection, verification, and account activation."
         }), 201
 
 
@@ -1763,7 +1763,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "success": True,
                 "filename": filename,
                 "file_url": file_url,
-                "message": f"Malampusong na-upload ang backup ({filename}) sa Google Drive!",
+                "message": f"Backup ({filename}) uploaded to Google Drive successfully!",
             })
         except Exception as e:
             return jsonify({

@@ -2664,7 +2664,7 @@
           map.setView([9.24971, 124.71667], 14);
         }, 60);
       }
-      showMapToast("👇 Palihug i-tap o i-click ang mapa aron mapili ang Drop-off!");
+      showMapToast("👇 Please tap or click the map to choose your Drop-off!");
     };
 
     locateDropoffGpsBtn.addEventListener("click", handleLocateDropoffClick);
@@ -2705,7 +2705,7 @@
             map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
           }, 60);
         }
-        showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
+        showMapToast(`🟢 Pickup pinned at: ${found.name}`);
         updateRouteLine();
         recalculateFare();
         return;
@@ -2722,7 +2722,7 @@
             if (pickupMarker) pickupMarker.openPopup();
           }, 60);
         }
-        showMapToast(`🟢 Kasamtangang Pickup Pin sa mapa`);
+        showMapToast(`🟢 Current Pickup Pin on map`);
         return;
       }
 
@@ -2733,7 +2733,7 @@
           map.setView([9.24971, 124.71667], 14);
         }, 60);
       }
-      showMapToast("👇 Palihug i-tap o i-click ang mapa aron mapili ang Pickup!");
+      showMapToast("👇 Please tap or click the map to choose your Pickup!");
     };
 
     pinPickupMapBtn.addEventListener("click", handlePinPickupClick);
@@ -3001,9 +3001,9 @@
       const lat = parseFloat(e.latlng.lat.toFixed(5));
       const lng = parseFloat(e.latlng.lng.toFixed(5));
 
-      // Sulod ra gyud sa Isla sa Camiguin ang pwede ma-pin
+      // Only allow pinning within Camiguin Island
       if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
-        showMapToast("⚠️ Sulod lamang sa Isla sa Camiguin ang pag-pin sa mapa.");
+        showMapToast("⚠️ Pinning is only allowed within Camiguin Island.");
         return;
       }
 
@@ -3014,7 +3014,7 @@
         if (d < minDist) minDist = d;
       }
       if (minDist > 0.035) { // ~3.8km out at sea
-        showMapToast("⚠️ Naa sa dagat ang imong na-click. Palihug i-tap sa yuta o kalsada sa Camiguin!");
+        showMapToast("⚠️ You clicked in the water. Please tap on land or a road in Camiguin!");
         return;
       }
 
@@ -3048,22 +3048,22 @@
     document.querySelectorAll("[data-layer-target]").forEach((b) => {
       b.classList.toggle("active", b.getAttribute("data-layer-target") === layerType);
     });
-    showMapToast(layerType === "satellite" ? "🛰️ Naka-on ang Satellite Aerial View" : "🗺️ Naka-on ang Standard Kalsada Map");
+    showMapToast(layerType === "satellite" ? "🛰️ Satellite Aerial View enabled" : "🗺️ Standard Street Map enabled");
   }
 
   function handleLocateMe() {
     if (!navigator.geolocation) {
-      showMapToast("Dili suportado ang Geolocation sa imong device.");
+      showMapToast("Geolocation is not supported on your device.");
       return;
     }
-    showMapToast("🔍 Gina-detect ang imong GPS location...");
+    showMapToast("🔍 Detecting your GPS location...");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = parseFloat(pos.coords.latitude.toFixed(5));
         const lng = parseFloat(pos.coords.longitude.toFixed(5));
 
         if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
-          showMapToast("⚠️ Ang imong GPS naa sa gawas sa Isla sa Camiguin.");
+          showMapToast("⚠️ Your GPS location is outside Camiguin Island.");
           return;
         }
 
@@ -3079,11 +3079,11 @@
         }).addTo(map);
 
         map.flyTo([lat, lng], 15, { duration: 1.2 });
-        setPickupPoint(lat, lng, `📍 Akong Lokasyon (${lat}, ${lng})`);
-        showMapToast("✅ Na-pin ang imong GPS location isip Pickup!");
+        setPickupPoint(lat, lng, `📍 My Location (${lat}, ${lng})`);
+        showMapToast("✅ Your GPS location is pinned as Pickup!");
       },
       (err) => {
-        showMapToast("⚠️ Dili ma-access ang GPS. Palihug i-allow ang Location sa browser.");
+        showMapToast("⚠️ Unable to access GPS. Please allow Location access in your browser.");
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
@@ -3095,7 +3095,7 @@
     const isFs = container.classList.toggle("is-fullscreen");
     document.body.style.overflow = isFs ? "hidden" : "";
     document.querySelectorAll(".btn-fullscreen-toggle").forEach((b) => {
-      b.innerHTML = isFs ? "<span>✕</span> I-close" : "<span>⛶</span> Padak-a";
+      b.innerHTML = isFs ? "<span>✕</span> Close" : "<span>⛶</span> Expand";
     });
     setTimeout(() => {
       if (map) map.invalidateSize();
@@ -3316,7 +3316,7 @@
       }
       currentRoadKm = null;
       if (fareDisplay) fareDisplay.textContent = "40";
-      if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Pilia ang Lokasyon)";
+      if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Select Location)";
       return;
     }
 
@@ -3342,7 +3342,7 @@
       const data = await res.json();
       if (data && data.fare_amount) {
         if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
-        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Kalsada / Road Distance)`;
+        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Road Distance)`;
 
         // If backend resolved coordinates that were missing, update markers & inputs
         let hasNewCoords = false;
@@ -3542,7 +3542,7 @@
         submitBtn.disabled = false;
         submitBtn.textContent = "Broadcast Request to Active Riders 🛵 →";
         if (errorMsg) {
-          errorMsg.innerHTML = "⚠️ <strong>Kinahanglan mo-Sign In o mag-Register una!</strong><br>Aron lehitimo ug ma-verify ang imong account sa mga riders, palihug pag-sign in o pag-register sa popup sa ubos.";
+          errorMsg.innerHTML = "⚠️ <strong>Please Sign In or Register first!</strong><br>To verify your account for our riders, please sign in or register in the popup below.";
           errorMsg.classList.remove("hidden");
           errorMsg.scrollIntoView({ behavior: "smooth", block: "center" });
         }
@@ -4055,7 +4055,7 @@
       const totalTrips = (data.customer && data.customer.total_rides !== undefined && data.customer.total_rides !== null) ? data.customer.total_rides : (data.total_rides !== undefined ? data.total_rides : (data.history ? data.history.length : 0));
       const totalSpent = (data.customer && data.customer.total_spent) ? Number(data.customer.total_spent) : 0;
 
-      if (tripsCountEl) tripsCountEl.textContent = `${totalTrips} ka biyahe`;
+      if (tripsCountEl) tripsCountEl.textContent = `${totalTrips} trip${totalTrips === 1 ? "" : "s"}`;
       if (spentEl) spentEl.textContent = `₱${totalSpent.toFixed(2)}`;
       if (nameEl) nameEl.textContent = (data.customer && data.customer.name) || cust.name || "Passenger";
 
@@ -4076,7 +4076,7 @@
         if (!list || list.length === 0) {
           feedEl.innerHTML = `
             <div style="padding:12px;text-align:center;color:#94a3b8;font-size:0.82rem;">
-              Wala pa kay nahuman nga biyahe. Pag-book karon aron makasugod sa imong travel record!
+              You haven't completed any trips yet. Book a ride now to start your travel record!
             </div>
           `;
         } else {
@@ -4219,13 +4219,13 @@
         custForgotMsg.style.background = "#fee2e2";
         custForgotMsg.style.color = "#991b1b";
         custForgotMsg.style.border = "1px solid #fca5a5";
-        custForgotMsg.textContent = "Dili pareho ang bag-ong password ug ang confirmation password.";
+        custForgotMsg.textContent = "New password and confirmation password do not match.";
         custForgotMsg.classList.remove("hidden");
         return;
       }
 
       resetBtn.disabled = true;
-      resetBtn.textContent = "Ginasusi ug gina-save...";
+      resetBtn.textContent = "Verifying and saving...";
 
       try {
         const res = await fetch("/api/customer/forgot-password", {
@@ -4243,7 +4243,7 @@
         custForgotMsg.style.background = "#dcfce7";
         custForgotMsg.style.color = "#166534";
         custForgotMsg.style.border = "1px solid #86efac";
-        custForgotMsg.innerHTML = "✅ <strong>Malampuson!</strong> " + (data.message || "Na-reset na ang imong password.") + "<br><small>Ibalik na tika sa Log In...</small>";
+        custForgotMsg.innerHTML = "✅ <strong>Success!</strong> " + (data.message || "Your password has been reset.") + "<br><small>Redirecting you to Log In...</small>";
         custForgotMsg.classList.remove("hidden");
 
         const loginPhoneInput = document.getElementById("c-login-phone");
@@ -4265,7 +4265,7 @@
         custForgotMsg.classList.remove("hidden");
       } finally {
         resetBtn.disabled = false;
-        resetBtn.textContent = "I-save ang Bag-ong Password →";
+        resetBtn.textContent = "Save New Password →";
       }
     });
   }
@@ -4326,13 +4326,13 @@
   function handleCustPhotoFile(file) {
     if (!file) return;
     if (cPhotoStatus) {
-      cPhotoStatus.textContent = "⏳ Gi-proseso ang litrato...";
+      cPhotoStatus.textContent = "⏳ Processing photo...";
       cPhotoStatus.style.color = "#0284c7";
     }
     const reader = new FileReader();
     reader.onerror = function() {
       if (cPhotoStatus) {
-        cPhotoStatus.textContent = "⚠️ Dili mabasa ang file.";
+        cPhotoStatus.textContent = "⚠️ Unable to read file.";
         cPhotoStatus.style.color = "#dc2626";
       }
     };
@@ -4340,7 +4340,7 @@
       const img = new Image();
       img.onerror = function() {
         if (cPhotoStatus) {
-          cPhotoStatus.textContent = "⚠️ Dili mabasa ang litrato. Palihug pagpili og JPG o PNG.";
+          cPhotoStatus.textContent = "⚠️ Unable to read photo. Please choose a JPG or PNG file.";
           cPhotoStatus.style.color = "#dc2626";
         }
       };
@@ -4372,7 +4372,7 @@
           cPhotoPlaceholder.classList.add("hidden");
         }
         if (cPhotoStatus) {
-          cPhotoStatus.textContent = "✓ Litrato andam na (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
+          cPhotoStatus.textContent = "✓ Photo ready (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
           cPhotoStatus.style.color = "#16a34a";
         }
       };
@@ -4406,14 +4406,14 @@
 
       if (!email || !email.includes("@") || !email.includes(".")) {
         if (errEl) {
-          errEl.textContent = "Palihug ibutang ang imong saktong Email Address (e.g. maria@gmail.com).";
+          errEl.textContent = "Please enter a valid Email Address (e.g. maria@gmail.com).";
           errEl.classList.remove("hidden");
         }
         return;
       }
       if (!currentCustAvatarBase64) {
         if (errEl) {
-          errEl.textContent = "Palihug pagkuha o pagpili og litrato (Camera o Gallery) para sa imong customer verification.";
+          errEl.textContent = "Please take or choose a photo (Camera or Gallery) for your customer verification.";
           errEl.classList.remove("hidden");
         }
         return;
@@ -4442,11 +4442,11 @@
         } catch (_) {
           throw new Error(
             res.status === 502 || res.status === 503
-              ? "Ang server nag-restart pa sa Render. Palihug sulayi pag-usab human sa pipila ka segundo."
-              : `Server error (${res.status}). Palihug sulayi pag-usab.`
+              ? "The server is still restarting on Render. Please try again in a few seconds."
+              : `Server error (${res.status}). Please try again.`
           );
         }
-        if (!res.ok) throw new Error(data.error || "Registration failed. Palihug sulayi pag-usab.");
+        if (!res.ok) throw new Error(data.error || "Registration failed. Please try again.");
 
         setStoredCustomer(data.customer);
         if (customerAuthModal) customerAuthModal.classList.add("hidden");
@@ -4455,7 +4455,7 @@
         if (errEl) {
           let msg = err.message || "";
           if (msg.toLowerCase().includes("fetch")) {
-            msg = "Dili ma-konekta sa server (Failed to fetch). Posible nga nag-deploy o nag-restart pa ang server sa Render. Palihug hulata og pipila ka segundo unya i-click pag-usab.";
+            msg = "Unable to connect to the server (Failed to fetch). The server may be deploying or restarting on Render. Please wait a few seconds and click again.";
           }
           errEl.textContent = msg;
           errEl.classList.remove("hidden");

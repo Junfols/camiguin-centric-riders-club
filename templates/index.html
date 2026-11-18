@@ -86,19 +86,19 @@
         <button type="button" class="service-tab-btn active" data-service="pahatud">
           <span class="service-icon">🛵</span>
           <span class="service-title">Passenger</span>
-          <span class="service-tag">Habal-habal</span>
+          <span class="service-tag">Motorcycle Ride</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pasugo">
           <span class="service-icon">📦</span>
-          <span class="service-title">Padala</span>
-          <span class="service-tag">Courier (+₱20)</span>
+          <span class="service-title">Courier</span>
+          <span class="service-tag">Delivery (+₱20)</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabili">
           <span class="service-icon">🛒</span>
-          <span class="service-title">Pabili</span>
-          <span class="service-tag">Errand (+₱20)</span>
+          <span class="service-title">Errand</span>
+          <span class="service-tag">Shopping (+₱20)</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabayad">
@@ -325,15 +325,15 @@
           <div id="booking-register-option" style="margin-top:10px;border-top:1px dashed #e2e8f0;padding-top:8px;">
             <label style="font-size:0.82rem;font-weight:600;color:#1d4ed8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none;">
               <input type="checkbox" id="reg-during-booking-toggle" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
-              <span>🔒 I-secure ug i-verify kini nga phone number gamit ang Password (Legit Passenger Badge 🛡️)</span>
+              <span>🔒 Secure and verify this phone number with a Password (Verified Passenger Badge 🛡️)</span>
             </label>
             <div id="reg-during-booking-fields" class="hidden" style="margin-top:8px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
               <div style="font-size:0.8rem;color:#15803d;margin-bottom:8px;font-weight:600;">
-                ✓ Walay bogus o prank booking: Ang rehistradong customer adunay <strong>Verified Badge 🛡️</strong> nga makita sa tanang riders.
+                ✓ Zero bogus or prank bookings: Registered customers display a <strong>Verified Badge 🛡️</strong> visible to all riders.
               </div>
               <div class="form-grid-2">
                 <div class="form-group">
-                  <label for="reg-booking-pwd" style="font-size:0.8rem;font-weight:600;color:#334155;">Paghimo og Password (min. 6 characters) *</label>
+                  <label for="reg-booking-pwd" style="font-size:0.8rem;font-weight:600;color:#334155;">Create Password (min. 6 characters) *</label>
                   <input type="password" id="reg-booking-pwd" placeholder="Enter password to secure account" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;">
                 </div>
                 <div class="form-group">
@@ -431,7 +431,7 @@
             </div>
             <div class="fare-distance-pill">
               <span id="fare-km-display">~0.0 km</span>
-              <small class="text-muted">🛣️ Kalsada / Road Route</small>
+              <small class="text-muted">🛣️ Road Route</small>
             </div>
           </div>
 
@@ -440,7 +440,7 @@
             <span id="promo-discount-val">-₱0</span>
           </div>
 
-          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 kada succeeding road km. Subay gyud sa kalsada!</p>
+          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 per succeeding road km. Follows real road routes!</p>
 
           <div style="text-align:right;margin-top:4px;">
             <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.8rem;color:var(--primary);font-weight:600;">
@@ -494,16 +494,16 @@
 
         <!-- Floating Quick Controls (Top-Right on map) -->
         <div class="map-floating-bar">
-          <span class="map-island-badge" title="Eksklusibo nga rota sa Isla sa Camiguin lamang">🏝️ Camiguin Island</span>
+          <span class="map-island-badge" title="Exclusive routes within Camiguin Island only">🏝️ Camiguin Island</span>
           <div class="map-layer-pill">
-            <button type="button" class="layer-pill-btn active" data-layer-target="street" title="Standard Road Map">🗺️ Kalsada</button>
+            <button type="button" class="layer-pill-btn active" data-layer-target="street" title="Standard Road Map">🗺️ Street</button>
             <button type="button" class="layer-pill-btn" data-layer-target="satellite" title="Photorealistic Satellite Aerial View">🛰️ Satellite</button>
           </div>
-          <button type="button" class="map-float-btn btn-locate-me" title="Gamita ang imong kasamtangang GPS lokasyon">
-            <span>🎯</span> Akong Lokasyon
+          <button type="button" class="map-float-btn btn-locate-me" title="Use your current GPS location">
+            <span>🎯</span> My Location
           </button>
-          <button type="button" class="map-float-btn btn-fullscreen-toggle" title="Padak-a ang mapa para sa cellphone">
-            <span>⛶</span> Padak-a
+          <button type="button" class="map-float-btn btn-fullscreen-toggle" title="Expand map for mobile">
+            <span>⛶</span> Expand
           </button>
         </div>
 
@@ -529,12 +529,12 @@
           <img id="cust-home-avatar-img" src="" alt="Avatar" class="hidden" style="width:100%;height:100%;object-fit:cover;">
         </div>
         <div>
-          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Naka-book na og (Total Trips)</span>
-          <div id="customer-home-trips-count" style="font-size:1.8rem;font-weight:800;color:#38bdf8;">0 ka biyahe</div>
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Total Rides Booked</span>
+          <div id="customer-home-trips-count" style="font-size:1.8rem;font-weight:800;color:#38bdf8;">0 trips</div>
         </div>
       </div>
       <div style="text-align:right;">
-        <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Total Nagasto (Fare)</span>
+        <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Total Spent (Fare)</span>
         <div id="customer-home-spent-amount" style="font-size:1.4rem;font-weight:700;color:#4ade80;">₱0.00</div>
       </div>
     </div>
@@ -544,7 +544,7 @@
         <span style="color:#16a34a;font-size:1rem;">🛡️✓</span> <strong>Verified CCRC Passenger:</strong> <span id="customer-home-name">Passenger</span>
       </span>
       <a href="/history" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:6px 14px;font-size:0.8rem;text-decoration:none;font-weight:600;">
-        📜 Tan-awa ang Tibuok History &rarr;
+        📜 View Full History &rarr;
       </a>
     </div>
 
