@@ -1,17 +1,17 @@
-const CACHE_NAME = "ccrc-pwa-v20";
+const CACHE_NAME = "ccrc-pwa-v21";
 
 const PRECACHE_ASSETS = [
   "/",
   "/offline",
-  "/manifest.webmanifest?v=2",
+  "/manifest.webmanifest?v=3",
   "/static/css/style.css?v=31",
   "/static/js/i18n.js?v=9",
   "/static/js/auth.js?v=1",
   "/static/js/app.js?v=35",
   "/static/js/voice_call.js?v=1",
-  "/static/icons/logo.png?v=2",
-  "/static/icons/icon-192.png?v=2",
-  "/static/icons/icon-maskable-192.png?v=2"
+  "/static/icons/logo.png?v=3",
+  "/static/icons/icon-192.png?v=3",
+  "/static/icons/icon-maskable-192.png?v=3"
 ];
 
 const NO_CACHE_PREFIXES = ["/api/", "/admin", "/rider", "/history", "/track", "/verify"];

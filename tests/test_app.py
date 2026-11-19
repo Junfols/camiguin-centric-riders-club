@@ -64,21 +64,21 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         # 1b. Favicon & Apple Touch Icon
         with self.client.get("/favicon.ico") as fav_resp:
             self.assertEqual(fav_resp.status_code, 200)
-        with self.client.get("/static/icons/apple-touch-icon.png?v=2") as apple_resp:
+        with self.client.get("/static/icons/apple-touch-icon.png?v=3") as apple_resp:
             self.assertEqual(apple_resp.status_code, 200)
             self.assertEqual(apple_resp.mimetype, "image/png")
 
-        # 2. Service Worker v20
+        # 2. Service Worker v21
         with self.client.get("/sw.js") as sw_resp:
             self.assertEqual(sw_resp.status_code, 200)
             sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v20", sw_text)
+        self.assertIn("ccrc-pwa-v21", sw_text)
         self.assertIn("/static/css/style.css?v=31", sw_text)
         self.assertIn("/static/js/i18n.js?v=9", sw_text)
         self.assertIn("/static/js/app.js?v=35", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
         self.assertIn("/static/js/voice_call.js?v=1", sw_text)
-        self.assertIn("/static/icons/icon-maskable-192.png?v=2", sw_text)
+        self.assertIn("/static/icons/icon-maskable-192.png?v=3", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")

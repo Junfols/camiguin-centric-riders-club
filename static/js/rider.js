@@ -1690,7 +1690,7 @@
           try {
             new Notification(`CCRC Reminder: Advance Trip in ${dueSoonJob.minutes_left} mins!`, {
               body: `${dueSoonJob.booking_code} pickup at ${dueSoonJob.pickup_address} for ${dueSoonJob.customer_name}`,
-              icon: "/static/icons/logo.png"
+              icon: "/static/icons/logo.png?v=3"
             });
           } catch(_) {}
         }

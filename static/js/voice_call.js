@@ -891,7 +891,7 @@
         try {
           new Notification("CCRC Free In-App Call", {
             body: `${call.caller_name || state.peerName} is calling you (${codeLabel})`,
-            icon: "/static/icons/icon-192.png"
+            icon: "/static/icons/icon-192.png?v=3"
           });
         } catch (_) {}
       }
