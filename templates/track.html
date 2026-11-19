@@ -512,13 +512,34 @@
           <div style="display:flex;justify-content:space-between;"><span>Service:</span><span id="receipt-service-type" style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
           <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span id="receipt-distance-km">{{ booking.estimated_km }} km</span></div>
           <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span id="receipt-payment-method" style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
+          {% set rcpt_slots = group_bookings if group_bookings else [booking] %}
+          {% set rcpt_is_group = rcpt_slots|length > 1 %}
+          {% set rcpt_live = rcpt_slots|rejectattr('status', 'equalto', 'cancelled')|list %}
+          <div id="receipt-group-row" class="{% if not rcpt_is_group %}hidden{% endif %}" style="display:flex;justify-content:space-between;">
+            <span>Group Booking:</span><strong id="receipt-group-code">{{ group_summary.group_code if group_summary else '' }}</strong>
+          </div>
+          <div style="border-top:1px dashed #cbd5e1;padding-top:8px;margin-top:2px;">
+            <div id="receipt-riders-title" style="font-weight:700;margin-bottom:6px;">🛵 {% if rcpt_is_group %}Riders ({{ rcpt_slots|length }}){% else %}Rider{% endif %}</div>
+            <div id="receipt-riders-list" style="display:grid;gap:8px;">
+              {% for s in rcpt_slots %}
+              <div class="receipt-rider-row" style="display:flex;justify-content:space-between;gap:10px;{% if s.status == 'cancelled' %}opacity:0.6;text-decoration:line-through;{% endif %}">
+                <div>
+                  <strong>{% if rcpt_is_group %}Rider {{ s.rider_slot or loop.index }}: {% endif %}</strong>{{ s.rider_name or 'Waiting for rider' }}
+                  {% if s.rider_name and (s.rider_bike or s.rider_plate) %}<br><small class="text-muted">{{ s.rider_bike or '' }}{% if s.rider_plate %} &bull; Plate: {{ s.rider_plate }}{% endif %}</small>{% endif %}
+                  {% if s.status == 'cancelled' %}<br><small>Cancelled</small>{% endif %}
+                </div>
+                <span style="white-space:nowrap;">₱{{ '{:,.0f}'.format(s.fare_amount or 0) }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
           <div id="receipt-promo-row" class="{% if not booking.promo_code %}hidden{% endif %}" style="display:flex;justify-content:space-between;color:#16a34a;">
             <span id="receipt-promo-label">Voucher ({{ booking.promo_code or '' }}):</span>
-            <span id="receipt-promo-val">-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span>
+            <span id="receipt-promo-val">-₱{{ '{:,.0f}'.format(rcpt_slots|map(attribute='discount_amount')|map('float')|sum if rcpt_is_group else (booking.discount_amount or 0)) }}</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;border-top:2px solid #1e293b;padding-top:8px;margin-top:6px;">
-            <span id="receipt-fare-label">{% if group_summary %}Slot Fare:{% else %}Total Fare:{% endif %}</span>
-            <span id="receipt-fare-amount">₱{{ '{:,.0f}'.format(booking.fare_amount) }}</span>
+            <span id="receipt-fare-label">{% if rcpt_is_group %}Total Group Fare:{% else %}Total Fare:{% endif %}</span>
+            <span id="receipt-fare-amount">₱{{ '{:,.0f}'.format((rcpt_live|map(attribute='fare_amount')|map('float')|sum) if rcpt_is_group else booking.fare_amount) }}</span>
           </div>
         </div>
         <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save PDF</button>
@@ -566,6 +587,6 @@
   window.TRACK_LOOKUP_CODE = {{ (track_code if track_code else booking.booking_code) | tojson }};
 </script>
 <script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/track.js?v=33"></script>
+<script src="/static/js/track.js?v=34"></script>
 {% endif %}
 {% endblock %}

@@ -57,7 +57,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v17", sw_text)
+        self.assertIn("ccrc-pwa-v18", sw_text)
         self.assertIn("/static/css/style.css?v=30", sw_text)
         self.assertIn("/static/js/i18n.js?v=8", sw_text)
         self.assertIn("/static/js/app.js?v=35", sw_text)
@@ -2144,7 +2144,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="track-transfer-banner"', tr_html)
         self.assertIn("Transfer Rider One", tr_html)
         self.assertIn('id="rider-rating-wrap"', tr_html)
-        self.assertIn("track.js?v=33", tr_html)
+        self.assertIn("track.js?v=34", tr_html)
 
         # r2 sees transferred b_a prioritized BEFORE b_newer in broadcast feed, then claims and completes it
         with self.client.session_transaction() as sess:
@@ -2396,7 +2396,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="chat-voice-recording-bar"',
             'id="chat-voice-btn"',
             "voice_call.js?v=1",
-            "track.js?v=33",
+            "track.js?v=34",
             "style.css?v=30",
             "i18n.js?v=8",
             "📞 Phone Call",
@@ -2876,7 +2876,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="mark-gcash-sent-btn"',
             "gcash-recipient-row",
             "gcash-sent-row",
-            "track.js?v=33",
+            "track.js?v=34",
             "style.css?v=30",
             "i18n.js?v=8",
         ):
@@ -3287,6 +3287,16 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Rider 1 of 10", track_html)
         self.assertIn("2 / 10 Riders Assigned", track_html)
         self.assertIn("group-slot-tabs", track_html)
+        # Digital receipt lists EVERY booked rider by name + the combined group total
+        rc_start = track_html.index('id="receipt-riders-list"')
+        rc_end = track_html.index('id="receipt-promo-row"')
+        receipt_block = track_html[rc_start:rc_end]
+        self.assertIn("Group Rider Three", receipt_block)
+        self.assertIn("Group Rider Two", receipt_block)
+        self.assertIn("Rider 1:", receipt_block)
+        self.assertIn("Rider 2:", receipt_block)
+        self.assertIn("Waiting for rider", receipt_block)
+        self.assertIn("Total Group Fare:", track_html)
 
         trk_slot2_resp = cust_client.get(f"/api/bookings/track/{group_code}?slot={slots[1]['booking_code']}")
         self.assertEqual(trk_slot2_resp.status_code, 200)
@@ -3397,6 +3407,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             ("/static/js/i18n.js", "Number of Riders Needed"),
             ("/static/js/track.js", "selectGroupSlot"),
             ("/static/js/track.js", "cancelOpenSlot"),
+            ("/static/js/track.js", "renderReceiptRiders"),
             ("/static/js/rider.js", "rider_already_in_group"),
             ("/static/js/app.js", "riders_count"),
         ):

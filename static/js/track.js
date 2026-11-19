@@ -536,22 +536,13 @@
     const rSvc = document.getElementById("receipt-service-type");
     const rDist = document.getElementById("receipt-distance-km");
     const rPay = document.getElementById("receipt-payment-method");
-    const rPromoRow = document.getElementById("receipt-promo-row");
-    const rPromoLabel = document.getElementById("receipt-promo-label");
-    const rPromoVal = document.getElementById("receipt-promo-val");
-    const rFareLabel = document.getElementById("receipt-fare-label");
-    const rFareAmt = document.getElementById("receipt-fare-amount");
 
     if (rCode) rCode.textContent = b.booking_code || "";
     if (rPass) rPass.textContent = b.customer_name || "";
     if (rSvc) rSvc.textContent = b.service_type || "";
     if (rDist) rDist.textContent = `${b.estimated_km || 0} km`;
     if (rPay) rPay.textContent = String(b.payment_method || "CASH").toUpperCase();
-    if (rPromoRow) rPromoRow.classList.toggle("hidden", !b.promo_code);
-    if (rPromoLabel) rPromoLabel.textContent = `Voucher (${b.promo_code || ""}):`;
-    if (rPromoVal) rPromoVal.textContent = `-₱${Math.round(Number(b.discount_amount || 0)).toLocaleString()}`;
-    if (rFareLabel) rFareLabel.textContent = isGroup ? tTrack("Slot Fare:") : tTrack("Total Fare:");
-    if (rFareAmt) rFareAmt.textContent = `₱${Math.round(Number(b.fare_amount || 0)).toLocaleString()}`;
+    renderReceiptRiders(b);
 
     // Sync Trip Details Card
     const dSvc = document.getElementById("trip-detail-service");
@@ -566,6 +557,54 @@
     if (dNotesWrap) dNotesWrap.classList.toggle("hidden", !b.item_notes);
     if (dNotes) dNotes.textContent = b.item_notes ? `“${b.item_notes}”` : "";
     if (dCust) dCust.textContent = `${b.customer_name || ""} (${b.customer_phone || ""})`;
+  }
+
+  // Digital receipt: lists EVERY rider (name, bike, plate, fare) + combined group total
+  function renderReceiptRiders(b) {
+    const listEl = document.getElementById("receipt-riders-list");
+    if (!listEl) return;
+    const slots = (Array.isArray(groupBookings) && groupBookings.length ? groupBookings : [b]).filter(Boolean);
+    const isGrp = slots.length > 1;
+    const live = slots.filter((s) => String(s.status || "").toLowerCase() !== "cancelled");
+
+    const titleEl = document.getElementById("receipt-riders-title");
+    if (titleEl) titleEl.textContent = isGrp ? `🛵 ${tTrack("Riders")} (${slots.length})` : `🛵 ${tTrack("Rider")}`;
+
+    const grpRow = document.getElementById("receipt-group-row");
+    const grpCodeEl = document.getElementById("receipt-group-code");
+    if (grpRow) grpRow.classList.toggle("hidden", !isGrp);
+    if (grpCodeEl) grpCodeEl.textContent = (groupSummary && groupSummary.group_code) || (b && b.group_code) || "";
+
+    listEl.innerHTML = slots.map((s, idx) => {
+      const cancelled = String(s.status || "").toLowerCase() === "cancelled";
+      const slotNum = Number(s.rider_slot || idx + 1);
+      const name = s.rider_name ? escapeHtml(s.rider_name) : escapeHtml(tTrack("Waiting for rider"));
+      const bikeLine = (s.rider_name && (s.rider_bike || s.rider_plate))
+        ? `<br><small class="text-muted">${escapeHtml(s.rider_bike || "")}${s.rider_plate ? ` &bull; Plate: ${escapeHtml(s.rider_plate)}` : ""}</small>`
+        : "";
+      return `<div class="receipt-rider-row" style="display:flex;justify-content:space-between;gap:10px;${cancelled ? "opacity:0.6;text-decoration:line-through;" : ""}">
+        <div><strong>${isGrp ? `Rider ${slotNum}: ` : ""}</strong>${name}${bikeLine}${cancelled ? `<br><small>${escapeHtml(tTrack("Cancelled"))}</small>` : ""}</div>
+        <span style="white-space:nowrap;">₱${Math.round(Number(s.fare_amount || 0)).toLocaleString()}</span>
+      </div>`;
+    }).join("");
+
+    const rPromoRow = document.getElementById("receipt-promo-row");
+    const rPromoLabel = document.getElementById("receipt-promo-label");
+    const rPromoVal = document.getElementById("receipt-promo-val");
+    const rFareLabel = document.getElementById("receipt-fare-label");
+    const rFareAmt = document.getElementById("receipt-fare-amount");
+    const promoCode = (b && b.promo_code) || (slots.find((s) => s.promo_code) || {}).promo_code || "";
+    const discount = isGrp
+      ? slots.reduce((sum, s) => sum + Number(s.discount_amount || 0), 0)
+      : Number((b && b.discount_amount) || 0);
+    const total = isGrp
+      ? live.reduce((sum, s) => sum + Number(s.fare_amount || 0), 0)
+      : Number((b && b.fare_amount) || 0);
+    if (rPromoRow) rPromoRow.classList.toggle("hidden", !promoCode);
+    if (rPromoLabel) rPromoLabel.textContent = `Voucher (${promoCode}):`;
+    if (rPromoVal) rPromoVal.textContent = `-₱${Math.round(discount).toLocaleString()}`;
+    if (rFareLabel) rFareLabel.textContent = isGrp ? tTrack("Total Group Fare:") : tTrack("Total Fare:");
+    if (rFareAmt) rFareAmt.textContent = `₱${Math.round(total).toLocaleString()}`;
   }
 
   function renderGroupUI(focused, allSlots, summary) {
@@ -601,6 +640,7 @@
     if (totalFareEl) totalFareEl.textContent = `₱${Math.round(totalFare).toLocaleString()}`;
 
     const focusedCode = focused ? focused.booking_code : "";
+    renderReceiptRiders(focused);
 
     if (tabsWrap) {
       tabsWrap.innerHTML = list.map((s, idx) => {
