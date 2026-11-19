@@ -2329,6 +2329,146 @@
       zh: "🌙 夜间运价提醒",
       ja: "🌙 夜間料金のお知らせ",
     },
+
+    // --- Saved Addresses (Home / Work / Favorite) ---
+    "📍 My Saved Places": {
+      ceb: "📍 Akong Gi-save nga Lugar",
+      fil: "📍 Mga Na-save Kong Lugar",
+      zh: "📍 我的常用地址",
+      ja: "📍 保存済みの場所",
+    },
+    "🏁 Drop-off": {
+      ceb: "🏁 Drop-off / Padulngan",
+      fil: "🏁 Drop-off / Bababaan",
+      zh: "🏁 目的地",
+      ja: "🏁 降車地",
+    },
+    "⚙️ Edit": {
+      ceb: "⚙️ Usba",
+      fil: "⚙️ I-edit",
+      zh: "⚙️ 编辑",
+      ja: "⚙️ 編集",
+    },
+    "Home": {
+      ceb: "Balay",
+      fil: "Bahay",
+      zh: "家",
+      ja: "自宅",
+    },
+    "Work": {
+      ceb: "Trabaho",
+      fil: "Trabaho",
+      zh: "公司",
+      ja: "職場",
+    },
+    "Favorite": {
+      ceb: "Paborito",
+      fil: "Paborito",
+      zh: "收藏",
+      ja: "お気に入り",
+    },
+    "+ Tap to save": {
+      ceb: "+ I-tap aron i-save",
+      fil: "+ I-tap upang i-save",
+      zh: "+ 点击保存",
+      ja: "+ タップして保存",
+    },
+    "📍 Manage Saved Places": {
+      ceb: "📍 Dumalaa ang Gi-save nga Lugar",
+      fil: "📍 Pamahalaan ang Na-save na Lugar",
+      zh: "📍 管理常用地址",
+      ja: "📍 保存済みの場所を管理",
+    },
+    "🏠 Home": {
+      ceb: "🏠 Balay",
+      fil: "🏠 Bahay",
+      zh: "🏠 家",
+      ja: "🏠 自宅",
+    },
+    "🏢 Work": {
+      ceb: "🏢 Trabaho",
+      fil: "🏢 Trabaho",
+      zh: "🏢 公司",
+      ja: "🏢 職場",
+    },
+    "⭐ Favorite": {
+      ceb: "⭐ Paborito",
+      fil: "⭐ Paborito",
+      zh: "⭐ 收藏",
+      ja: "⭐ お気に入り",
+    },
+    "🟢 Use Current Pickup": {
+      ceb: "🟢 Gamita ang Pickup Karon",
+      fil: "🟢 Gamitin ang Kasalukuyang Pickup",
+      zh: "🟢 使用当前上车点",
+      ja: "🟢 現在の乗車地を使用",
+    },
+    "🏁 Use Current Drop-off": {
+      ceb: "🏁 Gamita ang Drop-off Karon",
+      fil: "🏁 Gamitin ang Kasalukuyang Drop-off",
+      zh: "🏁 使用当前目的地",
+      ja: "🏁 現在の降車地を使用",
+    },
+    "🛰️ Use My GPS": {
+      ceb: "🛰️ Gamita Akong GPS",
+      fil: "🛰️ Gamitin ang Aking GPS",
+      zh: "🛰️ 使用我的 GPS",
+      ja: "🛰️ 現在地GPSを使用",
+    },
+    "Address / Barangay / Landmark *": {
+      ceb: "Address / Barangay / Landmark *",
+      fil: "Address / Barangay / Landmark *",
+      zh: "地址 / 村镇 / 地标 *",
+      ja: "住所 / バランガイ / ランドマーク *",
+    },
+    "Custom Label (Optional)": {
+      ceb: "Kaugalingong Ngalan (Opsyonal)",
+      fil: "Sariling Pangalan (Opsyonal)",
+      zh: "自定义标签（可选）",
+      ja: "カスタムラベル（任意）",
+    },
+    "Gate / Landmark Note (Optional)": {
+      ceb: "Gate / Palatandaan nga Nota (Opsyonal)",
+      fil: "Gate / Palatandaang Tala (Opsyonal)",
+      zh: "大门 / 地标备注（可选）",
+      ja: "門・目印メモ（任意）",
+    },
+    "💾 Save Place": {
+      ceb: "💾 I-save ang Lugar",
+      fil: "💾 I-save ang Lugar",
+      zh: "💾 保存地址",
+      ja: "💾 場所を保存",
+    },
+    "🗑️ Remove": {
+      ceb: "🗑️ Tangtanga",
+      fil: "🗑️ Tanggalin",
+      zh: "🗑️ 删除",
+      ja: "🗑️ 削除",
+    },
+    "Quick Apply Saved Places": {
+      ceb: "Dali nga Gamiton nga Lugar",
+      fil: "Mabilisang Paggamit ng Na-save na Lugar",
+      zh: "快速填入常用地址",
+      ja: "保存済みの場所をすぐ適用",
+    },
+    "📱 Saved on this device (Sign in to sync across devices)": {
+      ceb: "📱 Gi-save ani nga selpon (Pag-sign in aron ma-sync sa uban nga device)",
+      fil: "📱 Na-save sa device na ito (Mag-sign in para ma-sync sa ibang device)",
+      zh: "📱 已保存在本设备（登录即可跨设备同步）",
+      ja: "📱 この端末に保存中（ログインすると他端末と同期）",
+    },
+    "☁️ Synced with your CCRC passenger account": {
+      ceb: "☁️ Na-sync na sa imong CCRC passenger account",
+      fil: "☁️ Naka-sync na sa iyong CCRC passenger account",
+      zh: "☁️ 已同步至您的 CCRC 乘客账号",
+      ja: "☁️ CCRC乗客アカウントと同期済み",
+    },
+    "⚡ Saved places make booking faster — every ride is still broadcast fairly to all online CCRC riders.": {
+      ceb: "⚡ Mas paspas mag-book gamit ang saved places — patas gihapon i-broadcast ang tanang biyahe sa tanang online nga CCRC riders.",
+      fil: "⚡ Mas mabilis mag-book gamit ang saved places — patas pa ring iba-broadcast ang bawat biyahe sa lahat ng online na CCRC riders.",
+      zh: "⚡ 常用地址让下单更快——每一笔行程仍会公平推送给所有在线的 CCRC 骑手。",
+      ja: "⚡ 保存済みの場所ですばやく予約できます。すべての配車はオンラインのCCRCライダー全員へ公平に配信されます。",
+    },
   };
 
   function getStoredLang() {

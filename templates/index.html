@@ -204,6 +204,43 @@
           </div>
         </div>
 
+        <!-- Saved Addresses Quick Bar (🏠 Home / 🏢 Work / ⭐ Favorite — 100% Fair Broadcast Dispatch) -->
+        <div id="saved-addresses-bar" class="saved-addresses-box">
+          <div class="saved-addresses-header">
+            <span class="saved-addresses-title">📍 My Saved Places</span>
+            <div class="saved-addresses-controls">
+              <div class="saved-addr-target-toggle" role="group" aria-label="Apply saved place to">
+                <button type="button" id="saved-addr-target-pickup" class="saved-target-btn active" data-saved-target="pickup">🟢 Pickup</button>
+                <button type="button" id="saved-addr-target-dropoff" class="saved-target-btn" data-saved-target="dropoff">🏁 Drop-off</button>
+              </div>
+              <button type="button" id="manage-saved-addresses-btn" class="saved-manage-btn" title="Edit Home, Work &amp; Favorite addresses">⚙️ Edit</button>
+            </div>
+          </div>
+          <div id="saved-address-chips" class="saved-address-chips">
+            <button type="button" class="saved-addr-chip is-empty" data-slot="home">
+              <span class="saved-addr-chip-icon">🏠</span>
+              <span class="saved-addr-chip-copy">
+                <strong class="saved-addr-chip-label">Home</strong>
+                <small class="saved-addr-chip-sub">+ Tap to save</small>
+              </span>
+            </button>
+            <button type="button" class="saved-addr-chip is-empty" data-slot="work">
+              <span class="saved-addr-chip-icon">🏢</span>
+              <span class="saved-addr-chip-copy">
+                <strong class="saved-addr-chip-label">Work</strong>
+                <small class="saved-addr-chip-sub">+ Tap to save</small>
+              </span>
+            </button>
+            <button type="button" class="saved-addr-chip is-empty" data-slot="favorite">
+              <span class="saved-addr-chip-icon">⭐</span>
+              <span class="saved-addr-chip-copy">
+                <strong class="saved-addr-chip-label">Favorite</strong>
+                <small class="saved-addr-chip-sub">+ Tap to save</small>
+              </span>
+            </button>
+          </div>
+        </div>
+
         <!-- Quick Destination Pills -->
         <div class="landmarks-clean-box">
           <span class="landmarks-clean-title">Popular Destinations:</span>
@@ -651,6 +688,72 @@
       <a id="modal-track-link" href="#" class="btn btn-primary btn-lg btn-block" style="margin-top:14px;padding:14px;border-radius:12px;font-weight:700;">
         Track Live Rider GPS &amp; Status &rarr;
       </a>
+    </div>
+  </div>
+</div>
+
+<!-- Saved Addresses Modal (🏠 Home / 🏢 Work / ⭐ Favorite) -->
+<div id="saved-address-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="saved-address-modal-title">
+  <div class="modal-card modal-md saved-address-modal-card">
+    <div class="modal-header saved-addr-modal-header">
+      <h3 id="saved-address-modal-title">📍 Manage Saved Places</h3>
+      <button type="button" id="close-saved-address-modal-btn" class="text-btn saved-addr-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body saved-addr-modal-body">
+      <div id="saved-addr-sync-note" class="saved-addr-sync-note">
+        📱 Saved on this device (Sign in to sync across devices)
+      </div>
+
+      <div class="saved-slot-tabs" role="tablist" aria-label="Saved place slot">
+        <button type="button" id="saved-slot-tab-home" class="saved-slot-tab active" data-saved-slot="home" role="tab" aria-selected="true">🏠 Home</button>
+        <button type="button" id="saved-slot-tab-work" class="saved-slot-tab" data-saved-slot="work" role="tab" aria-selected="false">🏢 Work</button>
+        <button type="button" id="saved-slot-tab-favorite" class="saved-slot-tab" data-saved-slot="favorite" role="tab" aria-selected="false">⭐ Favorite</button>
+      </div>
+
+      <div class="saved-quick-fill-row">
+        <button type="button" id="saved-copy-pickup-btn" class="saved-quick-btn">🟢 Use Current Pickup</button>
+        <button type="button" id="saved-copy-dropoff-btn" class="saved-quick-btn">🏁 Use Current Drop-off</button>
+        <button type="button" id="saved-detect-gps-btn" class="saved-quick-btn">🛰️ Use My GPS</button>
+      </div>
+
+      <form id="saved-address-form" class="saved-address-form" autocomplete="off">
+        <input type="hidden" id="saved-addr-slot-input" value="home">
+        <input type="hidden" id="saved-addr-lat-input" value="">
+        <input type="hidden" id="saved-addr-lng-input" value="">
+
+        <div class="saved-addr-field">
+          <label for="saved-addr-address-input">Address / Barangay / Landmark *</label>
+          <div class="saved-addr-autocomplete-wrap">
+            <input type="text" id="saved-addr-address-input" placeholder="e.g., Brgy. Agoho, Mambajao or Gaisano Camiguin" maxlength="180" required>
+            <div id="saved-addr-suggestions" class="places-dropdown hidden"></div>
+          </div>
+          <small id="saved-addr-pin-status" class="saved-addr-pin-status">📍 Tip: Pick a suggestion, use GPS, or copy from the map for exact pin.</small>
+        </div>
+
+        <div class="saved-addr-field-grid">
+          <div class="saved-addr-field">
+            <label for="saved-addr-label-input">Custom Label (Optional)</label>
+            <input type="text" id="saved-addr-label-input" placeholder="Home, Office, School, Market..." maxlength="40">
+          </div>
+          <div class="saved-addr-field">
+            <label for="saved-addr-note-input">Gate / Landmark Note (Optional)</label>
+            <input type="text" id="saved-addr-note-input" placeholder="e.g., Blue gate beside sari-sari store" maxlength="140">
+          </div>
+        </div>
+
+        <div id="saved-addr-feedback" class="saved-addr-feedback hidden" role="status"></div>
+
+        <div class="saved-addr-form-actions">
+          <button type="submit" id="saved-addr-save-btn" class="btn btn-primary saved-addr-save-btn">💾 Save Place</button>
+          <button type="button" id="saved-addr-delete-btn" class="saved-addr-delete-btn hidden">🗑️ Remove</button>
+        </div>
+      </form>
+
+      <div id="saved-addr-modal-list" class="saved-addr-modal-list"></div>
+
+      <p class="saved-addr-fairness-note">
+        ⚡ Saved places make booking faster — every ride is still broadcast fairly to all online CCRC riders.
+      </p>
     </div>
   </div>
 </div>

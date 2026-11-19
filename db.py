@@ -4052,6 +4052,7 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_verified INTEGER DEFAULT 0",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'active'",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS total_spent REAL DEFAULT 0.0",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS saved_addresses_json TEXT DEFAULT ''",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS scheduled_at VARCHAR(64) DEFAULT NULL",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code_id INTEGER DEFAULT NULL",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code VARCHAR(64) DEFAULT ''",
@@ -4093,6 +4094,7 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE customers ADD COLUMN is_verified INTEGER DEFAULT 0",
             "ALTER TABLE customers ADD COLUMN status TEXT DEFAULT 'active'",
             "ALTER TABLE customers ADD COLUMN total_spent REAL DEFAULT 0.0",
+            "ALTER TABLE customers ADD COLUMN saved_addresses_json TEXT DEFAULT ''",
             "ALTER TABLE booking_messages ADD COLUMN msg_type TEXT DEFAULT 'text'",
             "ALTER TABLE booking_messages ADD COLUMN media_url TEXT DEFAULT ''",
             "ALTER TABLE booking_messages ADD COLUMN media_duration REAL DEFAULT 0",
@@ -4268,6 +4270,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             total_rides INTEGER DEFAULT 0,
             total_spent REAL DEFAULT 0.0,
             saved_notes TEXT DEFAULT '',
+            saved_addresses_json TEXT DEFAULT '',
             created_at TEXT NOT NULL,
             last_active_at TEXT NOT NULL
         )
@@ -4425,6 +4428,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         ("is_verified", "INTEGER DEFAULT 0"),
         ("status", "TEXT DEFAULT 'active'"),
         ("total_spent", "REAL DEFAULT 0.0"),
+        ("saved_addresses_json", "TEXT DEFAULT ''"),
     ]:
         try:
             conn.execute(f"ALTER TABLE customers ADD COLUMN {col_def[0]} {col_def[1]}")
@@ -4569,6 +4573,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             total_rides INTEGER DEFAULT 0,
             total_spent REAL DEFAULT 0.0,
             saved_notes TEXT DEFAULT '',
+            saved_addresses_json TEXT DEFAULT '',
             created_at TIMESTAMPTZ NOT NULL,
             last_active_at TIMESTAMPTZ NOT NULL
         )
@@ -4704,6 +4709,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         ("is_verified", "INTEGER DEFAULT 0"),
         ("status", "VARCHAR(32) DEFAULT 'active'"),
         ("total_spent", "REAL DEFAULT 0.0"),
+        ("saved_addresses_json", "TEXT DEFAULT ''"),
     ]:
         try:
             conn.execute(f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
@@ -7829,15 +7835,16 @@ def restore_full_backup(
                     INSERT INTO customers (
                         id, phone, name, password_hash, email, avatar_url, barangay,
                         is_verified, status, total_rides, total_spent, saved_notes,
-                        created_at, last_active_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        saved_addresses_json, created_at, last_active_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         c_id, c_phone, c.get("name", "Passenger"), c.get("password_hash", ""),
                         c.get("email", ""), c.get("avatar_url", ""), c.get("barangay", ""),
                         int(c.get("is_verified") or 0), c.get("status", "active"),
                         int(c.get("total_rides") or 0), float(c.get("total_spent") or 0.0),
-                        c.get("saved_notes", ""), c.get("created_at") or get_now_pht().isoformat(),
+                        c.get("saved_notes", ""), c.get("saved_addresses_json", ""),
+                        c.get("created_at") or get_now_pht().isoformat(),
                         c.get("last_active_at") or get_now_pht().isoformat(),
                     ),
                 )
@@ -7847,15 +7854,16 @@ def restore_full_backup(
                     INSERT INTO customers (
                         phone, name, password_hash, email, avatar_url, barangay,
                         is_verified, status, total_rides, total_spent, saved_notes,
-                        created_at, last_active_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        saved_addresses_json, created_at, last_active_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         c_phone, c.get("name", "Passenger"), c.get("password_hash", ""),
                         c.get("email", ""), c.get("avatar_url", ""), c.get("barangay", ""),
                         int(c.get("is_verified") or 0), c.get("status", "active"),
                         int(c.get("total_rides") or 0), float(c.get("total_spent") or 0.0),
-                        c.get("saved_notes", ""), c.get("created_at") or get_now_pht().isoformat(),
+                        c.get("saved_notes", ""), c.get("saved_addresses_json", ""),
+                        c.get("created_at") or get_now_pht().isoformat(),
                         c.get("last_active_at") or get_now_pht().isoformat(),
                     ),
                 )
@@ -8238,6 +8246,144 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
         item["already_reviewed"] = bool(item.get("review_id"))
         result.append(item)
     return result
+
+
+SAVED_ADDRESS_SLOTS: dict[str, dict[str, str]] = {
+    "home": {"icon": "🏠", "default_label": "Home"},
+    "work": {"icon": "🏢", "default_label": "Work"},
+    "favorite": {"icon": "⭐", "default_label": "Favorite"},
+}
+
+
+def _clean_camiguin_coord(lat_raw: Any, lng_raw: Any) -> tuple[float | None, float | None]:
+    try:
+        if lat_raw is None or lng_raw is None or str(lat_raw).strip() == "" or str(lng_raw).strip() == "":
+            return None, None
+        lat = float(lat_raw)
+        lng = float(lng_raw)
+        if not (math.isfinite(lat) and math.isfinite(lng)):
+            return None, None
+        # Ensure coordinates are inside wider Camiguin Island region bounds
+        if 8.95 <= lat <= 9.40 and 124.45 <= lng <= 124.95:
+            return round(lat, 6), round(lng, 6)
+    except (TypeError, ValueError):
+        pass
+    return None, None
+
+
+def parse_customer_saved_addresses(raw_json: str | None) -> dict[str, dict[str, Any]]:
+    """Safely parse and normalize a customer's saved Home/Work/Favorite addresses JSON."""
+    if not raw_json:
+        return {}
+    try:
+        parsed = json.loads(raw_json) if isinstance(raw_json, str) else raw_json
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+
+    cleaned: dict[str, dict[str, Any]] = {}
+    for slot, meta in SAVED_ADDRESS_SLOTS.items():
+        entry = parsed.get(slot)
+        if not isinstance(entry, dict):
+            continue
+        addr = str(entry.get("address") or "").strip()[:180]
+        if not addr:
+            continue
+        lat, lng = _clean_camiguin_coord(entry.get("lat"), entry.get("lng"))
+        label = str(entry.get("label") or meta["default_label"]).strip()[:40] or meta["default_label"]
+        landmark_note = str(entry.get("landmark_note") or "").strip()[:140]
+        cleaned[slot] = {
+            "slot": slot,
+            "icon": meta["icon"],
+            "label": label,
+            "address": addr,
+            "lat": lat,
+            "lng": lng,
+            "landmark_note": landmark_note,
+            "updated_at": str(entry.get("updated_at") or "").strip(),
+        }
+    return cleaned
+
+
+def get_customer_saved_addresses(conn: DatabaseConnection, customer_phone: str) -> dict[str, dict[str, Any]]:
+    cust = get_customer_by_phone(conn, customer_phone)
+    if not cust:
+        return {}
+    return parse_customer_saved_addresses(cust.get("saved_addresses_json"))
+
+
+def upsert_customer_saved_address(
+    conn: DatabaseConnection,
+    customer_phone: str,
+    *,
+    slot: str,
+    address: str,
+    lat: Any = None,
+    lng: Any = None,
+    label: str = "",
+    landmark_note: str = "",
+) -> dict[str, dict[str, Any]]:
+    """Save or update a Home/Work/Favorite address for a registered customer."""
+    clean_slot = str(slot or "").strip().lower()
+    if clean_slot not in SAVED_ADDRESS_SLOTS:
+        raise ValueError("Invalid saved address slot. Use home, work, or favorite.")
+    clean_addr = str(address or "").strip()[:180]
+    if not clean_addr:
+        raise ValueError("Address text is required.")
+
+    cust = get_customer_by_phone(conn, customer_phone)
+    if not cust:
+        raise ValueError("Customer account not found.")
+
+    clean_lat, clean_lng = _clean_camiguin_coord(lat, lng)
+    if clean_lat is None or clean_lng is None:
+        geo = geocode_camiguin_location(clean_addr)
+        if geo:
+            clean_lat, clean_lng = _clean_camiguin_coord(geo.get("lat"), geo.get("lng"))
+
+    meta = SAVED_ADDRESS_SLOTS[clean_slot]
+    clean_label = str(label or "").strip()[:40] or meta["default_label"]
+    clean_note = str(landmark_note or "").strip()[:140]
+
+    current = parse_customer_saved_addresses(cust.get("saved_addresses_json"))
+    current[clean_slot] = {
+        "slot": clean_slot,
+        "icon": meta["icon"],
+        "label": clean_label,
+        "address": clean_addr,
+        "lat": clean_lat,
+        "lng": clean_lng,
+        "landmark_note": clean_note,
+        "updated_at": get_now_pht().isoformat(),
+    }
+    serialized = json.dumps(current, ensure_ascii=False)
+    conn.execute(
+        "UPDATE customers SET saved_addresses_json = ?, last_active_at = ? WHERE id = ?",
+        (serialized, get_now_pht().isoformat(), cust["id"]),
+    )
+    return current
+
+
+def delete_customer_saved_address(
+    conn: DatabaseConnection,
+    customer_phone: str,
+    slot: str,
+) -> dict[str, dict[str, Any]]:
+    clean_slot = str(slot or "").strip().lower()
+    if clean_slot not in SAVED_ADDRESS_SLOTS:
+        raise ValueError("Invalid saved address slot.")
+    cust = get_customer_by_phone(conn, customer_phone)
+    if not cust:
+        raise ValueError("Customer account not found.")
+    current = parse_customer_saved_addresses(cust.get("saved_addresses_json"))
+    current.pop(clean_slot, None)
+    serialized = json.dumps(current, ensure_ascii=False)
+    conn.execute(
+        "UPDATE customers SET saved_addresses_json = ?, last_active_at = ? WHERE id = ?",
+        (serialized, get_now_pht().isoformat(), cust["id"]),
+    )
+    return current
 
 
 def get_customer_active_bookings(

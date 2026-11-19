@@ -94,6 +94,10 @@ from db import (
     get_all_customers,
     get_customer_by_phone,
     get_customer_ride_history,
+    parse_customer_saved_addresses,
+    get_customer_saved_addresses,
+    upsert_customer_saved_address,
+    delete_customer_saved_address,
     delete_rider,
     delete_customer,
     update_rider_password,
@@ -908,7 +912,72 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         cust = get_customer_by_phone(conn, phone)
         if not cust:
             return jsonify({"logged_in": False, "customer": None})
-        return jsonify({"logged_in": True, "customer": cust})
+        saved_addrs = parse_customer_saved_addresses(cust.get("saved_addresses_json"))
+        cust_payload = dict(cust)
+        cust_payload["saved_addresses"] = saved_addrs
+        return jsonify({"logged_in": True, "customer": cust_payload, "saved_addresses": saved_addrs})
+
+    @app.get("/api/customer/saved-addresses")
+    def api_get_customer_saved_addresses():
+        sess_phone = (session.get("customer_phone") or "").strip()
+        if not sess_phone:
+            return jsonify({"success": False, "error": "Please sign in to sync saved addresses."}), 401
+        conn = get_db()
+        saved = get_customer_saved_addresses(conn, sess_phone)
+        resp = jsonify({"success": True, "saved_addresses": saved})
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    @app.post("/api/customer/saved-addresses")
+    def api_save_customer_saved_address():
+        sess_phone = (session.get("customer_phone") or "").strip()
+        if not sess_phone:
+            return jsonify({"success": False, "error": "Please sign in to save addresses to your account."}), 401
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        slot = str(data.get("slot") or "").strip().lower()
+        address = str(data.get("address") or "").strip()
+        label = str(data.get("label") or "").strip()
+        landmark_note = str(data.get("landmark_note") or "").strip()
+        lat = data.get("lat")
+        lng = data.get("lng")
+        try:
+            saved_map = upsert_customer_saved_address(
+                conn,
+                sess_phone,
+                slot=slot,
+                address=address,
+                lat=lat,
+                lng=lng,
+                label=label,
+                landmark_note=landmark_note,
+            )
+            conn.commit()
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+        return jsonify({
+            "success": True,
+            "saved_addresses": saved_map,
+            "saved": saved_map.get(slot),
+            "message": f"Saved {saved_map.get(slot, {}).get('label', slot)} address!",
+        })
+
+    @app.delete("/api/customer/saved-addresses/<slot>")
+    def api_delete_customer_saved_address(slot: str):
+        sess_phone = (session.get("customer_phone") or "").strip()
+        if not sess_phone:
+            return jsonify({"success": False, "error": "Please sign in to manage saved addresses."}), 401
+        conn = get_db()
+        try:
+            saved_map = delete_customer_saved_address(conn, sess_phone, slot)
+            conn.commit()
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+        return jsonify({
+            "success": True,
+            "saved_addresses": saved_map,
+            "message": "Saved address removed.",
+        })
 
     @app.get("/api/customer/history/<phone>")
     def api_customer_history(phone: str):

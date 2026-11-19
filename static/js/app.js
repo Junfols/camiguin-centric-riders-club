@@ -72,6 +72,17 @@
       .replace(/'/g, "&#039;");
   }
 
+  let toastTimer = null;
+  function showMapToast(msg) {
+    if (!mapToastPill) return;
+    mapToastPill.textContent = msg;
+    mapToastPill.classList.remove("hidden");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      mapToastPill.classList.add("hidden");
+    }, 3500);
+  }
+
   // Camiguin Master Places Directory (Synced with db.py Verified OSM Coordinates)
   let CAMIGUIN_PLACES = [
   {
@@ -5594,5 +5605,851 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) refreshCustomerLiveAdvisory();
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Saved Addresses (🏠 Home / 🏢 Work / ⭐ Favorite) — Fast Booking + Fair Broadcast
+  // ---------------------------------------------------------------------------
+  const savedAddressesBar = document.getElementById("saved-addresses-bar");
+  if (savedAddressesBar) {
+    const SAVED_ADDR_STORAGE_KEY = "ccrc_saved_addresses_v1";
+    const SAVED_SLOTS = [
+      { key: "home", icon: "🏠", defaultLabel: "Home" },
+      { key: "work", icon: "🏢", defaultLabel: "Work" },
+      { key: "favorite", icon: "⭐", defaultLabel: "Favorite" },
+    ];
+    const SAVED_SLOT_META = Object.fromEntries(SAVED_SLOTS.map((s) => [s.key, s]));
+
+    const savedAddrChipsWrap = document.getElementById("saved-address-chips");
+    const savedTargetPickupBtn = document.getElementById("saved-addr-target-pickup");
+    const savedTargetDropoffBtn = document.getElementById("saved-addr-target-dropoff");
+    const manageSavedAddrBtn = document.getElementById("manage-saved-addresses-btn");
+
+    const savedAddrModal = document.getElementById("saved-address-modal");
+    const closeSavedAddrModalBtn = document.getElementById("close-saved-address-modal-btn");
+    const savedAddrSyncNote = document.getElementById("saved-addr-sync-note");
+    const savedSlotTabs = Array.from(document.querySelectorAll(".saved-slot-tab"));
+    const savedCopyPickupBtn = document.getElementById("saved-copy-pickup-btn");
+    const savedCopyDropoffBtn = document.getElementById("saved-copy-dropoff-btn");
+    const savedDetectGpsBtn = document.getElementById("saved-detect-gps-btn");
+    const savedAddrForm = document.getElementById("saved-address-form");
+    const savedSlotInput = document.getElementById("saved-addr-slot-input");
+    const savedLatInput = document.getElementById("saved-addr-lat-input");
+    const savedLngInput = document.getElementById("saved-addr-lng-input");
+    const savedAddressInput = document.getElementById("saved-addr-address-input");
+    const savedSuggestionsEl = document.getElementById("saved-addr-suggestions");
+    const savedPinStatusEl = document.getElementById("saved-addr-pin-status");
+    const savedLabelInput = document.getElementById("saved-addr-label-input");
+    const savedNoteInput = document.getElementById("saved-addr-note-input");
+    const savedFeedbackEl = document.getElementById("saved-addr-feedback");
+    const savedSaveBtn = document.getElementById("saved-addr-save-btn");
+    const savedDeleteBtn = document.getElementById("saved-addr-delete-btn");
+    const savedModalListEl = document.getElementById("saved-addr-modal-list");
+
+    let savedAddresses = {};
+    let savedApplyTarget = "pickup";
+    let activeEditSlot = "home";
+    let isServerSynced = false;
+    let lastSyncedPhone = "";
+
+    function isCamiguinCoord(lat, lng) {
+      const nLat = parseFloat(lat);
+      const nLng = parseFloat(lng);
+      return (
+        Number.isFinite(nLat) &&
+        Number.isFinite(nLng) &&
+        nLat >= 8.95 &&
+        nLat <= 9.40 &&
+        nLng >= 124.45 &&
+        nLng <= 124.95
+      );
+    }
+
+    function normalizeSavedMap(raw) {
+      const clean = {};
+      if (!raw || typeof raw !== "object") return clean;
+      for (const meta of SAVED_SLOTS) {
+        const item = raw[meta.key];
+        if (!item || typeof item !== "object") continue;
+        const address = String(item.address || "").trim().slice(0, 180);
+        if (!address) continue;
+        const validCoord = isCamiguinCoord(item.lat, item.lng);
+        const label = String(item.label || meta.defaultLabel).trim().slice(0, 40) || meta.defaultLabel;
+        const landmarkNote = String(item.landmark_note || "").trim().slice(0, 140);
+        clean[meta.key] = {
+          slot: meta.key,
+          icon: meta.icon,
+          label,
+          address,
+          lat: validCoord ? parseFloat(Number(item.lat).toFixed(6)) : null,
+          lng: validCoord ? parseFloat(Number(item.lng).toFixed(6)) : null,
+          landmark_note: landmarkNote,
+          updated_at: String(item.updated_at || "").trim(),
+          _guestLocal: Boolean(item._guestLocal),
+        };
+      }
+      return clean;
+    }
+
+    function readLocalSavedMap() {
+      try {
+        const raw = localStorage.getItem(SAVED_ADDR_STORAGE_KEY);
+        if (!raw) return {};
+        return normalizeSavedMap(JSON.parse(raw));
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function writeLocalSavedMap(mapObj) {
+      try {
+        localStorage.setItem(SAVED_ADDR_STORAGE_KEY, JSON.stringify(mapObj || {}));
+      } catch (_) {}
+    }
+
+    function setSavedApplyTarget(target) {
+      savedApplyTarget = target === "dropoff" ? "dropoff" : "pickup";
+      if (savedTargetPickupBtn) {
+        savedTargetPickupBtn.classList.toggle("active", savedApplyTarget === "pickup");
+        savedTargetPickupBtn.setAttribute("aria-pressed", savedApplyTarget === "pickup" ? "true" : "false");
+      }
+      if (savedTargetDropoffBtn) {
+        savedTargetDropoffBtn.classList.toggle("active", savedApplyTarget === "dropoff");
+        savedTargetDropoffBtn.setAttribute("aria-pressed", savedApplyTarget === "dropoff" ? "true" : "false");
+      }
+    }
+
+    function updateSavedSyncNote() {
+      if (!savedAddrSyncNote) return;
+      const cust = getStoredCustomer();
+      if (cust && cust.phone && isServerSynced) {
+        savedAddrSyncNote.textContent = "☁️ Synced with your CCRC passenger account";
+        savedAddrSyncNote.classList.add("is-synced");
+      } else if (cust && cust.phone) {
+        savedAddrSyncNote.textContent = "☁️ Connected to your passenger account";
+        savedAddrSyncNote.classList.add("is-synced");
+      } else {
+        savedAddrSyncNote.textContent = "📱 Saved on this device (Sign in to sync across devices)";
+        savedAddrSyncNote.classList.remove("is-synced");
+      }
+    }
+
+    function showSavedFeedback(msg, isError) {
+      if (!savedFeedbackEl) return;
+      if (!msg) {
+        savedFeedbackEl.textContent = "";
+        savedFeedbackEl.classList.add("hidden");
+        savedFeedbackEl.classList.remove("is-error", "is-success");
+        return;
+      }
+      savedFeedbackEl.textContent = msg;
+      savedFeedbackEl.classList.remove("hidden", "is-error", "is-success");
+      savedFeedbackEl.classList.add(isError ? "is-error" : "is-success");
+    }
+
+    function updateSavedPinStatus(lat, lng, noteText) {
+      if (!savedPinStatusEl) return;
+      if (isCamiguinCoord(lat, lng)) {
+        const latStr = Number(lat).toFixed(5);
+        const lngStr = Number(lng).toFixed(5);
+        savedPinStatusEl.textContent = noteText
+          ? `✅ ${noteText} (${latStr}, ${lngStr})`
+          : `✅ Exact Camiguin map pin locked (${latStr}, ${lngStr})`;
+        savedPinStatusEl.classList.add("is-pinned");
+      } else {
+        savedPinStatusEl.textContent = noteText || "📍 Tip: Pick a suggestion, use GPS, or copy from the map for exact pin.";
+        savedPinStatusEl.classList.remove("is-pinned");
+      }
+    }
+
+    function renderSavedChips() {
+      if (!savedAddrChipsWrap) return;
+      savedAddrChipsWrap.innerHTML = SAVED_SLOTS.map((meta) => {
+        const entry = savedAddresses[meta.key];
+        if (entry) {
+          const preview = entry.address.length > 28 ? `${entry.address.slice(0, 27)}…` : entry.address;
+          const titleText = entry.landmark_note
+            ? `${entry.label}: ${entry.address} (${entry.landmark_note})`
+            : `${entry.label}: ${entry.address}`;
+          return `
+            <button type="button" class="saved-addr-chip is-saved" data-slot="${meta.key}" title="${escapeHtml(titleText)}">
+              <span class="saved-addr-chip-icon">${meta.icon}</span>
+              <span class="saved-addr-chip-copy">
+                <strong class="saved-addr-chip-label">${escapeHtml(entry.label)}</strong>
+                <small class="saved-addr-chip-sub">${escapeHtml(preview)}</small>
+              </span>
+            </button>
+          `;
+        }
+        return `
+          <button type="button" class="saved-addr-chip is-empty" data-slot="${meta.key}">
+            <span class="saved-addr-chip-icon">${meta.icon}</span>
+            <span class="saved-addr-chip-copy">
+              <strong class="saved-addr-chip-label">${escapeHtml(meta.defaultLabel)}</strong>
+              <small class="saved-addr-chip-sub">+ Tap to save</small>
+            </span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function renderSavedModalList() {
+      if (!savedModalListEl) return;
+      const entries = SAVED_SLOTS.map((m) => savedAddresses[m.key]).filter(Boolean);
+      if (entries.length === 0) {
+        savedModalListEl.innerHTML = "";
+        savedModalListEl.classList.add("hidden");
+        return;
+      }
+      savedModalListEl.classList.remove("hidden");
+      savedModalListEl.innerHTML = `
+        <div class="saved-modal-list-title">Quick Apply Saved Places</div>
+        ${entries.map((entry) => `
+          <div class="saved-modal-list-row">
+            <div class="saved-modal-list-info">
+              <div class="saved-modal-list-name">${entry.icon} ${escapeHtml(entry.label)}</div>
+              <div class="saved-modal-list-addr">${escapeHtml(entry.address)}</div>
+              ${entry.landmark_note ? `<div class="saved-modal-list-note">📌 ${escapeHtml(entry.landmark_note)}</div>` : ""}
+            </div>
+            <div class="saved-modal-list-actions">
+              <button type="button" class="saved-row-btn is-pickup" data-quick-apply="${entry.slot}" data-quick-target="pickup">🟢 Pickup</button>
+              <button type="button" class="saved-row-btn is-dropoff" data-quick-apply="${entry.slot}" data-quick-target="dropoff">🏁 Drop-off</button>
+              <button type="button" class="saved-row-btn is-edit" data-quick-edit="${entry.slot}">✏️</button>
+            </div>
+          </div>
+        `).join("")}
+      `;
+    }
+
+    function selectEditSlot(slot) {
+      const cleanSlot = SAVED_SLOT_META[slot] ? slot : "home";
+      activeEditSlot = cleanSlot;
+      const meta = SAVED_SLOT_META[cleanSlot];
+      const existing = savedAddresses[cleanSlot] || null;
+
+      if (savedSlotInput) savedSlotInput.value = cleanSlot;
+      savedSlotTabs.forEach((tab) => {
+        const isActive = tab.getAttribute("data-saved-slot") === cleanSlot;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+
+      if (savedAddressInput) savedAddressInput.value = existing ? existing.address : "";
+      if (savedLabelInput) {
+        savedLabelInput.value = existing ? existing.label : "";
+        savedLabelInput.placeholder = `${meta.defaultLabel}, Office, School, Market...`;
+      }
+      if (savedNoteInput) savedNoteInput.value = existing ? existing.landmark_note : "";
+      if (savedLatInput) savedLatInput.value = existing && existing.lat !== null ? String(existing.lat) : "";
+      if (savedLngInput) savedLngInput.value = existing && existing.lng !== null ? String(existing.lng) : "";
+
+      if (savedDeleteBtn) {
+        savedDeleteBtn.classList.toggle("hidden", !existing);
+      }
+      if (savedSuggestionsEl) {
+        savedSuggestionsEl.classList.add("hidden");
+        savedSuggestionsEl.innerHTML = "";
+      }
+      if (existing && isCamiguinCoord(existing.lat, existing.lng)) {
+        updateSavedPinStatus(existing.lat, existing.lng, "Saved Camiguin map pin");
+      } else {
+        updateSavedPinStatus(null, null);
+      }
+      showSavedFeedback("", false);
+    }
+
+    function openSavedAddressModal(slot) {
+      if (!savedAddrModal) return;
+      updateSavedSyncNote();
+      selectEditSlot(slot || activeEditSlot || "home");
+      renderSavedModalList();
+      savedAddrModal.classList.remove("hidden");
+      if (savedAddressInput && !savedAddressInput.value) {
+        setTimeout(() => {
+          try { savedAddressInput.focus(); } catch (_) {}
+        }, 60);
+      }
+    }
+
+    function closeSavedAddressModal() {
+      if (!savedAddrModal) return;
+      savedAddrModal.classList.add("hidden");
+      if (savedSuggestionsEl) savedSuggestionsEl.classList.add("hidden");
+    }
+
+    async function applySavedAddress(slot, explicitTarget) {
+      const entry = savedAddresses[slot];
+      if (!entry) {
+        openSavedAddressModal(slot);
+        return;
+      }
+
+      const target = explicitTarget || savedApplyTarget || "pickup";
+      const hasNoteInAddr =
+        entry.landmark_note &&
+        entry.address.toLowerCase().includes(entry.landmark_note.toLowerCase());
+      const displayLabel =
+        entry.landmark_note && !hasNoteInAddr
+          ? `${entry.address} (${entry.landmark_note})`
+          : entry.address;
+
+      let lat = isCamiguinCoord(entry.lat, entry.lng) ? Number(entry.lat) : null;
+      let lng = isCamiguinCoord(entry.lat, entry.lng) ? Number(entry.lng) : null;
+
+      if (lat === null || lng === null) {
+        const localMatch = matchCamiguinPlace(entry.address);
+        if (localMatch && isCamiguinCoord(localMatch.lat, localMatch.lng)) {
+          lat = Number(localMatch.lat);
+          lng = Number(localMatch.lng);
+        }
+      }
+
+      if (lat === null || lng === null) {
+        try {
+          const res = await fetch(`/api/places/search?q=${encodeURIComponent(entry.address)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const first = data && Array.isArray(data.places) ? data.places[0] : null;
+            if (first && isCamiguinCoord(first.lat, first.lng)) {
+              lat = Number(first.lat);
+              lng = Number(first.lng);
+            }
+          }
+        } catch (_) {}
+      }
+
+      const isPickupTarget = target === "pickup";
+      if (lat !== null && lng !== null) {
+        if (isPickupTarget) {
+          setPickupPoint(lat, lng, displayLabel);
+          if (pickupMarker) {
+            pickupMarker.bindPopup(`<strong>🟢 Pickup (${escapeHtml(entry.label)}):</strong><br>${escapeHtml(displayLabel)}`).openPopup();
+          }
+        } else {
+          setDropoffPoint(lat, lng, displayLabel);
+          if (dropoffMarker) {
+            dropoffMarker.bindPopup(`<strong>🏁 Drop-off (${escapeHtml(entry.label)}):</strong><br>${escapeHtml(displayLabel)}`).openPopup();
+          }
+        }
+
+        targetModeButtons.forEach((b) =>
+          b.classList.toggle("active", b.getAttribute("data-target-mode") === target)
+        );
+        currentTargetMode = target;
+
+        const bothPinned = Boolean(
+          pickupLatInput && pickupLatInput.value && dropoffLatInput && dropoffLatInput.value
+        );
+        if (map && !bothPinned) {
+          map.flyTo([lat, lng], 15, { duration: 0.7 });
+        }
+        updateRouteLine();
+        recalculateFare();
+      } else {
+        if (isPickupTarget && pickupInput) {
+          pickupInput.value = displayLabel;
+          if (pickupLatInput) pickupLatInput.value = "";
+          if (pickupLngInput) pickupLngInput.value = "";
+          updateClearBtn(pickupInput, clearPickupBtn);
+        } else if (!isPickupTarget && dropoffInput) {
+          dropoffInput.value = displayLabel;
+          if (dropoffLatInput) dropoffLatInput.value = "";
+          if (dropoffLngInput) dropoffLngInput.value = "";
+          updateClearBtn(dropoffInput, clearDropoffBtn);
+        }
+        recalculateFare();
+      }
+
+      showMapToast(
+        `${entry.icon} ${isPickupTarget ? "Pickup" : "Drop-off"} set to ${entry.label}: ${entry.address}`
+      );
+
+      // Flash applied chip cleanly
+      const chipEl = savedAddrChipsWrap && savedAddrChipsWrap.querySelector(`.saved-addr-chip[data-slot="${slot}"]`);
+      if (chipEl) {
+        chipEl.classList.add("is-just-applied");
+        setTimeout(() => chipEl.classList.remove("is-just-applied"), 700);
+      }
+
+      // Smart 2-tap flip: if Pickup was just set and Drop-off is still empty, flip toggle to Drop-off (and vice versa)
+      if (isPickupTarget && dropoffInput && !dropoffInput.value.trim()) {
+        setSavedApplyTarget("dropoff");
+      } else if (!isPickupTarget && pickupInput && !pickupInput.value.trim()) {
+        setSavedApplyTarget("pickup");
+      }
+    }
+
+    async function syncSavedAddressesFromServer() {
+      const cust = getStoredCustomer();
+      if (!cust || !cust.phone) {
+        isServerSynced = false;
+        if (lastSyncedPhone) {
+          // User logged out — keep only local guest entries so account addresses don't linger on shared devices
+          const localOnly = {};
+          for (const [k, v] of Object.entries(readLocalSavedMap())) {
+            if (v && v._guestLocal) localOnly[k] = v;
+          }
+          savedAddresses = localOnly;
+          writeLocalSavedMap(savedAddresses);
+          lastSyncedPhone = "";
+        } else {
+          savedAddresses = readLocalSavedMap();
+        }
+        renderSavedChips();
+        renderSavedModalList();
+        updateSavedSyncNote();
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/customer/saved-addresses", { cache: "no-store" });
+        if (!res.ok) {
+          isServerSynced = false;
+          updateSavedSyncNote();
+          return;
+        }
+        const data = await res.json();
+        if (!data || !data.success) return;
+
+        let merged = normalizeSavedMap(data.saved_addresses || {});
+        const localBefore = readLocalSavedMap();
+        for (const meta of SAVED_SLOTS) {
+          const guestEntry = localBefore[meta.key];
+          if (guestEntry && guestEntry._guestLocal && !merged[meta.key]) {
+            try {
+              const upRes = await fetch("/api/customer/saved-addresses", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  slot: meta.key,
+                  address: guestEntry.address,
+                  lat: guestEntry.lat,
+                  lng: guestEntry.lng,
+                  label: guestEntry.label,
+                  landmark_note: guestEntry.landmark_note,
+                }),
+              });
+              if (upRes.ok) {
+                const upData = await upRes.json();
+                if (upData && upData.saved_addresses) {
+                  merged = normalizeSavedMap(upData.saved_addresses);
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        savedAddresses = merged;
+        isServerSynced = true;
+        lastSyncedPhone = cust.phone;
+        writeLocalSavedMap(savedAddresses);
+        renderSavedChips();
+        renderSavedModalList();
+        updateSavedSyncNote();
+      } catch (_) {}
+    }
+
+    // Target toggle buttons
+    if (savedTargetPickupBtn) {
+      savedTargetPickupBtn.addEventListener("click", () => setSavedApplyTarget("pickup"));
+    }
+    if (savedTargetDropoffBtn) {
+      savedTargetDropoffBtn.addEventListener("click", () => setSavedApplyTarget("dropoff"));
+    }
+    // Sync target toggle naturally when user focuses Pickup or Drop-off inputs
+    if (pickupInput) {
+      pickupInput.addEventListener("focus", () => setSavedApplyTarget("pickup"));
+    }
+    if (dropoffInput) {
+      dropoffInput.addEventListener("focus", () => setSavedApplyTarget("dropoff"));
+    }
+
+    // Chip bar click delegation
+    if (savedAddrChipsWrap) {
+      savedAddrChipsWrap.addEventListener("click", (e) => {
+        const chip = e.target.closest(".saved-addr-chip[data-slot]");
+        if (!chip) return;
+        const slot = chip.getAttribute("data-slot");
+        if (!slot) return;
+        applySavedAddress(slot);
+      });
+    }
+
+    if (manageSavedAddrBtn) {
+      manageSavedAddrBtn.addEventListener("click", () => openSavedAddressModal("home"));
+    }
+    if (closeSavedAddrModalBtn) {
+      closeSavedAddrModalBtn.addEventListener("click", closeSavedAddressModal);
+    }
+    if (savedAddrModal) {
+      savedAddrModal.addEventListener("click", (e) => {
+        if (e.target === savedAddrModal) closeSavedAddressModal();
+      });
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && savedAddrModal && !savedAddrModal.classList.contains("hidden")) {
+        closeSavedAddressModal();
+      }
+    });
+
+    // Slot tabs inside modal
+    savedSlotTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const slot = tab.getAttribute("data-saved-slot");
+        if (slot) selectEditSlot(slot);
+      });
+    });
+
+    // Quick copy from current Pickup / Drop-off
+    if (savedCopyPickupBtn) {
+      savedCopyPickupBtn.addEventListener("click", () => {
+        const addr = pickupInput ? pickupInput.value.trim() : "";
+        const lat = pickupLatInput ? pickupLatInput.value.trim() : "";
+        const lng = pickupLngInput ? pickupLngInput.value.trim() : "";
+        if (!addr) {
+          showSavedFeedback("Enter or pin a Pickup location first before copying.", true);
+          return;
+        }
+        if (savedAddressInput) savedAddressInput.value = addr.slice(0, 180);
+        if (isCamiguinCoord(lat, lng)) {
+          if (savedLatInput) savedLatInput.value = lat;
+          if (savedLngInput) savedLngInput.value = lng;
+          updateSavedPinStatus(lat, lng, "Copied exact Pickup map pin");
+        } else {
+          if (savedLatInput) savedLatInput.value = "";
+          if (savedLngInput) savedLngInput.value = "";
+          updateSavedPinStatus(null, null, "📍 Copied Pickup text — will auto-pin on save.");
+        }
+        showSavedFeedback("Copied current Pickup address. Tap Save Place to confirm.", false);
+      });
+    }
+
+    if (savedCopyDropoffBtn) {
+      savedCopyDropoffBtn.addEventListener("click", () => {
+        const addr = dropoffInput ? dropoffInput.value.trim() : "";
+        const lat = dropoffLatInput ? dropoffLatInput.value.trim() : "";
+        const lng = dropoffLngInput ? dropoffLngInput.value.trim() : "";
+        if (!addr) {
+          showSavedFeedback("Enter or pin a Drop-off destination first before copying.", true);
+          return;
+        }
+        if (savedAddressInput) savedAddressInput.value = addr.slice(0, 180);
+        if (isCamiguinCoord(lat, lng)) {
+          if (savedLatInput) savedLatInput.value = lat;
+          if (savedLngInput) savedLngInput.value = lng;
+          updateSavedPinStatus(lat, lng, "Copied exact Drop-off map pin");
+        } else {
+          if (savedLatInput) savedLatInput.value = "";
+          if (savedLngInput) savedLngInput.value = "";
+          updateSavedPinStatus(null, null, "📍 Copied Drop-off text — will auto-pin on save.");
+        }
+        showSavedFeedback("Copied current Drop-off address. Tap Save Place to confirm.", false);
+      });
+    }
+
+    // Detect GPS for Saved Address
+    if (savedDetectGpsBtn) {
+      savedDetectGpsBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          showSavedFeedback("GPS is not supported on this device.", true);
+          return;
+        }
+        const origText = savedDetectGpsBtn.textContent;
+        savedDetectGpsBtn.disabled = true;
+        savedDetectGpsBtn.textContent = "🛰️ Locating...";
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            savedDetectGpsBtn.disabled = false;
+            savedDetectGpsBtn.textContent = origText;
+            const lat = parseFloat(pos.coords.latitude.toFixed(6));
+            const lng = parseFloat(pos.coords.longitude.toFixed(6));
+            if (!isCamiguinCoord(lat, lng)) {
+              showSavedFeedback("Your GPS appears outside Camiguin Island. Please type a Camiguin barangay or landmark.", true);
+              return;
+            }
+            const nearest = getNearestCamiguinPlace(lat, lng);
+            const gpsLabel = nearest ? `${nearest} (GPS Pin)` : `Camiguin GPS Pin (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+            if (savedAddressInput) savedAddressInput.value = gpsLabel;
+            if (savedLatInput) savedLatInput.value = String(lat);
+            if (savedLngInput) savedLngInput.value = String(lng);
+            updateSavedPinStatus(lat, lng, "GPS location locked");
+            showSavedFeedback("GPS location captured! Add a gate/landmark note if helpful, then Save.", false);
+          },
+          () => {
+            savedDetectGpsBtn.disabled = false;
+            savedDetectGpsBtn.textContent = origText;
+            showSavedFeedback("Unable to access GPS. Please allow Location permission.", true);
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+
+    // Modal autocomplete search using local Camiguin places + /api/places/search
+    if (savedAddressInput && savedSuggestionsEl) {
+      let savedAcTimer = null;
+      let savedBlurTimer = null;
+      let savedTouching = false;
+      let savedTouchMoved = false;
+
+      savedSuggestionsEl.addEventListener("touchstart", () => {
+        savedTouching = true;
+        savedTouchMoved = false;
+        clearTimeout(savedBlurTimer);
+      }, { passive: true });
+      savedSuggestionsEl.addEventListener("touchmove", () => {
+        savedTouchMoved = true;
+      }, { passive: true });
+      savedSuggestionsEl.addEventListener("touchend", () => {
+        setTimeout(() => { savedTouching = false; }, 220);
+      }, { passive: true });
+
+      function renderSavedSuggestions(items) {
+        if (!items || items.length === 0) {
+          savedSuggestionsEl.classList.add("hidden");
+          savedSuggestionsEl.innerHTML = "";
+          return;
+        }
+        savedSuggestionsEl.innerHTML = items.slice(0, 8).map((item, idx) => {
+          const subtitle = item.full_address || (item.mun ? `(${item.mun})` : "Camiguin Island");
+          return `
+            <div class="places-item" data-saved-ac-idx="${idx}">
+              <div class="places-item-info">
+                <div class="places-item-name">📍 ${escapeHtml(item.name)}</div>
+                <div class="places-item-sub">${escapeHtml(subtitle)}</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+        savedSuggestionsEl.classList.remove("hidden");
+
+        savedSuggestionsEl.querySelectorAll(".places-item").forEach((el, idx) => {
+          el.addEventListener("click", (e) => {
+            if (savedTouchMoved) {
+              savedTouchMoved = false;
+              return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const item = items[idx];
+            if (!item) return;
+            savedAddressInput.dataset.lastSelectedAt = String(Date.now());
+            savedAddressInput.value = item.name;
+            if (isCamiguinCoord(item.lat, item.lng)) {
+              if (savedLatInput) savedLatInput.value = String(item.lat);
+              if (savedLngInput) savedLngInput.value = String(item.lng);
+              updateSavedPinStatus(item.lat, item.lng, `Pinned at ${item.name}`);
+            }
+            savedSuggestionsEl.classList.add("hidden");
+          });
+        });
+      }
+
+      async function runSavedAutocomplete() {
+        const q = savedAddressInput.value.trim();
+        if (q.length < 1) {
+          savedSuggestionsEl.classList.add("hidden");
+          return;
+        }
+        const matches = searchCamiguinPlacesLocal(q, 6);
+        renderSavedSuggestions(matches);
+
+        if (q.length >= 2) {
+          try {
+            const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
+            if (res.ok) {
+              const data = await res.json();
+              const justSelected = Date.now() - Number(savedAddressInput.dataset.lastSelectedAt || 0) < 600;
+              if (data && Array.isArray(data.places) && data.places.length > 0 && savedAddressInput.value.trim() === q && !justSelected) {
+                const seen = new Set(matches.map((m) => m.name.toLowerCase()));
+                for (const item of data.places) {
+                  if (!seen.has(item.name.toLowerCase())) {
+                    matches.push(item);
+                    seen.add(item.name.toLowerCase());
+                  }
+                }
+                renderSavedSuggestions(matches);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      savedAddressInput.addEventListener("input", () => {
+        // Clear old coordinates when typing a new custom address so stale pins don't stick
+        if (savedLatInput) savedLatInput.value = "";
+        if (savedLngInput) savedLngInput.value = "";
+        updateSavedPinStatus(null, null);
+        clearTimeout(savedAcTimer);
+        savedAcTimer = setTimeout(runSavedAutocomplete, 160);
+      });
+
+      savedAddressInput.addEventListener("focus", () => {
+        if (savedAddressInput.value.trim().length >= 1) runSavedAutocomplete();
+      });
+
+      savedAddressInput.addEventListener("blur", () => {
+        clearTimeout(savedBlurTimer);
+        savedBlurTimer = setTimeout(() => {
+          if (!savedTouching) savedSuggestionsEl.classList.add("hidden");
+        }, 280);
+      });
+    }
+
+    // Modal quick-apply / edit list buttons
+    if (savedModalListEl) {
+      savedModalListEl.addEventListener("click", (e) => {
+        const applyBtn = e.target.closest("[data-quick-apply]");
+        if (applyBtn) {
+          const slot = applyBtn.getAttribute("data-quick-apply");
+          const target = applyBtn.getAttribute("data-quick-target") || "pickup";
+          closeSavedAddressModal();
+          applySavedAddress(slot, target);
+          return;
+        }
+        const editBtn = e.target.closest("[data-quick-edit]");
+        if (editBtn) {
+          const slot = editBtn.getAttribute("data-quick-edit");
+          if (slot) selectEditSlot(slot);
+        }
+      });
+    }
+
+    // Save form submission
+    if (savedAddrForm) {
+      savedAddrForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const slot = (savedSlotInput ? savedSlotInput.value : activeEditSlot) || "home";
+        const meta = SAVED_SLOT_META[slot] || SAVED_SLOT_META.home;
+        const address = savedAddressInput ? savedAddressInput.value.trim().slice(0, 180) : "";
+        const label = (savedLabelInput ? savedLabelInput.value.trim().slice(0, 40) : "") || meta.defaultLabel;
+        const landmarkNote = savedNoteInput ? savedNoteInput.value.trim().slice(0, 140) : "";
+
+        if (!address) {
+          showSavedFeedback("Please enter an address, barangay, or landmark.", true);
+          return;
+        }
+
+        let lat = savedLatInput && savedLatInput.value ? parseFloat(savedLatInput.value) : null;
+        let lng = savedLngInput && savedLngInput.value ? parseFloat(savedLngInput.value) : null;
+        if (!isCamiguinCoord(lat, lng)) {
+          const matched = matchCamiguinPlace(address);
+          if (matched && isCamiguinCoord(matched.lat, matched.lng)) {
+            lat = Number(matched.lat);
+            lng = Number(matched.lng);
+          } else {
+            lat = null;
+            lng = null;
+          }
+        }
+
+        if (savedSaveBtn) savedSaveBtn.disabled = true;
+        const cust = getStoredCustomer();
+        let persistedToServer = false;
+
+        if (cust && cust.phone) {
+          try {
+            const res = await fetch("/api/customer/saved-addresses", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                slot: meta.key,
+                address,
+                lat,
+                lng,
+                label,
+                landmark_note: landmarkNote,
+              }),
+            });
+            const data = await res.json();
+            if (res.ok && data && data.success) {
+              savedAddresses = normalizeSavedMap(data.saved_addresses || {});
+              isServerSynced = true;
+              lastSyncedPhone = cust.phone;
+              persistedToServer = true;
+            } else if (res.status === 400) {
+              showSavedFeedback(data.error || "Could not save place.", true);
+              if (savedSaveBtn) savedSaveBtn.disabled = false;
+              return;
+            }
+          } catch (_) {}
+        }
+
+        if (!persistedToServer) {
+          savedAddresses[meta.key] = {
+            slot: meta.key,
+            icon: meta.icon,
+            label,
+            address,
+            lat,
+            lng,
+            landmark_note: landmarkNote,
+            updated_at: new Date().toISOString(),
+            _guestLocal: true,
+          };
+        }
+
+        writeLocalSavedMap(savedAddresses);
+        renderSavedChips();
+        renderSavedModalList();
+        updateSavedSyncNote();
+        if (savedDeleteBtn) savedDeleteBtn.classList.remove("hidden");
+        const savedEntry = savedAddresses[meta.key];
+        if (savedEntry && isCamiguinCoord(savedEntry.lat, savedEntry.lng)) {
+          if (savedLatInput) savedLatInput.value = String(savedEntry.lat);
+          if (savedLngInput) savedLngInput.value = String(savedEntry.lng);
+          updateSavedPinStatus(savedEntry.lat, savedEntry.lng, "Saved Camiguin map pin");
+        }
+        showSavedFeedback(
+          persistedToServer
+            ? `✅ ${meta.icon} ${label} saved and synced to your account!`
+            : `✅ ${meta.icon} ${label} saved on this device!`,
+          false
+        );
+        showMapToast(`${meta.icon} Saved ${label}: ${address}`);
+        if (savedSaveBtn) savedSaveBtn.disabled = false;
+      });
+    }
+
+    // Delete saved slot
+    if (savedDeleteBtn) {
+      savedDeleteBtn.addEventListener("click", async () => {
+        const slot = (savedSlotInput ? savedSlotInput.value : activeEditSlot) || "home";
+        const meta = SAVED_SLOT_META[slot];
+        if (!meta || !savedAddresses[meta.key]) return;
+
+        savedDeleteBtn.disabled = true;
+        const cust = getStoredCustomer();
+        if (cust && cust.phone) {
+          try {
+            const res = await fetch(`/api/customer/saved-addresses/${encodeURIComponent(meta.key)}`, {
+              method: "DELETE",
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.success) {
+                savedAddresses = normalizeSavedMap(data.saved_addresses || {});
+                isServerSynced = true;
+                lastSyncedPhone = cust.phone;
+              }
+            }
+          } catch (_) {}
+        }
+        delete savedAddresses[meta.key];
+        writeLocalSavedMap(savedAddresses);
+        renderSavedChips();
+        renderSavedModalList();
+        selectEditSlot(meta.key);
+        showSavedFeedback(`🗑️ Removed saved ${meta.defaultLabel} place.`, false);
+        savedDeleteBtn.disabled = false;
+      });
+    }
+
+    // Initial boot: render local immediately, then sync with server if logged in
+    savedAddresses = readLocalSavedMap();
+    renderSavedChips();
+    updateSavedSyncNote();
+    syncSavedAddressesFromServer();
+    window.addEventListener("ccrc:customer-auth-changed", syncSavedAddressesFromServer);
   }
 })();

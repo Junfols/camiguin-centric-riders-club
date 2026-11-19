@@ -5189,6 +5189,511 @@ body.rider-logged-in .nav-rider-logged-item {
   margin-top: 4px;
 }
 
+/* ==========================================================================
+   Saved Addresses Quick Bar & Modal (🏠 Home / 🏢 Work / ⭐ Favorite)
+   ========================================================================== */
+.saved-addresses-box {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.saved-addresses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.saved-addresses-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+}
+
+.saved-addresses-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.saved-addr-target-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #e2e8f0;
+  padding: 2px;
+  border-radius: 999px;
+  gap: 2px;
+}
+
+.saved-target-btn {
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.saved-target-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
+}
+
+.saved-manage-btn {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.saved-manage-btn:hover {
+  background: #fff7ed;
+  border-color: #f97316;
+  color: #c2410c;
+}
+
+.saved-address-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.saved-addr-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.saved-addr-chip.is-empty {
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.saved-addr-chip.is-empty:hover {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.saved-addr-chip.is-saved {
+  background: #ffffff;
+  border: 1.5px solid #fed7aa;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.saved-addr-chip.is-saved:hover {
+  border-color: #f97316;
+  background: #fff7ed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.14);
+}
+
+.saved-addr-chip.is-just-applied {
+  border-color: #16a34a !important;
+  background: #dcfce7 !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2) !important;
+}
+
+.saved-addr-chip-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.saved-addr-chip-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+
+.saved-addr-chip-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-addr-chip-sub {
+  font-size: 0.7rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-addr-chip.is-saved .saved-addr-chip-sub {
+  color: #475569;
+  font-weight: 600;
+}
+
+/* Saved Addresses Modal */
+.saved-address-modal-card {
+  max-width: 520px;
+  width: 94%;
+}
+
+.saved-addr-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+
+.saved-addr-modal-header h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  color: #0f172a;
+}
+
+.saved-addr-close-btn {
+  font-size: 1.55rem;
+  line-height: 1;
+  color: #475569;
+}
+
+.saved-addr-modal-body {
+  padding-top: 12px;
+  max-height: 76vh;
+  overflow-y: auto;
+}
+
+.saved-addr-sync-note {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 7px 11px;
+  margin-bottom: 12px;
+}
+
+.saved-addr-sync-note.is-synced {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.saved-slot-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.saved-slot-tab {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.saved-slot-tab.active {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+  box-shadow: 0 3px 8px rgba(234, 88, 12, 0.25);
+}
+
+.saved-quick-fill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.saved-quick-btn {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 1 1 auto;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.saved-quick-btn:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.saved-address-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.saved-addr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.saved-addr-field label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.saved-addr-field input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  font-size: 0.88rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.saved-addr-field input[type="text"]:focus {
+  outline: none;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.saved-addr-autocomplete-wrap {
+  position: relative;
+}
+
+.saved-addr-autocomplete-wrap .places-dropdown {
+  z-index: 1200;
+}
+
+.saved-addr-pin-status {
+  font-size: 0.73rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.saved-addr-pin-status.is-pinned {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.saved-addr-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.saved-addr-feedback {
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 9px;
+  padding: 8px 11px;
+}
+
+.saved-addr-feedback.is-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.saved-addr-feedback.is-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.saved-addr-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.saved-addr-save-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+
+.saved-addr-delete-btn {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1.5px solid #fda4af;
+  border-radius: 10px;
+  padding: 10px 13px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saved-addr-delete-btn:hover {
+  background: #ffe4e6;
+}
+
+.saved-addr-modal-list {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saved-modal-list-title {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #64748b;
+}
+
+.saved-modal-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px 11px;
+}
+
+.saved-modal-list-info {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.saved-modal-list-name {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.saved-modal-list-addr {
+  font-size: 0.78rem;
+  color: #475569;
+  word-break: break-word;
+}
+
+.saved-modal-list-note {
+  font-size: 0.72rem;
+  color: #9a3412;
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.saved-modal-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.saved-row-btn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saved-row-btn.is-pickup:hover {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+.saved-row-btn.is-dropoff:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.saved-row-btn.is-edit:hover {
+  background: #fff7ed;
+  border-color: #f97316;
+}
+
+.saved-addr-fairness-note {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  color: #475569;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 9px;
+  padding: 8px 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 520px) {
+  .saved-addresses-box {
+    padding: 9px 10px;
+  }
+  .saved-address-chips {
+    gap: 6px;
+  }
+  .saved-addr-chip {
+    padding: 7px 7px;
+    gap: 6px;
+  }
+  .saved-addr-chip-icon {
+    font-size: 1rem;
+  }
+  .saved-addr-chip-label {
+    font-size: 0.75rem;
+  }
+  .saved-addr-chip-sub {
+    font-size: 0.66rem;
+  }
+  .saved-addr-field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
   /* Scoped Official Club ID Card print (only when ID card is active/visible) */
   body:has(#ccrc-official-id-card-printable):not(:has(#rider-official-id-modal.hidden)) * {

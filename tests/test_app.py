@@ -4256,6 +4256,207 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertFalse(clear_resp.get_json()["advisory"]["is_active"])
         self.assertFalse(self.client.get("/api/advisory").get_json()["visible"])
 
+    def test_customer_saved_addresses_home_work_favorite(self):
+        from db import export_full_backup, get_connection, restore_full_backup
+
+        # 1. Unauthenticated access blocked with 401
+        self.assertEqual(self.client.get("/api/customer/saved-addresses").status_code, 401)
+        self.assertEqual(
+            self.client.post(
+                "/api/customer/saved-addresses",
+                json={"slot": "home", "address": "Mambajao Public Market"},
+            ).status_code,
+            401,
+        )
+        self.assertEqual(self.client.delete("/api/customer/saved-addresses/home").status_code, 401)
+
+        # 2. Homepage & static assets expose Saved Addresses UI, styles, and translations
+        home_html = self.client.get("/").get_data(as_text=True)
+        for token in (
+            'id="saved-addresses-bar"',
+            'id="saved-address-chips"',
+            'id="saved-addr-target-pickup"',
+            'id="saved-addr-target-dropoff"',
+            'id="manage-saved-addresses-btn"',
+            'id="saved-address-modal"',
+            'id="saved-address-form"',
+            'data-saved-slot="home"',
+            'data-saved-slot="work"',
+            'data-saved-slot="favorite"',
+            "app.js?v=35",
+            "style.css?v=31",
+            "i18n.js?v=9",
+        ):
+            self.assertIn(token, home_html)
+
+        with self.client.get("/static/js/app.js") as resp:
+            app_js = resp.get_data(as_text=True)
+        self.assertIn("function showMapToast", app_js)
+        self.assertIn("ccrc_saved_addresses_v1", app_js)
+        self.assertIn("/api/customer/saved-addresses", app_js)
+        with self.client.get("/static/css/style.css") as resp:
+            css_text = resp.get_data(as_text=True)
+        self.assertIn(".saved-addresses-box", css_text)
+        self.assertIn(".saved-addr-chip.is-saved", css_text)
+        with self.client.get("/static/js/i18n.js") as resp:
+            i18n_js = resp.get_data(as_text=True)
+        self.assertIn("Akong Gi-save nga Lugar", i18n_js)
+
+        # 3. Register Customer A & Customer B with isolated sessions
+        cust_a = self.app.test_client()
+        cust_b = self.app.test_client()
+
+        reg_a = cust_a.post(
+            "/api/customer/register",
+            json={
+                "name": "Local Rider Friend A",
+                "phone": "09171234561",
+                "email": "locala@camiguin.test",
+                "password": "password123",
+                "barangay": "Agoho, Mambajao",
+            },
+        )
+        self.assertEqual(reg_a.status_code, 200)
+        self.assertTrue(reg_a.get_json()["success"])
+
+        reg_b = cust_b.post(
+            "/api/customer/register",
+            json={
+                "name": "Local Customer B",
+                "phone": "09171234562",
+                "email": "localb@camiguin.test",
+                "password": "password123",
+                "barangay": "Yumbing, Mambajao",
+            },
+        )
+        self.assertEqual(reg_b.status_code, 200)
+
+        # 4. Validation errors (400) for invalid slot or empty address
+        self.assertEqual(
+            cust_a.post(
+                "/api/customer/saved-addresses",
+                json={"slot": "invalid_slot", "address": "Mambajao"},
+            ).status_code,
+            400,
+        )
+        self.assertEqual(
+            cust_a.post(
+                "/api/customer/saved-addresses",
+                json={"slot": "home", "address": "   "},
+            ).status_code,
+            400,
+        )
+
+        # 5. Save Home without lat/lng -> auto-geocodes Camiguin coordinates
+        save_home = cust_a.post(
+            "/api/customer/saved-addresses",
+            json={
+                "slot": "home",
+                "address": "Mambajao Public Market",
+                "landmark_note": "Blue gate beside pharmacy",
+            },
+        )
+        self.assertEqual(save_home.status_code, 200)
+        home_data = save_home.get_json()
+        self.assertTrue(home_data["success"])
+        home_entry = home_data["saved"]
+        self.assertEqual(home_entry["slot"], "home")
+        self.assertEqual(home_entry["icon"], "🏠")
+        self.assertEqual(home_entry["label"], "Home")
+        self.assertEqual(home_entry["landmark_note"], "Blue gate beside pharmacy")
+        self.assertIsNotNone(home_entry["lat"])
+        self.assertIsNotNone(home_entry["lng"])
+        self.assertTrue(8.95 <= home_entry["lat"] <= 9.40)
+        self.assertTrue(124.45 <= home_entry["lng"] <= 124.95)
+
+        # 6. Save Work with explicit coordinates & custom label, plus Favorite with out-of-bounds coord sanitization
+        save_work = cust_a.post(
+            "/api/customer/saved-addresses",
+            json={
+                "slot": "work",
+                "label": "Office",
+                "address": "Jollibee Camiguin, Mambajao",
+                "lat": 9.24971,
+                "lng": 124.71667,
+                "landmark_note": "2nd floor entrance",
+            },
+        )
+        self.assertEqual(save_work.status_code, 200)
+        work_entry = save_work.get_json()["saved"]
+        self.assertEqual(work_entry["label"], "Office")
+        self.assertAlmostEqual(work_entry["lat"], 9.24971, places=4)
+        self.assertAlmostEqual(work_entry["lng"], 124.71667, places=4)
+
+        save_fav = cust_a.post(
+            "/api/customer/saved-addresses",
+            json={
+                "slot": "favorite",
+                "label": "Ferry Wharf",
+                "address": "Benoni Port",
+                "lat": 14.5995,  # Outside Camiguin -> ignored and auto-geocoded inside Camiguin
+                "lng": 120.9842,
+            },
+        )
+        self.assertEqual(save_fav.status_code, 200)
+        fav_entry = save_fav.get_json()["saved"]
+        self.assertEqual(fav_entry["label"], "Ferry Wharf")
+        self.assertTrue(8.95 <= fav_entry["lat"] <= 9.40)
+        self.assertTrue(124.45 <= fav_entry["lng"] <= 124.95)
+
+        # 7. GET /api/customer/saved-addresses & /api/customer/me return all 3 slots; Customer B is isolated
+        get_a = cust_a.get("/api/customer/saved-addresses").get_json()
+        self.assertTrue(get_a["success"])
+        self.assertEqual(set(get_a["saved_addresses"].keys()), {"home", "work", "favorite"})
+
+        me_a = cust_a.get("/api/customer/me").get_json()
+        self.assertTrue(me_a["logged_in"])
+        self.assertEqual(set(me_a["saved_addresses"].keys()), {"home", "work", "favorite"})
+        self.assertEqual(me_a["customer"]["saved_addresses"]["work"]["label"], "Office")
+
+        get_b = cust_b.get("/api/customer/saved-addresses").get_json()
+        self.assertTrue(get_b["success"])
+        self.assertEqual(get_b["saved_addresses"], {})
+
+        # 8. Delete only Work slot; invalid delete slot returns 400
+        self.assertEqual(cust_a.delete("/api/customer/saved-addresses/unknown").status_code, 400)
+        del_work = cust_a.delete("/api/customer/saved-addresses/work")
+        self.assertEqual(del_work.status_code, 200)
+        remaining = del_work.get_json()["saved_addresses"]
+        self.assertEqual(set(remaining.keys()), {"home", "favorite"})
+
+        # 9. Backup & restore preserves saved_addresses_json
+        conn = get_connection(self.db_path)
+        try:
+            snap = export_full_backup(conn)
+            restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+        finally:
+            conn.close()
+
+        after_restore = cust_a.get("/api/customer/saved-addresses").get_json()
+        self.assertEqual(set(after_restore["saved_addresses"].keys()), {"home", "favorite"})
+        self.assertEqual(after_restore["saved_addresses"]["home"]["landmark_note"], "Blue gate beside pharmacy")
+
+        # 10. Booking made with saved Home -> Favorite addresses still broadcasts fairly (no suki lock-in)
+        booking_resp = cust_a.post(
+            "/api/bookings",
+            json={
+                "service_type": "habal",
+                "pickup_address": f"{home_entry['address']} ({home_entry['landmark_note']})",
+                "pickup_lat": home_entry["lat"],
+                "pickup_lng": home_entry["lng"],
+                "dropoff_address": fav_entry["address"],
+                "dropoff_lat": fav_entry["lat"],
+                "dropoff_lng": fav_entry["lng"],
+                "customer_name": "Local Rider Friend A",
+                "customer_phone": "09171234561",
+            },
+        )
+        self.assertEqual(booking_resp.status_code, 201)
+        created_b = booking_resp.get_json()["booking"]
+        self.assertEqual(created_b["status"], "broadcast")
+        self.assertIsNone(created_b["rider_id"])
+
 
 if __name__ == "__main__":
     unittest.main()
