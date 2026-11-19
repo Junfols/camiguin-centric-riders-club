@@ -29,7 +29,33 @@ except ImportError:  # pragma: no cover
     dict_row = None
 
 
+def _load_local_env() -> None:
+    if os.environ.get("DATABASE_URL"):
+        return
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for env_name in (".env.local", ".env"):
+        env_path = os.path.join(base_dir, env_name)
+        if os.path.isfile(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#") or "=" not in line:
+                            continue
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'\"")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+            except Exception:
+                pass
+
+
+_load_local_env()
+
+
 def get_database_url() -> str:
+    _load_local_env()
     return (os.environ.get("DATABASE_URL") or "").strip()
 
 
@@ -3966,7 +3992,12 @@ _PG_POOLS: dict[str, queue.Queue] = {}
 
 
 def get_connection(db_path: str = "riders_club.db") -> DatabaseConnection:
-    db_url = get_database_url()
+    db_url = None
+    if db_path.startswith("postgres://") or db_path.startswith("postgresql://"):
+        db_url = db_path
+    elif db_path == "riders_club.db":
+        db_url = get_database_url()
+
     if db_url and (db_url.startswith("postgres://") or db_url.startswith("postgresql://")):
         if psycopg is None:
             raise RuntimeError("psycopg is required for PostgreSQL connections.")
@@ -3987,11 +4018,17 @@ def get_connection(db_path: str = "riders_club.db") -> DatabaseConnection:
                     candidate.close()
                 except Exception:
                     pass
-        if raw_conn is None:
-            raw_conn = psycopg.connect(db_url, row_factory=dict_row, autocommit=False)
-        dc = DatabaseConnection("postgresql", raw_conn)
-        dc._pool_url = db_url  # type: ignore[attr-defined]
-        return dc
+        try:
+            if raw_conn is None:
+                raw_conn = psycopg.connect(db_url, row_factory=dict_row, autocommit=False)
+            dc = DatabaseConnection("postgresql", raw_conn)
+            dc._pool_url = db_url  # type: ignore[attr-defined]
+            return dc
+        except Exception as exc:
+            if os.environ.get("RENDER"):
+                raise
+            import logging
+            logging.getLogger(__name__).warning("PostgreSQL connection to %s failed (%s); falling back to SQLite for local development.", db_url.split("@")[-1], exc)
 
     raw_conn = sqlite3.connect(db_path, timeout=15.0)
     raw_conn.row_factory = sqlite3.Row

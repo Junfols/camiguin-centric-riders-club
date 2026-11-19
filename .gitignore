@@ -6,3 +6,8 @@ __pycache__/
 .env
 .venv/
 env/
+.neon
+node_modules/
+.env.local
+.agents/
+skills-lock.json
