@@ -821,11 +821,36 @@
       }
     }
 
+    const prevStatus = booking.status;
+    const prevCode = booking.booking_code;
     Object.assign(booking, b);
     syncSlotHeaderAndDetails(booking);
     renderGroupUI(booking, groupBookings, groupSummary);
     syncGcashPaymentUI(booking);
     syncCustomerVoiceCallContext(booking);
+
+    if (
+      b.status === "completed" &&
+      !b.already_reviewed &&
+      ((prevCode === b.booking_code && prevStatus && prevStatus !== "completed") || !window._ccrcReviewAutoScrolledFor || window._ccrcReviewAutoScrolledFor !== b.booking_code)
+    ) {
+      const justCompletedNow = (prevCode === b.booking_code && prevStatus && prevStatus !== "completed");
+      if (justCompletedNow) {
+        window._ccrcReviewAutoScrolledFor = b.booking_code;
+        try { playChatBeep(); } catch (_) {}
+        setTimeout(() => {
+          const revCard = document.getElementById("review-submission-card");
+          if (revCard && !revCard.classList.contains("hidden")) {
+            revCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            revCard.style.transition = "box-shadow 0.4s ease, transform 0.3s ease";
+            revCard.style.boxShadow = "0 0 0 4px rgba(245, 158, 11, 0.35), 0 12px 28px rgba(15, 23, 42, 0.14)";
+            setTimeout(() => {
+              revCard.style.boxShadow = "";
+            }, 2200);
+          }
+        }, 320);
+      }
+    }
 
     if (switchedSlot) {
       pollChatMessages();
@@ -1215,12 +1240,29 @@
           booking.already_reviewed = true;
           const reviewedSlot = groupBookings.find((s) => s && Number(s.id) === Number(bookingId));
           if (reviewedSlot) reviewedSlot.already_reviewed = true;
+
+          const nextUnreviewedSlot = groupBookings.find(
+            (s) => s && s.status === "completed" && s.rider_id && !s.already_reviewed && Number(s.id) !== Number(bookingId)
+          );
+          const nextSlotBtnHtml = nextUnreviewedSlot
+            ? `<div style="margin-top:10px;"><button type="button" id="rate-next-group-rider-btn" data-slot-code="${escapeHtml(nextUnreviewedSlot.booking_code)}" class="btn btn-sm btn-primary" style="background:#f59e0b;border:none;padding:8px 18px;border-radius:8px;font-weight:700;cursor:pointer;color:white;">⭐ Rate Next Rider (${escapeHtml(nextUnreviewedSlot.rider_name || 'Rider ' + (nextUnreviewedSlot.rider_slot || ''))}) &rarr;</button></div>`
+            : "";
+
           const reviewDoneBox = document.getElementById("review-already-done-box");
           if (reviewDoneBox) {
-            reviewDoneBox.innerHTML = `<p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">${tTrack("Your rating and feedback have been recorded.")}</p><div id="review-already-done-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">${tTrack("✓ Thank you very much! Your review has already been submitted.")}<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; ${tTrack("Back to Dashboard")}</a></div></div>`;
+            reviewDoneBox.innerHTML = `<p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">${tTrack("Your rating and feedback have been recorded.")}</p><div id="review-already-done-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">${tTrack("✓ Thank you very much! Your review has already been submitted.")}${nextSlotBtnHtml}<div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; ${tTrack("Back to Dashboard")}</a></div></div>`;
             reviewDoneBox.classList.remove("hidden");
+            const nextBtn = reviewDoneBox.querySelector("#rate-next-group-rider-btn");
+            if (nextBtn) {
+              nextBtn.addEventListener("click", () => {
+                const sc = nextBtn.getAttribute("data-slot-code");
+                if (sc) selectGroupSlot(sc);
+              });
+            }
           }
           reviewForm.classList.add("hidden");
+          const commentEl = document.getElementById("review-comment");
+          if (commentEl) commentEl.value = "";
           if (reviewFeedback) {
             reviewFeedback.innerHTML = `✓ Thank you very much! Your review has been submitted.<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Back to Dashboard</a></div>`;
             reviewFeedback.classList.remove("hidden");

@@ -201,6 +201,48 @@
           ? `/track/${encodeURIComponent(b.group_code)}?slot=${encodeURIComponent(b.booking_code)}`
           : `/track/${encodeURIComponent(b.booking_code)}`;
 
+        const isCompleted = (b.status === 'completed');
+        const hasRider = Boolean(b.rider_id);
+        const alreadyReviewed = Boolean(b.already_reviewed || b.review_id);
+        const revRating = Math.max(1, Math.min(5, Number(b.review_rating || 5)));
+        const revStarsStr = "★".repeat(revRating) + "☆".repeat(5 - revRating);
+
+        let reviewSectionHtml = '';
+        if (isCompleted && hasRider) {
+          if (alreadyReviewed) {
+            reviewSectionHtml = `
+              <div style="margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-size:0.82rem;">
+                <span style="color:#15803d;font-weight:700;">✓ Rated Rider (${rider || 'Club Rider'}): <span style="color:#d97706;">${revStarsStr} (${revRating}/5)</span></span>
+                ${b.review_comment ? `<span style="color:#334155;font-style:italic;">"${escapeHtml(b.review_comment)}"</span>` : ''}
+              </div>
+            `;
+          } else {
+            reviewSectionHtml = `
+              <div class="history-review-box" id="history-review-box-${b.id}" style="margin-top:10px;padding:12px;background:#fffaf5;border:1.5px solid #fed7aa;border-radius:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <div style="font-size:0.84rem;font-weight:700;color:#9a3412;">
+                    ⭐ Rate Your Rider (${rider || 'Club Rider'})
+                  </div>
+                  <div class="history-star-picker" data-booking-id="${b.id}" style="display:inline-flex;gap:4px;font-size:1.45rem;cursor:pointer;user-select:none;">
+                    <span class="hist-star" data-val="1" style="color:#f59e0b;">★</span>
+                    <span class="hist-star" data-val="2" style="color:#f59e0b;">★</span>
+                    <span class="hist-star" data-val="3" style="color:#f59e0b;">★</span>
+                    <span class="hist-star" data-val="4" style="color:#f59e0b;">★</span>
+                    <span class="hist-star" data-val="5" style="color:#f59e0b;">★</span>
+                  </div>
+                </div>
+                <input type="hidden" id="history-rating-val-${b.id}" value="5">
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                  <input type="text" id="history-rating-comment-${b.id}" placeholder="Write a compliment or feedback (optional)..." maxlength="250" style="flex:1;min-width:170px;padding:7px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.82rem;background:#ffffff;">
+                  <button type="button" class="btn btn-sm btn-primary history-submit-review-btn" data-booking-id="${b.id}" data-rider-id="${b.rider_id}" data-customer-name="${escapeHtml(b.customer_name || 'Passenger')}" data-rider-name="${rider || 'Club Rider'}" style="padding:7px 14px;font-size:0.8rem;font-weight:700;white-space:nowrap;">
+                    Submit Rating ★
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+        }
+
         html += `
           <div class="card" style="padding:14px;border:${isOngoing ? '2px solid #ea580c;background:#fff7ed;' : '1px solid #e2e8f0;'};border-radius:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
@@ -220,6 +262,8 @@
               <div>🏁 <strong>Drop-off:</strong> ${dropoff}</div>
               ${createdDate ? `<div style="font-size:0.78rem;color:#64748b;margin-top:2px;">📅 ${createdDate}</div>` : ''}
             </div>
+
+            ${reviewSectionHtml}
 
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid ${isOngoing ? '#fed7aa' : '#f1f5f9'};font-size:0.84rem;flex-wrap:wrap;gap:8px;">
               <div>
@@ -244,6 +288,78 @@
       feed.innerHTML = `<div class="empty-state text-danger">Error fetching history: ${escapeHtml(err.message)}</div>`;
     }
   }
+
+  feed.addEventListener("click", async (e) => {
+    const starEl = e.target.closest(".hist-star");
+    if (starEl) {
+      const picker = starEl.closest(".history-star-picker");
+      if (!picker) return;
+      const bId = picker.getAttribute("data-booking-id");
+      const val = parseInt(starEl.getAttribute("data-val") || "5", 10);
+      const hiddenInput = document.getElementById(`history-rating-val-${bId}`);
+      if (hiddenInput) hiddenInput.value = String(val);
+      picker.querySelectorAll(".hist-star").forEach((s) => {
+        const sv = parseInt(s.getAttribute("data-val") || "1", 10);
+        s.style.color = sv <= val ? "#f59e0b" : "#cbd5e1";
+      });
+      return;
+    }
+
+    const submitBtn = e.target.closest(".history-submit-review-btn");
+    if (submitBtn && !submitBtn.disabled) {
+      const bId = parseInt(submitBtn.getAttribute("data-booking-id") || "0", 10);
+      const rId = parseInt(submitBtn.getAttribute("data-rider-id") || "0", 10);
+      const cName = submitBtn.getAttribute("data-customer-name") || "Passenger";
+      const rName = submitBtn.getAttribute("data-rider-name") || "Club Rider";
+      const ratingVal = parseInt(document.getElementById(`history-rating-val-${bId}`)?.value || "5", 10);
+      const commentVal = (document.getElementById(`history-rating-comment-${bId}`)?.value || "").trim();
+      if (!bId || !rId) return;
+
+      const origText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending...";
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const headers = { "Content-Type": "application/json" };
+      if (csrfMeta && csrfMeta.getAttribute("content")) {
+        headers["X-CSRF-Token"] = csrfMeta.getAttribute("content");
+      }
+
+      try {
+        const res = await fetch("/api/reviews", {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({
+            booking_id: bId,
+            rider_id: rId,
+            rating: ratingVal,
+            comment: commentVal,
+            customer_name: cName,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          const box = document.getElementById(`history-review-box-${bId}`);
+          const starsStr = "★".repeat(ratingVal) + "☆".repeat(5 - ratingVal);
+          if (box) {
+            box.outerHTML = `
+              <div style="margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-size:0.82rem;">
+                <span style="color:#15803d;font-weight:700;">✓ Thank you! Rated Rider (${escapeHtml(rName)}): <span style="color:#d97706;">${starsStr} (${ratingVal}/5)</span></span>
+                ${commentVal ? `<span style="color:#334155;font-style:italic;">"${escapeHtml(commentVal)}"</span>` : ''}
+              </div>
+            `;
+          }
+        } else {
+          alert(data.error || "Could not submit rating.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = origText;
+        }
+      } catch (_) {
+        alert("Network error submitting rating.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = origText;
+      }
+    }
+  });
 
   window.addEventListener("ccrc:customer-auth-changed", (ev) => {
     const cust = ev && ev.detail ? ev.detail.customer : null;

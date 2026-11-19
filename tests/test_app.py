@@ -3717,6 +3717,29 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertTrue(sent_resp.get_json()["success"])
         self.assertEqual(sent_resp.get_json()["booking"]["payment_status"], "customer_marked_paid")
 
+        # Verify ride history shows unreviewed completed trip and updates after late rating submission
+        hist_before = self.client.get("/api/customer/history/09175559900").get_json()
+        self.assertTrue(hist_before["success"])
+        comp_trip = next(x for x in hist_before["history"] if x["id"] == b_id)
+        self.assertFalse(comp_trip["already_reviewed"])
+
+        rev_resp = self.client.post(
+            "/api/reviews",
+            json={
+                "booking_id": b_id,
+                "rider_id": r1_id,
+                "rating": 5,
+                "comment": "Salamat kaayo Kuya!",
+                "customer_name": "Customer Chat Test",
+            },
+        )
+        self.assertEqual(rev_resp.status_code, 201)
+
+        hist_after = self.client.get("/api/customer/history/09175559900").get_json()
+        comp_trip_after = next(x for x in hist_after["history"] if x["id"] == b_id)
+        self.assertTrue(comp_trip_after["already_reviewed"])
+        self.assertEqual(comp_trip_after["review_rating"], 5)
+
 
 if __name__ == "__main__":
     unittest.main()

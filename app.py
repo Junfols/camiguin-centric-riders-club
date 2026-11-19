@@ -911,11 +911,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         is_admin = bool(session.get("is_admin"))
         sess_phone = (session.get("customer_phone") or "").strip()
         target_phone = (customer.get("phone") if customer else clean_p) or ""
-        if not is_admin:
-            if not sess_phone or normalize_ph_phone(sess_phone) != normalize_ph_phone(target_phone):
-                return jsonify({"success": False, "error": "Please sign in to view your ride history."}), 401
-
         history = get_customer_ride_history(conn, clean_p)
+        if not is_admin:
+            norm_target = normalize_ph_phone(target_phone)
+            phone_matches = bool(sess_phone and normalize_ph_phone(sess_phone) == norm_target)
+            sess_code = (session.get("active_booking_code") or "").strip().upper()
+            sess_group = (session.get("active_group_code") or "").strip().upper()
+            code_matches = False
+            if (sess_code or sess_group) and history:
+                for b in history:
+                    bc = (b.get("booking_code") or "").strip().upper()
+                    gc = (b.get("group_code") or "").strip().upper()
+                    if (sess_code and sess_code in (bc, gc)) or (sess_group and sess_group in (bc, gc)):
+                        code_matches = True
+                        break
+            if not phone_matches and not code_matches:
+                return jsonify({"success": False, "error": "Please sign in to view your ride history."}), 401
         if not customer and history:
             customer = {
                 "name": history[0].get("customer_name") or "Passenger",

@@ -8067,9 +8067,11 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
     if len(last10) >= 7:
         rows = conn.execute(
             f"""
-            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone
+            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone,
+                   rv.id AS review_id, rv.rating AS review_rating, rv.comment AS review_comment
             FROM bookings b
             LEFT JOIN riders r ON b.rider_id = r.id
+            LEFT JOIN reviews rv ON rv.booking_id = b.id
             WHERE b.customer_phone = ?
                OR b.customer_phone = ?
                OR b.customer_phone LIKE ?
@@ -8082,16 +8084,23 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
     else:
         rows = conn.execute(
             f"""
-            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone
+            SELECT b.*, r.name AS rider_name, r.bike_model AS rider_bike, r.phone AS rider_phone,
+                   rv.id AS review_id, rv.rating AS review_rating, rv.comment AS review_comment
             FROM bookings b
             LEFT JOIN riders r ON b.rider_id = r.id
+            LEFT JOIN reviews rv ON rv.booking_id = b.id
             WHERE b.customer_phone = ?
             ORDER BY b.id DESC
             LIMIT {int(limit)}
             """,
             (clean_p,)
         ).fetchall()
-    return [dict(r) for r in rows]
+    result: list[dict[str, Any]] = []
+    for r in rows:
+        item = dict(r)
+        item["already_reviewed"] = bool(item.get("review_id"))
+        result.append(item)
+    return result
 
 
 def get_customer_active_bookings(
