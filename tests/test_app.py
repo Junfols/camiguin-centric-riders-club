@@ -68,11 +68,11 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertEqual(apple_resp.status_code, 200)
             self.assertEqual(apple_resp.mimetype, "image/png")
 
-        # 2. Service Worker v21
+        # 2. Service Worker v22
         with self.client.get("/sw.js") as sw_resp:
             self.assertEqual(sw_resp.status_code, 200)
             sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v21", sw_text)
+        self.assertIn("ccrc-pwa-v22", sw_text)
         self.assertIn("/static/css/style.css?v=31", sw_text)
         self.assertIn("/static/js/i18n.js?v=9", sw_text)
         self.assertIn("/static/js/app.js?v=35", sw_text)
@@ -865,6 +865,21 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         t_html = track_resp.get_data(as_text=True)
         self.assertIn(code, t_html)
         self.assertIn("Universal Header Auth Sync", t_html)
+
+        # 3. Customer homepage header keeps logout inside Profile modal (no standalone header door button)
+        home_resp = self.client.get("/")
+        self.assertEqual(home_resp.status_code, 200)
+        home_html = home_resp.get_data(as_text=True)
+        self.assertNotIn('id="header-cust-logout-btn"', home_html)
+        self.assertIn('id="customer-profile-btn"', home_html)
+        self.assertIn('class="header-profile-pill-btn"', home_html)
+        self.assertIn('id="c-profile-logout-btn"', home_html)
+
+        with self.client.get("/static/css/style.css") as css_resp:
+            self.assertEqual(css_resp.status_code, 200)
+            css_text = css_resp.get_data(as_text=True)
+        self.assertIn(".header-profile-pill-btn", css_text)
+        self.assertIn("height: auto;", css_text)
 
     def test_customer_and_rider_registration_and_login_flow(self):
         # 0. Missing or invalid email should fail with 400

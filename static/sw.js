@@ -1,4 +1,4 @@
-const CACHE_NAME = "ccrc-pwa-v21";
+const CACHE_NAME = "ccrc-pwa-v22";
 
 const PRECACHE_ASSETS = [
   "/",

@@ -81,11 +81,11 @@
   <!-- Header Navigation: Strictly Role-Specific -->
   <header class="site-header">
     <div class="container header-inner">
-      <div class="brand-link" style="display:flex;align-items:center;gap:10px;">
+      <div class="brand-link">
         <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;cursor:pointer;" title="{{ club.name }}">
-          <img src="/static/icons/logo.png?v=3" alt="{{ club.name }}" class="brand-logo-img" style="width:42px;height:42px;object-fit:contain;border-radius:50%;display:block;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+          <img src="/static/icons/logo.png?v=3" alt="{{ club.name }}" class="brand-logo-img">
         </div>
-        <a href="{% if session.get('rider_id') or active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" style="text-decoration:none;color:inherit;" aria-label="{{ club.name }} Home">
+        <a href="{% if session.get('rider_id') or active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" aria-label="{{ club.name }} Home">
           <span class="brand-name">{{ club.name }}</span>
           <span class="brand-sub">
             {% if active_nav == 'rider' %}
@@ -118,13 +118,13 @@
         {% endif %}
       </nav>
 
-      <div class="header-actions" style="display:flex;align-items:center;gap:8px;">
+      <div class="header-actions">
         {% if active_nav == 'admin' %}
           <!-- Admin mode: No customer sign-in button -->
         {% elif active_nav == 'rider' or session.get('rider_id') %}
           <!-- Rider mode: Strictly show Rider Badge & Logout, never customer sign-in -->
-          <div id="rider-header-badge" style="display:inline-flex;align-items:center;gap:6px;">
-            <span class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:20px;">
+          <div id="rider-header-badge" class="header-rider-badge">
+            <span class="badge header-rider-pill">
               🛵 Rider Hub
             </span>
             <button type="button" id="header-rider-logout-btn2" onclick="if(window.ccrcRiderLogout){window.ccrcRiderLogout();return false;}if(confirm('Are you sure you want to log out of your Rider Account?')){try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){}fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});}return false;" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
@@ -137,21 +137,19 @@
           {% set cust_display_name = (session.get('customer_name') or 'Account').split(' ')[0] %}
 
           <!-- When NOT logged in: Show Sign In button (hidden if server knows customer is logged in) -->
-          <button type="button" id="customer-signin-btn" class="btn btn-outline btn-sm {% if cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:none;{% else %}display:inline-flex;{% endif %}font-size:0.82rem;padding:6px 14px;border-radius:20px;align-items:center;gap:6px;border-color:#0284c7;color:#0284c7;background:#ffffff;font-weight:700;cursor:pointer;">
+          <button type="button" id="customer-signin-btn" class="btn btn-outline btn-sm header-signin-btn {% if cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:none;{% else %}display:inline-flex;{% endif %}">
             <span>👤</span> <span>Sign In</span>
           </button>
 
-          <!-- When LOGGED IN: Sign In button disappears! Show Verified Account pill and Logout -->
-          <div id="customer-logged-pill" class="{% if not cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:inline-flex;{% else %}display:none;{% endif %}align-items:center;gap:6px;">
-            <button type="button" id="customer-profile-btn" class="btn btn-outline btn-sm" style="font-size:0.8rem;padding:3px 12px 3px 6px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border-color:#86efac;color:#15803d;font-weight:700;cursor:pointer;" title="View Verified Account Profile">
-              <span id="header-cust-avatar-wrap" style="width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#dcfce7;border:1.5px solid #86efac;flex-shrink:0;">
-                <span id="header-cust-placeholder" style="font-size:12px;">🛡️</span>
-                <img id="header-cust-avatar-img" src="{{ session.get('customer_avatar', '') }}" alt="" class="{% if not session.get('customer_avatar') %}hidden{% endif %}" style="width:100%;height:100%;object-fit:cover;">
+          <!-- When LOGGED IN: Show single compact Verified Profile pill (Logout is inside Profile modal) -->
+          <div id="customer-logged-pill" class="header-logged-pill {% if not cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:inline-flex;{% else %}display:none;{% endif %}">
+            <button type="button" id="customer-profile-btn" class="header-profile-pill-btn" title="Open Profile &amp; Log Out" aria-label="Open Verified Profile and Log Out">
+              <span id="header-cust-avatar-wrap" class="header-cust-avatar-wrap">
+                <span id="header-cust-placeholder" class="header-cust-placeholder">🛡️</span>
+                <img id="header-cust-avatar-img" src="{{ session.get('customer_avatar', '') }}" alt="" class="header-cust-avatar-img {% if not session.get('customer_avatar') %}hidden{% endif %}">
               </span>
-              <span id="customer-pill-name">{{ cust_display_name }} ✓</span>
-            </button>
-            <button type="button" id="header-cust-logout-btn" class="btn btn-sm btn-outline" title="Log Out of Account" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
-              🚪
+              <span id="customer-pill-name" class="header-pill-name">{{ cust_display_name }} ✓</span>
+              <span class="header-pill-caret" aria-hidden="true">▾</span>
             </button>
           </div>
         {% endif %}
