@@ -2465,7 +2465,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
-        auth_role = _authorize_chat_role(booking)
+        auth_role = _authorize_chat_role(booking, preferred_role="customer")
         if not auth_role:
             return jsonify({"error": "Unauthorized to report GCash payment for this booking."}), 401
         if auth_role == "rider":

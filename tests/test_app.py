@@ -3685,6 +3685,38 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(r_msg["sender_role"], "rider")
         self.assertEqual(r_msg["sender_name"], "Kuya Jun Rider")
 
+        # Verify customer can mark GCash payment as sent even when assigned rider is also logged into the same browser
+        gcash_b_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Customer Chat Test",
+                "customer_phone": "09175559900",
+                "pickup_address": "Mambajao Town Plaza",
+                "dropoff_address": "White Island Ferry Terminal",
+                "service_type": "pahatud",
+                "payment_method": "gcash",
+            },
+        )
+        self.assertEqual(gcash_b_resp.status_code, 201)
+        gb_obj = gcash_b_resp.get_json()["booking"]
+        gb_code = gb_obj["booking_code"]
+        gb_id = gb_obj["id"]
+
+        # Complete first trip so r1_id can accept the GCash booking
+        self.client.post(f"/api/bookings/{b_id}/status", json={"status": "in_progress"})
+        self.client.post(f"/api/bookings/{b_id}/status", json={"status": "completed"})
+
+        acc_gb = self.client.post(f"/api/bookings/{gb_id}/accept")
+        self.assertEqual(acc_gb.status_code, 200)
+
+        sent_resp = self.client.post(
+            f"/api/bookings/{gb_code}/gcash/customer-sent",
+            json={"payment_ref": "9024 118 4521"},
+        )
+        self.assertEqual(sent_resp.status_code, 200)
+        self.assertTrue(sent_resp.get_json()["success"])
+        self.assertEqual(sent_resp.get_json()["booking"]["payment_status"], "customer_marked_paid")
+
 
 if __name__ == "__main__":
     unittest.main()
