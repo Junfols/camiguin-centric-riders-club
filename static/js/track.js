@@ -4,25 +4,54 @@
   const booking = window.INITIAL_BOOKING;
   if (!booking) return;
 
-  // Persist active booking so customer can always find it if they quit the app
-  try {
-    if (booking.status === "completed" || booking.status === "cancelled") {
-      localStorage.removeItem("ccrc_active_booking");
-    } else {
-      localStorage.setItem("ccrc_active_booking", booking.booking_code);
-      if (booking.customer_phone) {
-        localStorage.setItem("ccrc_customer_phone", booking.customer_phone);
-        if (!localStorage.getItem("ccrc_customer_session")) {
-          localStorage.setItem("ccrc_customer_session", JSON.stringify({
-            phone: booking.customer_phone,
-            name: booking.customer_name || "Passenger",
-            is_verified: booking.customer_verified || 1
-          }));
+  const tTrack = (str) => (typeof window.ccrcT === "function" ? window.ccrcT(str) : str);
+  const trackLookupCode = window.TRACK_LOOKUP_CODE || booking.group_code || booking.booking_code;
+  let groupBookings = (Array.isArray(window.INITIAL_GROUP_BOOKINGS) && window.INITIAL_GROUP_BOOKINGS.length)
+    ? window.INITIAL_GROUP_BOOKINGS
+    : [booking];
+  let groupSummary = window.INITIAL_GROUP_SUMMARY || null;
+  let currentChatBookingCode = booking.booking_code;
+
+  function hasAnyActiveSlot(list, focused) {
+    const arr = (Array.isArray(list) && list.length) ? list : [focused];
+    return arr.some((s) => s && !["completed", "cancelled"].includes(String(s.status || "").toLowerCase()));
+  }
+
+  function persistActiveBookingStorage(focused, summary, list) {
+    try {
+      const hasActive = summary
+        ? Number(summary.active_count || 0) > 0
+        : hasAnyActiveSlot(list, focused);
+      if (!hasActive) {
+        localStorage.removeItem("ccrc_active_booking");
+      } else {
+        const storageCode = (summary && summary.group_code)
+          ? summary.group_code
+          : (focused && focused.group_code && Number(focused.group_size || 1) > 1
+            ? focused.group_code
+            : (trackLookupCode || (focused && focused.booking_code) || ""));
+        if (storageCode) {
+          localStorage.setItem("ccrc_active_booking", storageCode);
+        }
+        if (focused && focused.customer_phone) {
+          localStorage.setItem("ccrc_customer_phone", focused.customer_phone);
+          if (!localStorage.getItem("ccrc_customer_session")) {
+            localStorage.setItem("ccrc_customer_session", JSON.stringify({
+              phone: focused.customer_phone,
+              name: focused.customer_name || "Passenger",
+              is_verified: focused.customer_verified || 1
+            }));
+          }
+        }
+        if (focused && focused.customer_name) {
+          localStorage.setItem("ccrc_customer_name", focused.customer_name);
         }
       }
-      if (booking.customer_name) localStorage.setItem("ccrc_customer_name", booking.customer_name);
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
+
+  // Persist active booking so customer can always find it if they quit the app
+  persistActiveBookingStorage(booking, groupSummary, groupBookings);
 
   const mapEl = document.getElementById("tracking-map");
   const statusPill = document.getElementById("track-status-pill");
@@ -83,6 +112,7 @@
   let pickupMarker = null;
   let dropoffMarker = null;
   let riderMarker = null;
+  const groupSlotMarkers = new Map();
   let routeLine = null;
   let streetLayer = null;
   let satGroup = null;
@@ -253,13 +283,11 @@
       refreshTrackingRoute(booking.pickup_lat, booking.pickup_lng, booking.dropoff_lat, booking.dropoff_lng);
     }
 
-    // Rider Icon (if rider coordinates exist)
-    if (booking.rider_lat && booking.rider_lng) {
-      updateRiderMarker(booking.rider_lat, booking.rider_lng, booking.rider_name);
-    }
+    // Rider Icon & Sibling Group Pins
+    syncFocusedMapMarkers(booking, groupBookings);
   }
 
-  function updateRiderMarker(lat, lng, riderName, speed = 0, serverHeading = 0) {
+  function updateRiderMarker(lat, lng, riderName, speed = 0, serverHeading = 0, slotNum = null) {
     if (!map) return;
 
     if (serverHeading && serverHeading > 0) {
@@ -290,13 +318,100 @@
       iconAnchor: [24, 24],
     });
 
+    const popupLabel = slotNum
+      ? `<strong>Rider #${Number(slotNum)}: ${escapeHtml(riderName || "Club Rider")}</strong><br>On the way to location`
+      : `<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>On the way to location`;
+
     if (!riderMarker) {
       riderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
         .addTo(map)
-        .bindPopup(`<strong>${escapeHtml(riderName || "Club Rider")}</strong><br>On the way to location`);
+        .bindPopup(popupLabel);
     } else {
       riderMarker.setIcon(bikeIcon);
       riderMarker.setLatLng([lat, lng]);
+      riderMarker.setPopupContent(popupLabel);
+    }
+  }
+
+  function syncFocusedMapMarkers(b, allSlots) {
+    if (!map || !b) return;
+
+    // Update pickup / dropoff markers & road route if changed (e.g. emergency handover or slot switch)
+    if (b.pickup_lat && b.pickup_lng) {
+      const newPLat = Number(b.pickup_lat);
+      const newPLng = Number(b.pickup_lng);
+      const changedPickup = !lastPickupCoords
+        || Math.abs(newPLat - lastPickupCoords.lat) > 0.00005
+        || Math.abs(newPLng - lastPickupCoords.lng) > 0.00005;
+      if (changedPickup) {
+        lastPickupCoords = { lat: newPLat, lng: newPLng };
+        if (pickupMarker) {
+          pickupMarker.setLatLng([newPLat, newPLng]);
+          pickupMarker.setPopupContent(`<strong>Pickup:</strong><br>${escapeHtml(b.pickup_address || "")}`);
+        }
+        if (dropoffMarker && b.dropoff_lat && b.dropoff_lng) {
+          dropoffMarker.setLatLng([Number(b.dropoff_lat), Number(b.dropoff_lng)]);
+          dropoffMarker.setPopupContent(`<strong>Dropoff:</strong><br>${escapeHtml(b.dropoff_address || "")}`);
+        }
+        if (b.dropoff_lat && b.dropoff_lng) {
+          refreshTrackingRoute(newPLat, newPLng, Number(b.dropoff_lat), Number(b.dropoff_lng));
+        }
+      }
+    }
+
+    // Focused slot rider marker
+    const totalGroupSlots = Array.isArray(allSlots) ? allSlots.length : 1;
+    const focusedSlotNum = totalGroupSlots > 1 ? Number(b.rider_slot || 1) : null;
+    if (b.rider_id && b.rider_lat && b.rider_lng && b.status !== "cancelled") {
+      updateRiderMarker(b.rider_lat, b.rider_lng, b.rider_name, b.rider_speed || 0, b.rider_heading || 0, focusedSlotNum);
+    } else {
+      if (riderMarker) {
+        map.removeLayer(riderMarker);
+        riderMarker = null;
+        lastRiderPosition = null;
+      }
+    }
+
+    // Sibling group rider pins on the same map
+    const seenCodes = new Set();
+    if (Array.isArray(allSlots) && allSlots.length > 1) {
+      allSlots.forEach((s, idx) => {
+        if (!s || s.booking_code === b.booking_code) return;
+        if (!s.rider_id || !s.rider_lat || !s.rider_lng || s.status === "cancelled") return;
+        const lat = Number(s.rider_lat);
+        const lng = Number(s.rider_lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        seenCodes.add(s.booking_code);
+        const sNum = Number(s.rider_slot || idx + 1);
+        const pinIcon = L.divIcon({
+          className: "ccrc-group-slot-marker",
+          html: `<div class="group-map-slot-pin status-${escapeHtml(s.status || "accepted")}" title="Rider ${sNum}: ${escapeHtml(s.rider_name || "Club Rider")}">#${sNum}</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+        const popHtml = `<strong>Rider #${sNum}: ${escapeHtml(s.rider_name || "Club Rider")}</strong><br><small>${escapeHtml(formatSlotStateLabel(s.status))}</small>`;
+
+        if (groupSlotMarkers.has(s.booking_code)) {
+          const m = groupSlotMarkers.get(s.booking_code);
+          m.setLatLng([lat, lng]);
+          m.setIcon(pinIcon);
+          m.setPopupContent(popHtml);
+        } else {
+          const m = L.marker([lat, lng], { icon: pinIcon, zIndexOffset: 750 })
+            .addTo(map)
+            .bindPopup(popHtml);
+          m.on("click", () => selectGroupSlot(s.booking_code));
+          groupSlotMarkers.set(s.booking_code, m);
+        }
+      });
+    }
+
+    for (const [code, marker] of groupSlotMarkers.entries()) {
+      if (!seenCodes.has(code)) {
+        map.removeLayer(marker);
+        groupSlotMarkers.delete(code);
+      }
     }
   }
 
@@ -310,163 +425,481 @@
       .replace(/'/g, "&#039;");
   }
 
+  function formatSlotStateLabel(st) {
+    const status = String(st || "").toLowerCase();
+    if (status === "broadcast") return "⏳ Open";
+    if (status === "accepted") return "🛵 Assigned";
+    if (status === "in_progress") return "🚀 Transit";
+    if (status === "completed") return "✅ Done";
+    return "✕ Cancelled";
+  }
+
+  function syncSlotHeaderAndDetails(b) {
+    if (!b) return;
+    const isGroup = groupBookings.length > 1 || Boolean(groupSummary && groupSummary.total_riders > 1);
+    const totalRiders = (groupSummary && groupSummary.total_riders) ? Number(groupSummary.total_riders) : groupBookings.length;
+    const grpCode = (groupSummary && groupSummary.group_code) || b.group_code || trackLookupCode;
+
+    const activeSlotPill = document.getElementById("track-active-slot-pill");
+    if (activeSlotPill) {
+      if (isGroup) {
+        activeSlotPill.textContent = `Rider ${Number(b.rider_slot || 1)} of ${totalRiders} • ${grpCode}`;
+        activeSlotPill.classList.remove("hidden");
+      } else {
+        activeSlotPill.classList.add("hidden");
+      }
+    }
+
+    const codePill = document.getElementById("track-booking-code-pill");
+    if (codePill) codePill.textContent = b.booking_code || "";
+
+    const headerTitle = document.getElementById("track-header-title");
+    if (headerTitle) {
+      const svc = String(b.service_type || "pahatud");
+      const capSvc = svc.charAt(0).toUpperCase() + svc.slice(1);
+      headerTitle.textContent = `${capSvc} — ${b.dropoff_address || ""}`;
+    }
+
+    const headerMeta = document.getElementById("track-header-meta");
+    if (headerMeta) {
+      const fareStr = Math.round(Number(b.fare_amount || 0)).toLocaleString();
+      let html = `Fare: <strong>₱${fareStr}</strong> &bull; Distance: <strong>${escapeHtml(String(b.estimated_km || 0))} km</strong>`;
+      if (Number(b.estimated_budget || 0) > 0) {
+        html += ` &bull; Shopping Budget: <strong>₱${Math.round(Number(b.estimated_budget)).toLocaleString()}</strong>`;
+      }
+      if (b.payment_method) {
+        html += ` &bull; Payment: <strong style="text-transform:uppercase;">${escapeHtml(String(b.payment_method))}</strong>`;
+      }
+      headerMeta.innerHTML = html;
+    }
+
+    const cancelOpenBtn = document.getElementById("track-cancel-open-slot-btn");
+    if (cancelOpenBtn) {
+      cancelOpenBtn.classList.toggle("hidden", b.status !== "broadcast");
+    }
+
+    const backWrap = document.getElementById("track-completed-back-wrap");
+    if (backWrap) {
+      backWrap.classList.toggle("hidden", !["completed", "cancelled"].includes(b.status));
+    }
+
+    const deliveredCard = document.getElementById("delivered-actions-card");
+    if (deliveredCard) {
+      deliveredCard.classList.toggle("hidden", b.status !== "completed");
+    }
+
+    const reviewCard = document.getElementById("review-submission-card");
+    if (reviewCard) {
+      reviewCard.classList.toggle("hidden", b.status !== "completed");
+    }
+
+    const reviewSlotTitle = document.getElementById("review-slot-title");
+    if (reviewSlotTitle) {
+      reviewSlotTitle.textContent = isGroup
+        ? `Rate Rider ${Number(b.rider_slot || 1)}${b.rider_name ? ` (${b.rider_name})` : ""}`
+        : tTrack("Rate Your Island Rider");
+    }
+
+    const reviewBookingInput = document.getElementById("review-booking-id");
+    if (reviewBookingInput) reviewBookingInput.value = b.id ? String(b.id) : "";
+    const reviewRiderInput = document.getElementById("review-rider-id");
+    if (reviewRiderInput) reviewRiderInput.value = b.rider_id ? String(b.rider_id) : "";
+
+    const reviewDoneBox = document.getElementById("review-already-done-box");
+    const reviewFormEl = document.getElementById("track-review-form");
+    const reviewSubmitBtn = document.getElementById("submit-review-btn");
+    const reviewFeedbackEl = document.getElementById("review-feedback-msg");
+    const isReviewed = Boolean(b.already_reviewed);
+    if (reviewDoneBox) {
+      if (isReviewed) {
+        if (!reviewDoneBox.querySelector("#review-already-done-msg")) {
+          reviewDoneBox.innerHTML = `<p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">${tTrack("Your rating and feedback have been recorded.")}</p><div id="review-already-done-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">${tTrack("✓ Thank you very much! Your review has already been submitted.")}<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; ${tTrack("Back to Dashboard")}</a></div></div>`;
+        }
+        reviewDoneBox.classList.remove("hidden");
+      } else {
+        if (reviewDoneBox.innerHTML) reviewDoneBox.innerHTML = "";
+        reviewDoneBox.classList.add("hidden");
+      }
+    }
+    if (reviewFormEl) reviewFormEl.classList.toggle("hidden", isReviewed);
+    if (!isReviewed) {
+      if (reviewSubmitBtn) {
+        reviewSubmitBtn.disabled = false;
+        reviewSubmitBtn.style.display = "";
+      }
+      if (reviewFeedbackEl) reviewFeedbackEl.classList.add("hidden");
+    }
+
+    // Sync Digital Receipt Modal for focused slot
+    const rCode = document.getElementById("receipt-booking-code");
+    const rPass = document.getElementById("receipt-passenger-name");
+    const rSvc = document.getElementById("receipt-service-type");
+    const rDist = document.getElementById("receipt-distance-km");
+    const rPay = document.getElementById("receipt-payment-method");
+    const rPromoRow = document.getElementById("receipt-promo-row");
+    const rPromoLabel = document.getElementById("receipt-promo-label");
+    const rPromoVal = document.getElementById("receipt-promo-val");
+    const rFareLabel = document.getElementById("receipt-fare-label");
+    const rFareAmt = document.getElementById("receipt-fare-amount");
+
+    if (rCode) rCode.textContent = b.booking_code || "";
+    if (rPass) rPass.textContent = b.customer_name || "";
+    if (rSvc) rSvc.textContent = b.service_type || "";
+    if (rDist) rDist.textContent = `${b.estimated_km || 0} km`;
+    if (rPay) rPay.textContent = String(b.payment_method || "CASH").toUpperCase();
+    if (rPromoRow) rPromoRow.classList.toggle("hidden", !b.promo_code);
+    if (rPromoLabel) rPromoLabel.textContent = `Voucher (${b.promo_code || ""}):`;
+    if (rPromoVal) rPromoVal.textContent = `-₱${Math.round(Number(b.discount_amount || 0)).toLocaleString()}`;
+    if (rFareLabel) rFareLabel.textContent = isGroup ? tTrack("Slot Fare:") : tTrack("Total Fare:");
+    if (rFareAmt) rFareAmt.textContent = `₱${Math.round(Number(b.fare_amount || 0)).toLocaleString()}`;
+
+    // Sync Trip Details Card
+    const dSvc = document.getElementById("trip-detail-service");
+    const dPick = document.getElementById("trip-detail-pickup");
+    const dDrop = document.getElementById("trip-detail-dropoff");
+    const dNotesWrap = document.getElementById("trip-detail-notes-wrap");
+    const dNotes = document.getElementById("trip-detail-notes");
+    const dCust = document.getElementById("trip-detail-customer");
+    if (dSvc) dSvc.textContent = b.service_type || "";
+    if (dPick) dPick.textContent = b.pickup_address || "";
+    if (dDrop) dDrop.textContent = b.dropoff_address || "";
+    if (dNotesWrap) dNotesWrap.classList.toggle("hidden", !b.item_notes);
+    if (dNotes) dNotes.textContent = b.item_notes ? `“${b.item_notes}”` : "";
+    if (dCust) dCust.textContent = `${b.customer_name || ""} (${b.customer_phone || ""})`;
+  }
+
+  function renderGroupUI(focused, allSlots, summary) {
+    const card = document.getElementById("group-summary-card");
+    if (!card) return;
+
+    const list = Array.isArray(allSlots) ? allSlots : [];
+    if (list.length <= 1) {
+      card.classList.add("hidden");
+      return;
+    }
+
+    card.classList.remove("hidden");
+    const grpCode = (summary && summary.group_code) || (focused && focused.group_code) || trackLookupCode;
+    const totalRiders = (summary && summary.total_riders) ? Number(summary.total_riders) : list.length;
+    const assignedCount = (summary && summary.assigned_count !== undefined)
+      ? Number(summary.assigned_count)
+      : list.filter((s) => s && s.rider_id && s.status !== "cancelled").length;
+    const totalFare = (summary && summary.total_fare !== undefined)
+      ? (Number(summary.cancelled_count || 0) > 0 && summary.active_total_fare !== undefined
+        ? Number(summary.active_total_fare)
+        : Number(summary.total_fare))
+      : list.filter((s) => s && s.status !== "cancelled").reduce((sum, s) => sum + Number(s.fare_amount || 0), 0);
+
+    const codeLabel = document.getElementById("group-code-label");
+    const progressPill = document.getElementById("group-progress-pill");
+    const totalFareEl = document.getElementById("group-total-fare");
+    const tabsWrap = document.getElementById("group-slot-tabs");
+    const overviewWrap = document.getElementById("group-slots-overview");
+
+    if (codeLabel) codeLabel.textContent = grpCode;
+    if (progressPill) progressPill.textContent = `${assignedCount} / ${totalRiders} Riders Assigned`;
+    if (totalFareEl) totalFareEl.textContent = `₱${Math.round(totalFare).toLocaleString()}`;
+
+    const focusedCode = focused ? focused.booking_code : "";
+
+    if (tabsWrap) {
+      tabsWrap.innerHTML = list.map((s, idx) => {
+        const slotNum = Number(s.rider_slot || idx + 1);
+        const st = String(s.status || "broadcast").toLowerCase();
+        const isActive = s.booking_code === focusedCode;
+        return `
+          <button type="button" class="group-slot-tab ${isActive ? "active" : ""} slot-status-${escapeHtml(st)}" data-slot-code="${escapeHtml(s.booking_code)}">
+            <span class="slot-tab-num">Rider ${slotNum}</span>
+            <span class="slot-tab-state">${escapeHtml(tTrack(formatSlotStateLabel(st)))}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    if (overviewWrap) {
+      overviewWrap.innerHTML = list.map((s, idx) => {
+        const slotNum = Number(s.rider_slot || idx + 1);
+        const st = String(s.status || "broadcast").toLowerCase();
+        const isActive = s.booking_code === focusedCode;
+        const stPretty = st.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        const riderLabel = s.rider_name ? s.rider_name : tTrack("Waiting for rider");
+        const payStatPretty = String(s.payment_status || "pending").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        const gcashExtra = String(s.payment_method || "").toLowerCase() === "gcash"
+          ? ` &bull; 💙 ${escapeHtml(payStatPretty)}`
+          : "";
+
+        return `
+          <div class="group-slot-row ${isActive ? "is-focused" : ""}" data-slot-code="${escapeHtml(s.booking_code)}">
+            <div class="group-slot-row-main">
+              <div class="group-slot-row-title">
+                <strong>Rider ${slotNum}</strong>
+                <span class="slot-code-mono">${escapeHtml(s.booking_code)}</span>
+                <span class="badge slot-status-badge status-${escapeHtml(st)}">${escapeHtml(stPretty)}</span>
+              </div>
+              <div class="group-slot-row-sub">
+                ${escapeHtml(riderLabel)} &bull; ₱${Math.round(Number(s.fare_amount || 0)).toLocaleString()}${gcashExtra}
+              </div>
+            </div>
+            <div class="group-slot-row-actions">
+              <button type="button" class="btn btn-sm btn-outline group-focus-slot-btn" data-slot-code="${escapeHtml(s.booking_code)}">Focus</button>
+              ${st === "broadcast" ? `<button type="button" class="btn btn-sm btn-cancel-open-slot group-cancel-slot-btn" data-booking-id="${s.id}" data-slot-code="${escapeHtml(s.booking_code)}">✕ Cancel Open Slot</button>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  function applyFocusedBooking(b, metaData = null) {
+    if (!b) return;
+
+    const switchedSlot = currentChatBookingCode !== b.booking_code;
+    if (switchedSlot) {
+      currentChatBookingCode = b.booking_code;
+      lastMessageId = 0;
+      if (chatMessagesBox) {
+        chatMessagesBox.innerHTML = "";
+        if (chatEmptyHint) {
+          chatEmptyHint.style.display = "block";
+          chatMessagesBox.appendChild(chatEmptyHint);
+        }
+      }
+      if (chatVoiceBar) chatVoiceBar.classList.add("hidden");
+      lastGcashPaymentStatus = String(b.payment_status || "pending").toLowerCase();
+      if (gcashCustomerFeedback) gcashCustomerFeedback.classList.add("hidden");
+      if (gcashRefInput) {
+        delete gcashRefInput.dataset.dirty;
+        gcashRefInput.value = b.payment_ref ? String(b.payment_ref) : "";
+      }
+    }
+
+    // Sync progress stepper steps
+    const stepBroadcast = document.getElementById("step-broadcast");
+    const stepAccepted = document.getElementById("step-accepted");
+    const stepTransit = document.getElementById("step-transit");
+    const stepCompleted = document.getElementById("step-completed");
+    if (stepBroadcast) stepBroadcast.classList.toggle("active", ["broadcast", "accepted", "in_progress", "completed"].includes(b.status));
+    if (stepAccepted) stepAccepted.classList.toggle("active", ["accepted", "in_progress", "completed"].includes(b.status));
+    if (stepTransit) stepTransit.classList.toggle("active", ["in_progress", "completed"].includes(b.status));
+    if (stepCompleted) stepCompleted.classList.toggle("active", b.status === "completed");
+
+    // Sync chat status subtitle dynamically
+    const chatStatusText = document.getElementById("chat-rider-status-text");
+    if (chatStatusText) {
+      chatStatusText.textContent = b.rider_name
+        ? `Direct in-app messaging with ${b.rider_name}`
+        : "Waiting for an available CCRC rider to accept...";
+    }
+
+    // Sync emergency handover / transfer banner
+    const transferBanner = document.getElementById("track-transfer-banner");
+    const transferBannerText = document.getElementById("track-transfer-banner-text");
+    if (transferBanner && transferBannerText) {
+      const tCount = Number(b.transfer_count || 0);
+      if (tCount > 0) {
+        const fromName = b.transferred_from_rider_name || "Previous rider";
+        const reasonPart = b.transfer_reason ? ` (${b.transfer_reason})` : "";
+        if (b.status === "broadcast" && !b.rider_id) {
+          transferBannerText.textContent = `${fromName} requested an emergency rider transfer${reasonPart}. Finding the nearest available club rider now...`;
+        } else if (b.rider_name) {
+          transferBannerText.textContent = `Transferred from ${fromName} to rescue rider ${b.rider_name}${reasonPart}.`;
+        } else {
+          transferBannerText.textContent = `Transferred to a rescue rider${reasonPart}.`;
+        }
+        transferBanner.classList.remove("hidden");
+      } else {
+        transferBanner.classList.add("hidden");
+      }
+    }
+
+    // Update status pill
+    if (statusPill) {
+      statusPill.className = `status-pill status-${b.status}`;
+      if (b.status === "broadcast") {
+        statusPill.textContent = Number(b.transfer_count || 0) > 0
+          ? "🚨 Finding nearest rescue rider to take over your trip..."
+          : "⏳ Waiting for an available rider to accept...";
+      } else if (b.status === "accepted") {
+        statusPill.textContent = "🛵 Accepted! Rider is heading to pickup point...";
+      } else if (b.status === "in_progress") {
+        statusPill.textContent = "🚀 In Transit / Heading to destination...";
+      } else if (b.status === "completed") {
+        statusPill.textContent = "✓ Delivered! Thank you for using CCRC.";
+      } else if (b.status === "cancelled") {
+        statusPill.textContent = "✕ Booking has been cancelled.";
+      }
+    }
+
+    // Update Rider Card
+    const riderRatingWrap = document.getElementById("rider-rating-wrap");
+    if (b.rider_id && assignedRiderCard) {
+      assignedRiderCard.classList.remove("hidden");
+      if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
+      if (riderAvatar) {
+        if (b.rider_avatar) {
+          riderAvatar.innerHTML = `<img src="${escapeHtml(b.rider_avatar)}" alt="${escapeHtml(b.rider_name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        } else {
+          riderAvatar.textContent = (b.rider_name || "R")[0].toUpperCase();
+        }
+      }
+      if (riderBikeText) {
+        riderBikeText.innerHTML = `${escapeHtml(b.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(b.rider_plate || "")}</strong>`;
+      }
+      if (riderRatingWrap) {
+        riderRatingWrap.innerHTML = `★ <strong>${escapeHtml(String(b.rider_rating || 5.0))}</strong> (Verified CCRC Member)`;
+      }
+      if (riderCallBtn && b.rider_phone) riderCallBtn.href = `tel:${b.rider_phone}`;
+      if (riderSmsBtn && b.rider_phone) riderSmsBtn.href = `sms:${b.rider_phone}`;
+    } else if (!b.rider_id && assignedRiderCard) {
+      assignedRiderCard.classList.add("hidden");
+    }
+
+    syncFocusedMapMarkers(b, groupBookings);
+
+    // Update distance indicator
+    const distPickup = metaData && metaData.distance_to_pickup_km !== undefined
+      ? metaData.distance_to_pickup_km
+      : (b.distance_to_pickup_km !== undefined ? b.distance_to_pickup_km : null);
+    const distDropoff = metaData && metaData.distance_to_dropoff_km !== undefined
+      ? metaData.distance_to_dropoff_km
+      : (b.distance_to_dropoff_km !== undefined ? b.distance_to_dropoff_km : null);
+
+    if (liveDistanceIndicator) {
+      if (b.status === "broadcast") {
+        liveDistanceIndicator.innerHTML = Number(b.transfer_count || 0) > 0
+          ? `🚨 <strong>Finding nearest replacement rider...</strong>`
+          : `📡 <strong>Waiting for rider acceptance...</strong>`;
+      } else if (b.status === "accepted" && distPickup !== null && distPickup !== undefined) {
+        liveDistanceIndicator.innerHTML = `📍 Rider distance from Pickup: <strong>~${distPickup} km</strong>`;
+      } else if (b.status === "in_progress" && distDropoff !== null && distDropoff !== undefined) {
+        liveDistanceIndicator.innerHTML = `📍 Rider distance from Destination: <strong>~${distDropoff} km</strong>`;
+      } else if (b.status === "completed") {
+        liveDistanceIndicator.innerHTML = `✓ <strong>Successfully Delivered</strong>`;
+      } else if (b.status === "cancelled") {
+        liveDistanceIndicator.innerHTML = `✕ <strong>Trip Cancelled</strong>`;
+      }
+    }
+
+    Object.assign(booking, b);
+    syncSlotHeaderAndDetails(booking);
+    renderGroupUI(booking, groupBookings, groupSummary);
+    syncGcashPaymentUI(booking);
+    syncCustomerVoiceCallContext(booking);
+
+    if (switchedSlot) {
+      pollChatMessages();
+    }
+  }
+
+  function selectGroupSlot(slotCode, skipPoll = false) {
+    if (!slotCode) return;
+    const found = groupBookings.find((s) => s && s.booking_code === slotCode);
+    if (!found) return;
+
+    try {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("slot", slotCode);
+      window.history.replaceState({}, "", nextUrl.toString());
+    } catch (_) {}
+
+    applyFocusedBooking(found, null);
+    if (map && found.rider_id && found.rider_lat && found.rider_lng) {
+      map.panTo([Number(found.rider_lat), Number(found.rider_lng)]);
+    }
+    if (!skipPoll) {
+      pollLiveStatus();
+    }
+  }
+
+  async function cancelOpenSlot(bookingId, slotCode) {
+    if (!bookingId) return;
+    if (!confirm(tTrack("Cancel this open unassigned rider slot? Only open slots waiting for a rider can be cancelled."))) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || tTrack("Could not cancel open slot."));
+        return;
+      }
+      if (data.job) {
+        const idx = groupBookings.findIndex((s) => s && Number(s.id) === Number(data.job.id));
+        if (idx !== -1) {
+          groupBookings[idx] = Object.assign({}, groupBookings[idx], data.job);
+        }
+        if (Number(booking.id) === Number(data.job.id)) {
+          Object.assign(booking, data.job);
+        }
+      }
+      await pollLiveStatus();
+    } catch (_) {
+      alert(tTrack("Network error cancelling open slot."));
+    }
+  }
+
+  const groupTabsWrap = document.getElementById("group-slot-tabs");
+  if (groupTabsWrap) {
+    groupTabsWrap.addEventListener("click", (e) => {
+      const btn = e.target.closest(".group-slot-tab");
+      if (!btn) return;
+      const code = btn.getAttribute("data-slot-code");
+      if (code) selectGroupSlot(code);
+    });
+  }
+
+  const groupOverviewWrap = document.getElementById("group-slots-overview");
+  if (groupOverviewWrap) {
+    groupOverviewWrap.addEventListener("click", (e) => {
+      const focusBtn = e.target.closest(".group-focus-slot-btn");
+      if (focusBtn) {
+        const code = focusBtn.getAttribute("data-slot-code");
+        if (code) selectGroupSlot(code);
+        return;
+      }
+      const cancelBtn = e.target.closest(".group-cancel-slot-btn");
+      if (cancelBtn) {
+        const bId = cancelBtn.getAttribute("data-booking-id");
+        const code = cancelBtn.getAttribute("data-slot-code");
+        cancelOpenSlot(bId, code);
+      }
+    });
+  }
+
+  const trackCancelOpenSlotBtn = document.getElementById("track-cancel-open-slot-btn");
+  if (trackCancelOpenSlotBtn) {
+    trackCancelOpenSlotBtn.addEventListener("click", () => {
+      cancelOpenSlot(booking.id, booking.booking_code);
+    });
+  }
+
   async function pollLiveStatus() {
     try {
-      const res = await fetch(`/api/bookings/track/${encodeURIComponent(booking.booking_code)}`);
+      const res = await fetch(
+        `/api/bookings/track/${encodeURIComponent(trackLookupCode)}?slot=${encodeURIComponent(booking.booking_code)}`
+      );
       if (!res.ok) return;
       const data = await res.json();
       const b = data.booking;
       if (!b) return;
 
-      if (b.status === "completed" || b.status === "cancelled") {
-        try { localStorage.removeItem("ccrc_active_booking"); } catch (_) {}
-      } else {
-        try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch (_) {}
+      if (Array.isArray(data.group_bookings) && data.group_bookings.length > 0) {
+        groupBookings = data.group_bookings;
+      }
+      groupSummary = data.group_summary || null;
+
+      if (data.already_reviewed !== undefined) {
+        b.already_reviewed = Boolean(data.already_reviewed);
       }
 
-      // Sync progress stepper steps
-      const stepBroadcast = document.getElementById("step-broadcast");
-      const stepAccepted = document.getElementById("step-accepted");
-      const stepTransit = document.getElementById("step-transit");
-      const stepCompleted = document.getElementById("step-completed");
-      if (stepBroadcast) stepBroadcast.classList.toggle("active", ["broadcast", "accepted", "in_progress", "completed"].includes(b.status));
-      if (stepAccepted) stepAccepted.classList.toggle("active", ["accepted", "in_progress", "completed"].includes(b.status));
-      if (stepTransit) stepTransit.classList.toggle("active", ["in_progress", "completed"].includes(b.status));
-      if (stepCompleted) stepCompleted.classList.toggle("active", b.status === "completed");
+      persistActiveBookingStorage(b, groupSummary, groupBookings);
+      applyFocusedBooking(b, data);
 
-      // Sync hidden review rider ID & chat status subtitle dynamically
-      const reviewRiderInput = document.getElementById("review-rider-id");
-      if (reviewRiderInput) {
-        reviewRiderInput.value = b.rider_id ? String(b.rider_id) : "";
-      }
-      const chatStatusText = document.getElementById("chat-rider-status-text");
-      if (chatStatusText) {
-        chatStatusText.textContent = b.rider_name
-          ? `Direct in-app messaging with ${b.rider_name}`
-          : "Waiting for an available CCRC rider to accept...";
-      }
-
-      // Sync emergency handover / transfer banner
-      const transferBanner = document.getElementById("track-transfer-banner");
-      const transferBannerText = document.getElementById("track-transfer-banner-text");
-      if (transferBanner && transferBannerText) {
-        const tCount = Number(b.transfer_count || 0);
-        if (tCount > 0) {
-          const fromName = b.transferred_from_rider_name || "Previous rider";
-          const reasonPart = b.transfer_reason ? ` (${b.transfer_reason})` : "";
-          if (b.status === "broadcast" && !b.rider_id) {
-            transferBannerText.textContent = `${fromName} requested an emergency rider transfer${reasonPart}. Finding the nearest available club rider now...`;
-          } else if (b.rider_name) {
-            transferBannerText.textContent = `Transferred from ${fromName} to rescue rider ${b.rider_name}${reasonPart}.`;
-          } else {
-            transferBannerText.textContent = `Transferred to a rescue rider${reasonPart}.`;
-          }
-          transferBanner.classList.remove("hidden");
-        } else {
-          transferBanner.classList.add("hidden");
-        }
-      }
-
-      // Update status pill
-      if (statusPill) {
-        statusPill.className = `status-pill status-${b.status}`;
-        if (b.status === "broadcast") {
-          statusPill.textContent = Number(b.transfer_count || 0) > 0
-            ? "🚨 Finding nearest rescue rider to take over your trip..."
-            : "⏳ Waiting for an available rider to accept...";
-        } else if (b.status === "accepted") {
-          statusPill.textContent = "🛵 Accepted! Rider is heading to pickup point...";
-        } else if (b.status === "in_progress") {
-          statusPill.textContent = "🚀 In Transit / Heading to destination...";
-        } else if (b.status === "completed") {
-          statusPill.textContent = "✓ Delivered! Thank you for using CCRC.";
-          const backWrap = document.getElementById("track-completed-back-wrap");
-          if (backWrap) backWrap.classList.remove("hidden");
-          const deliveredCard = document.getElementById("delivered-actions-card");
-          if (deliveredCard) deliveredCard.classList.remove("hidden");
-          const reviewCard = document.getElementById("review-submission-card");
-          if (reviewCard) reviewCard.classList.remove("hidden");
-        } else if (b.status === "cancelled") {
-          statusPill.textContent = "✕ Booking has been cancelled.";
-          const backWrap = document.getElementById("track-completed-back-wrap");
-          if (backWrap) backWrap.classList.remove("hidden");
-        }
-      }
-
-      // Update pickup pin & road route if handover location changed
-      if (b.pickup_lat && b.pickup_lng && map) {
-        const newPLat = Number(b.pickup_lat);
-        const newPLng = Number(b.pickup_lng);
-        const changedPickup = !lastPickupCoords
-          || Math.abs(newPLat - lastPickupCoords.lat) > 0.00005
-          || Math.abs(newPLng - lastPickupCoords.lng) > 0.00005;
-        if (changedPickup) {
-          lastPickupCoords = { lat: newPLat, lng: newPLng };
-          if (pickupMarker) {
-            pickupMarker.setLatLng([newPLat, newPLng]);
-          }
-          if (b.dropoff_lat && b.dropoff_lng) {
-            refreshTrackingRoute(newPLat, newPLng, Number(b.dropoff_lat), Number(b.dropoff_lng));
-          }
-        }
-      }
-
-      // Update Rider Card (or hide & clear marker when re-broadcasted)
-      const riderRatingWrap = document.getElementById("rider-rating-wrap");
-      if (b.rider_id && assignedRiderCard) {
-        assignedRiderCard.classList.remove("hidden");
-        if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
-        if (riderAvatar) {
-          if (b.rider_avatar) {
-            riderAvatar.innerHTML = `<img src="${escapeHtml(b.rider_avatar)}" alt="${escapeHtml(b.rider_name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-          } else {
-            riderAvatar.textContent = (b.rider_name || "R")[0].toUpperCase();
-          }
-        }
-        if (riderBikeText) {
-          riderBikeText.innerHTML = `${escapeHtml(b.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(b.rider_plate || "")}</strong>`;
-        }
-        if (riderRatingWrap) {
-          riderRatingWrap.innerHTML = `★ <strong>${escapeHtml(String(b.rider_rating || 5.0))}</strong> (Verified CCRC Member)`;
-        }
-        if (riderCallBtn && b.rider_phone) riderCallBtn.href = `tel:${b.rider_phone}`;
-        if (riderSmsBtn && b.rider_phone) riderSmsBtn.href = `sms:${b.rider_phone}`;
-      } else if (!b.rider_id) {
-        if (assignedRiderCard) assignedRiderCard.classList.add("hidden");
-        if (riderMarker && map) {
-          map.removeLayer(riderMarker);
-          riderMarker = null;
-          lastRiderPosition = null;
-        }
-      }
-
-      // Update Live GPS coordinates of rider
-      if (b.rider_id && b.rider_lat && b.rider_lng) {
-        updateRiderMarker(b.rider_lat, b.rider_lng, b.rider_name, b.rider_speed || 0, b.rider_heading || 0);
-      }
-
-      // Update distance indicator
-      if (liveDistanceIndicator) {
-        if (b.status === "broadcast") {
-          liveDistanceIndicator.innerHTML = Number(b.transfer_count || 0) > 0
-            ? `🚨 <strong>Finding nearest replacement rider...</strong>`
-            : `📡 <strong>Waiting for rider acceptance...</strong>`;
-        } else if (b.status === "accepted" && data.distance_to_pickup_km !== null) {
-          liveDistanceIndicator.innerHTML = `📍 Rider distance from Pickup: <strong>~${data.distance_to_pickup_km} km</strong>`;
-        } else if (b.status === "in_progress" && data.distance_to_dropoff_km !== null) {
-          liveDistanceIndicator.innerHTML = `📍 Rider distance from Destination: <strong>~${data.distance_to_dropoff_km} km</strong>`;
-        } else if (b.status === "completed") {
-          liveDistanceIndicator.innerHTML = `✓ <strong>Successfully Delivered</strong>`;
-        } else if (b.status === "cancelled") {
-          liveDistanceIndicator.innerHTML = `✕ <strong>Trip Cancelled</strong>`;
-        }
-      }
-
-      Object.assign(booking, b);
-      syncGcashPaymentUI(b);
-      syncCustomerVoiceCallContext(b);
-
-      if (b.status === "completed" || b.status === "cancelled") {
+      if (!hasAnyActiveSlot(groupBookings, b)) {
         if (livePollTimer) {
           clearInterval(livePollTimer);
           livePollTimer = null;
@@ -646,9 +1079,10 @@
   const shareBtn = document.getElementById("share-gps-btn");
   if (shareBtn) {
     shareBtn.addEventListener("click", async () => {
+      const shareCode = (groupSummary && groupSummary.group_code) || booking.group_code || booking.booking_code;
       const shareData = {
         title: "Track my CCRC Ride in Camiguin",
-        text: `Track my live habal-habal express ride on Camiguin Island (${booking.booking_code}):`,
+        text: `Track my live habal-habal express ride on Camiguin Island (${shareCode}):`,
         url: window.location.href,
       };
       if (navigator.share) {
@@ -737,6 +1171,15 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          booking.already_reviewed = true;
+          const reviewedSlot = groupBookings.find((s) => s && Number(s.id) === Number(bookingId));
+          if (reviewedSlot) reviewedSlot.already_reviewed = true;
+          const reviewDoneBox = document.getElementById("review-already-done-box");
+          if (reviewDoneBox) {
+            reviewDoneBox.innerHTML = `<p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">${tTrack("Your rating and feedback have been recorded.")}</p><div id="review-already-done-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">${tTrack("✓ Thank you very much! Your review has already been submitted.")}<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; ${tTrack("Back to Dashboard")}</a></div></div>`;
+            reviewDoneBox.classList.remove("hidden");
+          }
+          reviewForm.classList.add("hidden");
           if (reviewFeedback) {
             reviewFeedback.innerHTML = `✓ Thank you very much! Your review has been submitted.<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Back to Dashboard</a></div>`;
             reviewFeedback.classList.remove("hidden");
@@ -1003,6 +1446,11 @@
         if (gcashRefInput) delete gcashRefInput.dataset.dirty;
         if (data.booking) {
           Object.assign(booking, data.booking);
+          const idx = groupBookings.findIndex((s) => s && s.booking_code === data.booking.booking_code);
+          if (idx !== -1) {
+            groupBookings[idx] = Object.assign({}, groupBookings[idx], data.booking);
+          }
+          renderGroupUI(booking, groupBookings, groupSummary);
           syncGcashPaymentUI(data.booking);
         }
         showGcashCustomerFeedback(
@@ -1027,10 +1475,12 @@
 
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
+    syncSlotHeaderAndDetails(booking);
+    renderGroupUI(booking, groupBookings, groupSummary);
     pollChatMessages();
     syncGcashPaymentUI(booking);
     syncCustomerVoiceCallContext(booking);
-    if (booking.status !== "completed" && booking.status !== "cancelled") {
+    if (hasAnyActiveSlot(groupBookings, booking)) {
       livePollTimer = setInterval(pollLiveStatus, 3000);
       chatPollTimer = setInterval(pollChatMessages, 2500);
     }

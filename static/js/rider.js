@@ -21,6 +21,8 @@
 
   const activeJobBox = document.getElementById("rider-active-job-box");
   const activeJobCode = document.getElementById("active-job-code");
+  const activeJobGroupBadge = document.getElementById("active-job-group-badge");
+  const activeJobGroupBanner = document.getElementById("active-job-group-banner");
   const activeJobTitle = document.getElementById("active-job-title");
   const activeJobFare = document.getElementById("active-job-fare");
   const activeJobPickup = document.getElementById("active-job-pickup");
@@ -1329,6 +1331,11 @@
   function renderActiveJobCard(job) {
     if (!job) {
       if (activeJobBox) activeJobBox.classList.add("hidden");
+      if (activeJobGroupBadge) activeJobGroupBadge.classList.add("hidden");
+      if (activeJobGroupBanner) {
+        activeJobGroupBanner.classList.add("hidden");
+        activeJobGroupBanner.innerHTML = "";
+      }
       if (jobTransferTopBtn) jobTransferTopBtn.classList.add("hidden");
       if (jobTransferBtn) jobTransferBtn.classList.add("hidden");
       syncActiveJobGcashState(null);
@@ -1345,6 +1352,29 @@
 
     if (activeJobBox) activeJobBox.classList.remove("hidden");
     if (activeJobCode) activeJobCode.textContent = job.booking_code;
+
+    const groupSize = Number(job.group_size || 1);
+    const isGroup = groupSize > 1 && Boolean(job.group_code);
+    const slotNum = Number(job.rider_slot || 1);
+    if (activeJobGroupBadge) {
+      if (isGroup) {
+        activeJobGroupBadge.textContent = `👥 Group ${job.group_code} • Rider ${slotNum}/${groupSize}`;
+        activeJobGroupBadge.classList.remove("hidden");
+      } else {
+        activeJobGroupBadge.classList.add("hidden");
+      }
+    }
+    if (activeJobGroupBanner) {
+      if (isGroup) {
+        const joinedCount = Number(job.group_assigned_count || 1);
+        const totalGroupFare = Math.round(Number(job.group_total_fare || Number(job.fare_amount || 0) * groupSize)).toLocaleString();
+        activeJobGroupBanner.innerHTML = `Group Code: <strong>${escapeHtml(job.group_code)}</strong> &bull; Rider <strong>${slotNum} of ${groupSize}</strong> &bull; Joined: <strong>${joinedCount}/${groupSize}</strong> &bull; Your Slot Fare: <strong>₱${Math.round(Number(job.fare_amount || 0)).toLocaleString()}</strong> <small>(Group Total: ₱${totalGroupFare})</small>`;
+        activeJobGroupBanner.classList.remove("hidden");
+      } else {
+        activeJobGroupBanner.classList.add("hidden");
+        activeJobGroupBanner.innerHTML = "";
+      }
+    }
 
     const transferAlert = document.getElementById("active-job-transfer-alert");
     const transferMeta = document.getElementById("active-job-transfer-meta");
@@ -1575,12 +1605,15 @@
         }
       }
 
+      const groupSize = Number(j.group_size || 1);
+      const isGroup = groupSize > 1 && Boolean(j.group_code);
       return `
         <div style="background:white;padding:12px;border:1px solid #cbd5e1;border-radius:10px;display:grid;gap:6px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
               <strong style="font-family:monospace;font-size:0.95rem;">${escapeHtml(j.booking_code)}</strong>
-              <span class="badge badge-accent" style="font-size:0.75rem;margin-left:4px;">${escapeHtml(j.service_type.toUpperCase())}</span>
+              <span class="badge badge-accent" style="font-size:0.75rem;">${escapeHtml(j.service_type.toUpperCase())}</span>
+              ${isGroup ? `<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.72rem;font-weight:700;">👥 ${escapeHtml(j.group_code)} &bull; Rider ${Number(j.rider_slot || 1)}/${groupSize}</span>` : ""}
             </div>
             ${countdownBadge}
           </div>
@@ -1905,7 +1938,12 @@
     const offlineWrapEl = document.getElementById("r-gcash-offline-wrap");
     const paidDoneBoxEl = document.getElementById("r-gcash-paid-done-box");
 
-    if (codeEl) codeEl.textContent = activeJob.booking_code || "CCRC-0000";
+    if (codeEl) {
+      const gSize = Number(activeJob.group_size || 1);
+      codeEl.textContent = gSize > 1
+        ? `${activeJob.booking_code || "CCRC-0000"} (Rider ${Number(activeJob.rider_slot || 1)}/${gSize})`
+        : (activeJob.booking_code || "CCRC-0000");
+    }
     if (custEl) custEl.textContent = activeJob.customer_name || "Passenger";
     if (amtEl) amtEl.textContent = `₱${Math.round(Number(activeJob.fare_amount || 0)).toLocaleString()}`;
 
@@ -2529,6 +2567,12 @@
           const isTransferred = Number(j.transfer_count || 0) > 0;
           const transferFrom = j.transferred_from_rider_name ? ` from ${escapeHtml(j.transferred_from_rider_name)}` : "";
           const transferReason = j.transfer_reason ? `: ${escapeHtml(j.transfer_reason)}` : "";
+          const groupSize = Number(j.group_size || 1);
+          const isGroup = groupSize > 1;
+          const openSlots = Number(j.group_open_count !== undefined ? j.group_open_count : (isGroup ? groupSize : 1));
+          const joinedSlots = Number(j.group_assigned_count || 0);
+          const alreadyInGroup = Boolean(j.rider_already_in_group);
+          const groupTotalFare = Math.round(Number(j.group_total_fare || Number(j.fare_amount || 0) * groupSize)).toLocaleString();
           return `
             <div class="job-card" data-job-id="${j.id}">
               ${isTransferred ? `
@@ -2538,12 +2582,17 @@
                 </div>
               ` : ""}
               <div class="job-card-top">
-                <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
-                <span class="job-fare-tag">₱${Math.round(j.fare_amount)}</span>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
+                  ${isGroup ? `<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:800;">👥 GROUP RIDE • ${groupSize} Riders</span>` : ""}
+                  ${isGroup ? `<span class="badge" style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:0.72rem;font-weight:700;">${openSlots} Open &bull; ${joinedSlots} Joined</span>` : ""}
+                </div>
+                <span class="job-fare-tag">₱${Math.round(j.fare_amount)}${isGroup ? " <small style='font-size:0.72rem;font-weight:600;'>/ rider</small>" : ""}</span>
               </div>
               <div class="job-route-preview">
                 <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
                 <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
+                ${isGroup ? `<div style="font-size:0.78rem;color:#1d4ed8;font-weight:600;margin-top:3px;">👥 Group Code: <strong>${escapeHtml(j.group_code || "")}</strong> &bull; Group Total: ₱${groupTotalFare}</div>` : ""}
                 ${j.scheduled_at ? `<div style="background:#eff6ff;color:#1d4ed8;padding:4px 8px;border-radius:6px;font-size:0.8rem;font-weight:700;margin-top:6px;">📅 Scheduled Pickup: ${new Date(j.scheduled_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>` : ""}
                 ${j.payment_method ? `<div style="font-size:0.78rem;color:#475569;margin-top:2px;">💳 Payment: ${String(j.payment_method).toLowerCase() === "gcash" ? `<span class="badge" style="background:#dbeafe;color:#0047b8;border:1px solid #93c5fd;font-size:0.74rem;font-weight:800;padding:1px 7px;">💙 GCASH</span>` : `<strong style="text-transform:uppercase;">${escapeHtml(j.payment_method)}</strong>`}</div>` : ""}
                 ${j.item_notes ? `<div style="margin-top:4px;color:#64748b;font-size:0.82rem;">🛒 <em>&ldquo;${escapeHtml(j.item_notes)}&rdquo;</em></div>` : ""}
@@ -2566,9 +2615,15 @@
                     </span>
                   `)}
                 </div>
-                <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
-                  Accept This Booking 🛵
-                </button>
+                ${alreadyInGroup ? `
+                  <button type="button" class="btn btn-sm btn-outline" disabled>
+                    ✓ Already Joined Group
+                  </button>
+                ` : `
+                  <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
+                    ${isGroup ? "Accept Group Slot 🛵" : "Accept This Booking 🛵"}
+                  </button>
+                `}
               </div>
             </div>
           `;

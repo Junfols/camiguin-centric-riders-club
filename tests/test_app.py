@@ -53,14 +53,14 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
 
-        # 2. Service Worker v15
+        # 2. Service Worker v16
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v15", sw_text)
-        self.assertIn("/static/css/style.css?v=28", sw_text)
-        self.assertIn("/static/js/i18n.js?v=7", sw_text)
-        self.assertIn("/static/js/app.js?v=34", sw_text)
+        self.assertIn("ccrc-pwa-v16", sw_text)
+        self.assertIn("/static/css/style.css?v=29", sw_text)
+        self.assertIn("/static/js/i18n.js?v=8", sw_text)
+        self.assertIn("/static/js/app.js?v=35", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
         self.assertIn("/static/js/voice_call.js?v=1", sw_text)
 
@@ -2144,7 +2144,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="track-transfer-banner"', tr_html)
         self.assertIn("Transfer Rider One", tr_html)
         self.assertIn('id="rider-rating-wrap"', tr_html)
-        self.assertIn("track.js?v=31", tr_html)
+        self.assertIn("track.js?v=32", tr_html)
 
         # r2 sees transferred b_a prioritized BEFORE b_newer in broadcast feed, then claims and completes it
         with self.client.session_transaction() as sess:
@@ -2277,7 +2277,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="co-riders-transfer-hint"', rider_html)
         self.assertIn('id="rider-transfer-modal"', rider_html)
         self.assertIn("Transfer to Rider", rider_html)
-        self.assertIn("rider.js?v=32", rider_html)
+        self.assertIn("rider.js?v=33", rider_html)
         rider_js = self.client.get("/static/js/rider.js").get_data(as_text=True)
         self.assertIn("scheduled-transfer-btn", rider_js)
         self.assertIn("co-rider-transfer-btn", rider_js)
@@ -2396,9 +2396,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="chat-voice-recording-bar"',
             'id="chat-voice-btn"',
             "voice_call.js?v=1",
-            "track.js?v=31",
-            "style.css?v=28",
-            "i18n.js?v=7",
+            "track.js?v=32",
+            "style.css?v=29",
+            "i18n.js?v=8",
             "📞 Phone Call",
         ):
             self.assertIn(token, track_html)
@@ -2410,7 +2410,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="rider-chat-voice-recording-bar"',
             'id="rider-chat-voice-btn"',
             "voice_call.js?v=1",
-            "rider.js?v=32",
+            "rider.js?v=33",
             "📞 Phone Call",
         ):
             self.assertIn(token, rider_html)
@@ -2876,9 +2876,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="mark-gcash-sent-btn"',
             "gcash-recipient-row",
             "gcash-sent-row",
-            "track.js?v=31",
-            "style.css?v=28",
-            "i18n.js?v=7",
+            "track.js?v=32",
+            "style.css?v=29",
+            "i18n.js?v=8",
         ):
             self.assertIn(token, track_html)
 
@@ -2898,7 +2898,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             "rider-gcash-profile-row",
             "rider-gcash-profile-info",
             "rider-active-gcash-footer",
-            "rider.js?v=32",
+            "rider.js?v=33",
         ):
             self.assertIn(token, rider_html)
 
@@ -3092,6 +3092,338 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(restored_qr_resp.status_code, 200)
         self.assertEqual(restored_qr_resp.data, sample_png)
 
+    def test_multi_rider_group_booking_up_to_ten_riders(self):
+        import base64
+        from db import export_full_backup, get_connection, restore_full_backup
+
+        cust_client = self.app.test_client()
+        r1_client = self.app.test_client()
+        r2_client = self.app.test_client()
+        r3_client = self.app.test_client()
+
+        self._create_customer(name="Group Boss Ana", phone="09181110010", password="custpass123")
+        r1 = self._create_active_rider(name="Group Rider One", phone="09172220001", bike_model="Honda Click 125")
+        r2 = self._create_active_rider(name="Group Rider Two", phone="09172220002", bike_model="Yamaha Mio i125")
+        r3 = self._create_active_rider(name="Group Rider Three", phone="09172220003", bike_model="Suzuki Raider 150")
+
+        # Configure distinct Official GCash QRs & numbers for r2 and r3
+        sample_png_r2 = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc```\x00\x00\x00\x04\x00\x01"
+            b"\xf6\x178U\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        sample_png_r3 = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02"
+            b"\x08\x02\x00\x00\x00\xfd\xd4\x9as\x00\x00\x00\x0cIDATx\x9cc```\x00\x00\x00\x04\x00\x01"
+            b"\xf6\x178U\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        with r2_client.session_transaction() as sess:
+            sess["rider_id"] = r2
+        qr_r2_resp = r2_client.post(
+            "/api/rider/gcash-profile",
+            json={
+                "gcash_number": "09172220002",
+                "gcash_qr_base64": "data:image/png;base64," + base64.b64encode(sample_png_r2).decode("ascii"),
+            },
+        )
+        self.assertEqual(qr_r2_resp.status_code, 200)
+        qr_r2_url = qr_r2_resp.get_json()["gcash_qr_url"]
+
+        with r3_client.session_transaction() as sess:
+            sess["rider_id"] = r3
+        qr_r3_resp = r3_client.post(
+            "/api/rider/gcash-profile",
+            json={
+                "gcash_number": "09172220003",
+                "gcash_qr_base64": "data:image/png;base64," + base64.b64encode(sample_png_r3).decode("ascii"),
+            },
+        )
+        self.assertEqual(qr_r3_resp.status_code, 200)
+        qr_r3_url = qr_r3_resp.get_json()["gcash_qr_url"]
+
+        with r1_client.session_transaction() as sess:
+            sess["rider_id"] = r1
+
+        # 1. riders_count validation (< 1, > 10, non-integer -> 400)
+        base_payload = {
+            "customer_name": "Group Boss Ana",
+            "customer_phone": "09181110010",
+            "service_type": "pahatud",
+            "pickup_address": "Poblacion, Mambajao",
+            "pickup_lat": 9.25405,
+            "pickup_lng": 124.71636,
+            "dropoff_address": "White Island Boat Jump-off, Yumbing",
+            "dropoff_lat": 9.24368,
+            "dropoff_lng": 124.66090,
+            "payment_method": "gcash",
+        }
+        for bad_count in (0, -2, 11, "ten"):
+            bad_resp = cust_client.post("/api/bookings", json={**base_payload, "riders_count": bad_count})
+            self.assertEqual(bad_resp.status_code, 400, f"Expected 400 for riders_count={bad_count!r}")
+
+        # 2. Create 10-rider group booking with WELCOME20 promo (single P20 discount split across 10 slots)
+        resp_10 = cust_client.post(
+            "/api/bookings",
+            json={**base_payload, "riders_count": 10, "promo_code": "WELCOME20"},
+        )
+        self.assertEqual(resp_10.status_code, 201)
+        data_10 = resp_10.get_json()
+        self.assertTrue(data_10["success"])
+        self.assertTrue(data_10["is_group"])
+        self.assertEqual(data_10["riders_count"], 10)
+        group_code = data_10["group_code"]
+        self.assertTrue(group_code.startswith("GRP-"))
+        self.assertEqual(data_10["tracking_url"], f"/track/{group_code}")
+
+        slots = data_10["group_bookings"]
+        self.assertEqual(len(slots), 10)
+        token = group_code[4:]
+        for idx, s in enumerate(slots, start=1):
+            self.assertEqual(s["group_code"], group_code)
+            self.assertEqual(s["group_size"], 10)
+            self.assertEqual(s["rider_slot"], idx)
+            self.assertEqual(s["booking_code"], f"CCRC-{token}-{idx}")
+
+        # Promo discount must be applied ONCE across the group (P20 total, not P200)
+        total_disc = round(sum(float(s["discount_amount"]) for s in slots), 2)
+        self.assertEqual(total_disc, 20.0)
+        slot_sum_fare = round(sum(float(s["fare_amount"]) for s in slots), 2)
+        self.assertEqual(slot_sum_fare, round(float(data_10["total_fare"]), 2))
+        self.assertEqual(slot_sum_fare, round(float(data_10["group_summary"]["total_fare"]), 2))
+        self.assertEqual(data_10["group_summary"]["total_riders"], 10)
+
+        # 3. Rider dispatch feed collapses 10 open slots into 1 card; r1 claims slot 1, blocked from claiming slot 2
+        feed_r1 = r1_client.get("/api/rider/available-jobs").get_json()
+        grp_cards = [j for j in feed_r1["jobs"] if j.get("group_code") == group_code]
+        self.assertEqual(len(grp_cards), 1)
+        card = grp_cards[0]
+        card_id = card["id"]
+        self.assertEqual(card_id, slots[0]["id"])
+        self.assertEqual(card["group_open_count"], 10)
+        self.assertEqual(card["group_assigned_count"], 0)
+        self.assertFalse(card["rider_already_in_group"])
+
+        acc_r1 = r1_client.post(f"/api/bookings/{card_id}/accept")
+        self.assertEqual(acc_r1.status_code, 200)
+        acc_r1_json = acc_r1.get_json()
+        self.assertEqual(acc_r1_json["job"]["id"], slots[0]["id"])
+        self.assertEqual(acc_r1_json["job"]["rider_slot"], 1)
+        self.assertIn("Rider 1 of 10", acc_r1_json["message"])
+
+        # r1 now sees rider_already_in_group=True and gets 409 trying to claim slot 2
+        feed_r1_after = r1_client.get("/api/rider/available-jobs").get_json()
+        grp_cards_after = [j for j in feed_r1_after["jobs"] if j.get("group_code") == group_code]
+        self.assertEqual(len(grp_cards_after), 1)
+        self.assertTrue(grp_cards_after[0]["rider_already_in_group"])
+        self.assertEqual(grp_cards_after[0]["group_open_count"], 9)
+        self.assertEqual(grp_cards_after[0]["group_assigned_count"], 1)
+
+        dup_r1 = r1_client.post(f"/api/bookings/{slots[1]['id']}/accept")
+        self.assertEqual(dup_r1.status_code, 409)
+
+        # 4. Concurrent/stale card_id fallthrough: r2 clicks old card_id (slots[0]['id']) -> claims Slot 2!
+        acc_r2 = r2_client.post(f"/api/bookings/{card_id}/accept")
+        self.assertEqual(acc_r2.status_code, 200)
+        acc_r2_json = acc_r2.get_json()
+        self.assertEqual(acc_r2_json["job"]["id"], slots[1]["id"])
+        self.assertEqual(acc_r2_json["job"]["rider_slot"], 2)
+        self.assertIn("Rider 2 of 10", acc_r2_json["message"])
+
+        # Also test a 2-rider group saturation -> 3rd rider gets 409 "already been claimed" & card vanishes from feed
+        sat_cust = self.app.test_client()
+        sat_resp = sat_cust.post(
+            "/api/bookings",
+            json={**base_payload, "customer_phone": "09181110022", "riders_count": 2},
+        )
+        self.assertEqual(sat_resp.status_code, 201)
+        sat_data = sat_resp.get_json()
+        sat_slots = sat_data["group_bookings"]
+        sat_rA = self._create_active_rider(name="Sat Rider A", phone="09173330001")
+        sat_rB = self._create_active_rider(name="Sat Rider B", phone="09173330002")
+        sat_rC = self._create_active_rider(name="Sat Rider C", phone="09173330003")
+        cA, cB, cC = self.app.test_client(), self.app.test_client(), self.app.test_client()
+        for cl, rid in ((cA, sat_rA), (cB, sat_rB), (cC, sat_rC)):
+            with cl.session_transaction() as sess:
+                sess["rider_id"] = rid
+        self.assertEqual(cA.post(f"/api/bookings/{sat_slots[0]['id']}/accept").status_code, 200)
+        self.assertEqual(cB.post(f"/api/bookings/{sat_slots[0]['id']}/accept").status_code, 200)
+        sat_full = cC.post(f"/api/bookings/{sat_slots[0]['id']}/accept")
+        self.assertEqual(sat_full.status_code, 409)
+        self.assertIn("already been claimed", sat_full.get_json()["error"].lower())
+        cC_feed = cC.get("/api/rider/available-jobs").get_json()["jobs"]
+        self.assertFalse(any(j.get("group_code") == sat_data["group_code"] for j in cC_feed))
+
+        # 5. Emergency transfer in a group: cannot direct-transfer Slot 1 to co-rider r2 already in Slot 2 (409)
+        tr_same_grp = r1_client.post(
+            f"/api/bookings/{slots[0]['id']}/transfer",
+            json={"target_rider_id": r2, "reason": "Flat tire", "go_offline": False},
+        )
+        self.assertEqual(tr_same_grp.status_code, 409)
+
+        # r1 re-broadcasts Slot 1 -> rescue card appears separately from main collapsed group card in r3's feed
+        reb_r1 = r1_client.post(
+            f"/api/bookings/{slots[0]['id']}/transfer",
+            json={"target_rider_id": None, "reason": "Flat tire near Agora", "go_offline": False},
+        )
+        self.assertEqual(reb_r1.status_code, 200)
+        feed_r3 = r3_client.get("/api/rider/available-jobs").get_json()["jobs"]
+        grp_cards_r3 = [j for j in feed_r3 if j.get("group_code") == group_code]
+        self.assertEqual(len(grp_cards_r3), 2)
+        rescue_cards = [j for j in grp_cards_r3 if int(j.get("transfer_count") or 0) > 0]
+        self.assertEqual(len(rescue_cards), 1)
+        self.assertEqual(rescue_cards[0]["id"], slots[0]["id"])
+
+        # r3 claims the rescued Slot 1
+        acc_r3 = r3_client.post(f"/api/bookings/{slots[0]['id']}/accept")
+        self.assertEqual(acc_r3.status_code, 200)
+        self.assertEqual(acc_r3.get_json()["job"]["rider_id"], r3)
+        self.assertEqual(acc_r3.get_json()["job"]["rider_slot"], 1)
+
+        # 6. Unified /track/<group_code> HTML & API track endpoints + per-slot GCash isolation
+        track_html_resp = cust_client.get(f"/track/{group_code}")
+        self.assertEqual(track_html_resp.status_code, 200)
+        track_html = track_html_resp.get_data(as_text=True)
+        self.assertIn(group_code, track_html)
+        self.assertIn("Rider 1 of 10", track_html)
+        self.assertIn("2 / 10 Riders Assigned", track_html)
+        self.assertIn("group-slot-tabs", track_html)
+
+        trk_slot2_resp = cust_client.get(f"/api/bookings/track/{group_code}?slot={slots[1]['booking_code']}")
+        self.assertEqual(trk_slot2_resp.status_code, 200)
+        trk_slot2 = trk_slot2_resp.get_json()
+        self.assertEqual(len(trk_slot2["group_bookings"]), 10)
+        self.assertEqual(trk_slot2["booking"]["booking_code"], slots[1]["booking_code"])
+        self.assertEqual(trk_slot2["booking"]["rider_id"], r2)
+        self.assertEqual(trk_slot2["booking"]["rider_gcash_number"], "09172220002")
+        self.assertEqual(trk_slot2["booking"]["rider_gcash_qr"], qr_r2_url)
+        self.assertEqual(trk_slot2["group_summary"]["assigned_count"], 2)
+        self.assertEqual(trk_slot2["group_summary"]["open_count"], 8)
+
+        trk_slot1 = cust_client.get(f"/api/bookings/track/{group_code}?slot={slots[0]['booking_code']}").get_json()
+        self.assertEqual(trk_slot1["booking"]["rider_id"], r3)
+        self.assertEqual(trk_slot1["booking"]["rider_gcash_number"], "09172220003")
+        self.assertEqual(trk_slot1["booking"]["rider_gcash_qr"], qr_r3_url)
+
+        # 7. Per-slot GCash completion gate, chat isolation, call auth, and per-slot review tracking
+        self.assertEqual(r2_client.post(f"/api/bookings/{slots[1]['id']}/status", json={"status": "in_progress"}).status_code, 200)
+        blk_slot2 = r2_client.post(f"/api/bookings/{slots[1]['id']}/status", json={"status": "completed"})
+        self.assertEqual(blk_slot2.status_code, 400)
+        self.assertTrue(blk_slot2.get_json()["requires_gcash_payment"])
+
+        self.assertEqual(
+            cust_client.post(f"/api/bookings/{slots[1]['booking_code']}/gcash/customer-sent", json={"payment_ref": "GRP-SLOT2-991"}).status_code,
+            200,
+        )
+        # r3 cannot confirm r2's slot 2 GCash (403)
+        self.assertEqual(r3_client.post(f"/api/bookings/{slots[1]['id']}/gcash/confirm", json={}).status_code, 403)
+        # r2 confirms slot 2 GCash -> completes slot 2 -> submits review for slot 2
+        self.assertEqual(r2_client.post(f"/api/bookings/{slots[1]['id']}/gcash/confirm", json={}).status_code, 200)
+        self.assertEqual(r2_client.post(f"/api/bookings/{slots[1]['id']}/status", json={"status": "completed"}).status_code, 200)
+
+        # Chat isolation between Slot 1 (r3) and Slot 2 (r2)
+        self.assertEqual(
+            cust_client.post(f"/api/chat/{slots[0]['booking_code']}/messages", json={"message": "Slot 1 private check"}).status_code,
+            200,
+        )
+        r3_msgs = r3_client.get(f"/api/chat/{slots[0]['booking_code']}/messages").get_json()["messages"]
+        self.assertTrue(any(m["message"] == "Slot 1 private check" for m in r3_msgs))
+        r2_msgs = r2_client.get(f"/api/chat/{slots[1]['booking_code']}/messages").get_json()["messages"]
+        self.assertFalse(any(m["message"] == "Slot 1 private check" for m in r2_msgs))
+        # r2 and r1 (handed off) cannot read Slot 1 chat or start Slot 1 voice calls
+        self.assertEqual(r2_client.get(f"/api/chat/{slots[0]['booking_code']}/messages").status_code, 401)
+        self.assertEqual(r1_client.get(f"/api/calls/{slots[0]['booking_code']}/state").status_code, 401)
+        self.assertEqual(r2_client.post(f"/api/calls/{slots[0]['booking_code']}/start", json={}).status_code, 401)
+        self.assertEqual(r3_client.get(f"/api/calls/{slots[0]['booking_code']}/state").status_code, 200)
+
+        # Customer reviews Slot 2 (r2); Slot 2 shows already_reviewed=True while Slot 1 shows False
+        rev2 = cust_client.post(
+            "/api/reviews",
+            json={"rider_id": r2, "booking_id": slots[1]["id"], "rating": 5, "comment": "Smooth Slot 2!"},
+        )
+        self.assertEqual(rev2.status_code, 201)
+        self.assertTrue(cust_client.get(f"/api/bookings/track/{group_code}?slot={slots[1]['booking_code']}").get_json()["already_reviewed"])
+        self.assertFalse(cust_client.get(f"/api/bookings/track/{group_code}?slot={slots[0]['booking_code']}").get_json()["already_reviewed"])
+
+        # 8. Selective customer cancel: 400 on assigned Slot 1 (still 'accepted'), 200 on open 'broadcast' Slot 10
+        blk_cancel_slot1 = cust_client.post(f"/api/bookings/{slots[0]['id']}/status", json={"status": "cancelled"})
+        self.assertEqual(blk_cancel_slot1.status_code, 400)
+        ok_cancel_slot10 = cust_client.post(f"/api/bookings/{slots[9]['id']}/status", json={"status": "cancelled"})
+        self.assertEqual(ok_cancel_slot10.status_code, 200)
+
+        trk_after_cancel = cust_client.get(f"/api/bookings/track/{group_code}").get_json()
+        gs = trk_after_cancel["group_summary"]
+        self.assertEqual(gs["open_count"], 7)
+        self.assertEqual(gs["cancelled_count"], 1)
+        self.assertEqual(gs["completed_count"], 1)
+        self.assertEqual(gs["active_count"], 8)  # 7 broadcast + 1 accepted (slot 1)
+        expected_active_fare = round(sum(float(s["fare_amount"]) for s in slots[:9]), 2)
+        self.assertEqual(round(float(gs["active_total_fare"]), 2), expected_active_fare)
+
+        # Complete and review Slot 1 as well
+        self.assertEqual(r3_client.post(f"/api/bookings/{slots[0]['id']}/status", json={"status": "in_progress"}).status_code, 200)
+        self.assertEqual(r3_client.post(f"/api/bookings/{slots[0]['id']}/gcash/confirm", json={"verified_offline_receipt": True}).status_code, 200)
+        self.assertEqual(r3_client.post(f"/api/bookings/{slots[0]['id']}/status", json={"status": "completed"}).status_code, 200)
+        rev1 = cust_client.post(
+            "/api/reviews",
+            json={"rider_id": r3, "booking_id": slots[0]["id"], "rating": 5, "comment": "Great rescue on Slot 1!"},
+        )
+        self.assertEqual(rev1.status_code, 201)
+
+        # 9. /api/customer/active-booking & SSR homepage banner reflect the active group cleanly
+        act_resp = cust_client.get("/api/customer/active-booking")
+        self.assertEqual(act_resp.status_code, 200)
+        act_json = act_resp.get_json()
+        self.assertTrue(act_json["active"])
+        self.assertTrue(act_json["is_group"])
+        self.assertEqual(act_json["group_code"], group_code)
+        self.assertEqual(act_json["tracking_url"], f"/track/{group_code}")
+        self.assertGreaterEqual(len(act_json["active_trips"]), 1)
+        self.assertEqual(act_json["group_summary"]["total_riders"], 10)
+        self.assertEqual(act_json["group_summary"]["completed_count"], 2)
+        self.assertEqual(act_json["group_summary"]["cancelled_count"], 1)
+        self.assertEqual(act_json["group_summary"]["open_count"], 7)
+
+        home_html = cust_client.get("/").get_data(as_text=True)
+        self.assertIn(group_code, home_html)
+        self.assertIn("Group Ride (10 Riders)", home_html)
+
+        # 10. UI/JS/CSS/i18n token smoke checks across rendered pages & static assets
+        self.assertIn("riders-count-input", home_html)
+        self.assertIn("data-riders-preset=\"10\"", home_html)
+        self.assertIn("active-job-group-badge", self.client.get("/rider").get_data(as_text=True))
+        for static_url, token in (
+            ("/static/css/style.css", ".group-slot-tabs"),
+            ("/static/css/style.css", ".riders-stepper"),
+            ("/static/js/i18n.js", "Number of Riders Needed"),
+            ("/static/js/track.js", "selectGroupSlot"),
+            ("/static/js/track.js", "cancelOpenSlot"),
+            ("/static/js/rider.js", "rider_already_in_group"),
+            ("/static/js/app.js", "riders_count"),
+        ):
+            s_resp = self.client.get(static_url)
+            self.assertEqual(s_resp.status_code, 200)
+            self.assertIn(token, s_resp.get_data(as_text=True))
+
+        # 11. Full backup & restore preserves group_code, rider_slot, group_size for all 10 slots
+        conn = get_connection(self.db_path)
+        try:
+            snap = export_full_backup(conn)
+            res = restore_full_backup(conn, snap, wipe_existing=True)
+            conn.commit()
+            self.assertTrue(res["success"])
+            restored_rows = conn.execute(
+                "SELECT booking_code, group_code, rider_slot, group_size FROM bookings WHERE UPPER(group_code) = ? ORDER BY rider_slot ASC",
+                (group_code,),
+            ).fetchall()
+            self.assertEqual(len(restored_rows), 10)
+            for idx, rr in enumerate(restored_rows, start=1):
+                self.assertEqual(rr["group_code"], group_code)
+                self.assertEqual(rr["rider_slot"], idx)
+                self.assertEqual(rr["group_size"], 10)
+        finally:
+            conn.close()
+
 
 if __name__ == "__main__":
     unittest.main()
+

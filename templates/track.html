@@ -27,7 +27,14 @@
           ✕ Booking has been cancelled.
         {% endif %}
       </span>
-      <span class="booking-code-pill">{{ booking.booking_code }}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span id="track-active-slot-pill" class="badge {% if not (group_summary and group_bookings|length > 1) %}hidden{% endif %}" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:700;">
+          {% if group_summary and group_bookings|length > 1 %}
+            Rider {{ booking.rider_slot or 1 }} of {{ group_summary.total_riders }} &bull; {{ group_summary.group_code }}
+          {% endif %}
+        </span>
+        <span class="booking-code-pill" id="track-booking-code-pill">{{ booking.booking_code }}</span>
+      </div>
     </div>
 
     <div id="track-transfer-banner" class="transfer-urgency-banner {% if not (booking.transfer_count and booking.transfer_count > 0) %}hidden{% endif %}" style="margin-top:10px;text-align:left;">
@@ -43,10 +50,10 @@
       </div>
     </div>
 
-    <h1 style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
+    <h1 id="track-header-title" style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
       {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
     </h1>
-    <div class="text-muted" style="font-size:0.86rem;">
+    <div id="track-header-meta" class="text-muted" style="font-size:0.86rem;">
       Fare: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Distance: <strong>{{ booking.estimated_km }} km</strong>
       {% if booking.estimated_budget and booking.estimated_budget > 0 %}
         &bull; Shopping Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
@@ -67,6 +74,9 @@
       <button type="button" id="view-receipt-btn" onclick="document.getElementById('receipt-modal')?.classList.remove('hidden')" class="btn-sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
         <span>🧾</span> View Receipt
       </button>
+      <button type="button" id="track-cancel-open-slot-btn" class="btn-sm btn-cancel-open-slot {% if booking.status != 'broadcast' %}hidden{% endif %}">
+        <span>✕</span> Cancel Open Slot
+      </button>
     </div>
 
     <!-- Dedicated Back to Dashboard Button when Completed / Delivered -->
@@ -74,6 +84,71 @@
       <a href="/" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:0.95rem;font-weight:700;padding:12px;background:#16a34a;border-color:#16a34a;text-decoration:none;border-radius:10px;color:white;">
         <span>🏠</span> Back to Dashboard (Book Another Ride)
       </a>
+    </div>
+  </div>
+
+  <!-- Group Rides Summary & Slot Switcher (Shown when booking has > 1 rider slot) -->
+  <div id="group-summary-card" class="card group-summary-card {% if not (group_summary and group_bookings|length > 1) %}hidden{% endif %}">
+    <div class="group-summary-header">
+      <div>
+        <span class="group-kicker">👥 Multi-Rider Group Booking</span>
+        <div class="group-code-heading">
+          <strong id="group-code-label">{{ group_summary.group_code if group_summary else '' }}</strong>
+          <span id="group-progress-pill" class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:700;">
+            {% if group_summary %}
+              {{ group_summary.assigned_count }} / {{ group_summary.total_riders }} Riders Assigned
+            {% endif %}
+          </span>
+        </div>
+      </div>
+      <div class="group-total-fare-wrap">
+        <small class="text-muted" style="display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;">Total Group Fare</small>
+        <strong id="group-total-fare" style="font-size:1.25rem;color:var(--primary);">
+          {% if group_summary %}₱{{ '{:,.0f}'.format(group_summary.active_total_fare if group_summary.cancelled_count > 0 else group_summary.total_fare) }}{% endif %}
+        </strong>
+      </div>
+    </div>
+
+    <div id="group-slot-tabs" class="group-slot-tabs" role="tablist" aria-label="Rider Slots">
+      {% if group_bookings and group_bookings|length > 1 %}
+        {% for s in group_bookings %}
+          <button type="button" class="group-slot-tab {% if s.booking_code == booking.booking_code %}active{% endif %} slot-status-{{ s.status }}" data-slot-code="{{ s.booking_code }}">
+            <span class="slot-tab-num">Rider {{ s.rider_slot or loop.index }}</span>
+            <span class="slot-tab-state">
+              {% if s.status == 'broadcast' %}⏳ Open{% elif s.status == 'accepted' %}🛵 Assigned{% elif s.status == 'in_progress' %}🚀 Transit{% elif s.status == 'completed' %}✅ Done{% else %}✕ Cancelled{% endif %}
+            </span>
+          </button>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div id="group-slots-overview" class="group-slots-overview">
+      {% if group_bookings and group_bookings|length > 1 %}
+        {% for s in group_bookings %}
+          <div class="group-slot-row {% if s.booking_code == booking.booking_code %}is-focused{% endif %}" data-slot-code="{{ s.booking_code }}">
+            <div class="group-slot-row-main">
+              <div class="group-slot-row-title">
+                <strong>Rider {{ s.rider_slot or loop.index }}</strong>
+                <span class="slot-code-mono">{{ s.booking_code }}</span>
+                <span class="badge slot-status-badge status-{{ s.status }}">{{ s.status|replace('_', ' ')|title }}</span>
+              </div>
+              <div class="group-slot-row-sub">
+                {% if s.rider_name %}{{ s.rider_name }} &bull; {% else %}Waiting for rider &bull; {% endif %}
+                ₱{{ '{:,.0f}'.format(s.fare_amount) }}
+                {% if (s.payment_method or '')|lower == 'gcash' %}
+                  &bull; 💙 {{ (s.payment_status or 'pending')|replace('_', ' ')|title }}
+                {% endif %}
+              </div>
+            </div>
+            <div class="group-slot-row-actions">
+              <button type="button" class="btn btn-sm btn-outline group-focus-slot-btn" data-slot-code="{{ s.booking_code }}">Focus</button>
+              {% if s.status == 'broadcast' %}
+                <button type="button" class="btn btn-sm btn-cancel-open-slot group-cancel-slot-btn" data-booking-id="{{ s.id }}" data-slot-code="{{ s.booking_code }}">✕ Cancel Open Slot</button>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
     </div>
   </div>
 
@@ -328,17 +403,19 @@
   <div id="review-submission-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;border:2px solid #fed7aa;background:#fffaf5;">
     <div style="text-align:center;padding:10px 0;">
       <span style="font-size:2rem;">⭐</span>
-      <h3 style="margin:6px 0 2px;">Rate Your Island Rider</h3>
-      {% if already_reviewed %}
-      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">Your rating and feedback have been recorded.</p>
-      <div id="review-feedback-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">
-        ✓ Thank you very much! Your review has already been submitted.<br>
-        <div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; Back to Dashboard</a></div>
+      <h3 id="review-slot-title" style="margin:6px 0 2px;">Rate Your Island Rider</h3>
+      <div id="review-already-done-box" class="{% if not already_reviewed %}hidden{% endif %}">
+        {% if already_reviewed %}
+        <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">Your rating and feedback have been recorded.</p>
+        <div id="review-already-done-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">
+          ✓ Thank you very much! Your review has already been submitted.<br>
+          <div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; Back to Dashboard</a></div>
+        </div>
+        {% endif %}
       </div>
-      {% else %}
-      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
 
-      <form id="track-review-form">
+      <form id="track-review-form" class="{% if already_reviewed %}hidden{% endif %}">
+        <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
         <input type="hidden" id="review-rider-id" value="{{ booking.rider_id or '' }}">
         <input type="hidden" id="review-booking-id" value="{{ booking.id }}">
         <div class="star-rating-select" style="display:flex;justify-content:center;gap:8px;font-size:2rem;cursor:pointer;margin-bottom:12px;" id="star-picker">
@@ -357,7 +434,6 @@
         </button>
         <div id="review-feedback-msg" class="hidden" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;"></div>
       </form>
-      {% endif %}
     </div>
   </div>
 
@@ -431,17 +507,18 @@
           <small class="text-muted">Verified Island Transport &bull; Official Island Tariff</small>
         </div>
         <div style="font-size:0.88rem;display:grid;gap:6px;">
-          <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong>{{ booking.booking_code }}</strong></div>
-          <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span>{{ booking.customer_name }}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>Service:</span><span style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span>{{ booking.estimated_km }} km</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
-          {% if booking.promo_code %}
-          <div style="display:flex;justify-content:space-between;color:#16a34a;"><span>Voucher ({{ booking.promo_code }}):</span><span>-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span></div>
-          {% endif %}
+          <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong id="receipt-booking-code">{{ booking.booking_code }}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span id="receipt-passenger-name">{{ booking.customer_name }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Service:</span><span id="receipt-service-type" style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span id="receipt-distance-km">{{ booking.estimated_km }} km</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span id="receipt-payment-method" style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
+          <div id="receipt-promo-row" class="{% if not booking.promo_code %}hidden{% endif %}" style="display:flex;justify-content:space-between;color:#16a34a;">
+            <span id="receipt-promo-label">Voucher ({{ booking.promo_code or '' }}):</span>
+            <span id="receipt-promo-val">-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span>
+          </div>
           <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;border-top:2px solid #1e293b;padding-top:8px;margin-top:6px;">
-            <span>Total Fare:</span>
-            <span>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</span>
+            <span id="receipt-fare-label">{% if group_summary %}Slot Fare:{% else %}Total Fare:{% endif %}</span>
+            <span id="receipt-fare-amount">₱{{ '{:,.0f}'.format(booking.fare_amount) }}</span>
           </div>
         </div>
         <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save PDF</button>
@@ -455,25 +532,23 @@
     <div class="trip-details-list">
       <div class="trip-detail-item">
         <span class="detail-label">Service Type:</span>
-        <strong style="text-transform:uppercase;">{{ booking.service_type }}</strong>
+        <strong id="trip-detail-service" style="text-transform:uppercase;">{{ booking.service_type }}</strong>
       </div>
       <div class="trip-detail-item">
         <span class="detail-label">Pickup Point:</span>
-        <span>{{ booking.pickup_address }}</span>
+        <span id="trip-detail-pickup">{{ booking.pickup_address }}</span>
       </div>
       <div class="trip-detail-item">
         <span class="detail-label">Drop-off Destination:</span>
-        <span>{{ booking.dropoff_address }}</span>
+        <span id="trip-detail-dropoff">{{ booking.dropoff_address }}</span>
       </div>
-      {% if booking.item_notes %}
-      <div class="trip-detail-item">
+      <div id="trip-detail-notes-wrap" class="trip-detail-item {% if not booking.item_notes %}hidden{% endif %}">
         <span class="detail-label">Item Notes / Instructions:</span>
-        <span class="item-notes-text">&ldquo;{{ booking.item_notes }}&rdquo;</span>
+        <span id="trip-detail-notes" class="item-notes-text">{% if booking.item_notes %}&ldquo;{{ booking.item_notes }}&rdquo;{% endif %}</span>
       </div>
-      {% endif %}
       <div class="trip-detail-item">
         <span class="detail-label">Customer:</span>
-        <span>{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
+        <span id="trip-detail-customer">{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
       </div>
     </div>
   </div>
@@ -486,8 +561,11 @@
 {% if booking %}
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
+  window.INITIAL_GROUP_BOOKINGS = {{ group_bookings | tojson if group_bookings else '[]' }};
+  window.INITIAL_GROUP_SUMMARY = {{ group_summary | tojson if group_summary else 'null' }};
+  window.TRACK_LOOKUP_CODE = {{ (track_code if track_code else booking.booking_code) | tojson }};
 </script>
 <script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/track.js?v=31"></script>
+<script src="/static/js/track.js?v=32"></script>
 {% endif %}
 {% endblock %}

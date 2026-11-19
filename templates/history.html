@@ -180,7 +180,10 @@
       list.forEach((b) => {
         const isOngoing = ['broadcast', 'accepted', 'in_progress'].includes(b.status);
         if (isOngoing && b.booking_code) {
-          try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch(_) {}
+          try {
+            const activeRef = (b.group_code && Number(b.group_size || 1) > 1) ? b.group_code : b.booking_code;
+            localStorage.setItem("ccrc_active_booking", activeRef);
+          } catch(_) {}
         }
         const fare = Number(b.fare_amount || b.estimated_fare || 0).toLocaleString();
         const pickup = escapeHtml(b.pickup_address || b.pickup_location || 'Pickup Location');
@@ -190,14 +193,22 @@
         const status = escapeHtml(b.status || '');
         const rider = b.rider_name ? escapeHtml(b.rider_name) : '';
         const createdDate = b.created_at ? escapeHtml(b.created_at.slice(0, 16).replace('T', ' ')) : '';
+        const groupSize = Number(b.group_size || 1);
+        const riderSlot = Number(b.rider_slot || 1);
+        const groupCode = b.group_code ? escapeHtml(b.group_code) : '';
+        const isGroup = groupSize > 1 && groupCode;
+        const trackUrl = isGroup
+          ? `/track/${encodeURIComponent(b.group_code)}?slot=${encodeURIComponent(b.booking_code)}`
+          : `/track/${encodeURIComponent(b.booking_code)}`;
 
         html += `
           <div class="card" style="padding:14px;border:${isOngoing ? '2px solid #ea580c;background:#fff7ed;' : '1px solid #e2e8f0;'};border-radius:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-              <div>
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
                 <strong style="font-family:monospace;font-size:0.95rem;">${code}</strong>
-                <span class="badge badge-accent" style="margin-left:6px;font-size:0.75rem;text-transform:capitalize;">${service}</span>
-                ${isOngoing ? '<span class="badge" style="background:#ea580c;color:white;margin-left:6px;font-size:0.72rem;font-weight:700;">🟢 ACTIVE NOW</span>' : ''}
+                <span class="badge badge-accent" style="font-size:0.75rem;text-transform:capitalize;">${service}</span>
+                ${isGroup ? `<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.72rem;font-weight:700;">👥 ${groupCode} &bull; Rider ${riderSlot}/${groupSize}</span>` : ''}
+                ${isOngoing ? '<span class="badge" style="background:#ea580c;color:white;font-size:0.72rem;font-weight:700;">🟢 ACTIVE NOW</span>' : ''}
               </div>
               <span class="status-pill status-${status}" style="font-size:0.75rem;padding:2px 8px;">
                 ${status}
@@ -216,7 +227,7 @@
                 ${rider ? `<span class="text-muted">&bull; Rider: <strong>${rider}</strong></span>` : ''}
               </div>
               <div style="display:flex;gap:8px;">
-                <a href="/track/${code}" class="btn btn-sm ${isOngoing ? 'btn-primary' : 'btn-outline'}" style="padding:4px 10px;font-size:0.8rem;font-weight:700;">
+                <a href="${trackUrl}" class="btn btn-sm ${isOngoing ? 'btn-primary' : 'btn-outline'}" style="padding:4px 10px;font-size:0.8rem;font-weight:700;">
                   ${isOngoing ? '🗺️ Live GPS Tracking &rarr;' : 'Track / Receipt 🧾'}
                 </a>
                 <a href="/?pickup=${encodeURIComponent(b.pickup_address || '')}&dropoff=${encodeURIComponent(b.dropoff_address || '')}&service=${encodeURIComponent(b.service_type || 'pahatud')}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;">

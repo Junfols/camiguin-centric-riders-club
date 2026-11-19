@@ -4399,11 +4399,89 @@
   let lastBaseFare = 40;
   let appliedPromo = null;
 
+  const ridersCountInput = document.getElementById("riders-count-input");
+  const ridersCountVal = document.getElementById("riders-count-val");
+  const ridersCountUnit = document.getElementById("riders-count-unit");
+  const ridersCountBadge = document.getElementById("riders-count-badge");
+  const ridersCountDec = document.getElementById("riders-count-dec");
+  const ridersCountInc = document.getElementById("riders-count-inc");
+  const ridersPresetBtns = document.querySelectorAll("[data-riders-preset]");
+
+  function getRidersCount() {
+    const raw = ridersCountInput ? parseInt(ridersCountInput.value || "1", 10) : 1;
+    if (!Number.isFinite(raw) || raw < 1) return 1;
+    if (raw > 10) return 10;
+    return raw;
+  }
+
+  function updateRidersCountUI(nextCount) {
+    let count = parseInt(nextCount, 10);
+    if (!Number.isFinite(count) || count < 1) count = 1;
+    if (count > 10) count = 10;
+
+    if (ridersCountInput) ridersCountInput.value = String(count);
+    if (ridersCountVal) ridersCountVal.textContent = String(count);
+    if (ridersCountUnit) ridersCountUnit.textContent = count === 1 ? "rider" : "riders";
+    if (ridersCountBadge) {
+      ridersCountBadge.textContent = count === 1 ? "1 Rider (Solo)" : `${count} Riders Simultaneous`;
+    }
+    if (ridersCountDec) ridersCountDec.disabled = count <= 1;
+    if (ridersCountInc) ridersCountInc.disabled = count >= 10;
+
+    ridersPresetBtns.forEach((btn) => {
+      const pVal = parseInt(btn.getAttribute("data-riders-preset") || "0", 10);
+      btn.classList.toggle("active", pVal === count);
+    });
+
+    if (submitBtn && !submitBtn.disabled) {
+      const spanEl = submitBtn.querySelector("span:first-child");
+      const label = count === 1
+        ? "Broadcast Request to Active Riders 🛵"
+        : `Broadcast Request to ${count} Riders 🛵`;
+      if (spanEl) {
+        spanEl.textContent = label;
+      } else {
+        submitBtn.textContent = `${label} →`;
+      }
+    }
+
+    applyPromoPreviewToFare();
+  }
+
+  if (ridersCountDec) {
+    ridersCountDec.addEventListener("click", () => updateRidersCountUI(getRidersCount() - 1));
+  }
+  if (ridersCountInc) {
+    ridersCountInc.addEventListener("click", () => updateRidersCountUI(getRidersCount() + 1));
+  }
+  ridersPresetBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pVal = parseInt(btn.getAttribute("data-riders-preset") || "1", 10);
+      updateRidersCountUI(pVal);
+    });
+  });
+
   function applyPromoPreviewToFare() {
     const discountRow = document.getElementById("promo-discount-row");
     const discountVal = document.getElementById("promo-discount-val");
     const promoFeedback = document.getElementById("promo-feedback");
-    const baseFare = Math.max(0, Math.round(Number(lastBaseFare || 40)));
+    const groupSummaryRow = document.getElementById("fare-group-summary-row");
+    const groupSummaryVal = document.getElementById("fare-group-summary-val");
+    const fareEstLabel = document.getElementById("fare-estimate-label");
+
+    const perRiderBase = Math.max(0, Math.round(Number(lastBaseFare || 40)));
+    const ridersCount = getRidersCount();
+    const baseFare = perRiderBase * ridersCount;
+
+    if (fareEstLabel) {
+      fareEstLabel.textContent = ridersCount > 1 ? "Estimated Group Total" : "Estimated Fare";
+    }
+    if (groupSummaryRow) {
+      groupSummaryRow.classList.toggle("hidden", ridersCount <= 1);
+    }
+    if (groupSummaryVal && ridersCount > 1) {
+      groupSummaryVal.textContent = `₱${perRiderBase.toLocaleString()} per rider × ${ridersCount} riders = ₱${baseFare.toLocaleString()}`;
+    }
 
     if (!appliedPromo) {
       if (discountRow) discountRow.classList.add("hidden");
@@ -4750,6 +4828,21 @@
   }
 
   // Booking Form Submission
+  function restoreSubmitBtnLabel() {
+    if (!submitBtn) return;
+    submitBtn.disabled = false;
+    const count = getRidersCount();
+    const label = count === 1
+      ? "Broadcast Request to Active Riders 🛵"
+      : `Broadcast Request to ${count} Riders 🛵`;
+    const spanEl = submitBtn.querySelector("span:first-child");
+    if (spanEl) {
+      spanEl.textContent = label;
+    } else {
+      submitBtn.textContent = `${label} →`;
+    }
+  }
+
   if (bookingForm) {
     bookingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -4758,12 +4851,23 @@
         errorMsg.textContent = "";
       }
 
+      const ridersCount = getRidersCount();
       submitBtn.disabled = true;
-      submitBtn.textContent = "Broadcasting booking to riders...";
+      const submitSpan = submitBtn.querySelector("span:first-child");
+      if (submitSpan) {
+        submitSpan.textContent = ridersCount > 1
+          ? `Broadcasting to ${ridersCount} riders...`
+          : "Broadcasting booking to riders...";
+      } else {
+        submitBtn.textContent = ridersCount > 1
+          ? `Broadcasting to ${ridersCount} riders...`
+          : "Broadcasting booking to riders...";
+      }
 
       const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
       const payload = {
         service_type: serviceTypeInput.value,
+        riders_count: ridersCount,
         pickup_address: pickupInput.value.trim(),
         pickup_lat: pickupLatInput.value ? parseFloat(pickupLatInput.value) : null,
         pickup_lng: pickupLngInput.value ? parseFloat(pickupLngInput.value) : null,
@@ -4797,8 +4901,7 @@
       const isRegisteringNow = regToggle && regToggle.checked && regPwd && regPwd.value.trim().length >= 6;
 
       if (!currentCust && !isRegisteringNow) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Broadcast Request to Active Riders 🛵 →";
+        restoreSubmitBtnLabel();
         if (errorMsg) {
           errorMsg.innerHTML = "⚠️ <strong>Please Sign In or Register first!</strong><br>To verify your account for our riders, please sign in or register in the popup below.";
           errorMsg.classList.remove("hidden");
@@ -4835,8 +4938,9 @@
         }
 
         const b = data.booking;
+        const activeRef = (data.group_code && Number(data.riders_count || 1) > 1) ? data.group_code : b.booking_code;
         try {
-          localStorage.setItem("ccrc_active_booking", b.booking_code);
+          localStorage.setItem("ccrc_active_booking", activeRef);
           if (payload.customer_phone) localStorage.setItem("ccrc_customer_phone", payload.customer_phone);
           if (payload.customer_name) localStorage.setItem("ccrc_customer_name", payload.customer_name);
         } catch (_) {}
@@ -4849,10 +4953,19 @@
           });
         }
 
-        updateActiveTripNavLinks(b.booking_code);
+        updateActiveTripNavLinks(activeRef);
         if (typeof window.playDispatchChime === "function") window.playDispatchChime();
 
-        if (modalBookingCode) modalBookingCode.textContent = b.booking_code;
+        if (modalBookingCode) modalBookingCode.textContent = activeRef;
+        const modalGroupNote = document.getElementById("modal-group-note");
+        if (modalGroupNote) {
+          if (data.group_code && Number(data.riders_count || 1) > 1) {
+            modalGroupNote.textContent = `👥 Dispatched ${data.riders_count} linked rider slots (₱${Math.round(Number(data.per_rider_fare || b.fare_amount || 0)).toLocaleString()} per rider • Total ₱${Math.round(Number(data.total_fare || 0)).toLocaleString()}).`;
+            modalGroupNote.classList.remove("hidden");
+          } else {
+            modalGroupNote.classList.add("hidden");
+          }
+        }
         if (modalTrackLink) modalTrackLink.href = data.tracking_url;
         if (successModal) successModal.classList.remove("hidden");
 
@@ -4865,8 +4978,7 @@
           errorMsg.textContent = err.message;
           errorMsg.classList.remove("hidden");
         }
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Broadcast Booking to Active Riders 🛵 →";
+        restoreSubmitBtnLabel();
       }
     });
 
@@ -4937,7 +5049,7 @@
           applyPromoPreviewToFare();
           return;
         }
-        const currentFare = Number(lastBaseFare || 40);
+        const currentFare = Math.max(0, Math.round(Number(lastBaseFare || 40))) * getRidersCount();
 
         try {
           applyPromoBtn.disabled = true;
@@ -5003,11 +5115,57 @@
     }
   }
 
-  function renderCustomerActiveCard(b) {
+  function renderExtraActiveTrips(trips) {
+    const extraWrap = document.getElementById("customer-active-trips-extra");
+    if (!extraWrap) return;
+    if (!Array.isArray(trips) || trips.length <= 1) {
+      extraWrap.innerHTML = "";
+      extraWrap.classList.add("hidden");
+      return;
+    }
+    extraWrap.innerHTML = trips.slice(1).map((trip) => {
+      const b = trip.booking || {};
+      const summary = trip.group_summary || null;
+      const codeLabel = trip.is_group && trip.group_code ? trip.group_code : (b.booking_code || "");
+      const trackUrl = trip.tracking_url || `/track/${encodeURIComponent(codeLabel)}`;
+      const fareTotal = summary
+        ? (Number(summary.cancelled_count || 0) > 0 && summary.active_total_fare !== undefined
+          ? Number(summary.active_total_fare || 0)
+          : Number(summary.total_fare || 0))
+        : Number(b.fare_amount || 0);
+      const statusText = summary
+        ? `👥 ${summary.assigned_count}/${summary.total_riders} Riders Assigned`
+        : escapeHtml(b.status || "active");
+      return `
+        <div class="active-extra-trip-card">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <strong style="font-family:monospace;color:#9a3412;">${escapeHtml(codeLabel)}</strong>
+              <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:0.72rem;font-weight:700;">${statusText}</span>
+            </div>
+            <small class="text-muted" style="display:block;margin-top:2px;">
+              ${escapeHtml(b.pickup_address || "")} &rarr; ${escapeHtml(b.dropoff_address || "")} &bull; <strong>₱${Math.round(fareTotal).toLocaleString()}</strong>
+            </small>
+          </div>
+          <a href="${escapeHtml(trackUrl)}" class="btn btn-sm btn-primary" style="white-space:nowrap;">Track &rarr;</a>
+        </div>
+      `;
+    }).join("");
+    extraWrap.classList.remove("hidden");
+  }
+
+  function renderCustomerActiveCard(b, tripMeta) {
     const card = document.getElementById("customer-active-ride-card");
-    if (!card) return;
+    if (!card || !b) return;
+
+    const summary = tripMeta && tripMeta.group_summary ? tripMeta.group_summary : null;
+    const isGroup = Boolean(summary && summary.total_riders > 1);
+    const activeCode = (isGroup && tripMeta.group_code) ? tripMeta.group_code : b.booking_code;
+    const trackingUrl = (tripMeta && tripMeta.tracking_url) ? tripMeta.tracking_url : `/track/${encodeURIComponent(activeCode)}`;
 
     const codeEl = document.getElementById("active-card-code");
+    const groupBadgeEl = document.getElementById("active-card-group-badge");
+    const groupProgressEl = document.getElementById("active-card-group-progress");
     const badgeEl = document.getElementById("active-card-status-badge");
     const riderInfoEl = document.getElementById("active-card-rider-info");
     const riderAvatarEl = document.getElementById("active-card-rider-avatar");
@@ -5019,14 +5177,48 @@
     const fareEl = document.getElementById("active-card-fare");
     const trackBtnEl = document.getElementById("active-card-track-btn");
 
-    if (codeEl) codeEl.textContent = b.booking_code;
+    if (codeEl) codeEl.textContent = activeCode;
+    if (groupBadgeEl) {
+      if (isGroup) {
+        groupBadgeEl.textContent = `👥 Group Ride (${summary.total_riders} Riders) • ${summary.assigned_count}/${summary.total_riders} Assigned`;
+        groupBadgeEl.classList.remove("hidden");
+      } else {
+        groupBadgeEl.classList.add("hidden");
+      }
+    }
+    if (groupProgressEl) {
+      if (isGroup) {
+        groupProgressEl.textContent = `(${summary.open_count} open, ${summary.completed_count} completed)`;
+        groupProgressEl.classList.remove("hidden");
+      } else {
+        groupProgressEl.classList.add("hidden");
+      }
+    }
     if (pickupEl) pickupEl.textContent = b.pickup_address;
     if (dropoffEl) dropoffEl.textContent = b.dropoff_address;
-    if (fareEl) fareEl.textContent = `₱${Math.round(b.fare_amount || 0).toLocaleString()}`;
-    if (trackBtnEl) trackBtnEl.href = `/track/${encodeURIComponent(b.booking_code)}`;
+    if (fareEl) {
+      const displayFare = isGroup
+        ? (Number(summary.cancelled_count || 0) > 0 && summary.active_total_fare !== undefined
+          ? summary.active_total_fare
+          : summary.total_fare)
+        : b.fare_amount;
+      fareEl.textContent = `₱${Math.round(displayFare || 0).toLocaleString()}`;
+    }
+    if (trackBtnEl) trackBtnEl.href = trackingUrl;
 
     if (badgeEl) {
-      if (b.status === "accepted") {
+      if (isGroup) {
+        if (summary.assigned_count >= summary.total_riders) {
+          badgeEl.textContent = `🛵 All ${summary.total_riders} Riders Assigned!`;
+          badgeEl.style.background = summary.in_progress_count > 0 ? "#16a34a" : "#ea580c";
+        } else if (summary.assigned_count > 0) {
+          badgeEl.textContent = `🛵 ${summary.assigned_count}/${summary.total_riders} Riders Assigned`;
+          badgeEl.style.background = "#ea580c";
+        } else {
+          badgeEl.textContent = `⏳ Waiting for ${summary.total_riders} Riders...`;
+          badgeEl.style.background = "#0284c7";
+        }
+      } else if (b.status === "accepted") {
         badgeEl.textContent = "🛵 Rider Accepted & Heading to Pickup!";
         badgeEl.style.background = "#ea580c";
       } else if (b.status === "in_progress") {
@@ -5075,7 +5267,7 @@
     }
 
     card.classList.remove("hidden");
-    updateActiveTripNavLinks(b.booking_code);
+    updateActiveTripNavLinks(activeCode);
   }
 
   async function checkCustomerActiveBooking() {
@@ -5083,13 +5275,22 @@
     try {
       activeCode = localStorage.getItem("ccrc_active_booking");
     } catch (_) {}
-    if (!activeCode && window.SERVER_ACTIVE_BOOKING) {
-      activeCode = window.SERVER_ACTIVE_BOOKING.booking_code;
+    if (!activeCode && Array.isArray(window.SERVER_ACTIVE_TRIPS) && window.SERVER_ACTIVE_TRIPS.length > 0) {
+      const firstTrip = window.SERVER_ACTIVE_TRIPS[0];
+      activeCode = (firstTrip.is_group && firstTrip.group_code) ? firstTrip.group_code : (firstTrip.booking ? firstTrip.booking.booking_code : null);
+    } else if (!activeCode && window.SERVER_ACTIVE_BOOKING) {
+      activeCode = window.SERVER_ACTIVE_BOOKING.group_code && Number(window.SERVER_ACTIVE_BOOKING.group_size || 1) > 1
+        ? window.SERVER_ACTIVE_BOOKING.group_code
+        : window.SERVER_ACTIVE_BOOKING.booking_code;
     }
     let phone = null;
     try {
       phone = localStorage.getItem("ccrc_customer_phone");
     } catch (_) {}
+
+    if (Array.isArray(window.SERVER_ACTIVE_TRIPS) && window.SERVER_ACTIVE_TRIPS.length > 0) {
+      renderExtraActiveTrips(window.SERVER_ACTIVE_TRIPS);
+    }
 
     if (!activeCode && !phone) return;
 
@@ -5101,18 +5302,26 @@
       const res = await fetch(`/api/customer/active-booking?${query}`);
       const data = await res.json();
       if (data.active && data.booking) {
+        const activeRef = (data.is_group && data.group_code) ? data.group_code : data.booking.booking_code;
         try {
-          localStorage.setItem("ccrc_active_booking", data.booking.booking_code);
+          localStorage.setItem("ccrc_active_booking", activeRef);
         } catch (_) {}
-        renderCustomerActiveCard(data.booking);
+        renderCustomerActiveCard(data.booking, data);
+        renderExtraActiveTrips(data.active_trips || []);
       } else {
-        if (data.booking && (data.booking.status === "completed" || data.booking.status === "cancelled")) {
-          try {
-            localStorage.removeItem("ccrc_active_booking");
-          } catch (_) {}
-          const card = document.getElementById("customer-active-ride-card");
-          if (card) card.classList.add("hidden");
-          updateActiveTripNavLinks(null);
+        if (data.booking && (!data.active_trips || data.active_trips.length === 0)) {
+          const allDone = data.group_summary
+            ? Number(data.group_summary.active_count || 0) === 0
+            : (data.booking.status === "completed" || data.booking.status === "cancelled");
+          if (allDone) {
+            try {
+              localStorage.removeItem("ccrc_active_booking");
+            } catch (_) {}
+            const card = document.getElementById("customer-active-ride-card");
+            if (card) card.classList.add("hidden");
+            renderExtraActiveTrips([]);
+            updateActiveTripNavLinks(null);
+          }
         }
       }
     } catch (_) {}
@@ -5269,12 +5478,18 @@
         } else {
           feedEl.innerHTML = list.slice(0, 3).map(b => {
             const isCompleted = b.status === 'completed';
+            const groupSize = Number(b.group_size || 1);
+            const isGroup = Boolean(groupSize > 1 && b.group_code);
+            const trackHref = isGroup
+              ? `/track/${encodeURIComponent(b.group_code)}?slot=${encodeURIComponent(b.booking_code)}`
+              : `/track/${encodeURIComponent(b.booking_code)}`;
             return `
               <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                 <div>
-                  <div style="font-weight:700;font-size:0.88rem;color:#f8fafc;display:flex;align-items:center;gap:6px;">
+                  <div style="font-weight:700;font-size:0.88rem;color:#f8fafc;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <span style="font-family:monospace;color:#38bdf8;">${escapeHtml(b.booking_code)}</span>
                     <span class="badge badge-accent" style="font-size:0.7rem;text-transform:uppercase;">${escapeHtml(b.service_type)}</span>
+                    ${isGroup ? `<span class="badge" style="background:#1e3a8a;color:#93c5fd;font-size:0.68rem;">👥 ${escapeHtml(b.group_code)} • Slot ${Number(b.rider_slot || 1)}/${groupSize}</span>` : ''}
                   </div>
                   <div style="color:#94a3b8;font-size:0.78rem;margin-top:2px;">
                     🟢 ${escapeHtml(b.pickup_address)} &rarr; 🏁 ${escapeHtml(b.dropoff_address)}
@@ -5289,7 +5504,7 @@
                     ${escapeHtml(b.status)}
                   </span>
                   <div style="margin-top:4px;">
-                    <a href="/track/${encodeURIComponent(b.booking_code)}" class="btn btn-sm" style="font-size:0.72rem;padding:2px 8px;background:#1e293b;color:white;border:1px solid #475569;text-decoration:none;">
+                    <a href="${trackHref}" class="btn btn-sm" style="font-size:0.72rem;padding:2px 8px;background:#1e293b;color:white;border:1px solid #475569;text-decoration:none;">
                       Receipt 🧾
                     </a>
                   </div>

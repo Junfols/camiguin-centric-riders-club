@@ -3166,3 +3166,404 @@ body.rider-logged-in .nav-rider-logged-item {
     justify-content: center;
   }
 }
+
+/* ============================================================================
+   Multi-Rider / Group Booking UI (1–10 Riders)
+   ============================================================================ */
+.active-trips-extra-list {
+  display: grid;
+  gap: 10px;
+  margin-top: -0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.active-extra-trip-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1.5px solid #fdba74;
+  background: #fffaf5;
+}
+
+.riders-count-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.riders-stepper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.riders-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 6px;
+}
+
+.riders-step-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.riders-step-btn:hover:not(:disabled) {
+  background: #fff7ed;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.riders-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.riders-step-display {
+  min-width: 72px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.riders-step-display strong {
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.riders-step-display small {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.riders-preset-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.riders-preset-btn {
+  min-width: 36px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 20px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.riders-preset-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.riders-preset-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.28);
+}
+
+.fare-group-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #1e40af;
+  font-size: 0.86rem;
+}
+
+/* Unified Group Tracking Card (/track/GRP-...) */
+.group-summary-card {
+  margin-bottom: 1rem;
+  border: 2px solid #93c5fd;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  border-radius: 16px;
+}
+
+.group-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.group-kicker {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1d4ed8;
+  margin-bottom: 3px;
+}
+
+.group-code-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.group-code-heading strong {
+  font-family: monospace;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.group-total-fare-wrap {
+  text-align: right;
+}
+
+.group-slot-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+}
+
+.group-slot-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 96px;
+}
+
+.group-slot-tab .slot-tab-num {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.group-slot-tab .slot-tab-state {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.group-slot-tab.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
+}
+
+.group-slot-tab.slot-status-completed:not(.active) {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.group-slot-tab.slot-status-cancelled:not(.active) {
+  opacity: 0.65;
+  background: #f1f5f9;
+}
+
+.group-slots-overview {
+  display: grid;
+  gap: 8px;
+}
+
+.group-slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.group-slot-row.is-focused {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+
+.group-slot-row-main {
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.group-slot-row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.slot-code-mono {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.slot-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.slot-status-badge.status-broadcast {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.slot-status-badge.status-accepted {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.slot-status-badge.status-in_progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.slot-status-badge.status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.slot-status-badge.status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.group-slot-row-sub {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 3px;
+  word-break: break-word;
+}
+
+.group-slot-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-cancel-open-slot {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+}
+
+.btn-cancel-open-slot:hover {
+  background: #fecaca !important;
+}
+
+.group-slot-rider-banner {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #1e3a8a;
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+
+.group-map-slot-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1d4ed8;
+  color: #ffffff;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.group-map-slot-pin.status-in_progress {
+  background: #ea580c;
+}
+
+.group-map-slot-pin.status-completed {
+  background: #16a34a;
+}
+
+@media (max-width: 600px) {
+  .group-total-fare-wrap {
+    text-align: left;
+  }
+
+  .group-slot-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .group-slot-row-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .active-extra-trip-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

@@ -40,16 +40,22 @@ from db import (
     get_latest_call_state,
     respond_to_call,
     accept_booking,
+    accept_booking_for_group_slot,
+    attach_group_metadata,
+    build_booking_group_summary,
     calculate_fare,
     calculate_haversine_km,
     calculate_road_km,
     create_booking,
+    create_booking_group,
     geocode_camiguin_location,
     get_available_broadcast_bookings,
     get_booking_by_code,
     get_booking_by_id,
+    get_bookings_by_group_code,
     get_booking_tracking_trail,
     get_connection,
+    get_customer_active_bookings,
     get_online_riders,
     get_rider_active_job,
     get_rider_scheduled_jobs,
@@ -304,6 +310,94 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         resp.headers["Cache-Control"] = "public, max-age=86400"
         return resp
 
+    def _is_customer_authorized_for_booking(booking: dict[str, Any]) -> bool:
+        if session.get("is_admin"):
+            return True
+        sess_code = (session.get("active_booking_code") or "").strip().upper()
+        sess_group = (session.get("active_group_code") or "").strip().upper()
+        b_code = (booking.get("booking_code") or "").strip().upper()
+        b_group = (booking.get("group_code") or "").strip().upper()
+        if sess_code and (sess_code == b_code or (b_group and sess_code == b_group)):
+            return True
+        if sess_group and b_group and sess_group == b_group:
+            return True
+        sess_phone = (session.get("customer_phone") or "").strip()
+        if sess_phone and normalize_ph_phone(sess_phone) == normalize_ph_phone(booking.get("customer_phone") or ""):
+            return True
+        return False
+
+    def _pick_group_representative(group_bookings: list[dict[str, Any]], slot_code: str = "") -> dict[str, Any] | None:
+        if not group_bookings:
+            return None
+        clean_slot = (slot_code or "").strip().upper()
+        if clean_slot:
+            for item in group_bookings:
+                if (item.get("booking_code") or "").strip().upper() == clean_slot:
+                    return item
+        for status_target in ("in_progress", "accepted", "broadcast"):
+            for item in group_bookings:
+                if (item.get("status") or "").lower() == status_target:
+                    return item
+        return group_bookings[0]
+
+    def _resolve_booking_or_group(
+        conn: Any,
+        code_or_group: str,
+        slot_code: str = "",
+    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+        clean = (code_or_group or "").strip().upper()
+        if not clean:
+            return None, []
+        direct = get_booking_by_code(conn, clean)
+        if direct:
+            grp = (direct.get("group_code") or "").strip().upper()
+            if grp:
+                group_rows = get_bookings_by_group_code(conn, grp)
+                if len(group_rows) > 1:
+                    if slot_code:
+                        focused = _pick_group_representative(group_rows, slot_code)
+                        return focused or direct, group_rows
+                    return direct, group_rows
+            return direct, [direct]
+
+        group_rows = get_bookings_by_group_code(conn, clean)
+        if not group_rows:
+            return None, []
+        focused = _pick_group_representative(group_rows, slot_code)
+        return focused, group_rows
+
+    def _group_active_trips_payload(conn: Any, raw_bookings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen_groups: set[str] = set()
+        trips: list[dict[str, Any]] = []
+        for b in raw_bookings:
+            grp = (b.get("group_code") or "").strip().upper()
+            if grp:
+                if grp in seen_groups:
+                    continue
+                seen_groups.add(grp)
+                grp_rows = get_bookings_by_group_code(conn, grp)
+                if len(grp_rows) > 1:
+                    summary = build_booking_group_summary(grp_rows)
+                    rep = _pick_group_representative(grp_rows) or b
+                    trips.append({
+                        "is_group": True,
+                        "group_code": grp,
+                        "group_summary": summary,
+                        "booking": rep,
+                        "slots": grp_rows,
+                        "tracking_url": f"/track/{grp}",
+                    })
+                    continue
+            trips.append({
+                "is_group": False,
+                "group_code": "",
+                "group_summary": None,
+                "booking": b,
+                "slots": [b],
+                "tracking_url": f"/track/{b['booking_code']}",
+            })
+        return trips
+
     # -------------------------------------------------------------------------
     # Customer Storefront & Booking Routes
     # -------------------------------------------------------------------------
@@ -318,13 +412,23 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         settings = get_settings(conn)
 
         active_booking = None
-        code = session.get("active_booking_code")
-        if code:
-            b = get_booking_by_code(conn, code)
-            if b and b.get("status") in ("broadcast", "accepted", "in_progress"):
-                active_booking = b
-            else:
+        active_trips: list[dict[str, Any]] = []
+        active_group_summary = None
+        active_tracking_url = ""
+
+        sess_code = (session.get("active_booking_code") or session.get("active_group_code") or "").strip()
+        sess_phone = (session.get("customer_phone") or "").strip()
+        if sess_code or sess_phone:
+            raw_active = get_customer_active_bookings(conn, phone=sess_phone, booking_code=sess_code)
+            active_trips = _group_active_trips_payload(conn, raw_active)
+            if active_trips:
+                first_trip = active_trips[0]
+                active_booking = first_trip["booking"]
+                active_group_summary = first_trip["group_summary"]
+                active_tracking_url = first_trip["tracking_url"]
+            elif sess_code:
                 session.pop("active_booking_code", None)
+                session.pop("active_group_code", None)
 
         return render_template(
             "index.html",
@@ -332,6 +436,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             settings=settings,
             active_nav="book",
             active_booking=active_booking,
+            active_trips=active_trips,
+            active_group_summary=active_group_summary,
+            active_tracking_url=active_tracking_url,
         )
 
     @app.get("/api/road-route")
@@ -535,80 +642,98 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         is_admin = bool(session.get("is_admin"))
         sess_code = (session.get("active_booking_code") or "").strip()
+        sess_group = (session.get("active_group_code") or "").strip()
         sess_phone = (session.get("customer_phone") or "").strip()
 
         req_code = (request.args.get("code") or "").strip()
         req_phone = (request.args.get("phone") or "").strip()
 
-        code = req_code or sess_code
-        phone = req_phone or sess_phone
-
-        booking = None
-        if code:
-            candidate = get_booking_by_code(conn, code)
-            if candidate:
-                is_owner = (
-                    is_admin
-                    or (sess_code and candidate.get("booking_code") == sess_code)
-                    or (sess_phone and normalize_ph_phone(candidate.get("customer_phone") or "") == normalize_ph_phone(sess_phone))
-                )
-                if not is_owner:
+        if req_code:
+            focused, group_rows = _resolve_booking_or_group(conn, req_code)
+            if focused:
+                if not _is_customer_authorized_for_booking(focused):
                     return jsonify({"active": False, "booking": None, "error": "Unauthorized"}), 401
-                booking = candidate
-        elif phone:
-            if not is_admin and (not sess_phone or normalize_ph_phone(phone) != normalize_ph_phone(sess_phone)):
-                return jsonify({"active": False, "booking": None, "error": "Unauthorized"}), 401
-            norm_p = normalize_ph_phone(phone) or phone
-            digits = "".join(filter(str.isdigit, phone))
-            last10 = digits[-10:] if len(digits) >= 10 else digits
-            if len(last10) >= 7:
-                cur = conn.execute("""
-                    SELECT b.*,
-                           r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
-                           r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
-                           r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-                           r.avatar_url AS rider_avatar,
-                           COALESCE(r.gcash_number, '') AS rider_gcash_number,
-                           COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
-                    FROM bookings b
-                    LEFT JOIN riders r ON b.rider_id = r.id
-                    WHERE (b.customer_phone = ? OR b.customer_phone = ? OR b.customer_phone LIKE ? OR b.customer_phone LIKE ?)
-                      AND b.status IN ('broadcast', 'accepted', 'in_progress')
-                    ORDER BY b.id DESC LIMIT 1
-                """, (phone, norm_p, f"%{last10}", f"0{last10}"))
-            else:
-                cur = conn.execute("""
-                    SELECT b.*,
-                           r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
-                           r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
-                           r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
-                           r.avatar_url AS rider_avatar,
-                           COALESCE(r.gcash_number, '') AS rider_gcash_number,
-                           COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
-                    FROM bookings b
-                    LEFT JOIN riders r ON b.rider_id = r.id
-                    WHERE (b.customer_phone = ? OR b.customer_phone = ?)
-                      AND b.status IN ('broadcast', 'accepted', 'in_progress')
-                    ORDER BY b.id DESC LIMIT 1
-                """, (phone, norm_p))
-            row = cur.fetchone()
-            if row:
-                booking = dict(row)
+                summary = build_booking_group_summary(group_rows) if len(group_rows) > 1 else None
+                has_active = bool(
+                    summary["active_count"] > 0 if summary else focused.get("status") in ("broadcast", "accepted", "in_progress")
+                )
+                if has_active:
+                    if summary:
+                        grp_code = group_rows[0]["group_code"]
+                        session["active_booking_code"] = grp_code
+                        session["active_group_code"] = grp_code
+                        tracking_url = f"/track/{grp_code}"
+                    else:
+                        grp_code = ""
+                        session["active_booking_code"] = focused["booking_code"]
+                        session.pop("active_group_code", None)
+                        tracking_url = f"/track/{focused['booking_code']}"
+                    active_trips = [{
+                        "is_group": bool(summary),
+                        "group_code": grp_code,
+                        "group_summary": summary,
+                        "booking": focused,
+                        "slots": group_rows,
+                        "tracking_url": tracking_url,
+                    }]
+                    return jsonify({
+                        "active": True,
+                        "booking": focused,
+                        "tracking_url": tracking_url,
+                        "is_group": bool(summary),
+                        "group_code": grp_code,
+                        "group_summary": summary,
+                        "group_bookings": group_rows,
+                        "active_trips": active_trips,
+                    })
+                if sess_code.upper() in (
+                    focused.get("booking_code", "").upper(),
+                    (focused.get("group_code") or "").upper(),
+                ):
+                    session.pop("active_booking_code", None)
+                    session.pop("active_group_code", None)
+                return jsonify({
+                    "active": False,
+                    "booking": focused,
+                    "status": focused.get("status"),
+                    "group_summary": summary,
+                    "active_trips": [],
+                })
+            return jsonify({"active": False, "booking": None, "active_trips": []})
 
-        if booking and booking.get("status") in ("broadcast", "accepted", "in_progress"):
-            session["active_booking_code"] = booking["booking_code"]
+        if req_phone:
+            if not is_admin and (not sess_phone or normalize_ph_phone(req_phone) != normalize_ph_phone(sess_phone)):
+                return jsonify({"active": False, "booking": None, "error": "Unauthorized"}), 401
+            raw_active = get_customer_active_bookings(conn, phone=req_phone)
+        else:
+            raw_active = get_customer_active_bookings(conn, phone=sess_phone, booking_code=sess_code or sess_group)
+
+        active_trips = _group_active_trips_payload(conn, raw_active)
+        if active_trips:
+            first_trip = active_trips[0]
+            booking = first_trip["booking"]
+            summary = first_trip["group_summary"]
+            tracking_url = first_trip["tracking_url"]
+            if first_trip["is_group"]:
+                session["active_booking_code"] = first_trip["group_code"]
+                session["active_group_code"] = first_trip["group_code"]
+            else:
+                session["active_booking_code"] = booking["booking_code"]
+                session.pop("active_group_code", None)
             return jsonify({
                 "active": True,
                 "booking": booking,
-                "tracking_url": f"/track/{booking['booking_code']}",
+                "tracking_url": tracking_url,
+                "is_group": first_trip["is_group"],
+                "group_code": first_trip["group_code"],
+                "group_summary": summary,
+                "group_bookings": first_trip["slots"],
+                "active_trips": active_trips,
             })
 
-        if booking:
-            session.pop("active_booking_code", None)
-            return jsonify({"active": False, "booking": booking, "status": booking.get("status")})
-
         session.pop("active_booking_code", None)
-        return jsonify({"active": False, "booking": None})
+        session.pop("active_group_code", None)
+        return jsonify({"active": False, "booking": None, "active_trips": []})
 
     # -------------------------------------------------------------------------
     # Customer Authentication & Legit Verification Routes
@@ -888,6 +1013,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not dropoff_address:
             return jsonify({"error": "Please specify a Drop-off / Destination address."}), 400
 
+        raw_riders_count = data.get("riders_count", 1)
+        try:
+            riders_count = int(raw_riders_count)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Please select between 1 and 10 riders."}), 400
+        if riders_count < 1 or riders_count > 10:
+            return jsonify({"error": "You can request between 1 and 10 riders per booking."}), 400
+
         try:
             pickup_lat = float(data.get("pickup_lat")) if data.get("pickup_lat") else None
             pickup_lng = float(data.get("pickup_lng")) if data.get("pickup_lng") else None
@@ -963,15 +1096,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if payment_method not in ("cash", "gcash", "maya"):
             payment_method = "cash"
 
+        per_rider_fare = round(float(fare_amount), 2)
+        gross_group_total = round(per_rider_fare * riders_count, 2)
         scheduled_at = (data.get("scheduled_at") or "").strip() or None
         promo_code = (data.get("promo_code") or "").strip().upper()
+        promo_code_id = None
         discount_amount = 0.0
 
         if promo_code:
-            promo_res = validate_promo_code(conn, promo_code, fare_amount)
+            promo_res = validate_promo_code(conn, promo_code, gross_group_total)
             if promo_res["valid"] and apply_promo_code(conn, promo_code):
-                discount_amount = promo_res["discount_amount"]
-                fare_amount = promo_res["new_fare"]
+                discount_amount = float(promo_res["discount_amount"] or 0.0)
+                promo_code_id = promo_res.get("promo_id")
             else:
                 promo_code = ""
 
@@ -1007,7 +1143,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             except Exception:
                 pass
 
-        booking = create_booking(
+        group_code, group_bookings = create_booking_group(
             conn=conn,
             service_type=service_type,
             customer_name=customer_name,
@@ -1020,25 +1156,54 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             dropoff_lng=dropoff_lng,
             item_notes=item_notes,
             estimated_budget=estimated_budget,
-            fare_amount=fare_amount,
+            per_rider_fare=per_rider_fare,
             estimated_km=estimated_km,
             payment_method=payment_method,
             scheduled_at=scheduled_at,
             promo_code=promo_code,
-            discount_amount=discount_amount,
+            promo_code_id=promo_code_id,
+            total_discount=discount_amount,
+            riders_count=riders_count,
         )
         conn.commit()
 
-        session["active_booking_code"] = booking["booking_code"]
+        booking = group_bookings[0]
+        total_fare = round(sum(float(b.get("fare_amount") or 0.0) for b in group_bookings), 2)
+        group_summary = build_booking_group_summary(group_bookings) if riders_count > 1 else None
+        breakdown["riders_count"] = riders_count
+        breakdown["per_rider_fare"] = per_rider_fare
+        breakdown["gross_group_total"] = gross_group_total
+        breakdown["discount_amount"] = round(discount_amount, 2)
+        breakdown["group_total_fare"] = total_fare
+
+        if group_code:
+            session["active_booking_code"] = group_code
+            session["active_group_code"] = group_code
+            tracking_url = f"/track/{group_code}"
+            msg = f"Your {riders_count}-rider group booking ({group_code}) has been broadcasted to all active riders!"
+        else:
+            session["active_booking_code"] = booking["booking_code"]
+            session.pop("active_group_code", None)
+            tracking_url = f"/track/{booking['booking_code']}"
+            msg = "Your booking has been broadcasted to all active riders!"
+
         session["customer_phone"] = booking["customer_phone"]
         session["customer_name"] = booking["customer_name"]
 
         return jsonify({
             "success": True,
-            "message": "Your booking has been broadcasted to all active riders!",
+            "message": msg,
             "booking": booking,
+            "booking_code": booking["booking_code"],
+            "is_group": bool(group_code and riders_count > 1),
+            "group_code": group_code,
+            "riders_count": riders_count,
+            "per_rider_fare": per_rider_fare,
+            "total_fare": total_fare,
+            "group_bookings": group_bookings,
+            "group_summary": group_summary,
             "breakdown": breakdown,
-            "tracking_url": f"/track/{booking['booking_code']}",
+            "tracking_url": tracking_url,
         }), 201
 
 
@@ -1050,10 +1215,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return "system"
         if session.get("rider_id") and booking.get("rider_id") == session.get("rider_id"):
             return "rider"
-        if session.get("active_booking_code") and session.get("active_booking_code") == booking.get("booking_code"):
-            return "customer"
-        sess_phone = (session.get("customer_phone") or "").strip()
-        if sess_phone and normalize_ph_phone(sess_phone) == normalize_ph_phone(booking.get("customer_phone") or ""):
+        if _is_customer_authorized_for_booking(booking):
             return "customer"
         return None
 
@@ -1488,21 +1650,60 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/track/<booking_code>")
     def track_view(booking_code: str):
         conn = get_db()
-        booking = get_booking_by_code(conn, booking_code)
+        slot_param = (request.args.get("slot") or "").strip()
+        booking, group_bookings = _resolve_booking_or_group(conn, booking_code, slot_param)
         if not booking:
-            return render_template("track.html", booking=None, error="Booking not found."), 404
-        if booking.get("status") in ("broadcast", "accepted", "in_progress"):
-            session["active_booking_code"] = booking["booking_code"]
+            return render_template("track.html", booking=None, group_bookings=[], group_summary=None, error="Booking not found."), 404
+
+        group_summary = build_booking_group_summary(group_bookings) if len(group_bookings) > 1 else None
+        is_group_active = bool(group_summary["active_count"] > 0) if group_summary else booking.get("status") in ("broadcast", "accepted", "in_progress")
+
+        if is_group_active:
+            if group_summary:
+                session["active_booking_code"] = group_summary["group_code"]
+                session["active_group_code"] = group_summary["group_code"]
+            else:
+                session["active_booking_code"] = booking["booking_code"]
+                session.pop("active_group_code", None)
         else:
-            if session.get("active_booking_code") == booking["booking_code"]:
+            sess_code = (session.get("active_booking_code") or "").strip().upper()
+            if sess_code in (
+                (booking.get("booking_code") or "").upper(),
+                (booking.get("group_code") or "").upper(),
+            ):
                 session.pop("active_booking_code", None)
-        already_reviewed = bool(booking.get("id") and get_review_by_booking_id(conn, booking["id"]))
-        return render_template("track.html", booking=booking, active_nav="track", already_reviewed=already_reviewed)
+                session.pop("active_group_code", None)
+
+        slot_ids = [int(s["id"]) for s in group_bookings if s.get("id")]
+        reviewed_ids: set[int] = set()
+        if slot_ids:
+            placeholders = ", ".join(["?"] * len(slot_ids))
+            rev_rows = conn.execute(
+                f"SELECT DISTINCT booking_id FROM reviews WHERE booking_id IN ({placeholders})",
+                tuple(slot_ids),
+            ).fetchall()
+            reviewed_ids = {int(r["booking_id"]) for r in rev_rows if r["booking_id"] is not None}
+
+        for s in group_bookings:
+            s["already_reviewed"] = int(s.get("id") or 0) in reviewed_ids
+
+        already_reviewed = bool(booking.get("already_reviewed"))
+        track_code = group_summary["group_code"] if group_summary else booking["booking_code"]
+        return render_template(
+            "track.html",
+            booking=booking,
+            group_bookings=group_bookings,
+            group_summary=group_summary,
+            track_code=track_code,
+            active_nav="track",
+            already_reviewed=already_reviewed,
+        )
 
     @app.get("/api/bookings/track/<booking_code>")
     def api_track_booking(booking_code: str):
         conn = get_db()
-        booking = get_booking_by_code(conn, booking_code)
+        slot_param = (request.args.get("slot") or "").strip()
+        booking, group_bookings = _resolve_booking_or_group(conn, booking_code, slot_param)
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
@@ -1510,7 +1711,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if booking.get("id"):
             trail = get_booking_tracking_trail(conn, booking["id"], limit=20)
 
-        # Compute real-time road distance from rider to pickup/dropoff
+        # Compute real-time road distance from focused rider to pickup/dropoff
         distance_to_pickup_km = None
         if booking.get("rider_lat") and booking.get("rider_lng") and booking.get("pickup_lat") and booking.get("pickup_lng"):
             distance_to_pickup_km, _ = calculate_road_km(
@@ -1523,12 +1724,49 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 booking["rider_lat"], booking["rider_lng"], booking["dropoff_lat"], booking["dropoff_lng"]
             )
 
+        slot_ids = [int(s["id"]) for s in group_bookings if s.get("id")]
+        reviewed_ids: set[int] = set()
+        if slot_ids:
+            placeholders = ", ".join(["?"] * len(slot_ids))
+            rev_rows = conn.execute(
+                f"SELECT DISTINCT booking_id FROM reviews WHERE booking_id IN ({placeholders})",
+                tuple(slot_ids),
+            ).fetchall()
+            reviewed_ids = {int(r["booking_id"]) for r in rev_rows if r["booking_id"] is not None}
+
+        focused_id = int(booking.get("id") or 0)
+        for s in group_bookings:
+            sid = int(s.get("id") or 0)
+            s["already_reviewed"] = sid in reviewed_ids
+            if sid == focused_id:
+                s["distance_to_pickup_km"] = distance_to_pickup_km
+                s["distance_to_dropoff_km"] = distance_to_dropoff_km
+            else:
+                if s.get("rider_lat") and s.get("rider_lng") and s.get("pickup_lat") and s.get("pickup_lng"):
+                    s["distance_to_pickup_km"] = round(
+                        calculate_haversine_km(float(s["rider_lat"]), float(s["rider_lng"]), float(s["pickup_lat"]), float(s["pickup_lng"])) * 1.25,
+                        2,
+                    )
+                else:
+                    s["distance_to_pickup_km"] = None
+                if s.get("rider_lat") and s.get("rider_lng") and s.get("dropoff_lat") and s.get("dropoff_lng"):
+                    s["distance_to_dropoff_km"] = round(
+                        calculate_haversine_km(float(s["rider_lat"]), float(s["rider_lng"]), float(s["dropoff_lat"]), float(s["dropoff_lng"])) * 1.25,
+                        2,
+                    )
+                else:
+                    s["distance_to_dropoff_km"] = None
+
+        group_summary = build_booking_group_summary(group_bookings) if len(group_bookings) > 1 else None
+
         return jsonify({
             "booking": booking,
             "trail": trail,
             "distance_to_pickup_km": distance_to_pickup_km,
             "distance_to_dropoff_km": distance_to_dropoff_km,
-            "already_reviewed": bool(booking.get("id") and get_review_by_booking_id(conn, booking["id"])),
+            "already_reviewed": int(booking.get("id") or 0) in reviewed_ids,
+            "group_bookings": group_bookings,
+            "group_summary": group_summary,
         })
 
     # -------------------------------------------------------------------------
@@ -1840,7 +2078,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not session.get("rider_id") and not session.get("is_admin"):
             return jsonify({"error": "Rider authentication required."}), 401
         conn = get_db()
-        jobs = get_available_broadcast_bookings(conn)
+        rider_id = session.get("rider_id")
+        jobs = get_available_broadcast_bookings(conn, rider_id=int(rider_id) if rider_id else None)
         return jsonify({"jobs": jobs, "count": len(jobs)})
 
     @app.get("/api/rider/active-job")
@@ -1886,9 +2125,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             except Exception:
                 pass
 
-        # Check if rider already has an active ongoing job
+        # Check if rider already has an active ongoing job (same-group duplicate claims fall through to 409 below)
         active = get_rider_active_job(conn, int(rider_id))
-        if active and active["id"] != booking_id and not is_target_advance:
+        target_grp = (target_booking.get("group_code") or "").strip().upper()
+        active_grp = (active.get("group_code") or "").strip().upper() if active else ""
+        same_group_active = bool(active and target_grp and active_grp == target_grp)
+        if active and active["id"] != booking_id and not is_target_advance and not same_group_active:
             # If the current active job is a future advance job (not in_progress and scheduled > 15m), allow taking this on-demand job!
             is_active_advance = False
             act_sched = (active.get("scheduled_at") or "").strip()
@@ -1902,16 +2144,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if not is_active_advance:
                 return jsonify({"error": "You already have an active ongoing trip that must be completed first."}), 400
 
-        claimed = accept_booking(conn, booking_id, int(rider_id))
+        claimed, claimed_id, claim_reason = accept_booking_for_group_slot(conn, booking_id, int(rider_id))
         if not claimed:
             conn.rollback()
-            return jsonify({"error": "This booking has already been claimed by another rider."}), 409
+            return jsonify({"error": claim_reason or "This booking has already been claimed by another rider."}), 409
 
         conn.commit()
-        updated_job = get_booking_by_id(conn, booking_id)
+        updated_job = attach_group_metadata(conn, get_booking_by_id(conn, int(claimed_id or booking_id)))
+        msg = "Booking accepted successfully!"
+        if updated_job and int(updated_job.get("group_size") or 1) > 1:
+            msg = f"Joined Group Ride as Rider {updated_job.get('rider_slot', 1)} of {updated_job.get('group_size', 1)}!"
         return jsonify({
             "success": True,
-            "message": "Booking accepted successfully!",
+            "message": msg,
             "job": updated_job,
             "is_advance": is_target_advance,
         })
@@ -1930,7 +2175,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not update_booking_status(conn, booking_id, "in_progress"):
             return jsonify({"error": "Unable to start booking from its current status."}), 400
         conn.commit()
-        return jsonify({"success": True, "job": get_booking_by_id(conn, booking_id)})
+        return jsonify({"success": True, "job": attach_group_metadata(conn, get_booking_by_id(conn, booking_id))})
 
     @app.post("/api/bookings/<int:booking_id>/status")
     def update_job_status(booking_id: int):
@@ -1948,17 +2193,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         is_admin = bool(session.get("is_admin"))
         rider_id = session.get("rider_id")
         is_assigned_rider = bool(rider_id and booking.get("rider_id") == int(rider_id))
-        is_booking_customer = bool(
-            (session.get("active_booking_code") and session.get("active_booking_code") == booking.get("booking_code"))
-            or (
-                session.get("customer_phone")
-                and normalize_ph_phone(session.get("customer_phone") or "") == normalize_ph_phone(booking.get("customer_phone") or "")
-            )
-        )
+        is_booking_customer = _is_customer_authorized_for_booking(booking)
 
         if not is_admin and not is_assigned_rider:
             if not (new_status == "cancelled" and is_booking_customer):
                 return jsonify({"error": "Unauthorized to update this booking's status."}), 403
+            if (booking.get("status") or "").strip().lower() != "broadcast":
+                return jsonify({
+                    "error": "Only open (unassigned) broadcast bookings or slots can be cancelled directly by the passenger."
+                }), 400
 
         if (
             new_status == "completed"
@@ -1975,7 +2218,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not update_booking_status(conn, booking_id, new_status):
             return jsonify({"error": "Cannot transition booking from its current status."}), 400
         conn.commit()
-        updated_job = get_booking_by_id(conn, booking_id)
+        updated_job = attach_group_metadata(conn, get_booking_by_id(conn, booking_id))
         return jsonify({"success": True, "job": updated_job})
 
     @app.post("/api/bookings/<code_or_id>/gcash/customer-sent")
@@ -2033,11 +2276,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             conn.rollback()
             return jsonify({"error": msg}), status_code
         conn.commit()
+        updated_with_grp = attach_group_metadata(conn, updated)
         return jsonify({
             "success": True,
             "message": msg,
-            "booking": updated,
-            "job": updated,
+            "booking": updated_with_grp,
+            "job": updated_with_grp,
         })
 
     @app.post("/api/bookings/<int:booking_id>/transfer")

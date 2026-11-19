@@ -362,7 +362,16 @@
         <tbody>
           {% for b in bookings %}
           <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.booking_code or b.code }}</td>
+            <td style="padding:8px;font-family:monospace;font-weight:700;">
+              {{ b.booking_code or b.code }}
+              {% if b.group_size and b.group_size|int > 1 and b.group_code %}
+                <div style="margin-top:3px;">
+                  <span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.68rem;font-family:sans-serif;">
+                    👥 {{ b.group_code }} &bull; Slot {{ b.rider_slot or 1 }}/{{ b.group_size }}
+                  </span>
+                </div>
+              {% endif %}
+            </td>
             <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
             <td style="padding:8px;">
               {% if b.status == 'completed' %}
@@ -427,7 +436,7 @@
             </td>
             <td style="padding:8px;white-space:nowrap;">
               <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start;">
-                <a href="/track/{{ b.booking_code or b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
+                <a href="{{ ('/track/' ~ b.group_code ~ '?slot=' ~ (b.booking_code or b.code)) if (b.group_size and b.group_size|int > 1 and b.group_code) else ('/track/' ~ (b.booking_code or b.code)) }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
                 {% if b.status in ['accepted', 'in_progress'] %}
                   <button
                     type="button"
@@ -497,7 +506,7 @@
         </thead>
         <tbody>
           {% for t in transactions %}
-          <tr class="txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }}" style="border-bottom:1px solid var(--border);">
+          <tr class="txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }} {{ t.group_code or '' }}" style="border-bottom:1px solid var(--border);">
             <td style="padding:8px;font-family:monospace;font-weight:700;color:#0284c7;">
               {{ t.transaction_code }}
             </td>
@@ -547,9 +556,16 @@
               {% endif %}
             </td>
             <td style="padding:8px;white-space:nowrap;">
-              <a href="/track/{{ t.booking_code }}" target="_blank" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 8px;">
+              <a href="{{ ('/track/' ~ t.group_code ~ '?slot=' ~ t.booking_code) if (t.group_size and t.group_size|int > 1 and t.group_code) else ('/track/' ~ t.booking_code) }}" target="_blank" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 8px;">
                 {{ t.booking_code }} 📍
               </a>
+              {% if t.group_size and t.group_size|int > 1 and t.group_code %}
+                <div style="margin-top:3px;">
+                  <span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.66rem;">
+                    👥 {{ t.group_code }} Slot {{ t.rider_slot or 1 }}/{{ t.group_size }}
+                  </span>
+                </div>
+              {% endif %}
             </td>
           </tr>
           {% else %}

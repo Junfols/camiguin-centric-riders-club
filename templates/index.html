@@ -21,11 +21,24 @@
         <span class="live-pulse-dot" style="width:12px;height:12px;background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,0.25);"></span>
         <div>
           <span style="font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; color:#c2410c;">Active Island Trip Detected</span>
-          <h3 id="active-card-code" style="margin:2px 0 0; font-size:1.15rem; color:#9a3412;">{{ active_booking.booking_code if active_booking else '' }}</h3>
+          <h3 id="active-card-code" style="margin:2px 0 0; font-size:1.15rem; color:#9a3412;">{{ active_group_summary.group_code if active_group_summary else (active_booking.booking_code if active_booking else '') }}</h3>
+          <span id="active-card-group-badge" class="badge {% if not active_group_summary %}hidden{% endif %}" style="background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:12px;font-weight:700;font-size:0.74rem;margin-top:4px;display:inline-block;">
+            {% if active_group_summary %}
+              👥 Group Ride ({{ active_group_summary.total_riders }} Riders) &bull; {{ active_group_summary.assigned_count }}/{{ active_group_summary.total_riders }} Assigned
+            {% endif %}
+          </span>
         </div>
       </div>
       <span id="active-card-status-badge" class="badge" style="background:#ea580c; color:white; padding:6px 14px; border-radius:20px; font-weight:700; font-size:0.82rem;">
-        {% if active_booking and active_booking.status == 'accepted' %}
+        {% if active_group_summary %}
+          {% if active_group_summary.assigned_count >= active_group_summary.total_riders %}
+            🛵 All {{ active_group_summary.total_riders }} Riders Assigned!
+          {% elif active_group_summary.assigned_count > 0 %}
+            🛵 {{ active_group_summary.assigned_count }}/{{ active_group_summary.total_riders }} Riders Assigned
+          {% else %}
+            ⏳ Waiting for {{ active_group_summary.total_riders }} Riders...
+          {% endif %}
+        {% elif active_booking and active_booking.status == 'accepted' %}
           🛵 Rider Accepted &amp; Heading to Pickup!
         {% elif active_booking and active_booking.status == 'in_progress' %}
           🚀 In Transit / On the Way!
@@ -63,11 +76,19 @@
     <div style="margin-top:12px; font-size:0.88rem; color:#475569; display:grid; gap:4px;">
       <div>📍 Pickup: <strong id="active-card-pickup" style="color:#1e293b;">{{ active_booking.pickup_address if active_booking else '' }}</strong></div>
       <div>🏁 Destination: <strong id="active-card-dropoff" style="color:#1e293b;">{{ active_booking.dropoff_address if active_booking else '' }}</strong></div>
-      <div style="margin-top:4px;">💰 Fare: <strong id="active-card-fare" style="color:#ea580c; font-size:1.05rem;">₱{{ '{:,.0f}'.format(active_booking.fare_amount) if active_booking else '' }}</strong></div>
+      <div style="margin-top:4px;">
+        💰 Fare:
+        <strong id="active-card-fare" style="color:#ea580c; font-size:1.05rem;">₱{{ '{:,.0f}'.format(active_group_summary.active_total_fare if active_group_summary.cancelled_count > 0 else active_group_summary.total_fare) if active_group_summary else ('{:,.0f}'.format(active_booking.fare_amount) if active_booking else '') }}</strong>
+        <small id="active-card-group-progress" class="text-muted {% if not active_group_summary %}hidden{% endif %}" style="font-weight:600;margin-left:6px;">
+          {% if active_group_summary %}
+            ({{ active_group_summary.open_count }} open, {{ active_group_summary.completed_count }} completed)
+          {% endif %}
+        </small>
+      </div>
     </div>
 
     <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
-      <a id="active-card-track-btn" href="{{ '/track/' ~ active_booking.booking_code if active_booking else '#' }}" class="btn btn-primary btn-block" style="flex:2; padding:12px 18px; font-weight:700; text-align:center; font-size:0.95rem; border-radius:10px;">
+      <a id="active-card-track-btn" href="{{ active_tracking_url if active_tracking_url else ('/track/' ~ active_booking.booking_code if active_booking else '#') }}" class="btn btn-primary btn-block" style="flex:2; padding:12px 18px; font-weight:700; text-align:center; font-size:0.95rem; border-radius:10px;">
         🗺️ Resume Live GPS Tracking &rarr;
       </a>
       <button type="button" id="active-card-dismiss-btn" class="btn btn-outline" style="flex:1; font-size:0.85rem; border-radius:10px; white-space:nowrap;" onclick="document.getElementById('booking-request-form')?.scrollIntoView({behavior:'smooth'})">
@@ -75,6 +96,7 @@
       </button>
     </div>
   </div>
+  <div id="customer-active-trips-extra" class="active-trips-extra-list hidden"></div>
 
   <!-- Main Booking App Layout -->
   <div class="booking-grid">
@@ -272,6 +294,36 @@
           </div>
         </div>
 
+        <!-- Number of Riders Needed (1 to 10 Simultaneous Riders) -->
+        <div class="booking-option-card riders-count-card" id="riders-count-card" style="margin-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="section-badge-title">👥 Number of Riders Needed (1–10)</div>
+            <span id="riders-count-badge" class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:0.75rem;font-weight:700;">1 Rider (Solo)</span>
+          </div>
+          <div class="riders-stepper-row">
+            <div class="riders-stepper">
+              <button type="button" id="riders-count-dec" class="riders-step-btn" aria-label="Decrease number of riders" disabled>&minus;</button>
+              <div class="riders-step-display">
+                <strong id="riders-count-val">1</strong>
+                <small id="riders-count-unit">rider</small>
+              </div>
+              <button type="button" id="riders-count-inc" class="riders-step-btn" aria-label="Increase number of riders">+</button>
+            </div>
+            <div class="riders-preset-pills" role="group" aria-label="Quick rider count presets">
+              <button type="button" class="riders-preset-btn active" data-riders-preset="1">1</button>
+              <button type="button" class="riders-preset-btn" data-riders-preset="2">2</button>
+              <button type="button" class="riders-preset-btn" data-riders-preset="3">3</button>
+              <button type="button" class="riders-preset-btn" data-riders-preset="4">4</button>
+              <button type="button" class="riders-preset-btn" data-riders-preset="5">5</button>
+              <button type="button" class="riders-preset-btn" data-riders-preset="10">10</button>
+            </div>
+          </div>
+          <input type="hidden" id="riders-count-input" name="riders_count" value="1">
+          <small class="text-muted" style="display:block;margin-top:6px;font-size:0.76rem;line-height:1.4;">
+            Book 1 rider for solo trips, or up to 10 riders simultaneously for families &amp; groups. Each rider gets paid directly.
+          </small>
+        </div>
+
         <!-- Ride Timing & Scheduling Options -->
         <div class="booking-option-card" style="margin-top:14px;">
           <div class="section-badge-title">⏰ Ride Timing</div>
@@ -345,7 +397,7 @@
         <div class="fare-estimate-card-clean">
           <div class="fare-summary-row">
             <div>
-              <span class="fare-clean-label">Estimated Fare</span>
+              <span class="fare-clean-label" id="fare-estimate-label">Estimated Fare</span>
               <div class="fare-clean-number">
                 <span class="peso-sign">₱</span><strong id="fare-display">40</strong>
               </div>
@@ -357,6 +409,11 @@
           </div>
 
           <div id="fare-breakdown-badges" class="fare-breakdown-badges hidden"></div>
+
+          <div id="fare-group-summary-row" class="fare-group-summary-row hidden">
+            <span id="fare-group-summary-label">👥 Group Fare Breakdown:</span>
+            <strong id="fare-group-summary-val">₱40 per rider × 1 = ₱40</strong>
+          </div>
 
           <div id="promo-discount-row" class="hidden" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;color:#16a34a;font-weight:600;font-size:0.9rem;">
             <span>🎟️ Voucher Discount:</span>
@@ -562,6 +619,7 @@
         <span class="code-label" style="display:block;font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Your Booking Code</span>
         <strong id="modal-booking-code" class="code-val" style="font-size:1.4rem;font-family:monospace;color:var(--primary);">CCRC-0000-00</strong>
       </div>
+      <p id="modal-group-note" class="text-muted hidden" style="font-size:0.84rem;margin:0 0 8px;"></p>
 
       <a id="modal-track-link" href="#" class="btn btn-primary btn-lg btn-block" style="margin-top:14px;padding:14px;border-radius:12px;font-weight:700;">
         Track Live Rider GPS &amp; Status &rarr;
@@ -574,6 +632,7 @@
 {% block scripts %}
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
+  window.SERVER_ACTIVE_TRIPS = {{ active_trips | tojson if active_trips else '[]' }};
 </script>
-<script src="/static/js/app.js?v=34"></script>
+<script src="/static/js/app.js?v=35"></script>
 {% endblock %}

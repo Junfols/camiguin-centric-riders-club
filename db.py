@@ -3881,6 +3881,12 @@ def generate_booking_code() -> str:
     return f"CCRC-{now.strftime('%y%m')}-{token}"
 
 
+def generate_group_code() -> str:
+    now = get_now_pht()
+    token = secrets.token_hex(2).upper()
+    return f"GRP-{now.strftime('%y%m')}-{token}"
+
+
 def translate_sql_to_postgres(sql: str) -> str:
     converted = sql.replace("?", "%s")
     converted = converted.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
@@ -4148,6 +4154,9 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
             transferred_from_rider_id INTEGER DEFAULT NULL,
             transfer_reason TEXT DEFAULT '',
             transfer_count INTEGER DEFAULT 0,
+            group_code TEXT DEFAULT '',
+            rider_slot INTEGER DEFAULT 1,
+            group_size INTEGER DEFAULT 1,
             created_at TEXT NOT NULL,
             FOREIGN KEY (rider_id) REFERENCES riders(id) ON DELETE SET NULL
         )
@@ -4304,6 +4313,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_customer_phone ON bookings(customer_phone)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_group_code ON bookings(group_code)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
@@ -4322,6 +4332,9 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         ("payment_ref", "TEXT DEFAULT ''"),
         ("payment_sent_at", "TEXT DEFAULT NULL"),
         ("payment_confirmed_at", "TEXT DEFAULT NULL"),
+        ("group_code", "TEXT DEFAULT ''"),
+        ("rider_slot", "INTEGER DEFAULT 1"),
+        ("group_size", "INTEGER DEFAULT 1"),
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN {col_def[0]} {col_def[1]}")
@@ -4415,6 +4428,9 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
             transferred_from_rider_id INTEGER DEFAULT NULL,
             transfer_reason TEXT DEFAULT '',
             transfer_count INTEGER DEFAULT 0,
+            group_code VARCHAR(32) DEFAULT '',
+            rider_slot INTEGER DEFAULT 1,
+            group_size INTEGER DEFAULT 1,
             created_at VARCHAR(32) NOT NULL
         )
         """
@@ -4565,6 +4581,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_customer_phone ON bookings(customer_phone)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_group_code ON bookings(group_code)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
@@ -4613,6 +4630,9 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         ("payment_ref", "VARCHAR(64) DEFAULT ''"),
         ("payment_sent_at", "VARCHAR(32) DEFAULT NULL"),
         ("payment_confirmed_at", "VARCHAR(32) DEFAULT NULL"),
+        ("group_code", "VARCHAR(32) DEFAULT ''"),
+        ("rider_slot", "INTEGER DEFAULT 1"),
+        ("group_size", "INTEGER DEFAULT 1"),
     ]:
         try:
             conn.execute(f"ALTER TABLE bookings ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
@@ -5015,8 +5035,16 @@ def create_booking(
     scheduled_at: str | None = None,
     promo_code: str = "",
     discount_amount: float = 0.0,
+    promo_code_id: int | None = None,
+    group_code: str = "",
+    rider_slot: int = 1,
+    group_size: int = 1,
+    booking_code: str | None = None,
 ) -> dict[str, Any]:
-    code = generate_booking_code()
+    code = (booking_code or "").strip().upper() or generate_booking_code()
+    clean_group_code = (group_code or "").strip().upper()
+    clean_slot = max(1, int(rider_slot or 1))
+    clean_group_size = max(1, int(group_size or 1))
     now = get_now_pht().isoformat(timespec="seconds")
     booking_id = conn.insert_returning_id(
         """
@@ -5024,8 +5052,9 @@ def create_booking(
             booking_code, service_type, status, customer_name, customer_phone,
             pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng,
             item_notes, estimated_budget, estimated_km, fare_amount, payment_method,
-            payment_status, scheduled_at, promo_code, discount_amount, created_at
-        ) VALUES (?, ?, 'broadcast', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+            payment_status, scheduled_at, promo_code_id, promo_code, discount_amount,
+            group_code, rider_slot, group_size, created_at
+        ) VALUES (?, ?, 'broadcast', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             code,
@@ -5044,18 +5073,155 @@ def create_booking(
             fare_amount,
             payment_method,
             scheduled_at,
+            promo_code_id,
             promo_code.strip().upper(),
             discount_amount,
+            clean_group_code,
+            clean_slot,
+            clean_group_size,
             now,
         ),
     )
     booking = get_booking_by_id(conn, booking_id)
     if booking:
         try:
-            record_transaction(conn, booking, status="broadcast", notes=f"{service_type.upper()} booking created")
+            note_prefix = f"{service_type.upper()}"
+            if clean_group_size > 1 and clean_group_code:
+                note_prefix = f"{service_type.upper()} group {clean_group_code} (Rider {clean_slot}/{clean_group_size})"
+            record_transaction(conn, booking, status="broadcast", notes=f"{note_prefix} booking created")
         except Exception:
             pass
     return booking
+
+
+def create_booking_group(
+    conn: DatabaseConnection,
+    service_type: str,
+    customer_name: str,
+    customer_phone: str,
+    pickup_address: str,
+    pickup_lat: float | None,
+    pickup_lng: float | None,
+    dropoff_address: str,
+    dropoff_lat: float | None,
+    dropoff_lng: float | None,
+    item_notes: str = "",
+    estimated_budget: float = 0.0,
+    per_rider_fare: float = 50.0,
+    estimated_km: float = 1.0,
+    payment_method: str = "cash",
+    scheduled_at: str | None = None,
+    promo_code: str = "",
+    promo_code_id: int | None = None,
+    total_discount: float = 0.0,
+    riders_count: int = 1,
+) -> tuple[str, list[dict[str, Any]]]:
+    """
+    Creates 1 standalone booking (riders_count=1) or a linked multi-rider group of 2..10
+    bookings sharing a GRP-YYMM-XXXX code (riders_count > 1), splitting any promo discount
+    cleanly across the slots so sum(slot.fare_amount) matches group_total_after_discount.
+    """
+    count = max(1, min(10, int(riders_count or 1)))
+    raw_per = max(0.0, float(per_rider_fare or 0.0))
+    clamped_disc = min(max(0.0, float(total_discount or 0.0)), round(raw_per * count, 2))
+
+    if count == 1:
+        unique_code = generate_booking_code()
+        for _ in range(10):
+            exists = conn.execute("SELECT 1 FROM bookings WHERE UPPER(booking_code) = ?", (unique_code,)).fetchone()
+            if not exists:
+                break
+            unique_code = generate_booking_code()
+        slot_fare = round(max(0.0, raw_per - clamped_disc), 2)
+        b = create_booking(
+            conn=conn,
+            service_type=service_type,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            pickup_address=pickup_address,
+            pickup_lat=pickup_lat,
+            pickup_lng=pickup_lng,
+            dropoff_address=dropoff_address,
+            dropoff_lat=dropoff_lat,
+            dropoff_lng=dropoff_lng,
+            item_notes=item_notes,
+            estimated_budget=estimated_budget,
+            fare_amount=slot_fare,
+            estimated_km=estimated_km,
+            payment_method=payment_method,
+            scheduled_at=scheduled_at,
+            promo_code=promo_code,
+            discount_amount=round(clamped_disc, 2),
+            promo_code_id=promo_code_id,
+            group_code="",
+            rider_slot=1,
+            group_size=1,
+            booking_code=unique_code,
+        )
+        return "", ([b] if b else [])
+
+    # Generate unique GRP-YYMM-XXXX code whose child CCRC-YYMM-XXXX-{1..N} codes do not collide
+    group_code = generate_group_code()
+    for _ in range(12):
+        candidate = generate_group_code()
+        suffix = candidate[4:] if candidate.startswith("GRP-") else candidate
+        exists_grp = conn.execute(
+            "SELECT 1 FROM bookings WHERE UPPER(group_code) = ? OR UPPER(booking_code) LIKE ?",
+            (candidate, f"CCRC-{suffix}-%"),
+        ).fetchone()
+        if not exists_grp:
+            group_code = candidate
+            break
+    token_part = group_code[4:] if group_code.startswith("GRP-") else group_code
+
+    # Distribute promo discount cleanly across slots
+    whole_pesos = abs(raw_per - round(raw_per)) < 1e-6 and abs(clamped_disc - round(clamped_disc)) < 1e-6
+    slot_discounts: list[float] = []
+    if whole_pesos:
+        disc_pesos = int(round(clamped_disc))
+        q_disc, r_disc = divmod(disc_pesos, count)
+        for idx in range(count):
+            slot_discounts.append(float(q_disc + (1 if idx < r_disc else 0)))
+    else:
+        disc_cents = int(round(clamped_disc * 100))
+        q_cents, r_cents = divmod(disc_cents, count)
+        for idx in range(count):
+            slot_discounts.append(round((q_cents + (1 if idx < r_cents else 0)) / 100.0, 2))
+
+    created: list[dict[str, Any]] = []
+    for idx in range(count):
+        slot_num = idx + 1
+        slot_disc = slot_discounts[idx]
+        slot_fare = round(max(0.0, raw_per - slot_disc), 2)
+        slot_code = f"CCRC-{token_part}-{slot_num}"
+        b = create_booking(
+            conn=conn,
+            service_type=service_type,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            pickup_address=pickup_address,
+            pickup_lat=pickup_lat,
+            pickup_lng=pickup_lng,
+            dropoff_address=dropoff_address,
+            dropoff_lat=dropoff_lat,
+            dropoff_lng=dropoff_lng,
+            item_notes=item_notes,
+            estimated_budget=estimated_budget,
+            fare_amount=slot_fare,
+            estimated_km=estimated_km,
+            payment_method=payment_method,
+            scheduled_at=scheduled_at,
+            promo_code=promo_code,
+            discount_amount=slot_disc,
+            promo_code_id=promo_code_id,
+            group_code=group_code,
+            rider_slot=slot_num,
+            group_size=count,
+            booking_code=slot_code,
+        )
+        if b:
+            created.append(b)
+    return group_code, created
 
 
 def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, Any] | None:
@@ -5108,7 +5274,177 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
     return dict(row) if row else None
 
 
-def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str, Any]]:
+def get_bookings_by_group_code(conn: DatabaseConnection, group_code: str) -> list[dict[str, Any]]:
+    clean_grp = (group_code or "").strip().upper()
+    if not clean_grp:
+        return []
+    rows = conn.execute(
+        """
+        SELECT b.*,
+               r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
+               r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
+               r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+               r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+               COALESCE(r.gcash_number, '') AS rider_gcash_number,
+               COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr,
+               COALESCE(tr.name, '') AS transferred_from_rider_name,
+               COALESCE(c.is_verified, 0) AS customer_verified,
+               COALESCE(c.total_rides, 0) AS customer_total_rides,
+               COALESCE(c.barangay, '') AS customer_barangay
+        FROM bookings b
+        LEFT JOIN riders r ON r.id = b.rider_id
+        LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
+        LEFT JOIN customers c ON b.customer_phone = c.phone
+        WHERE UPPER(b.group_code) = ?
+        ORDER BY COALESCE(b.rider_slot, 1) ASC, b.id ASC
+        """,
+        (clean_grp,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def build_booking_group_summary(bookings: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not bookings:
+        return None
+    ordered = sorted(bookings, key=lambda b: (int(b.get("rider_slot") or 1), int(b.get("id") or 0)))
+    first = ordered[0]
+    grp_code = (first.get("group_code") or "").strip().upper()
+    total_slots = max(len(ordered), int(first.get("group_size") or len(ordered)))
+
+    open_count = 0
+    assigned_count = 0
+    accepted_count = 0
+    in_progress_count = 0
+    completed_count = 0
+    cancelled_count = 0
+    paid_count = 0
+    sent_count = 0
+    total_fare = 0.0
+    active_total_fare = 0.0
+    total_discount = 0.0
+
+    for b in ordered:
+        st = (b.get("status") or "broadcast").lower()
+        rid = b.get("rider_id")
+        fare = float(b.get("fare_amount") or 0.0)
+        disc = float(b.get("discount_amount") or 0.0)
+        total_fare += fare
+        total_discount += disc
+        if st != "cancelled":
+            active_total_fare += fare
+
+        if st == "broadcast" and not rid:
+            open_count += 1
+        elif st == "accepted":
+            assigned_count += 1
+            accepted_count += 1
+        elif st == "in_progress":
+            assigned_count += 1
+            in_progress_count += 1
+        elif st == "completed":
+            if rid:
+                assigned_count += 1
+            completed_count += 1
+        elif st == "cancelled":
+            cancelled_count += 1
+
+        if (b.get("payment_method") or "").lower() == "gcash":
+            pst = (b.get("payment_status") or "pending").lower()
+            if pst == "paid":
+                paid_count += 1
+            elif pst == "customer_sent":
+                sent_count += 1
+
+    active_count = open_count + accepted_count + in_progress_count
+    if cancelled_count == len(ordered):
+        overall_status = "cancelled"
+    elif completed_count == len(ordered) or (completed_count > 0 and active_count == 0):
+        overall_status = "completed"
+    elif open_count == len(ordered):
+        overall_status = "broadcast"
+    elif in_progress_count > 0 and open_count == 0 and accepted_count == 0:
+        overall_status = "in_progress"
+    elif in_progress_count > 0:
+        overall_status = "partial_in_progress"
+    elif assigned_count > 0 and open_count > 0:
+        overall_status = "partially_assigned"
+    elif accepted_count > 0:
+        overall_status = "accepted"
+    else:
+        overall_status = (first.get("status") or "broadcast").lower()
+
+    return {
+        "group_code": grp_code,
+        "group_size": total_slots,
+        "total_riders": total_slots,
+        "slot_count": len(ordered),
+        "open_count": open_count,
+        "assigned_count": assigned_count,
+        "accepted_count": accepted_count,
+        "in_progress_count": in_progress_count,
+        "completed_count": completed_count,
+        "cancelled_count": cancelled_count,
+        "active_count": active_count,
+        "paid_count": paid_count,
+        "sent_count": sent_count,
+        "per_rider_fare": round(float(first.get("fare_amount") or 0.0), 2),
+        "total_fare": round(total_fare, 2),
+        "active_total_fare": round(active_total_fare, 2),
+        "total_discount": round(total_discount, 2),
+        "overall_status": overall_status,
+    }
+
+
+def attach_group_metadata(conn: DatabaseConnection, booking: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not booking:
+        return booking
+    grp = (booking.get("group_code") or "").strip().upper()
+    g_size = int(booking.get("group_size") or 1)
+    if not grp or g_size <= 1:
+        booking["group_size"] = g_size
+        booking["rider_slot"] = int(booking.get("rider_slot") or 1)
+        booking["group_open_count"] = 1 if (booking.get("status") == "broadcast" and not booking.get("rider_id")) else 0
+        booking["group_assigned_count"] = 1 if booking.get("rider_id") else 0
+        booking["group_completed_count"] = 1 if booking.get("status") == "completed" else 0
+        booking["group_cancelled_count"] = 1 if booking.get("status") == "cancelled" else 0
+        booking["group_total_fare"] = round(float(booking.get("fare_amount") or 0.0), 2)
+        return booking
+
+    rows = conn.execute(
+        "SELECT status, rider_id, fare_amount FROM bookings WHERE UPPER(group_code) = ?",
+        (grp,),
+    ).fetchall()
+    open_c = 0
+    assigned_c = 0
+    completed_c = 0
+    cancelled_c = 0
+    total_f = 0.0
+    for r in rows:
+        st = (r["status"] or "").lower()
+        rid = r["rider_id"]
+        total_f += float(r["fare_amount"] or 0.0)
+        if st == "broadcast" and not rid:
+            open_c += 1
+        elif st in ("accepted", "in_progress"):
+            assigned_c += 1
+        elif st == "completed":
+            if rid:
+                assigned_c += 1
+            completed_c += 1
+        elif st == "cancelled":
+            cancelled_c += 1
+
+    booking["group_size"] = max(len(rows), g_size)
+    booking["rider_slot"] = int(booking.get("rider_slot") or 1)
+    booking["group_open_count"] = open_c
+    booking["group_assigned_count"] = assigned_c
+    booking["group_completed_count"] = completed_c
+    booking["group_cancelled_count"] = cancelled_c
+    booking["group_total_fare"] = round(total_f, 2)
+    return booking
+
+
+def get_available_broadcast_bookings(conn: DatabaseConnection, rider_id: int | None = None) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT b.*,
@@ -5121,10 +5457,91 @@ def get_available_broadcast_bookings(conn: DatabaseConnection) -> list[dict[str,
         LEFT JOIN customers c ON b.customer_phone = c.phone
         WHERE b.status = 'broadcast' AND b.rider_id IS NULL
         ORDER BY CASE WHEN COALESCE(b.transfer_count, 0) > 0 THEN 0 ELSE 1 END, b.id DESC
-        LIMIT 20
+        LIMIT 80
         """
     ).fetchall()
-    return [dict(r) for r in rows]
+
+    raw_rows = [dict(r) for r in rows]
+    if not raw_rows:
+        return []
+
+    grp_codes = sorted({(r.get("group_code") or "").strip().upper() for r in raw_rows if (r.get("group_code") or "").strip()})
+    group_stats: dict[str, dict[str, Any]] = {}
+    if grp_codes:
+        placeholders = ", ".join(["?"] * len(grp_codes))
+        grp_rows = conn.execute(
+            f"SELECT UPPER(group_code) AS grp, status, rider_id, fare_amount FROM bookings WHERE UPPER(group_code) IN ({placeholders})",
+            tuple(grp_codes),
+        ).fetchall()
+        for gr in grp_rows:
+            gkey = gr["grp"]
+            entry = group_stats.setdefault(
+                gkey,
+                {
+                    "total_slots": 0,
+                    "open_count": 0,
+                    "assigned_count": 0,
+                    "total_fare": 0.0,
+                    "active_rider_ids": set(),
+                },
+            )
+            entry["total_slots"] += 1
+            entry["total_fare"] += float(gr["fare_amount"] or 0.0)
+            st = (gr["status"] or "").lower()
+            rid = gr["rider_id"]
+            if st == "broadcast" and not rid:
+                entry["open_count"] += 1
+            elif st in ("accepted", "in_progress"):
+                entry["assigned_count"] += 1
+                if rid:
+                    entry["active_rider_ids"].add(int(rid))
+            elif st == "completed" and rid:
+                entry["assigned_count"] += 1
+
+    # Pick lowest-slot representative for non-transferred grouped broadcasts so Slot 1..10 order naturally
+    best_rep_by_grp: dict[str, dict[str, Any]] = {}
+    for r in raw_rows:
+        grp = (r.get("group_code") or "").strip().upper()
+        if grp and int(r.get("transfer_count") or 0) == 0:
+            cur_best = best_rep_by_grp.get(grp)
+            key_new = (int(r.get("rider_slot") or 1), int(r.get("id") or 0))
+            if cur_best is None or key_new < (int(cur_best.get("rider_slot") or 1), int(cur_best.get("id") or 0)):
+                best_rep_by_grp[grp] = r
+
+    seen_groups: set[str] = set()
+    results: list[dict[str, Any]] = []
+    for r in raw_rows:
+        grp = (r.get("group_code") or "").strip().upper()
+        is_transfer = int(r.get("transfer_count") or 0) > 0
+        if grp and not is_transfer:
+            if grp in seen_groups:
+                continue
+            seen_groups.add(grp)
+            d = dict(best_rep_by_grp[grp])
+        else:
+            d = dict(r)
+
+        if grp and grp in group_stats:
+            st = group_stats[grp]
+            d["group_size"] = max(st["total_slots"], int(d.get("group_size") or 1))
+            d["rider_slot"] = int(d.get("rider_slot") or 1)
+            d["group_open_count"] = st["open_count"]
+            d["group_assigned_count"] = st["assigned_count"]
+            d["group_total_fare"] = round(st["total_fare"], 2)
+            d["rider_already_in_group"] = bool(rider_id is not None and int(rider_id) in st["active_rider_ids"])
+        else:
+            d["group_size"] = int(d.get("group_size") or 1)
+            d["rider_slot"] = int(d.get("rider_slot") or 1)
+            d["group_open_count"] = 1
+            d["group_assigned_count"] = 0
+            d["group_total_fare"] = round(float(d.get("fare_amount") or 0.0), 2)
+            d["rider_already_in_group"] = False
+
+        results.append(d)
+        if len(results) >= 20:
+            break
+
+    return results
 
 
 def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, Any] | None:
@@ -5163,7 +5580,7 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
     # Priority 1: in_progress job
     for r in dict_rows:
         if r["status"] == "in_progress":
-            return r
+            return attach_group_metadata(conn, r)
 
     now = get_now_pht()
 
@@ -5172,7 +5589,7 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
         if r["status"] == "accepted":
             sched_str = (r.get("scheduled_at") or "").strip()
             if not sched_str:
-                return r
+                return attach_group_metadata(conn, r)
 
     # Priority 3: advance accepted job due within 30 mins
     for r in dict_rows:
@@ -5188,9 +5605,9 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
                         d = dict(r)
                         d["minutes_left"] = max(0, int(mins_left))
                         d["is_advance"] = True
-                        return d
+                        return attach_group_metadata(conn, d)
                 except Exception:
-                    return r
+                    return attach_group_metadata(conn, r)
 
     # Priority 4 Fallback: If rider has accepted advance jobs, show the earliest one
     # so the dashboard NEVER appears blank right after accepting a booking!
@@ -5214,7 +5631,7 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
 
     if advance_jobs:
         advance_jobs.sort(key=lambda x: x.get("scheduled_at") or "")
-        return advance_jobs[0]
+        return attach_group_metadata(conn, advance_jobs[0])
 
     return None
 
@@ -5252,6 +5669,7 @@ def get_rider_scheduled_jobs(conn: DatabaseConnection, rider_id: int) -> list[di
         except Exception:
             d["minutes_left"] = None
             d["is_due_soon"] = False
+        attach_group_metadata(conn, d)
         results.append(d)
     return results
 
@@ -5287,6 +5705,69 @@ def accept_booking(conn: DatabaseConnection, booking_id: int, rider_id: int) -> 
         except Exception:
             pass
     return rowcount > 0
+
+
+def accept_booking_for_group_slot(
+    conn: DatabaseConnection,
+    booking_id: int,
+    rider_id: int,
+) -> tuple[bool, int | None, str]:
+    """
+    Claims a standalone booking or group slot cleanly:
+    - Prevents the same rider from holding two active slots in the same multi-rider group.
+    - If a peer rider claimed the representative slot milliseconds earlier, automatically falls
+      through to the next open slot in the same group_code.
+    Returns (claimed, claimed_booking_id, reason_or_error).
+    """
+    target = conn.execute(
+        "SELECT id, booking_code, group_code, group_size, transfer_count, status, rider_id FROM bookings WHERE id = ?",
+        (booking_id,),
+    ).fetchone()
+    if not target:
+        return False, None, "Booking not found."
+
+    grp = (target["group_code"] or "").strip().upper()
+    if grp:
+        dup = conn.execute(
+            """
+            SELECT id, booking_code, rider_slot
+            FROM bookings
+            WHERE UPPER(group_code) = ? AND rider_id = ? AND status IN ('accepted', 'in_progress')
+            LIMIT 1
+            """,
+            (grp, rider_id),
+        ).fetchone()
+        if dup:
+            return (
+                False,
+                None,
+                f"You already joined this group ride as Rider {dup['rider_slot']} ({dup['booking_code']}). Another club rider must claim the open slot.",
+            )
+
+    if accept_booking(conn, booking_id, rider_id):
+        return True, booking_id, "accepted"
+
+    # Fallthrough for concurrent claims on non-transferred multi-rider group broadcasts
+    if grp and int(target["transfer_count"] or 0) == 0:
+        open_slots = conn.execute(
+            """
+            SELECT id
+            FROM bookings
+            WHERE UPPER(group_code) = ? AND status = 'broadcast' AND rider_id IS NULL
+                  AND COALESCE(transfer_count, 0) = 0
+            ORDER BY COALESCE(rider_slot, 1) ASC, id ASC
+            """,
+            (grp,),
+        ).fetchall()
+        for slot_row in open_slots:
+            cand_id = int(slot_row["id"])
+            if cand_id == int(booking_id):
+                continue
+            if accept_booking(conn, cand_id, rider_id):
+                return True, cand_id, "accepted_next_slot"
+        return False, None, "All rider slots in this group booking have already been claimed by other riders."
+
+    return False, None, "Booking has already been claimed by another rider or is no longer available."
 
 
 def transfer_booking(
@@ -5409,6 +5890,20 @@ def transfer_booking(
             busy_ids = get_busy_rider_ids(conn)
             if target_rid in busy_ids:
                 return False, f"{target_rider.get('name', 'Selected co-rider')} already has an active trip. Choose another rider or Re-Broadcast to all riders.", None, 409
+
+        grp_code_t = (booking.get("group_code") or "").strip().upper()
+        if grp_code_t:
+            dup_in_grp = conn.execute(
+                """
+                SELECT rider_slot, booking_code
+                FROM bookings
+                WHERE UPPER(group_code) = ? AND rider_id = ? AND id != ? AND status IN ('accepted', 'in_progress')
+                LIMIT 1
+                """,
+                (grp_code_t, target_rid, booking_id),
+            ).fetchone()
+            if dup_in_grp:
+                return False, f"{target_rider.get('name', 'Selected co-rider')} is already riding in Slot #{dup_in_grp['rider_slot']} of this same group. Choose another rider or Re-Broadcast.", None, 409
 
         sql = f"""
             UPDATE bookings
@@ -6396,8 +6891,8 @@ def restore_full_backup(
                         rider_id, accepted_at, pickup_time, completed_at,
                         cancelled_reason, scheduled_at, promo_code_id, promo_code,
                         discount_amount, transferred_from_rider_id, transfer_reason,
-                        transfer_count, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        transfer_count, group_code, rider_slot, group_size, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         b_id,
@@ -6433,6 +6928,9 @@ def restore_full_backup(
                         b.get("transferred_from_rider_id"),
                         b.get("transfer_reason") or "",
                         int(b.get("transfer_count") or 0),
+                        (b.get("group_code") or "").strip().upper(),
+                        max(1, int(b.get("rider_slot") or 1)),
+                        max(1, int(b.get("group_size") or 1)),
                         b.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
@@ -6448,8 +6946,8 @@ def restore_full_backup(
                         rider_id, accepted_at, pickup_time, completed_at,
                         cancelled_reason, scheduled_at, promo_code_id, promo_code,
                         discount_amount, transferred_from_rider_id, transfer_reason,
-                        transfer_count, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        transfer_count, group_code, rider_slot, group_size, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         code,
@@ -6484,6 +6982,9 @@ def restore_full_backup(
                         b.get("transferred_from_rider_id"),
                         b.get("transfer_reason") or "",
                         int(b.get("transfer_count") or 0),
+                        (b.get("group_code") or "").strip().upper(),
+                        max(1, int(b.get("rider_slot") or 1)),
+                        max(1, int(b.get("group_size") or 1)),
                         b.get("created_at") or get_now_pht().isoformat(),
                     ),
                 )
@@ -6957,7 +7458,7 @@ def update_customer_stats(conn: DatabaseConnection, customer_phone: str, fare_am
             (fare, now_iso, cust["id"]),
         )
 
-def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int = 15) -> list[dict[str, Any]]:
+def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int = 30) -> list[dict[str, Any]]:
     clean_p = phone.strip()
     if "@" in clean_p:
         cust = get_customer_by_phone(conn, clean_p)
@@ -6995,6 +7496,61 @@ def get_customer_ride_history(conn: DatabaseConnection, phone: str, limit: int =
             """,
             (clean_p,)
         ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_customer_active_bookings(
+    conn: DatabaseConnection,
+    phone: str = "",
+    booking_code: str = "",
+    limit: int = 30,
+) -> list[dict[str, Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    clean_code = (booking_code or "").strip().upper()
+    if clean_code:
+        clauses.append("(UPPER(b.booking_code) = ? OR UPPER(b.group_code) = ?)")
+        params.extend([clean_code, clean_code])
+
+    clean_p = (phone or "").strip()
+    if clean_p:
+        if "@" in clean_p:
+            cust = get_customer_by_phone(conn, clean_p)
+            if cust and cust.get("phone"):
+                clean_p = cust["phone"]
+        norm_p = normalize_ph_phone(clean_p) or clean_p
+        digits = "".join(filter(str.isdigit, clean_p))
+        last10 = digits[-10:] if len(digits) >= 10 else digits
+        if len(last10) >= 7:
+            clauses.append("(b.customer_phone = ? OR b.customer_phone = ? OR b.customer_phone LIKE ? OR b.customer_phone LIKE ?)")
+            params.extend([clean_p, norm_p, f"%{last10}", f"0{last10}"])
+        else:
+            clauses.append("(b.customer_phone = ? OR b.customer_phone = ?)")
+            params.extend([clean_p, norm_p])
+
+    if not clauses:
+        return []
+
+    where_expr = " OR ".join(clauses)
+    rows = conn.execute(
+        f"""
+        SELECT b.*,
+               r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
+               r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
+               r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+               r.avatar_url AS rider_avatar,
+               COALESCE(r.gcash_number, '') AS rider_gcash_number,
+               COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
+        FROM bookings b
+        LEFT JOIN riders r ON b.rider_id = r.id
+        WHERE ({where_expr})
+          AND b.status IN ('broadcast', 'accepted', 'in_progress')
+        ORDER BY b.id DESC
+        LIMIT {int(limit)}
+        """,
+        tuple(params),
+    ).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -7081,9 +7637,13 @@ def get_all_transactions(conn: DatabaseConnection, limit: int = 200, status_filt
     if status_filter:
         rows = conn.execute(
             """
-            SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+            SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified,
+                   COALESCE(b.group_code, '') AS group_code,
+                   COALESCE(b.rider_slot, 1) AS rider_slot,
+                   COALESCE(b.group_size, 1) AS group_size
             FROM transactions t
             LEFT JOIN customers c ON t.customer_phone = c.phone
+            LEFT JOIN bookings b ON t.booking_id = b.id
             WHERE t.status = ?
             ORDER BY t.id DESC
             LIMIT ?
@@ -7093,9 +7653,13 @@ def get_all_transactions(conn: DatabaseConnection, limit: int = 200, status_filt
     else:
         rows = conn.execute(
             """
-            SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+            SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified,
+                   COALESCE(b.group_code, '') AS group_code,
+                   COALESCE(b.rider_slot, 1) AS rider_slot,
+                   COALESCE(b.group_size, 1) AS group_size
             FROM transactions t
             LEFT JOIN customers c ON t.customer_phone = c.phone
+            LEFT JOIN bookings b ON t.booking_id = b.id
             ORDER BY t.id DESC
             LIMIT ?
             """,
@@ -7106,9 +7670,13 @@ def get_all_transactions(conn: DatabaseConnection, limit: int = 200, status_filt
 def get_rider_transactions(conn: DatabaseConnection, rider_id: int, limit: int = 50) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified
+        SELECT t.*, COALESCE(c.is_verified, 0) AS customer_verified,
+               COALESCE(b.group_code, '') AS group_code,
+               COALESCE(b.rider_slot, 1) AS rider_slot,
+               COALESCE(b.group_size, 1) AS group_size
         FROM transactions t
         LEFT JOIN customers c ON t.customer_phone = c.phone
+        LEFT JOIN bookings b ON t.booking_id = b.id
         WHERE t.rider_id = ?
         ORDER BY t.id DESC
         LIMIT ?

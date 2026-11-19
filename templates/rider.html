@@ -287,9 +287,14 @@
     <!-- Active Job (if currently handling one) -->
     <div id="rider-active-job-box" class="card active-job-card hidden">
       <div class="active-job-head">
-        <span class="badge badge-success" id="active-job-status-badge">Ongoing Active Trip</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span class="badge badge-success" id="active-job-status-badge">Ongoing Active Trip</span>
+          <span id="active-job-group-badge" class="badge hidden" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:700;"></span>
+        </div>
         <strong id="active-job-code" style="font-family:monospace;font-size:1.05rem;">CCRC-0000</strong>
       </div>
+
+      <div id="active-job-group-banner" class="group-slot-rider-banner hidden"></div>
 
       <div id="active-job-transfer-alert" class="transfer-urgency-banner hidden" style="margin-top:10px;">
         <strong>🔄 Emergency Transfer / Handover Trip</strong>
@@ -803,5 +808,5 @@
 
 {% block scripts %}
 <script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/rider.js?v=32"></script>
+<script src="/static/js/rider.js?v=33"></script>
 {% endblock %}
