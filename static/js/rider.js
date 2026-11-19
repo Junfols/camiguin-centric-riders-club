@@ -2556,12 +2556,75 @@
     } catch (_) {}
   }
 
+  function getCurrentPhtMonthString() {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "2-digit",
+      }).formatToParts(new Date());
+      const y = parts.find((p) => p.type === "year")?.value || "";
+      const m = parts.find((p) => p.type === "month")?.value || "";
+      if (y && m) return `${y}-${m}`;
+    } catch (_) {}
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function downloadRiderEarningsCsv(monthVal) {
+    if (!currentRider) return;
+    const params = new URLSearchParams();
+    if (monthVal && /^\d{4}-\d{2}$/.test(monthVal)) {
+      params.set("month", monthVal);
+    }
+    const qs = params.toString();
+    window.location.href = `/api/rider/reports/earnings.csv${qs ? `?${qs}` : ""}`;
+  }
+
+  function openRiderPrintableEarningsReport(monthVal) {
+    if (!currentRider) return;
+    const params = new URLSearchParams();
+    if (monthVal && /^\d{4}-\d{2}$/.test(monthVal)) {
+      params.set("month", monthVal);
+    }
+    const qs = params.toString();
+    window.open(`/rider/reports/earnings${qs ? `?${qs}` : ""}`, "_blank", "noopener");
+  }
+
   const openRiderTxnsBtn = document.getElementById("open-rider-txns-btn");
   const riderTxnsModal = document.getElementById("rider-transactions-modal");
+  const riderReportMonthInput = document.getElementById("rider-report-month");
+  const riderExportCsvBtn = document.getElementById("rider-export-csv-btn");
+  const riderPrintReportBtn = document.getElementById("rider-print-report-btn");
+  const riderModalExportCsvBtn = document.getElementById("rider-modal-export-csv-btn");
+  const riderModalPrintReportBtn = document.getElementById("rider-modal-print-report-btn");
+
+  if (riderReportMonthInput && !riderReportMonthInput.value) {
+    riderReportMonthInput.value = getCurrentPhtMonthString();
+  }
   if (openRiderTxnsBtn && riderTxnsModal) {
     openRiderTxnsBtn.addEventListener("click", () => {
+      if (riderReportMonthInput && !riderReportMonthInput.value) {
+        riderReportMonthInput.value = getCurrentPhtMonthString();
+      }
       loadRiderTransactions();
       riderTxnsModal.classList.remove("hidden");
+    });
+  }
+  if (riderExportCsvBtn) {
+    riderExportCsvBtn.addEventListener("click", () => downloadRiderEarningsCsv(""));
+  }
+  if (riderPrintReportBtn) {
+    riderPrintReportBtn.addEventListener("click", () => openRiderPrintableEarningsReport(""));
+  }
+  if (riderModalExportCsvBtn) {
+    riderModalExportCsvBtn.addEventListener("click", () => {
+      downloadRiderEarningsCsv((riderReportMonthInput && riderReportMonthInput.value) || "");
+    });
+  }
+  if (riderModalPrintReportBtn) {
+    riderModalPrintReportBtn.addEventListener("click", () => {
+      openRiderPrintableEarningsReport((riderReportMonthInput && riderReportMonthInput.value) || "");
     });
   }
 

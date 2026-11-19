@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% block title %}{{ report_title }} ({{ period_label }}) — {{ club.name }}{% endblock %}
+
+{% block head %}
+<style>
+  @page {
+    size: auto;
+    margin: 12mm 10mm;
+  }
+  @media print {
+    .site-header,
+    .bottom-nav,
+    .ccrc-lang-footer,
+    .offline-banner,
+    #app-splash-screen,
+    .no-print {
+      display: none !important;
+    }
+    body,
+    .app-body,
+    .main-content {
+      background: #ffffff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    #ccrc-printable-report-sheet {
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: 100% !important;
+    }
+    .ccrc-report-table thead {
+      display: table-header-group;
+    }
+    .ccrc-report-table tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container ccrc-report-page">
+  <!-- Interactive Toolbar (Hidden on Print) -->
+  <div class="ccrc-report-toolbar no-print">
+    <div class="ccrc-report-toolbar-top">
+      <a href="{{ back_url }}" class="btn btn-sm btn-outline ccrc-report-back-btn">{{ back_label }}</a>
+      <div class="ccrc-report-export-actions">
+        <a href="{{ csv_detailed_url }}" class="btn btn-sm ccrc-btn-csv" id="report-download-csv-btn">
+          📥 Download CSV
+        </a>
+        {% if csv_rider_summary_url %}
+        <a href="{{ csv_rider_summary_url }}" class="btn btn-sm ccrc-btn-csv-alt" id="report-download-rider-csv-btn">
+          👥 Rider Summary CSV
+        </a>
+        {% endif %}
+        <button type="button" onclick="window.print()" class="btn btn-sm btn-primary ccrc-btn-print" id="report-print-btn">
+          🖨️ Print / Save PDF
+        </button>
+      </div>
+    </div>
+
+    <form method="get" action="{{ report_action_url }}" class="ccrc-report-filter-form">
+      {% if request.args.get('rider_id') %}
+      <input type="hidden" name="rider_id" value="{{ request.args.get('rider_id') }}">
+      {% endif %}
+      <div class="ccrc-report-filter-field">
+        <label for="report-month-input">Month</label>
+        <input type="month" id="report-month-input" name="month" value="{{ selected_month }}">
+      </div>
+      <div class="ccrc-report-filter-field">
+        <label for="report-status-select">Status</label>
+        <select id="report-status-select" name="status">
+          <option value="" {% if not selected_status %}selected{% endif %}>All Statuses</option>
+          <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>Completed Only</option>
+          <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="accepted" {% if selected_status == 'accepted' %}selected{% endif %}>Accepted</option>
+          <option value="broadcast" {% if selected_status == 'broadcast' %}selected{% endif %}>Broadcast</option>
+          <option value="cancelled" {% if selected_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+      </div>
+      <div class="ccrc-report-filter-btns">
+        <button type="submit" class="btn btn-sm btn-primary">Apply Filter</button>
+        <a href="{{ report_action_url }}{% if request.args.get('rider_id') %}?rider_id={{ request.args.get('rider_id') }}{% endif %}" class="btn btn-sm btn-outline">All Time</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Printable Official Report Sheet -->
+  <article id="ccrc-printable-report-sheet" class="ccrc-report-sheet">
+    <!-- Official Letterhead -->
+    <header class="ccrc-report-letterhead">
+      <div class="ccrc-report-brand-row">
+        <img src="/static/icons/logo.png" alt="{{ club.name }}" class="ccrc-report-logo">
+        <div class="ccrc-report-brand-copy">
+          <div class="ccrc-report-org-name">{{ club.name }}</div>
+          <h1 class="ccrc-report-title">{{ report_title }}</h1>
+          <div class="ccrc-report-submeta">
+            <span>{{ club.location or 'Camiguin Island, Philippines' }}</span>
+            {% if club.phone %}
+            <span>&bull; Hotline: {{ club.phone }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="ccrc-report-period-box">
+        <div class="ccrc-report-period-label">Reporting Period</div>
+        <div class="ccrc-report-period-value">{{ period_label }}</div>
+        {% if selected_status %}
+        <div class="ccrc-report-period-sub">Status Filter: <strong>{{ selected_status|upper }}</strong></div>
+        {% endif %}
+        <div class="ccrc-report-period-sub">Generated: {{ generated_pht }}</div>
+      </div>
+    </header>
+
+    {% if report_mode == 'rider' and rider_info %}
+    <!-- Rider Profile Strip -->
+    <section class="ccrc-report-rider-strip">
+      <div class="ccrc-report-rider-item">
+        <span class="ccrc-report-rider-label">Rider Name</span>
+        <strong class="ccrc-report-rider-val">{{ rider_info.name }}</strong>
+      </div>
+      <div class="ccrc-report-rider-item">
+        <span class="ccrc-report-rider-label">Official Club ID</span>
+        <strong class="ccrc-report-rider-val ccrc-mono">{{ rider_info.club_id }}</strong>
+      </div>
+      <div class="ccrc-report-rider-item">
+        <span class="ccrc-report-rider-label">Motorcycle &amp; Plate</span>
+        <strong class="ccrc-report-rider-val">{{ rider_info.bike_model }} ({{ rider_info.plate_number }})</strong>
+      </div>
+      <div class="ccrc-report-rider-item">
+        <span class="ccrc-report-rider-label">Base Municipality</span>
+        <strong class="ccrc-report-rider-val">{{ rider_info.municipality }}, Camiguin</strong>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Executive KPI Summary Cards -->
+    <section class="ccrc-report-kpi-grid" aria-label="Financial Summary">
+      <div class="ccrc-report-kpi is-primary">
+        <div class="ccrc-report-kpi-label">
+          {% if report_mode == 'rider' %}Completed Earnings{% else %}Completed Club Sales{% endif %}
+        </div>
+        <div class="ccrc-report-kpi-value">₱{{ "%.2f"|format(summary.completed_revenue) }}</div>
+        <div class="ccrc-report-kpi-sub">{{ summary.completed_count }} completed of {{ summary.total_count }} records</div>
+      </div>
+
+      <div class="ccrc-report-kpi">
+        <div class="ccrc-report-kpi-label">Cash Payments</div>
+        <div class="ccrc-report-kpi-value">₱{{ "%.2f"|format(summary.cash_revenue) }}</div>
+        <div class="ccrc-report-kpi-sub">Direct cash collected</div>
+      </div>
+
+      <div class="ccrc-report-kpi is-gcash">
+        <div class="ccrc-report-kpi-label">GCash / Digital</div>
+        <div class="ccrc-report-kpi-value">₱{{ "%.2f"|format(summary.digital_revenue) }}</div>
+        <div class="ccrc-report-kpi-sub">Verified digital transfers</div>
+      </div>
+
+      <div class="ccrc-report-kpi">
+        <div class="ccrc-report-kpi-label">Completed Distance</div>
+        <div class="ccrc-report-kpi-value">{{ "%.1f"|format(summary.total_km) }} km</div>
+        <div class="ccrc-report-kpi-sub">{{ summary.active_count }} active &bull; {{ summary.cancelled_count }} cancelled</div>
+      </div>
+    </section>
+
+    <!-- Service Type Breakdown -->
+    {% if summary.by_service %}
+    <section class="ccrc-report-section">
+      <h2 class="ccrc-report-section-title">🛵 Breakdown by Service Type</h2>
+      <div class="ccrc-report-table-wrap">
+        <table class="ccrc-report-table">
+          <thead>
+            <tr>
+              <th>Service Type</th>
+              <th class="num">Total Bookings</th>
+              <th class="num">Completed</th>
+              <th class="num">Completed Revenue (PHP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in summary.by_service %}
+            <tr>
+              <td><strong>{{ s.service_type|upper }}</strong></td>
+              <td class="num">{{ s.count }}</td>
+              <td class="num">{{ s.completed_count }}</td>
+              <td class="num"><strong>₱{{ "%.2f"|format(s.revenue) }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if report_mode == 'admin' %}
+    <!-- Admin: Per-Rider Sales & Fair Trip Share Monitoring -->
+    <section class="ccrc-report-section">
+      <div class="ccrc-report-section-head">
+        <h2 class="ccrc-report-section-title">👥 Per-Rider Sales &amp; Trip Share Summary</h2>
+        <span class="ccrc-report-section-note">Sorted by completed trips — supports fair broadcast dispatch monitoring</span>
+      </div>
+      {% if summary.by_rider %}
+      <div class="ccrc-report-table-wrap">
+        <table class="ccrc-report-table">
+          <thead>
+            <tr>
+              <th>Club ID</th>
+              <th>Rider Name</th>
+              <th>Plate No.</th>
+              <th class="num">Completed</th>
+              <th class="num">Cancelled</th>
+              <th>Trip Share</th>
+              <th class="num">Cash</th>
+              <th class="num">GCash</th>
+              <th class="num">Total Earnings</th>
+              <th class="no-print">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in summary.by_rider %}
+            <tr>
+              <td class="ccrc-mono">{{ r.club_id }}</td>
+              <td><strong>{{ r.rider_name }}</strong></td>
+              <td class="ccrc-mono">{{ r.plate_number or '—' }}</td>
+              <td class="num"><strong>{{ r.completed_trips }}</strong></td>
+              <td class="num">{{ r.cancelled_trips }}</td>
+              <td>
+                <div class="ccrc-share-cell">
+                  <div class="ccrc-share-bar">
+                    <div class="ccrc-share-bar-fill" style="width: {{ [r.share_pct, 100]|min }}%;"></div>
+                  </div>
+                  <span class="ccrc-share-pct">{{ "%.1f"|format(r.share_pct) }}%</span>
+                </div>
+              </td>
+              <td class="num">₱{{ "%.2f"|format(r.cash_earnings) }}</td>
+              <td class="num">₱{{ "%.2f"|format(r.gcash_earnings) }}</td>
+              <td class="num"><strong>₱{{ "%.2f"|format(r.total_earnings) }}</strong></td>
+              <td class="no-print">
+                <a href="/rider/reports/earnings?rider_id={{ r.rider_id }}&month={{ selected_month }}&status={{ selected_status }}" class="ccrc-report-mini-link">
+                  View Rider
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3"><strong>CLUB TOTAL ({{ summary.by_rider|length }} Riders)</strong></td>
+              <td class="num"><strong>{{ summary.completed_count }}</strong></td>
+              <td class="num"><strong>{{ summary.cancelled_count }}</strong></td>
+              <td><strong>{% if summary.completed_count > 0 %}100.0%{% else %}0.0%{% endif %}</strong></td>
+              <td class="num"><strong>₱{{ "%.2f"|format(summary.cash_revenue) }}</strong></td>
+              <td class="num"><strong>₱{{ "%.2f"|format(summary.gcash_revenue) }}</strong></td>
+              <td class="num"><strong>₱{{ "%.2f"|format(summary.completed_revenue) }}</strong></td>
+              <td class="no-print"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <div class="ccrc-report-empty">No assigned rider transactions found for this period.</div>
+      {% endif %}
+    </section>
+    {% else %}
+    <!-- Rider: Daily Earnings Summary -->
+    {% if summary.by_day %}
+    <section class="ccrc-report-section">
+      <h2 class="ccrc-report-section-title">📅 Daily Earnings Breakdown</h2>
+      <div class="ccrc-report-table-wrap">
+        <table class="ccrc-report-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th class="num">Total Trips</th>
+              <th class="num">Completed Trips</th>
+              <th class="num">Daily Earnings (PHP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in summary.by_day %}
+            <tr>
+              <td class="ccrc-mono"><strong>{{ d.date }}</strong></td>
+              <td class="num">{{ d.count }}</td>
+              <td class="num">{{ d.completed_count }}</td>
+              <td class="num"><strong>₱{{ "%.2f"|format(d.revenue) }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+    {% endif %}
+
+    <!-- Detailed Transactions Ledger -->
+    <section class="ccrc-report-section">
+      <div class="ccrc-report-section-head">
+        <h2 class="ccrc-report-section-title">📜 Detailed Transactions Ledger ({{ transactions|length }})</h2>
+      </div>
+      {% if transactions %}
+      <div class="ccrc-report-table-wrap">
+        <table class="ccrc-report-table ccrc-report-ledger-table">
+          <thead>
+            <tr>
+              <th>Date / Time</th>
+              <th>Txn / Booking</th>
+              <th>Passenger</th>
+              {% if report_mode == 'admin' %}
+              <th>Rider</th>
+              {% endif %}
+              <th>Service &amp; Route</th>
+              <th>Payment</th>
+              <th>Status</th>
+              <th class="num">Fare (PHP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in transactions %}
+            <tr>
+              <td class="ccrc-mono ccrc-nowrap">{{ t.created_at[:16].replace('T', ' ') if t.created_at else 'N/A' }}</td>
+              <td class="ccrc-mono">
+                <div><strong>{{ t.transaction_code }}</strong></div>
+                <div class="ccrc-report-cell-sub">{{ t.booking_code }}</div>
+              </td>
+              <td>
+                <div><strong>{{ t.customer_name }}</strong></div>
+                {% if report_mode == 'admin' and t.customer_phone %}
+                <div class="ccrc-report-cell-sub">{{ t.customer_phone }}</div>
+                {% endif %}
+              </td>
+              {% if report_mode == 'admin' %}
+              <td>
+                <div><strong>{{ t.rider_name or 'Unassigned' }}</strong></div>
+                {% if t.rider_plate %}
+                <div class="ccrc-report-cell-sub ccrc-mono">{{ t.rider_plate|upper }}</div>
+                {% endif %}
+              </td>
+              {% endif %}
+              <td>
+                <div><strong>{{ (t.service_type or '')|upper }}</strong> {% if t.estimated_km %}&bull; {{ "%.1f"|format(t.estimated_km) }} km{% endif %}</div>
+                <div class="ccrc-report-cell-sub">
+                  {{ t.pickup_address or '—' }} &rarr; {{ t.dropoff_address or '—' }}
+                </div>
+              </td>
+              <td>
+                <div><strong>{{ (t.payment_method or 'cash')|upper }}</strong></div>
+                {% if t.payment_ref %}
+                <div class="ccrc-report-cell-sub ccrc-mono">Ref: {{ t.payment_ref }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="ccrc-report-status is-{{ (t.status or '')|lower }}">{{ (t.status or '')|upper }}</span>
+              </td>
+              <td class="num ccrc-nowrap"><strong>₱{{ "%.2f"|format(t.amount or 0) }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="ccrc-report-empty">No transactions recorded for the selected period and filter.</div>
+      {% endif %}
+    </section>
+
+    <!-- Official Sign-Off Footer -->
+    <footer class="ccrc-report-footer">
+      <div>
+        <strong>{{ club.name }}</strong> &mdash; Official Electronic Accounting Statement
+      </div>
+      <div>
+        Generated via CCRC Dispatch System &bull; {{ generated_pht }}
+      </div>
+    </footer>
+  </article>
+</div>
+{% endblock %}

@@ -8306,6 +8306,206 @@ def get_rider_transaction_summary(conn: DatabaseConnection, rider_id: int, today
         "today_earnings": float(row["today_earnings"] or 0.0) if row else 0.0,
     }
 
+
+def get_transactions_for_report(
+    conn: DatabaseConnection,
+    month: str = "",
+    start_date: str = "",
+    end_date: str = "",
+    status_filter: str = "",
+    rider_id: int | None = None,
+    limit: int = 5000,
+) -> list[dict[str, Any]]:
+    """Fetch enriched transactions for Admin monthly club sales & Rider earnings CSV/print reports."""
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    clean_month = str(month or "").strip()
+    if len(clean_month) == 7 and clean_month[4] == "-":
+        clauses.append("SUBSTR(CAST(t.created_at AS TEXT), 1, 7) = ?")
+        params.append(clean_month)
+    else:
+        clean_start = str(start_date or "").strip()
+        clean_end = str(end_date or "").strip()
+        if len(clean_start) == 10 and clean_start[4] == "-" and clean_start[7] == "-":
+            clauses.append("SUBSTR(CAST(t.created_at AS TEXT), 1, 10) >= ?")
+            params.append(clean_start)
+        if len(clean_end) == 10 and clean_end[4] == "-" and clean_end[7] == "-":
+            clauses.append("SUBSTR(CAST(t.created_at AS TEXT), 1, 10) <= ?")
+            params.append(clean_end)
+
+    clean_status = str(status_filter or "").strip().lower()
+    if clean_status:
+        clauses.append("LOWER(t.status) = ?")
+        params.append(clean_status)
+
+    if rider_id is not None:
+        clauses.append("t.rider_id = ?")
+        params.append(int(rider_id))
+
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(max(1, min(int(limit or 5000), 10000)))
+
+    rows = conn.execute(
+        f"""
+        SELECT t.*,
+               COALESCE(b.pickup_address, '') AS pickup_address,
+               COALESCE(b.dropoff_address, '') AS dropoff_address,
+               COALESCE(b.estimated_km, 0) AS estimated_km,
+               COALESCE(b.payment_status, '') AS payment_status,
+               COALESCE(b.payment_ref, '') AS payment_ref,
+               COALESCE(b.group_code, '') AS group_code,
+               COALESCE(b.rider_slot, 1) AS rider_slot,
+               COALESCE(b.group_size, 1) AS group_size,
+               COALESCE(r.plate_number, '') AS rider_plate,
+               COALESCE(r.bike_model, '') AS rider_bike,
+               COALESCE(c.is_verified, 0) AS customer_verified
+        FROM transactions t
+        LEFT JOIN bookings b ON t.booking_id = b.id
+        LEFT JOIN riders r ON t.rider_id = r.id
+        LEFT JOIN customers c ON t.customer_phone = c.phone
+        {where_sql}
+        ORDER BY t.created_at DESC, t.id DESC
+        LIMIT ?
+        """,
+        tuple(params),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def summarize_report_transactions(txns: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute revenue, payment split, service breakdown, per-rider leaderboard & share %, and daily totals."""
+    total_count = len(txns)
+    completed_count = 0
+    cancelled_count = 0
+    active_count = 0
+    completed_revenue = 0.0
+    cash_revenue = 0.0
+    gcash_revenue = 0.0
+    other_digital_revenue = 0.0
+    total_km = 0.0
+
+    service_map: dict[str, dict[str, Any]] = {}
+    rider_map: dict[int, dict[str, Any]] = {}
+    day_map: dict[str, dict[str, Any]] = {}
+
+    for t in txns:
+        status = str(t.get("status") or "").strip().lower()
+        amt = float(t.get("amount") or 0.0)
+        km = float(t.get("estimated_km") or 0.0)
+        pm = str(t.get("payment_method") or "cash").strip().lower()
+        svc = str(t.get("service_type") or "other").strip().lower() or "other"
+        day_str = str(t.get("created_at") or "")[:10] or "Unknown"
+
+        is_completed = status == "completed"
+        if is_completed:
+            completed_count += 1
+            completed_revenue += amt
+            total_km += km
+            if pm == "cash":
+                cash_revenue += amt
+            elif pm == "gcash":
+                gcash_revenue += amt
+            else:
+                other_digital_revenue += amt
+        elif status == "cancelled":
+            cancelled_count += 1
+        else:
+            active_count += 1
+
+        s_entry = service_map.setdefault(
+            svc,
+            {"service_type": svc, "count": 0, "completed_count": 0, "revenue": 0.0},
+        )
+        s_entry["count"] += 1
+        if is_completed:
+            s_entry["completed_count"] += 1
+            s_entry["revenue"] += amt
+
+        d_entry = day_map.setdefault(
+            day_str,
+            {"date": day_str, "count": 0, "completed_count": 0, "revenue": 0.0},
+        )
+        d_entry["count"] += 1
+        if is_completed:
+            d_entry["completed_count"] += 1
+            d_entry["revenue"] += amt
+
+        rid_raw = t.get("rider_id")
+        if rid_raw is not None and str(rid_raw).strip() != "":
+            rid = int(rid_raw)
+            r_entry = rider_map.setdefault(
+                rid,
+                {
+                    "rider_id": rid,
+                    "club_id": f"CCRC-{rid:04d}",
+                    "rider_name": t.get("rider_name") or f"Rider #{rid}",
+                    "plate_number": (t.get("rider_plate") or "").upper(),
+                    "total_trips": 0,
+                    "completed_trips": 0,
+                    "cancelled_trips": 0,
+                    "cash_earnings": 0.0,
+                    "gcash_earnings": 0.0,
+                    "other_earnings": 0.0,
+                    "total_earnings": 0.0,
+                    "total_km": 0.0,
+                    "share_pct": 0.0,
+                },
+            )
+            r_entry["total_trips"] += 1
+            if is_completed:
+                r_entry["completed_trips"] += 1
+                r_entry["total_earnings"] += amt
+                r_entry["total_km"] += km
+                if pm == "cash":
+                    r_entry["cash_earnings"] += amt
+                elif pm == "gcash":
+                    r_entry["gcash_earnings"] += amt
+                else:
+                    r_entry["other_earnings"] += amt
+            elif status == "cancelled":
+                r_entry["cancelled_trips"] += 1
+
+    by_rider = sorted(
+        rider_map.values(),
+        key=lambda x: (-x["completed_trips"], -x["total_earnings"], x["rider_name"]),
+    )
+    for r in by_rider:
+        r["share_pct"] = round((r["completed_trips"] / completed_count) * 100.0, 1) if completed_count > 0 else 0.0
+        r["cash_earnings"] = round(r["cash_earnings"], 2)
+        r["gcash_earnings"] = round(r["gcash_earnings"], 2)
+        r["other_earnings"] = round(r["other_earnings"], 2)
+        r["total_earnings"] = round(r["total_earnings"], 2)
+        r["total_km"] = round(r["total_km"], 2)
+
+    by_service = sorted(
+        service_map.values(),
+        key=lambda x: (-x["revenue"], -x["count"], x["service_type"]),
+    )
+    for s in by_service:
+        s["revenue"] = round(s["revenue"], 2)
+
+    by_day = sorted(day_map.values(), key=lambda x: x["date"], reverse=True)
+    for d in by_day:
+        d["revenue"] = round(d["revenue"], 2)
+
+    return {
+        "total_count": total_count,
+        "completed_count": completed_count,
+        "cancelled_count": cancelled_count,
+        "active_count": active_count,
+        "completed_revenue": round(completed_revenue, 2),
+        "cash_revenue": round(cash_revenue, 2),
+        "gcash_revenue": round(gcash_revenue, 2),
+        "other_digital_revenue": round(other_digital_revenue, 2),
+        "digital_revenue": round(gcash_revenue + other_digital_revenue, 2),
+        "total_km": round(total_km, 2),
+        "by_service": by_service,
+        "by_rider": by_rider,
+        "by_day": by_day,
+    }
+
+
 def get_customer_transactions(conn: DatabaseConnection, customer_phone: str, limit: int = 50) -> list[dict[str, Any]]:
     raw_p = (customer_phone or "").strip()
     clean_p = normalize_ph_phone(raw_p) or raw_p

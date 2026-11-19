@@ -509,6 +509,29 @@
       </div>
     </div>
 
+    <!-- Monthly Club Sales & CSV Reports Toolbar -->
+    <div class="ccrc-admin-report-bar">
+      <div class="ccrc-admin-report-bar-left">
+        <span class="ccrc-admin-report-label">📊 Monthly Sales &amp; Reports:</span>
+        <input type="month" id="admin-report-month" value="{{ current_month_pht or '' }}" aria-label="Report Month" class="ccrc-report-month-input">
+        <label class="ccrc-report-alltime-toggle">
+          <input type="checkbox" id="admin-report-alltime-chk">
+          <span>All Time</span>
+        </label>
+      </div>
+      <div class="ccrc-admin-report-bar-actions">
+        <button type="button" id="admin-export-sales-csv-btn" onclick="exportAdminSalesCsv('detailed')" class="btn btn-sm ccrc-btn-csv">
+          📥 Export Sales CSV
+        </button>
+        <button type="button" id="admin-export-rider-csv-btn" onclick="exportAdminSalesCsv('rider_summary')" class="btn btn-sm ccrc-btn-csv-alt">
+          👥 Rider Summary CSV
+        </button>
+        <button type="button" id="admin-print-sales-report-btn" onclick="openAdminPrintableReport()" class="btn btn-sm btn-primary ccrc-btn-print">
+          🖨️ Printable Report
+        </button>
+      </div>
+    </div>
+
     <div class="table-wrap" style="max-height:480px;overflow-y:auto;">
       <table id="admin-transactions-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
         <thead>
@@ -923,6 +946,47 @@
       const matchesStatus = !status || rowStatus === status;
       r.style.display = (matchesSearch && matchesStatus) ? "" : "none";
     });
+  };
+
+  // Monthly Club Sales & Rider Summary CSV / Printable Report Helpers
+  function buildAdminReportQuery(extraParams) {
+    const allTimeChk = document.getElementById("admin-report-alltime-chk");
+    const monthInput = document.getElementById("admin-report-month");
+    const statusFilter = document.getElementById("txn-status-filter");
+    const params = new URLSearchParams();
+    if (!(allTimeChk && allTimeChk.checked) && monthInput && monthInput.value) {
+      params.set("month", monthInput.value.trim());
+    }
+    if (statusFilter && statusFilter.value) {
+      params.set("status", statusFilter.value.trim());
+    }
+    if (extraParams) {
+      Object.entries(extraParams).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && String(v).trim() !== "") {
+          params.set(k, String(v).trim());
+        }
+      });
+    }
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  }
+
+  document.getElementById("admin-report-alltime-chk")?.addEventListener("change", (e) => {
+    const monthInput = document.getElementById("admin-report-month");
+    if (monthInput) {
+      monthInput.disabled = Boolean(e.target.checked);
+      monthInput.style.opacity = e.target.checked ? "0.5" : "1";
+    }
+  });
+
+  window.exportAdminSalesCsv = function(reportType) {
+    const qs = buildAdminReportQuery(reportType === "rider_summary" ? { type: "rider_summary" } : {});
+    window.location.href = `/api/admin/reports/sales.csv${qs}`;
+  };
+
+  window.openAdminPrintableReport = function() {
+    const qs = buildAdminReportQuery({});
+    window.open(`/admin/reports/sales${qs}`, "_blank", "noopener");
   };
 
   // Customers Filter

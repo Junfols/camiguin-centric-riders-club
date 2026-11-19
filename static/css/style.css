@@ -4351,15 +4351,611 @@ body.rider-logged-in .nav-rider-logged-item {
   }
 }
 
+/* ============================================================================
+   Printable & Downloadable CSV Reports (Admin Club Sales & Rider Earnings)
+   ============================================================================ */
+.ccrc-admin-report-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.ccrc-admin-report-bar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ccrc-admin-report-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ccrc-report-month-input {
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.ccrc-report-alltime-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  margin: 0;
+}
+
+.ccrc-admin-report-bar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ccrc-btn-csv {
+  background: #15803d !important;
+  color: #ffffff !important;
+  border: 1px solid #166534 !important;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ccrc-btn-csv:hover {
+  background: #166534 !important;
+}
+
+.ccrc-btn-csv-alt {
+  background: #0369a1 !important;
+  color: #ffffff !important;
+  border: 1px solid #075985 !important;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ccrc-btn-csv-alt:hover {
+  background: #075985 !important;
+}
+
+.ccrc-btn-print {
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.rider-earnings-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rider-earnings-btn-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rider-btn-csv {
+  background: #16a34a;
+  color: #ffffff;
+  border: 1px solid #22c55e;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rider-btn-report {
+  background: #ea580c;
+  color: #ffffff;
+  border: 1px solid #fb923c;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ccrc-rider-modal-report-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ccrc-rider-modal-month-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ccrc-rider-modal-report-btns {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Printable Official Report Page */
+.ccrc-report-page {
+  max-width: 1040px;
+  padding-top: 16px;
+  padding-bottom: 32px;
+}
+
+.ccrc-report-toolbar {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.ccrc-report-toolbar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ccrc-report-export-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ccrc-report-filter-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ccrc-report-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ccrc-report-filter-field label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.ccrc-report-filter-field input,
+.ccrc-report-filter-field select {
+  padding: 6px 10px;
+  font-size: 0.84rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.ccrc-report-filter-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ccrc-report-sheet {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 24px 26px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+  color: #0f172a;
+}
+
+.ccrc-report-letterhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 2.5px solid #0f172a;
+}
+
+.ccrc-report-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ccrc-report-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  object-fit: contain;
+  border: 2px solid #f97316;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.ccrc-report-org-name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ea580c;
+}
+
+.ccrc-report-title {
+  margin: 2px 0 4px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.ccrc-report-submeta {
+  font-size: 0.78rem;
+  color: #475569;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ccrc-report-period-box {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: right;
+  min-width: 210px;
+}
+
+.ccrc-report-period-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.ccrc-report-period-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.ccrc-report-period-sub {
+  font-size: 0.72rem;
+  color: #475569;
+  margin-top: 2px;
+}
+
+.ccrc-report-rider-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+
+.ccrc-report-rider-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ccrc-report-rider-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.ccrc-report-rider-val {
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.ccrc-report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.ccrc-report-kpi {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.ccrc-report-kpi.is-primary {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border-color: #fb923c;
+}
+
+.ccrc-report-kpi.is-gcash {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #93c5fd;
+}
+
+.ccrc-report-kpi-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: #475569;
+}
+
+.ccrc-report-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 4px 0 2px;
+}
+
+.ccrc-report-kpi.is-primary .ccrc-report-kpi-value {
+  color: #c2410c;
+}
+
+.ccrc-report-kpi.is-gcash .ccrc-report-kpi-value {
+  color: #1d4ed8;
+}
+
+.ccrc-report-kpi-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.ccrc-report-section {
+  margin-bottom: 22px;
+}
+
+.ccrc-report-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ccrc-report-section-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ccrc-report-section-head .ccrc-report-section-title {
+  margin-bottom: 0;
+}
+
+.ccrc-report-section-note {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.ccrc-report-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.ccrc-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.ccrc-report-table th,
+.ccrc-report-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ccrc-report-table thead th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.ccrc-report-table tfoot td {
+  background: #f8fafc;
+  border-top: 2px solid #94a3b8;
+  border-bottom: none;
+}
+
+.ccrc-report-table th.num,
+.ccrc-report-table td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ccrc-report-cell-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.ccrc-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ccrc-nowrap {
+  white-space: nowrap;
+}
+
+.ccrc-share-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 105px;
+}
+
+.ccrc-share-bar {
+  flex: 1;
+  height: 7px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ccrc-share-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #ea580c);
+  border-radius: 999px;
+}
+
+.ccrc-share-pct {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #334155;
+  min-width: 38px;
+  text-align: right;
+}
+
+.ccrc-report-mini-link {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0369a1;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  background: #f0f9ff;
+}
+
+.ccrc-report-status {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.ccrc-report-status.is-completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ccrc-report-status.is-in_progress,
+.ccrc-report-status.is-accepted {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ccrc-report-status.is-broadcast {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.ccrc-report-status.is-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ccrc-report-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+}
+
+.ccrc-report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1.5px solid #cbd5e1;
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+@media (max-width: 760px) {
+  .ccrc-report-sheet {
+    padding: 16px 14px;
+  }
+  .ccrc-report-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ccrc-report-period-box {
+    text-align: left;
+    width: 100%;
+  }
+}
+
 @media print {
-  body * {
+  /* Scoped Official Club ID Card print (only when ID card is active/visible) */
+  body:has(#ccrc-official-id-card-printable):not(:has(#rider-official-id-modal.hidden)) * {
     visibility: hidden !important;
   }
-  #ccrc-official-id-card-printable,
-  #ccrc-official-id-card-printable * {
+  body:has(#ccrc-official-id-card-printable):not(:has(#rider-official-id-modal.hidden)) #ccrc-official-id-card-printable,
+  body:has(#ccrc-official-id-card-printable):not(:has(#rider-official-id-modal.hidden)) #ccrc-official-id-card-printable * {
     visibility: visible !important;
   }
-  #ccrc-official-id-card-printable {
+  body:has(#ccrc-official-id-card-printable):not(:has(#rider-official-id-modal.hidden)) #ccrc-official-id-card-printable {
     position: fixed !important;
     top: 12px !important;
     left: 50% !important;
@@ -4370,9 +4966,45 @@ body.rider-logged-in .nav-rider-logged-item {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Scoped Official Printable Sales / Earnings Report print */
+  body:has(#ccrc-printable-report-sheet) .site-header,
+  body:has(#ccrc-printable-report-sheet) .bottom-nav,
+  body:has(#ccrc-printable-report-sheet) .ccrc-lang-footer,
+  body:has(#ccrc-printable-report-sheet) .offline-banner,
+  body:has(#ccrc-printable-report-sheet) #app-splash-screen,
   .no-print {
     display: none !important;
   }
+  body:has(#ccrc-printable-report-sheet) {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  body:has(#ccrc-printable-report-sheet) .main-content {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #ccrc-printable-report-sheet,
+  #ccrc-printable-report-sheet * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  #ccrc-printable-report-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+  .ccrc-report-table-wrap {
+    overflow: visible !important;
+  }
+  .ccrc-report-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
 }
+
 
 

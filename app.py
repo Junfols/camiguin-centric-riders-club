@@ -6,6 +6,8 @@ On-Demand Island Express Riders: Pahatud, Pakuha, Pasugo & Pabili.
 from __future__ import annotations
 
 import base64
+import csv
+import io
 import json
 import os
 import secrets
@@ -98,6 +100,8 @@ from db import (
     get_all_transactions,
     get_rider_transactions,
     get_rider_transaction_summary,
+    get_transactions_for_report,
+    summarize_report_transactions,
     get_customer_transactions,
     get_financial_summary,
     get_booking_summary_counts,
@@ -2939,6 +2943,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 customers=[],
                 fin_summary={"total_transactions": 0, "total_revenue": 0.0, "cash_revenue": 0.0, "digital_revenue": 0.0, "total_customers": 0, "verified_customers": 0},
                 stats={"total_bookings": 0, "completed": 0, "active_now": 0, "online_riders": 0, "total_riders": 0, "total_revenue": 0.0, "total_transactions": 0, "verified_customers": 0, "total_customers": 0},
+                current_month_pht=get_now_pht().strftime("%Y-%m"),
                 active_nav="admin",
                 is_admin=False,
             )
@@ -2984,6 +2989,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             customers=customers,
             fin_summary=fin_summary,
             stats=stats,
+            current_month_pht=get_now_pht().strftime("%Y-%m"),
             active_nav="admin",
             is_admin=True,
         )
@@ -3032,6 +3038,331 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         status_filter = (request.args.get("status") or "").strip()
         txns = get_all_transactions(conn, limit=200, status_filter=status_filter)
         return jsonify({"success": True, "transactions": txns})
+
+    # -------------------------------------------------------------------------
+    # Printable & Downloadable CSV Reports (Admin Club Sales & Rider Earnings)
+    # -------------------------------------------------------------------------
+    def _csv_safe_cell(val: Any) -> Any:
+        if val is None:
+            return ""
+        if isinstance(val, (int, float)):
+            return val
+        s = str(val)
+        if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+            return "'" + s
+        return s
+
+    def _clean_report_month(raw: str | None) -> str:
+        val = str(raw or "").strip()
+        if len(val) == 7 and val[4] == "-" and val[:4].isdigit() and val[5:7].isdigit():
+            mm = int(val[5:7])
+            if 1 <= mm <= 12:
+                return val
+        return ""
+
+    def _format_report_period_label(month: str) -> str:
+        if not month:
+            return "All-Time Records"
+        try:
+            dt = datetime.strptime(month + "-01", "%Y-%m-%d")
+            return dt.strftime("%B %Y")
+        except Exception:
+            return month
+
+    def _build_csv_response(rows: list[list[Any]], filename: str) -> Response:
+        buf = io.StringIO()
+        # UTF-8 BOM so Microsoft Excel & Google Sheets display ₱ and names cleanly
+        buf.write("\ufeff")
+        writer = csv.writer(buf, lineterminator="\r\n")
+        for row in rows:
+            writer.writerow([_csv_safe_cell(c) for c in row])
+        resp = Response(buf.getvalue(), status=200, mimetype="text/csv; charset=utf-8")
+        resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    @app.get("/api/admin/reports/sales.csv")
+    def admin_export_sales_csv():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        month = _clean_report_month(request.args.get("month"))
+        status_filter = (request.args.get("status") or "").strip().lower()
+        report_type = (request.args.get("type") or "detailed").strip().lower()
+        rider_id_raw = (request.args.get("rider_id") or "").strip()
+        rider_id_filter = int(rider_id_raw) if rider_id_raw.isdigit() else None
+
+        txns = get_transactions_for_report(
+            conn,
+            month=month,
+            status_filter=status_filter,
+            rider_id=rider_id_filter,
+        )
+        summary = summarize_report_transactions(txns)
+        period_slug = month or "all-time"
+        period_label = _format_report_period_label(month)
+        generated_pht = get_now_pht().strftime("%Y-%m-%d %I:%M %p PHT")
+
+        if report_type == "rider_summary":
+            rows: list[list[Any]] = [
+                ["Camiguin Centric Riders Club — Per-Rider Monthly Sales & Trip Share Report"],
+                ["Period", period_label, "Generated", generated_pht],
+                ["Total Completed Sales (PHP)", f"{summary['completed_revenue']:.2f}", "Completed Trips", summary["completed_count"]],
+                [],
+                [
+                    "Club ID",
+                    "Rider Name",
+                    "Plate Number",
+                    "Completed Trips",
+                    "Total Assigned Trips",
+                    "Cancelled Trips",
+                    "Trip Share (%)",
+                    "Cash Earnings (PHP)",
+                    "GCash Earnings (PHP)",
+                    "Total Completed Earnings (PHP)",
+                    "Total Distance (km)",
+                ],
+            ]
+            for r in summary["by_rider"]:
+                rows.append([
+                    r["club_id"],
+                    r["rider_name"],
+                    r["plate_number"],
+                    r["completed_trips"],
+                    r["total_trips"],
+                    r["cancelled_trips"],
+                    f"{r['share_pct']:.1f}%",
+                    f"{r['cash_earnings']:.2f}",
+                    f"{r['gcash_earnings']:.2f}",
+                    f"{r['total_earnings']:.2f}",
+                    f"{r['total_km']:.2f}",
+                ])
+            rows.append([
+                "TOTAL",
+                f"{len(summary['by_rider'])} Riders",
+                "",
+                summary["completed_count"],
+                summary["total_count"],
+                summary["cancelled_count"],
+                "100.0%" if summary["completed_count"] > 0 else "0.0%",
+                f"{summary['cash_revenue']:.2f}",
+                f"{summary['gcash_revenue']:.2f}",
+                f"{summary['completed_revenue']:.2f}",
+                f"{summary['total_km']:.2f}",
+            ])
+            return _build_csv_response(rows, f"ccrc-rider-sales-summary-{period_slug}.csv")
+
+        rows = [
+            ["Camiguin Centric Riders Club — Official Club Sales Report"],
+            ["Period", period_label, "Generated", generated_pht],
+            [
+                "Completed Sales (PHP)", f"{summary['completed_revenue']:.2f}",
+                "Cash (PHP)", f"{summary['cash_revenue']:.2f}",
+                "GCash/Digital (PHP)", f"{summary['digital_revenue']:.2f}",
+                "Completed Trips", summary["completed_count"],
+            ],
+            [],
+            [
+                "Date & Time",
+                "Txn Code",
+                "Booking Code",
+                "Group Code",
+                "Passenger Name",
+                "Passenger Phone",
+                "Rider Club ID",
+                "Assigned Rider",
+                "Plate Number",
+                "Service Type",
+                "Pickup Address",
+                "Dropoff Address",
+                "Distance (km)",
+                "Payment Method",
+                "Payment Ref",
+                "Status",
+                "Fare Amount (PHP)",
+            ],
+        ]
+        for t in txns:
+            rid = t.get("rider_id")
+            club_id = _format_club_rider_id(int(rid)) if rid else ""
+            created = str(t.get("created_at") or "")[:19].replace("T", " ")
+            rows.append([
+                created,
+                t.get("transaction_code") or "",
+                t.get("booking_code") or "",
+                t.get("group_code") or "",
+                t.get("customer_name") or "",
+                t.get("customer_phone") or "",
+                club_id,
+                t.get("rider_name") or "Unassigned",
+                (t.get("rider_plate") or "").upper(),
+                str(t.get("service_type") or "").upper(),
+                t.get("pickup_address") or "",
+                t.get("dropoff_address") or "",
+                f"{float(t.get('estimated_km') or 0):.2f}",
+                str(t.get("payment_method") or "cash").upper(),
+                t.get("payment_ref") or "",
+                str(t.get("status") or "").upper(),
+                f"{float(t.get('amount') or 0):.2f}",
+            ])
+        return _build_csv_response(rows, f"ccrc-club-sales-{period_slug}.csv")
+
+    @app.get("/admin/reports/sales")
+    def admin_printable_sales_report():
+        if not session.get("is_admin"):
+            return redirect("/admin")
+        conn = get_db()
+        month = _clean_report_month(request.args.get("month"))
+        status_filter = (request.args.get("status") or "").strip().lower()
+        txns = get_transactions_for_report(conn, month=month, status_filter=status_filter)
+        summary = summarize_report_transactions(txns)
+        return render_template(
+            "report_print.html",
+            active_nav="admin",
+            report_mode="admin",
+            report_title="Official Monthly Club Sales Report",
+            selected_month=month,
+            selected_status=status_filter,
+            period_label=_format_report_period_label(month),
+            generated_pht=get_now_pht().strftime("%b %d, %Y %I:%M %p PHT"),
+            summary=summary,
+            transactions=txns,
+            rider_info=None,
+            csv_detailed_url=f"/api/admin/reports/sales.csv?month={month}&status={status_filter}",
+            csv_rider_summary_url=f"/api/admin/reports/sales.csv?type=rider_summary&month={month}&status={status_filter}",
+            back_url="/admin",
+            back_label="← Back to Admin Panel",
+            report_action_url="/admin/reports/sales",
+        )
+
+    @app.get("/api/rider/reports/earnings.csv")
+    def rider_export_earnings_csv():
+        is_admin = bool(session.get("is_admin"))
+        sess_rider_id = session.get("rider_id")
+        if is_admin and (request.args.get("rider_id") or "").isdigit():
+            r_id = int(request.args.get("rider_id"))
+        elif sess_rider_id:
+            r_id = int(sess_rider_id)
+        else:
+            return jsonify({"error": "Rider authentication required."}), 401
+
+        conn = get_db()
+        rider = get_rider_by_id(conn, r_id)
+        if not rider:
+            return jsonify({"error": "Rider account not found."}), 404
+
+        month = _clean_report_month(request.args.get("month"))
+        status_filter = (request.args.get("status") or "").strip().lower()
+        txns = get_transactions_for_report(
+            conn,
+            month=month,
+            status_filter=status_filter,
+            rider_id=r_id,
+        )
+        summary = summarize_report_transactions(txns)
+        club_id = _format_club_rider_id(r_id)
+        period_slug = month or "all-time"
+        period_label = _format_report_period_label(month)
+        generated_pht = get_now_pht().strftime("%Y-%m-%d %I:%M %p PHT")
+
+        rows: list[list[Any]] = [
+            ["Camiguin Centric Riders Club — Rider Earnings Summary Report"],
+            ["Rider Name", rider.get("name") or "", "Official Club ID", club_id, "Plate Number", (rider.get("plate_number") or "").upper()],
+            ["Period", period_label, "Generated", generated_pht],
+            [
+                "Completed Earnings (PHP)", f"{summary['completed_revenue']:.2f}",
+                "Cash (PHP)", f"{summary['cash_revenue']:.2f}",
+                "GCash/Digital (PHP)", f"{summary['digital_revenue']:.2f}",
+                "Completed Trips", summary["completed_count"],
+                "Total Distance (km)", f"{summary['total_km']:.2f}",
+            ],
+            [],
+            [
+                "Date & Time",
+                "Txn Code",
+                "Booking Code",
+                "Passenger Name",
+                "Service Type",
+                "Pickup Address",
+                "Dropoff Address",
+                "Distance (km)",
+                "Payment Method",
+                "Payment Ref",
+                "Status",
+                "Fare Earned (PHP)",
+            ],
+        ]
+        for t in txns:
+            created = str(t.get("created_at") or "")[:19].replace("T", " ")
+            rows.append([
+                created,
+                t.get("transaction_code") or "",
+                t.get("booking_code") or "",
+                t.get("customer_name") or "",
+                str(t.get("service_type") or "").upper(),
+                t.get("pickup_address") or "",
+                t.get("dropoff_address") or "",
+                f"{float(t.get('estimated_km') or 0):.2f}",
+                str(t.get("payment_method") or "cash").upper(),
+                t.get("payment_ref") or "",
+                str(t.get("status") or "").upper(),
+                f"{float(t.get('amount') or 0):.2f}",
+            ])
+        return _build_csv_response(rows, f"ccrc-rider-earnings-{club_id}-{period_slug}.csv")
+
+    @app.get("/rider/reports/earnings")
+    def rider_printable_earnings_report():
+        is_admin = bool(session.get("is_admin"))
+        sess_rider_id = session.get("rider_id")
+        if is_admin and (request.args.get("rider_id") or "").isdigit():
+            r_id = int(request.args.get("rider_id"))
+        elif sess_rider_id:
+            r_id = int(sess_rider_id)
+        else:
+            return redirect("/rider")
+
+        conn = get_db()
+        rider = get_rider_by_id(conn, r_id)
+        if not rider:
+            return redirect("/rider")
+
+        month = _clean_report_month(request.args.get("month"))
+        status_filter = (request.args.get("status") or "").strip().lower()
+        txns = get_transactions_for_report(
+            conn,
+            month=month,
+            status_filter=status_filter,
+            rider_id=r_id,
+        )
+        summary = summarize_report_transactions(txns)
+        club_id = _format_club_rider_id(r_id)
+        rider_info = {
+            "id": r_id,
+            "club_id": club_id,
+            "name": rider.get("name") or "Club Rider",
+            "plate_number": (rider.get("plate_number") or "N/A").upper(),
+            "bike_model": rider.get("bike_model") or "Motorcycle",
+            "municipality": rider.get("municipality") or "Mambajao",
+        }
+        rider_qs = f"&rider_id={r_id}" if (is_admin and request.args.get("rider_id")) else ""
+        return render_template(
+            "report_print.html",
+            active_nav="rider",
+            report_mode="rider",
+            report_title="Rider Earnings Summary Report",
+            selected_month=month,
+            selected_status=status_filter,
+            period_label=_format_report_period_label(month),
+            generated_pht=get_now_pht().strftime("%b %d, %Y %I:%M %p PHT"),
+            summary=summary,
+            transactions=txns,
+            rider_info=rider_info,
+            csv_detailed_url=f"/api/rider/reports/earnings.csv?month={month}&status={status_filter}{rider_qs}",
+            csv_rider_summary_url="",
+            back_url="/admin" if (is_admin and request.args.get("rider_id")) else "/rider",
+            back_label="← Back to Admin Panel" if (is_admin and request.args.get("rider_id")) else "← Back to Rider Hub",
+            report_action_url="/rider/reports/earnings",
+        )
 
     @app.post("/api/admin/settings")
     def admin_save_settings():

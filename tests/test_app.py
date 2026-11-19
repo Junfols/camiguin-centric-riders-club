@@ -3971,8 +3971,174 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="oid-print-btn"', rider_html)
         self.assertIn('id="oid-copy-link-btn"', rider_html)
 
+    def test_printable_and_csv_reports_for_admin_and_rider(self):
+        import csv
+        import io
+        from db import get_connection
+
+        r1 = self._create_active_rider(name="Kuya Rico Report", phone="09171112233")
+        r2 = self._create_active_rider(name="Kuya Dante Report", phone="09174445566")
+
+        # 1. Auth boundaries
+        self.assertEqual(self.client.get("/api/admin/reports/sales.csv").status_code, 403)
+        admin_print_unauth = self.client.get("/admin/reports/sales")
+        self.assertEqual(admin_print_unauth.status_code, 302)
+        self.assertEqual(self.client.get("/api/rider/reports/earnings.csv").status_code, 401)
+        rider_print_unauth = self.client.get("/rider/reports/earnings")
+        self.assertEqual(rider_print_unauth.status_code, 302)
+
+        # 2. Seed transactions across 2 months & 2 riders (including Excel formula injection payload)
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute(
+                "UPDATE riders SET plate_number = ?, bike_model = ? WHERE id = ?",
+                ("CAM 1101", "Honda Click 125", r1),
+            )
+            conn.execute(
+                "UPDATE riders SET plate_number = ?, bike_model = ? WHERE id = ?",
+                ("CAM 2202", "Yamaha NMAX", r2),
+            )
+            seed_rows = [
+                # (txn_code, b_code, cust_name, cust_phone, r_id, r_name, svc, amt, pm, pay_ref, km, pickup, dropoff, status, created_at)
+                ("TXN-REP-01", "CCRC-R01", "=CMD|' /C calc'!A0", "09170000001", r1, "Kuya Rico Report", "passenger", 150.0, "cash", "", 6.5, "Benoni Port", "Mambajao Centro", "completed", "2026-11-05T08:15:00+08:00"),
+                ("TXN-REP-02", "CCRC-R02", "Maria Tourist", "09170000002", r1, "Kuya Rico Report", "pabili", 250.0, "gcash", "GC-998877", 4.5, "Mambajao Market", "White Island Pier", "completed", "2026-11-10T14:30:00+08:00"),
+                ("TXN-REP-03", "CCRC-R03", "Pedro Local", "09170000003", r2, "Kuya Dante Report", "parcel", 100.0, "cash", "", 3.0, "Balbagon Port", "Catarman Plaza", "completed", "2026-11-12T10:00:00+08:00"),
+                ("TXN-REP-04", "CCRC-R04", "October Guest", "09170000004", r2, "Kuya Dante Report", "passenger", 400.0, "cash", "", 12.0, "Hibok-Hibok", "Katibawasan Falls", "completed", "2026-10-20T09:00:00+08:00"),
+            ]
+            for txn_code, b_code, c_name, c_phone, rid, rname, svc, amt, pm, pay_ref, km, pickup, dropoff, st, ts in seed_rows:
+                b_cur = conn.execute(
+                    """
+                    INSERT INTO bookings (
+                        booking_code, service_type, status, customer_name, customer_phone,
+                        pickup_address, dropoff_address, estimated_km, fare_amount,
+                        payment_method, payment_ref, rider_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (b_code, svc, st, c_name, c_phone, pickup, dropoff, km, amt, pm, pay_ref, rid, ts),
+                )
+                b_id = b_cur.lastrowid
+                conn.execute(
+                    """
+                    INSERT INTO transactions (
+                        transaction_code, booking_id, booking_code, customer_name, customer_phone,
+                        rider_id, rider_name, service_type, amount, payment_method, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (txn_code, b_id, b_code, c_name, c_phone, rid, rname, svc, amt, pm, st, ts),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # 3. Admin Detailed Sales CSV (month=2026-11)
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+
+        csv_resp = self.client.get("/api/admin/reports/sales.csv?month=2026-11")
+        self.assertEqual(csv_resp.status_code, 200)
+        self.assertIn("text/csv", csv_resp.content_type)
+        self.assertIn('filename="ccrc-club-sales-2026-11.csv"', csv_resp.headers.get("Content-Disposition", ""))
+        csv_text = csv_resp.get_data(as_text=True)
+        self.assertTrue(csv_text.startswith("\ufeff"))
+        parsed_rows = list(csv.reader(io.StringIO(csv_text.lstrip("\ufeff"))))
+        flat_text = "\n".join(",".join(r) for r in parsed_rows)
+        self.assertIn("November 2026", flat_text)
+        self.assertIn("500.00", flat_text)
+        self.assertIn("TXN-REP-01", flat_text)
+        self.assertIn("TXN-REP-02", flat_text)
+        self.assertIn("TXN-REP-03", flat_text)
+        self.assertNotIn("TXN-REP-04", flat_text)
+        # Formula injection cell is safely prefixed with a single quote
+        txn1_row = next(r for r in parsed_rows if len(r) > 4 and r[1] == "TXN-REP-01")
+        self.assertTrue(txn1_row[4].startswith("'=CMD"))
+
+        # 4. Admin Per-Rider Summary CSV (checks sales split & trip share %)
+        rider_csv_resp = self.client.get("/api/admin/reports/sales.csv?type=rider_summary&month=2026-11")
+        self.assertEqual(rider_csv_resp.status_code, 200)
+        self.assertIn('filename="ccrc-rider-sales-summary-2026-11.csv"', rider_csv_resp.headers.get("Content-Disposition", ""))
+        rider_rows = list(csv.reader(io.StringIO(rider_csv_resp.get_data(as_text=True).lstrip("\ufeff"))))
+        r1_row = next(r for r in rider_rows if len(r) > 9 and r[1] == "Kuya Rico Report")
+        r2_row = next(r for r in rider_rows if len(r) > 9 and r[1] == "Kuya Dante Report")
+        self.assertEqual(r1_row[3], "2")
+        self.assertEqual(r1_row[6], "66.7%")
+        self.assertEqual(r1_row[7], "150.00")
+        self.assertEqual(r1_row[8], "250.00")
+        self.assertEqual(r1_row[9], "400.00")
+        self.assertEqual(r2_row[3], "1")
+        self.assertEqual(r2_row[6], "33.3%")
+        self.assertEqual(r2_row[9], "100.00")
+
+        # 5. Admin Printable Report HTML
+        admin_print_resp = self.client.get("/admin/reports/sales?month=2026-11")
+        self.assertEqual(admin_print_resp.status_code, 200)
+        admin_print_html = admin_print_resp.get_data(as_text=True)
+        self.assertIn("Official Monthly Club Sales Report", admin_print_html)
+        self.assertIn("November 2026", admin_print_html)
+        self.assertIn('id="ccrc-printable-report-sheet"', admin_print_html)
+        self.assertIn("₱500.00", admin_print_html)
+        self.assertIn("66.7%", admin_print_html)
+        self.assertIn("Kuya Rico Report", admin_print_html)
+        self.assertIn("Kuya Dante Report", admin_print_html)
+        self.assertNotIn("TXN-REP-04", admin_print_html)
+
+        # Admin can inspect a specific rider's printable earnings report for October
+        admin_rider_oct = self.client.get(f"/rider/reports/earnings?rider_id={r2}&month=2026-10")
+        self.assertEqual(admin_rider_oct.status_code, 200)
+        oct_html = admin_rider_oct.get_data(as_text=True)
+        self.assertIn("October 2026", oct_html)
+        self.assertIn("₱400.00", oct_html)
+        self.assertIn("TXN-REP-04", oct_html)
+
+        # Admin dashboard exposes report controls
+        admin_dash_html = self.client.get("/admin").get_data(as_text=True)
+        for token in (
+            'id="admin-report-month"',
+            'id="admin-export-sales-csv-btn"',
+            'id="admin-export-rider-csv-btn"',
+            'id="admin-print-sales-report-btn"',
+        ):
+            self.assertIn(token, admin_dash_html)
+
+        # 6. Rider Earnings CSV & Printable Report enforce strict per-rider isolation
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r1
+
+        # Even if r1 passes ?rider_id=r2, non-admin rider only gets their own (r1) records
+        r1_csv_resp = self.client.get(f"/api/rider/reports/earnings.csv?month=2026-11&rider_id={r2}")
+        self.assertEqual(r1_csv_resp.status_code, 200)
+        self.assertIn(f"ccrc-rider-earnings-CCRC-{r1:04d}-2026-11.csv", r1_csv_resp.headers.get("Content-Disposition", ""))
+        r1_csv_text = r1_csv_resp.get_data(as_text=True)
+        self.assertTrue(r1_csv_text.startswith("\ufeff"))
+        self.assertIn("TXN-REP-01", r1_csv_text)
+        self.assertIn("TXN-REP-02", r1_csv_text)
+        self.assertIn("400.00", r1_csv_text)
+        self.assertNotIn("TXN-REP-03", r1_csv_text)
+        self.assertNotIn("Pedro Local", r1_csv_text)
+
+        r1_print_resp = self.client.get(f"/rider/reports/earnings?month=2026-11&rider_id={r2}")
+        self.assertEqual(r1_print_resp.status_code, 200)
+        r1_print_html = r1_print_resp.get_data(as_text=True)
+        self.assertIn("Rider Earnings Summary Report", r1_print_html)
+        self.assertIn(f"CCRC-{r1:04d}", r1_print_html)
+        self.assertIn("₱400.00", r1_print_html)
+        self.assertIn("TXN-REP-02", r1_print_html)
+        self.assertNotIn("TXN-REP-03", r1_print_html)
+
+        # Rider Hub exposes CSV & Printable report buttons
+        rider_dash_html = self.client.get("/rider").get_data(as_text=True)
+        for token in (
+            'id="rider-export-csv-btn"',
+            'id="rider-print-report-btn"',
+            'id="rider-report-month"',
+            'id="rider-modal-export-csv-btn"',
+            'id="rider-modal-print-report-btn"',
+        ):
+            self.assertIn(token, rider_dash_html)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

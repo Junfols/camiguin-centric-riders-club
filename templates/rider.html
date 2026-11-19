@@ -238,11 +238,19 @@
           <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
         </div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
+      <div class="rider-earnings-actions-row">
         <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
-        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
-          📜 View Transactions Ledger
-        </button>
+        <div class="rider-earnings-btn-group">
+          <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 10px;font-size:0.78rem;cursor:pointer;">
+            📜 View Transactions Ledger
+          </button>
+          <button type="button" id="rider-export-csv-btn" class="btn btn-sm rider-btn-csv">
+            📥 Export CSV
+          </button>
+          <button type="button" id="rider-print-report-btn" class="btn btn-sm rider-btn-report">
+            🖨️ Earnings Report
+          </button>
+        </div>
       </div>
     </div>
 
@@ -640,6 +648,20 @@
         <span>💰</span> My Earnings &amp; Transactions
       </h3>
       <button type="button" id="close-rider-txns-btn" onclick="document.getElementById('rider-transactions-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+    </div>
+    <div class="ccrc-rider-modal-report-bar">
+      <div class="ccrc-rider-modal-month-wrap">
+        <label for="rider-report-month" style="font-size:0.76rem;font-weight:700;color:#475569;">Month:</label>
+        <input type="month" id="rider-report-month" class="ccrc-report-month-input" aria-label="Earnings Report Month">
+      </div>
+      <div class="ccrc-rider-modal-report-btns">
+        <button type="button" id="rider-modal-export-csv-btn" class="btn btn-sm ccrc-btn-csv">
+          📥 Download CSV
+        </button>
+        <button type="button" id="rider-modal-print-report-btn" class="btn btn-sm btn-primary ccrc-btn-print">
+          🖨️ Printable Summary
+        </button>
+      </div>
     </div>
     <div id="rider-txns-modal-body" style="padding:18px;font-size:0.85rem;">
       <div class="text-muted" style="text-align:center;padding:20px;">Loading your transactions...</div>
