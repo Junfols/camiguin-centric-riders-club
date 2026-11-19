@@ -69,6 +69,7 @@
 
   const state = {
     role: null,
+    riderId: null,
     bookingRef: null,
     bookingCode: "",
     peerName: "User",
@@ -77,11 +78,14 @@
     canCall: false,
     onFallbackVoiceNote: null,
 
+    activeCallKind: "booking", // "booking" | "rider"
+    targetRiderId: null,
     iceServers: DEFAULT_ICE_SERVERS,
     activeCall: null,
     activeCallId: null,
     lastSignalId: 0,
     dismissedCallIds: new Set(),
+    dismissedRiderCallIds: new Set(),
     pendingIncomingOffer: null,
     pendingRemoteCandidates: [],
     pendingOutgoingCandidates: [],
@@ -100,6 +104,32 @@
     ringTimer: null,
     audioCtx: null
   };
+
+  function getCsrfHeaders(extra) {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const csrf = meta ? meta.getAttribute("content") : "";
+    return Object.assign(
+      { "Content-Type": "application/json" },
+      csrf ? { "X-CSRF-Token": csrf } : {},
+      extra || {}
+    );
+  }
+
+  function isRiderCallActive() {
+    return state.activeCallKind === "rider";
+  }
+
+  function getRespondUrl(callId) {
+    return isRiderCallActive()
+      ? `/api/rider/calls/session/${callId}/respond`
+      : `/api/calls/session/${callId}/respond`;
+  }
+
+  function getSignalUrl(callId) {
+    return isRiderCallActive()
+      ? `/api/rider/calls/session/${callId}/signal`
+      : `/api/calls/session/${callId}/signal`;
+  }
 
   function getAudioCtx() {
     try {
@@ -239,7 +269,7 @@
   function updateModalHeader(peerNameOverride, roleLabelOverride, codeOverride, phoneOverride) {
     if (peerRoleEl) peerRoleEl.textContent = tr(roleLabelOverride || state.peerRoleLabel || "CCRC Member");
     if (peerNameEl) peerNameEl.textContent = peerNameOverride || state.peerName || "CCRC Member";
-    if (bookingCodeEl) bookingCodeEl.textContent = codeOverride || state.bookingCode || "";
+    if (bookingCodeEl) bookingCodeEl.textContent = codeOverride !== undefined ? codeOverride : (state.bookingCode || "");
     const tel = phoneOverride !== undefined ? phoneOverride : state.peerPhone;
     if (telFallbackBtn) {
       if (tel) {
@@ -249,6 +279,9 @@
         telFallbackBtn.classList.add("hidden");
       }
     }
+    if (voiceFallbackBtn) {
+      voiceFallbackBtn.classList.toggle("hidden", isRiderCallActive());
+    }
   }
 
   function setModalMode(mode, statusMsg) {
@@ -257,7 +290,7 @@
 
     if (statusTextEl) statusTextEl.textContent = statusMsg || "";
     if (avatarIcon) {
-      avatarIcon.textContent = state.role === "customer" ? "🛵" : "👤";
+      avatarIcon.textContent = (state.role === "customer" || isRiderCallActive()) ? "🛵" : "👤";
     }
     if (avatarRing) {
       avatarRing.classList.toggle("ringing", mode === "incoming" || mode === "outgoing" || mode === "connecting");
@@ -277,14 +310,24 @@
 
   function closeModal() {
     if (state.activeCallId) {
-      state.dismissedCallIds.add(Number(state.activeCallId));
+      if (isRiderCallActive()) {
+        state.dismissedRiderCallIds.add(Number(state.activeCallId));
+      } else {
+        state.dismissedCallIds.add(Number(state.activeCallId));
+      }
     }
     cleanupWebRTC(true);
     state.activeCall = null;
     state.activeCallId = null;
+    state.activeCallKind = "booking";
+    state.targetRiderId = null;
     state.lastSignalId = 0;
     setPollingRate(2200);
     if (modal) modal.classList.add("hidden");
+  }
+
+  function shouldPoll() {
+    return Boolean((state.bookingRef && state.canCall) || (state.role === "rider" && state.riderId));
   }
 
   function setPollingRate(ms) {
@@ -294,7 +337,7 @@
       clearInterval(state.pollTimer);
       state.pollTimer = null;
     }
-    if (state.bookingRef && state.canCall) {
+    if (shouldPoll()) {
       state.pollTimer = setInterval(pollCallState, state.pollRateMs);
     }
   }
@@ -303,9 +346,9 @@
     if (!state.activeCallId || state.pendingOutgoingCandidates.length === 0) return;
     const batch = state.pendingOutgoingCandidates.splice(0, 30);
     try {
-      await fetch(`/api/calls/session/${state.activeCallId}/signal`, {
+      await fetch(getSignalUrl(state.activeCallId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getCsrfHeaders(),
         body: JSON.stringify({ candidates: batch })
       });
     } catch (_) {}
@@ -431,6 +474,8 @@
     cleanupWebRTC(true);
     state.activeCall = null;
     state.activeCallId = null;
+    state.activeCallKind = "booking";
+    state.targetRiderId = null;
     state.lastSignalId = 0;
 
     updateModalHeader(state.peerName, state.peerRoleLabel, state.bookingCode, state.peerPhone);
@@ -479,7 +524,7 @@
 
       const res = await fetch(`/api/calls/${encodeURIComponent(state.bookingRef)}/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getCsrfHeaders(),
         body: JSON.stringify({
           offer: { type: offer.type, sdp: offer.sdp }
         })
@@ -505,6 +550,7 @@
       }
       state.activeCall = data.call;
       state.activeCallId = Number(data.call.id);
+      state.activeCallKind = "booking";
       setPollingRate(950);
       await flushOutgoingCandidates();
     } catch (err) {
@@ -513,12 +559,115 @@
     }
   }
 
+  async function startRiderCall(targetRiderId, peerName, peerPhone, peerMunicipality) {
+    const targetId = Number(targetRiderId);
+    if (!targetId) return;
+    if (state.activeCallId && state.pc) {
+      if (modal) modal.classList.remove("hidden");
+      return;
+    }
+
+    cleanupWebRTC(true);
+    state.activeCall = null;
+    state.activeCallId = null;
+    state.activeCallKind = "rider";
+    state.targetRiderId = targetId;
+    state.lastSignalId = 0;
+
+    const codeLabel = peerMunicipality ? `CCRC Co-Rider • ${peerMunicipality}` : "CCRC Fellow Rider";
+    updateModalHeader(peerName || "Fellow Rider", tr("Fellow Club Rider"), codeLabel, peerPhone || "");
+
+    if (!supportsWebRTC()) {
+      setModalMode(
+        "error",
+        tr("⚠️ Live in-app calling requires an HTTPS connection and microphone access. Use Regular Phone Call below.")
+      );
+      return;
+    }
+
+    setModalMode("connecting", tr("🎙️ Requesting microphone access..."));
+
+    try {
+      state.localStream = await acquireMicrophone();
+    } catch (err) {
+      const msg = err && err.name === "NotAllowedError"
+        ? tr("🎙️ Microphone permission denied. Allow microphone access in browser settings, or use the backup options below.")
+        : tr("🎙️ Microphone not available on this device. Use the backup options below.");
+      cleanupWebRTC(true);
+      setModalMode("error", msg);
+      return;
+    }
+
+    try {
+      let iceServers = state.iceServers;
+      try {
+        const iceRes = await fetch("/api/rtc/ice-config");
+        if (iceRes.ok) {
+          const iceJson = await iceRes.json();
+          if (iceJson && Array.isArray(iceJson.ice_servers)) {
+            iceServers = iceJson.ice_servers;
+            state.iceServers = iceServers;
+          }
+        }
+      } catch (_) {}
+
+      const pc = createPeerConnection(iceServers);
+      state.pc = pc;
+      const offer = await pc.createOffer({ offerToReceiveAudio: true });
+      await pc.setLocalDescription(offer);
+
+      setModalMode("outgoing", tr("📞 Calling fellow rider... Waiting for answer"));
+      startRingtone("outgoing");
+
+      const res = await fetch(`/api/rider/calls/${encodeURIComponent(targetId)}/start`, {
+        method: "POST",
+        headers: getCsrfHeaders(),
+        body: JSON.stringify({
+          offer: { type: offer.type, sdp: offer.sdp }
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 409 && data && data.call) {
+        cleanupWebRTC(true);
+        const myRiderRole = `rider:${state.riderId}`;
+        if (data.call.status === "ringing" && data.call.callee_role === myRiderRole) {
+          await pollCallState();
+          return;
+        }
+        setModalMode("error", data.error || tr("Rider is already in a call."));
+        return;
+      }
+
+      if (!res.ok || !data.success || !data.call) {
+        throw new Error(data.error || tr("Could not start rider call."));
+      }
+
+      if (Array.isArray(data.ice_servers)) {
+        state.iceServers = data.ice_servers;
+      }
+      state.activeCall = data.call;
+      state.activeCallId = Number(data.call.id);
+      state.activeCallKind = "rider";
+      setPollingRate(950);
+      await flushOutgoingCandidates();
+    } catch (err) {
+      cleanupWebRTC(true);
+      setModalMode("error", (err && err.message) || tr("Unable to start rider call."));
+    }
+  }
+
   async function answerIncomingCall() {
     const call = state.activeCall;
     if (!call || !state.activeCallId) return;
 
     stopRingtone();
-    updateModalHeader(call.caller_name || state.peerName, state.peerRoleLabel, state.bookingCode, state.peerPhone);
+    const isRider = isRiderCallActive();
+    const roleLabel = isRider ? tr("Fellow Club Rider") : state.peerRoleLabel;
+    const codeLabel = isRider ? "CCRC Co-Rider Direct Call" : state.bookingCode;
+    const myRoleMatch = isRider ? `rider:${state.riderId}` : state.role;
+
+    updateModalHeader(call.caller_name || state.peerName, roleLabel, codeLabel, state.peerPhone);
     setModalMode("connecting", tr("🎙️ Connecting audio..."));
 
     try {
@@ -535,16 +684,17 @@
     try {
       // Ensure we definitely have the caller's SDP offer and queued candidates
       if (!state.pendingIncomingOffer) {
-        const stRes = await fetch(
-          `/api/calls/${encodeURIComponent(state.bookingRef)}/state?call_id=${state.activeCallId}&after_signal_id=0`
-        );
+        const stateUrl = isRider
+          ? `/api/rider/calls/state?call_id=${state.activeCallId}&after_signal_id=0`
+          : `/api/calls/${encodeURIComponent(state.bookingRef)}/state?call_id=${state.activeCallId}&after_signal_id=0`;
+        const stRes = await fetch(stateUrl);
         if (stRes.ok) {
           const stData = await stRes.json();
           if (stData && Array.isArray(stData.ice_servers)) state.iceServers = stData.ice_servers;
           if (stData && Array.isArray(stData.signals)) {
             for (const sig of stData.signals) {
               if (sig.signal_type === "offer" && sig.data) state.pendingIncomingOffer = sig.data;
-              if (sig.signal_type === "candidate" && sig.data && sig.sender_role !== state.role) {
+              if (sig.signal_type === "candidate" && sig.data && sig.sender_role !== myRoleMatch) {
                 state.pendingRemoteCandidates.push(sig.data);
               }
               if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
@@ -570,9 +720,9 @@
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
-      const res = await fetch(`/api/calls/session/${state.activeCallId}/respond`, {
+      const res = await fetch(getRespondUrl(state.activeCallId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getCsrfHeaders(),
         body: JSON.stringify({
           action: "accept",
           answer: { type: answer.type, sdp: answer.sdp }
@@ -594,13 +744,15 @@
 
   async function declineIncomingCall() {
     const callId = state.activeCallId;
+    const isRider = isRiderCallActive();
     stopRingtone();
     if (callId) {
-      state.dismissedCallIds.add(Number(callId));
+      if (isRider) state.dismissedRiderCallIds.add(Number(callId));
+      else state.dismissedCallIds.add(Number(callId));
       try {
-        await fetch(`/api/calls/session/${callId}/respond`, {
+        await fetch(getRespondUrl(callId), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getCsrfHeaders(),
           body: JSON.stringify({ action: "decline", reason: "Declined" })
         });
       } catch (_) {}
@@ -610,20 +762,24 @@
 
   async function hangupCall() {
     const callId = state.activeCallId;
+    const isRider = isRiderCallActive();
     stopRingtone();
     cleanupWebRTC(true);
     if (callId) {
-      state.dismissedCallIds.add(Number(callId));
+      if (isRider) state.dismissedRiderCallIds.add(Number(callId));
+      else state.dismissedCallIds.add(Number(callId));
       try {
-        await fetch(`/api/calls/session/${callId}/respond`, {
+        await fetch(getRespondUrl(callId), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getCsrfHeaders(),
           body: JSON.stringify({ action: "hangup", reason: "Ended call" })
         });
       } catch (_) {}
     }
     state.activeCall = null;
     state.activeCallId = null;
+    state.activeCallKind = "booking";
+    state.targetRiderId = null;
     setPollingRate(2200);
     if (modal) modal.classList.add("hidden");
   }
@@ -641,10 +797,16 @@
 
   function handleTerminalCallState(call) {
     const status = call.status;
-    state.dismissedCallIds.add(Number(call.id));
+    if (isRiderCallActive() || call.call_kind === "rider_to_rider") {
+      state.dismissedRiderCallIds.add(Number(call.id));
+    } else {
+      state.dismissedCallIds.add(Number(call.id));
+    }
     cleanupWebRTC(true);
     state.activeCall = null;
     state.activeCallId = null;
+    state.activeCallKind = "booking";
+    state.targetRiderId = null;
     state.lastSignalId = 0;
     setPollingRate(2200);
 
@@ -659,105 +821,159 @@
     }
   }
 
-  async function pollCallState() {
-    if (!state.bookingRef || !state.canCall || state.isPolling) return;
-    state.isPolling = true;
-    try {
-      const qs = new URLSearchParams();
-      qs.set("after_signal_id", String(state.lastSignalId || 0));
-      if (state.activeCallId) qs.set("call_id", String(state.activeCallId));
+  async function processPolledCallData(data, kind) {
+    if (!data || !data.success) return false;
+    const isRider = kind === "rider";
+    const myRole = isRider ? (data.viewer_role || `rider:${state.riderId}`) : state.role;
+    const dismissedSet = isRider ? state.dismissedRiderCallIds : state.dismissedCallIds;
 
-      const res = await fetch(`/api/calls/${encodeURIComponent(state.bookingRef)}/state?${qs.toString()}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data || !data.success) return;
+    if (Array.isArray(data.ice_servers)) {
+      state.iceServers = data.ice_servers;
+    }
 
-      if (Array.isArray(data.ice_servers)) {
-        state.iceServers = data.ice_servers;
+    const call = data.call;
+    if (!call) {
+      if (state.activeCallId && state.activeCallKind === kind && state.pc) {
+        cleanupWebRTC(true);
+        state.activeCall = null;
+        state.activeCallId = null;
+        state.activeCallKind = "booking";
+        state.targetRiderId = null;
+        setPollingRate(2200);
+        if (modal && !modal.classList.contains("hidden")) {
+          setModalMode("ended", tr("📵 Call ended."));
+        }
       }
+      return false;
+    }
+
+    const callId = Number(call.id);
+    if (dismissedSet.has(callId) && (!state.activeCallId || state.activeCallId !== callId || state.activeCallKind !== kind)) {
+      return false;
+    }
+
+    const signals = Array.isArray(data.signals) ? data.signals : [];
+
+    // Case 1: New incoming ringing call for us!
+    if (
+      call.status === "ringing" &&
+      call.callee_role === myRole &&
+      (!state.activeCallId || state.activeCallId !== callId || state.activeCallKind !== kind)
+    ) {
+      // Do not interrupt an already accepted live call of another kind
+      if (state.activeCallId && state.activeCall && state.activeCall.status === "accepted") {
+        return false;
+      }
+
+      cleanupWebRTC(true);
+      state.activeCall = call;
+      state.activeCallId = callId;
+      state.activeCallKind = kind;
+      state.lastSignalId = 0;
       if (data.peer_name) state.peerName = data.peer_name;
       if (data.peer_phone !== undefined) state.peerPhone = data.peer_phone;
 
-      const call = data.call;
-      if (!call) {
-        if (state.activeCallId && state.pc) {
-          cleanupWebRTC(true);
-          state.activeCall = null;
-          state.activeCallId = null;
-          setPollingRate(2200);
-          if (modal && !modal.classList.contains("hidden")) {
-            setModalMode("ended", tr("📵 Call ended."));
+      for (const sig of signals) {
+        if (sig.sender_role !== myRole) {
+          await applyRemoteSignal(sig);
+        }
+        if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
+      }
+
+      const roleLabel = isRider ? tr("Fellow Club Rider") : state.peerRoleLabel;
+      const codeLabel = isRider ? "CCRC Co-Rider Direct Call" : state.bookingCode;
+      updateModalHeader(call.caller_name || state.peerName, roleLabel, codeLabel, state.peerPhone);
+      setModalMode("incoming", isRider ? tr("📞 Incoming Co-Rider Voice Call...") : tr("📞 Incoming Free In-App Voice Call..."));
+      startRingtone("incoming");
+      setPollingRate(1000);
+
+      if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        try {
+          new Notification("CCRC Free In-App Call", {
+            body: `${call.caller_name || state.peerName} is calling you (${codeLabel})`,
+            icon: "/static/icons/icon-192.png"
+          });
+        } catch (_) {}
+      }
+      return true;
+    }
+
+    // Case 2: Ongoing/tracked call matching activeCallId and kind
+    if (state.activeCallId === callId && state.activeCallKind === kind) {
+      state.activeCall = call;
+      if (data.peer_name) state.peerName = data.peer_name;
+      if (data.peer_phone !== undefined) state.peerPhone = data.peer_phone;
+
+      for (const sig of signals) {
+        if (sig.sender_role !== myRole) {
+          await applyRemoteSignal(sig);
+        }
+        if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
+      }
+
+      if (call.status === "accepted") {
+        stopRingtone();
+        if (!state.pc || (state.pc.connectionState !== "connected" && state.pc.iceConnectionState !== "connected")) {
+          if (statusTextEl && (!state.connectedAtMs)) {
+            statusTextEl.textContent = tr("🔄 Connecting voice audio...");
           }
+        }
+      } else if (["ended", "declined", "missed"].includes(call.status)) {
+        handleTerminalCallState(call);
+      }
+      return true;
+    }
+
+    if (call.status === "ringing" && call.caller_role === myRole && state.activeCallKind === kind) {
+      for (const sig of signals) {
+        if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  async function pollCallState() {
+    if (!shouldPoll() || state.isPolling) return;
+    state.isPolling = true;
+    try {
+      // If actively in a rider-to-rider call, poll rider call state first
+      if (state.activeCallId && state.activeCallKind === "rider") {
+        const rQs = new URLSearchParams();
+        rQs.set("after_signal_id", String(state.lastSignalId || 0));
+        rQs.set("call_id", String(state.activeCallId));
+        const rRes = await fetch(`/api/rider/calls/state?${rQs.toString()}`);
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          await processPolledCallData(rData, "rider");
         }
         return;
       }
 
-      const callId = Number(call.id);
-      if (state.dismissedCallIds.has(callId) && (!state.activeCallId || state.activeCallId !== callId)) {
-        return;
+      // Poll booking call state if a booking is active
+      if (state.bookingRef && state.canCall) {
+        const qs = new URLSearchParams();
+        qs.set("after_signal_id", String(state.activeCallKind === "booking" ? (state.lastSignalId || 0) : 0));
+        if (state.activeCallId && state.activeCallKind === "booking") {
+          qs.set("call_id", String(state.activeCallId));
+        }
+        const res = await fetch(`/api/calls/${encodeURIComponent(state.bookingRef)}/state?${qs.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const handledBooking = await processPolledCallData(data, "booking");
+          if (handledBooking && state.activeCallId) return;
+        }
       }
 
-      const signals = Array.isArray(data.signals) ? data.signals : [];
-
-      // Case 1: New incoming ringing call for us!
-      if (
-        call.status === "ringing" &&
-        call.callee_role === state.role &&
-        state.activeCallId !== callId
-      ) {
-        cleanupWebRTC(true);
-        state.activeCall = call;
-        state.activeCallId = callId;
-        state.lastSignalId = 0;
-
-        for (const sig of signals) {
-          if (sig.sender_role !== state.role) {
-            await applyRemoteSignal(sig);
-          }
-          if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
-        }
-
-        updateModalHeader(call.caller_name || state.peerName, state.peerRoleLabel, state.bookingCode, state.peerPhone);
-        setModalMode("incoming", tr("📞 Incoming Free In-App Voice Call..."));
-        startRingtone("incoming");
-        setPollingRate(1000);
-
-        if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-          try {
-            new Notification("CCRC Free In-App Call", {
-              body: `${call.caller_name || state.peerName} is calling you (${state.bookingCode})`,
-              icon: "/static/icons/icon-192.png"
-            });
-          } catch (_) {}
-        }
-        return;
-      }
-
-      // Case 2: Ongoing/tracked call matching activeCallId
-      if (state.activeCallId === callId) {
-        state.activeCall = call;
-
-        for (const sig of signals) {
-          if (sig.sender_role !== state.role) {
-            await applyRemoteSignal(sig);
-          }
-          if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
-        }
-
-        if (call.status === "accepted") {
-          stopRingtone();
-          if (!state.pc || (state.pc.connectionState !== "connected" && state.pc.iceConnectionState !== "connected")) {
-            if (statusTextEl && (!state.connectedAtMs)) {
-              statusTextEl.textContent = tr("🔄 Connecting voice audio...");
-            }
-          }
-        } else if (["ended", "declined", "missed"].includes(call.status)) {
-          handleTerminalCallState(call);
-        }
-      } else if (call.status === "ringing" && call.caller_role === state.role) {
-        // Tracked outgoing call wasn't set yet or page reloaded during outgoing ring
-        for (const sig of signals) {
-          if (sig.id > state.lastSignalId) state.lastSignalId = sig.id;
+      // Also poll rider-to-rider call state if logged in as a rider
+      if (state.role === "rider" && state.riderId) {
+        const rQs = new URLSearchParams();
+        rQs.set("after_signal_id", "0");
+        const rRes = await fetch(`/api/rider/calls/state?${rQs.toString()}`);
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          await processPolledCallData(rData, "rider");
         }
       }
     } catch (_) {
@@ -773,15 +989,19 @@
     const prevCanCall = state.canCall;
 
     state.role = opts.role || state.role;
+    if (opts.riderId !== undefined) state.riderId = opts.riderId ? Number(opts.riderId) : null;
     state.bookingRef = opts.bookingRef || null;
     state.bookingCode = opts.bookingCode || state.bookingCode || "";
-    if (opts.peerName) state.peerName = opts.peerName;
-    if (opts.peerPhone !== undefined) state.peerPhone = opts.peerPhone;
-    if (opts.peerRoleLabel) state.peerRoleLabel = opts.peerRoleLabel;
+    if (!isRiderCallActive()) {
+      if (opts.peerName) state.peerName = opts.peerName;
+      if (opts.peerPhone !== undefined) state.peerPhone = opts.peerPhone;
+      if (opts.peerRoleLabel) state.peerRoleLabel = opts.peerRoleLabel;
+    }
     if (typeof opts.onFallbackVoiceNote === "function") state.onFallbackVoiceNote = opts.onFallbackVoiceNote;
     state.canCall = Boolean(opts.canCall && state.bookingRef);
 
-    if (prevRef !== nextRef || (prevCanCall && !state.canCall)) {
+    // Only hang up if an active BOOKING call had its bookingRef removed/changed
+    if (!isRiderCallActive() && (prevRef !== nextRef || (prevCanCall && !state.canCall))) {
       if (state.activeCallId) {
         hangupCall();
       } else {
@@ -792,7 +1012,7 @@
       state.lastSignalId = 0;
     }
 
-    if (state.bookingRef && state.canCall) {
+    if (shouldPoll()) {
       if (!state.pollTimer) {
         pollCallState();
         state.pollTimer = setInterval(pollCallState, state.pollRateMs);
@@ -821,20 +1041,16 @@
   window.addEventListener("pagehide", () => {
     if (state.activeCallId && state.activeCall && ["ringing", "accepted"].includes(state.activeCall.status)) {
       try {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        const csrf = meta ? meta.getAttribute("content") : "";
-        fetch(`/api/calls/session/${state.activeCallId}/respond`, {
+        fetch(getRespondUrl(state.activeCallId), {
           method: "POST",
-          headers: Object.assign(
-            { "Content-Type": "application/json" },
-            csrf ? { "X-CSRF-Token": csrf } : {}
-          ),
+          headers: getCsrfHeaders(),
           body: JSON.stringify({ action: "hangup", reason: "Page closed" }),
           keepalive: true
         });
       } catch (_) {}
     }
   });
+
 
   // ---------------------------------------------------------------------------
   // Voice Message Recorder Binding (Shared for Customer & Rider Chat)
@@ -1020,6 +1236,7 @@
   window.CCRCVoiceCall = {
     configure: configure,
     startCall: startCall,
+    startRiderCall: startRiderCall,
     hangupCall: hangupCall,
     bindVoiceRecorder: bindVoiceRecorder
   };

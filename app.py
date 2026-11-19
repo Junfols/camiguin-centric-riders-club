@@ -40,6 +40,11 @@ from db import (
     get_call_session,
     get_latest_call_state,
     respond_to_call,
+    add_rider_call_signal,
+    create_rider_call_session,
+    get_rider_call_session,
+    get_latest_rider_call_state,
+    respond_to_rider_call,
     accept_booking,
     accept_booking_for_group_slot,
     attach_group_metadata,
@@ -1641,6 +1646,171 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 return jsonify({"error": "Invalid signal_type."}), 400
             sig_data = data.get("data")
             sig_id = add_call_signal(conn, call_id, int(booking["id"]), auth_role, sig_type, sig_data)
+            signal_ids.append(sig_id)
+
+        conn.commit()
+        return jsonify({"success": True, "signal_ids": signal_ids})
+
+    # -------------------------------------------------------------------------
+    # Rider-to-Rider Free In-App Voice Call Routes
+    # -------------------------------------------------------------------------
+    @app.get("/api/rider/calls/state")
+    def get_rider_call_state():
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Rider login required."}), 401
+
+        conn = get_db()
+        me = get_rider_by_id(conn, int(rider_id))
+        if not me or me.get("status") != "active":
+            return jsonify({"error": "Active rider account required."}), 403
+
+        try:
+            after_signal_id = max(0, int(request.args.get("after_signal_id") or 0))
+        except (ValueError, TypeError):
+            after_signal_id = 0
+        try:
+            active_call_id = int(request.args.get("call_id")) if request.args.get("call_id") else None
+        except (ValueError, TypeError):
+            active_call_id = None
+
+        call_obj, signals = get_latest_rider_call_state(
+            conn,
+            rider_id=int(rider_id),
+            active_call_id=active_call_id,
+            after_signal_id=after_signal_id,
+        )
+        conn.commit()
+
+        peer_name = "Fellow Rider"
+        peer_phone = ""
+        if call_obj:
+            other_id = (
+                int(call_obj["callee_rider_id"])
+                if int(call_obj["caller_rider_id"]) == int(rider_id)
+                else int(call_obj["caller_rider_id"])
+            )
+            other_rider = get_rider_by_id(conn, other_id)
+            if other_rider:
+                peer_name = other_rider.get("name") or peer_name
+                peer_phone = other_rider.get("phone") or ""
+            else:
+                peer_name = (
+                    call_obj.get("callee_name")
+                    if int(call_obj["caller_rider_id"]) == int(rider_id)
+                    else call_obj.get("caller_name")
+                ) or peer_name
+
+        return jsonify({
+            "success": True,
+            "viewer_role": f"rider:{rider_id}",
+            "rider_id": int(rider_id),
+            "peer_name": peer_name,
+            "peer_phone": peer_phone,
+            "call": call_obj,
+            "signals": signals,
+            "ice_servers": _get_rtc_ice_servers(),
+        })
+
+    @app.post("/api/rider/calls/<int:target_rider_id>/start")
+    def start_rider_to_rider_call(target_rider_id: int):
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Rider login required."}), 401
+
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        offer_data = data.get("offer")
+        if offer_data is not None and not isinstance(offer_data, dict):
+            return jsonify({"error": "Invalid WebRTC offer payload."}), 400
+
+        ok, msg, call_obj, status_code = create_rider_call_session(
+            conn,
+            caller_rider_id=int(rider_id),
+            callee_rider_id=int(target_rider_id),
+            offer_data=offer_data,
+        )
+        conn.commit()
+        if not ok:
+            return jsonify({
+                "error": msg,
+                "call": call_obj,
+                "ice_servers": _get_rtc_ice_servers(),
+            }), status_code
+
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "call": call_obj,
+            "ice_servers": _get_rtc_ice_servers(),
+        }), 201
+
+    @app.post("/api/rider/calls/session/<int:call_id>/respond")
+    def respond_rider_to_rider_call(call_id: int):
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Rider login required."}), 401
+
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        action = (data.get("action") or "").strip().lower()
+        answer_data = data.get("answer")
+        reason = str(data.get("reason") or "").strip()
+
+        if answer_data is not None and not isinstance(answer_data, dict):
+            return jsonify({"error": "Invalid WebRTC answer payload."}), 400
+
+        ok, msg, call_obj, status_code = respond_to_rider_call(
+            conn,
+            call_id=call_id,
+            actor_rider_id=int(rider_id),
+            action=action,
+            answer_data=answer_data,
+            reason=reason,
+        )
+        conn.commit()
+        if not ok:
+            return jsonify({"error": msg, "call": call_obj}), status_code
+
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "call": call_obj,
+            "ice_servers": _get_rtc_ice_servers(),
+        })
+
+    @app.post("/api/rider/calls/session/<int:call_id>/signal")
+    def post_rider_to_rider_call_signal(call_id: int):
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Rider login required."}), 401
+
+        conn = get_db()
+        call_obj = get_rider_call_session(conn, call_id)
+        if not call_obj:
+            return jsonify({"error": "Rider call session not found."}), 404
+
+        rid = int(rider_id)
+        if rid not in (int(call_obj["caller_rider_id"]), int(call_obj["callee_rider_id"])):
+            return jsonify({"error": "Forbidden from signaling this rider call."}), 403
+        if call_obj.get("status") not in ("ringing", "accepted"):
+            return jsonify({"error": "Call has already ended."}), 409
+
+        data = request.get_json(silent=True) or {}
+        signal_ids: list[int] = []
+
+        candidates = data.get("candidates")
+        if isinstance(candidates, list) and candidates:
+            for item in candidates[:30]:
+                if item is not None:
+                    sig_id = add_rider_call_signal(conn, call_id, rid, "candidate", item)
+                    signal_ids.append(sig_id)
+        else:
+            sig_type = (data.get("signal_type") or "").strip().lower()
+            if sig_type not in ("offer", "answer", "candidate", "renegotiate"):
+                return jsonify({"error": "Invalid signal_type."}), 400
+            sig_data = data.get("data")
+            sig_id = add_rider_call_signal(conn, call_id, rid, sig_type, sig_data)
             signal_ids.append(sig_id)
 
         conn.commit()

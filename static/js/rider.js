@@ -182,6 +182,7 @@
     if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.configure === "function") {
       window.CCRCVoiceCall.configure({
         role: "rider",
+        riderId: currentRider ? currentRider.id : null,
         bookingRef: targetJob ? targetJob.id : null,
         bookingCode: targetJob ? (targetJob.booking_code || "") : "",
         peerName: targetJob ? (targetJob.customer_name || "Passenger") : "Passenger",
@@ -196,6 +197,12 @@
       });
     }
   }
+
+  window.startCoRiderInAppCall = function (riderId, name, phone, town) {
+    if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.startRiderCall === "function") {
+      window.CCRCVoiceCall.startRiderCall(riderId, name, phone, town);
+    }
+  };
 
   if (activeJobInappCallBtn) {
     activeJobInappCallBtn.addEventListener("click", () => {
@@ -698,6 +705,9 @@
 
     // Start background GPS transmitter
     startGpsBeacon();
+
+    // Activate voice call polling (including Rider-to-Rider incoming calls)
+    syncRiderVoiceCallContext();
 
     // Check active job and start polling available jobs
     checkActiveJob();
@@ -3066,6 +3076,9 @@
       }
 
       const town = escapeHtml(r.municipality || 'Camiguin');
+      const freeCallBtn = (!isSelf)
+        ? `<button type="button" class="btn btn-sm btn-inapp-call co-rider-inapp-call-btn" data-rider-id="${r.id}" data-rider-name="${escapeHtml(r.name)}" data-rider-phone="${escapeHtml(r.phone || '')}" data-rider-town="${town}" style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${tRider('Free In-App Voice Call')}">🎙️ ${tRider("Free Call")}</button>`
+        : '';
       const phoneBtn = (!isSelf && r.phone)
         ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Call</a>`
         : '';
@@ -3102,6 +3115,7 @@
           </div>
           <div class="co-rider-actions">
             ${transferBtn}
+            ${freeCallBtn}
             ${phoneBtn}
           </div>
         </div>
@@ -3111,6 +3125,18 @@
 
   if (coRidersList) {
     coRidersList.addEventListener("click", (e) => {
+      const callBtn = e.target.closest(".co-rider-inapp-call-btn");
+      if (callBtn && !callBtn.disabled) {
+        const rid = Number(callBtn.getAttribute("data-rider-id"));
+        const rName = callBtn.getAttribute("data-rider-name") || "Co-Rider";
+        const rPhone = callBtn.getAttribute("data-rider-phone") || "";
+        const rTown = callBtn.getAttribute("data-rider-town") || "Camiguin";
+        if (rid && window.CCRCVoiceCall && typeof window.CCRCVoiceCall.startRiderCall === "function") {
+          window.CCRCVoiceCall.startRiderCall(rid, rName, rPhone, rTown);
+        }
+        return;
+      }
+
       const btn = e.target.closest(".co-rider-transfer-btn");
       if (!btn || btn.disabled) return;
       const rid = Number(btn.getAttribute("data-rider-id"));
@@ -3188,7 +3214,13 @@
             });
 
             const destInfo = r.trip_destination ? `<br>🎯 <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
-            const popupContent = `<strong>${escapeHtml(r.name)}</strong> ${isSelf ? `(${tRider("You")})` : ""}<br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality || "Camiguin")}<br><strong>Status:</strong> ${statusText}${destInfo}`;
+            const safeNameJs = escapeHtml(String(r.name || "Co-Rider").replace(/'/g, "\\'"));
+            const safePhoneJs = escapeHtml(String(r.phone || "").replace(/'/g, "\\'"));
+            const safeTownJs = escapeHtml(String(r.municipality || "Camiguin").replace(/'/g, "\\'"));
+            const popupCallBtn = (!isSelf)
+              ? `<div style="margin-top:6px;"><button type="button" class="btn btn-sm btn-inapp-call" onclick="window.startCoRiderInAppCall(${r.id}, '${safeNameJs}', '${safePhoneJs}', '${safeTownJs}')" style="font-size:0.74rem;padding:4px 10px;width:100%;">🎙️ ${tRider("Free Call")}</button></div>`
+              : "";
+            const popupContent = `<strong>${escapeHtml(r.name)}</strong> ${isSelf ? `(${tRider("You")})` : ""}<br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality || "Camiguin")}<br><strong>Status:</strong> ${statusText}${destInfo}${popupCallBtn}`;
 
             if (!radarMarkers[r.id]) {
               radarMarkers[r.id] = L.marker([r.last_lat, r.last_lng], { icon: customIcon })

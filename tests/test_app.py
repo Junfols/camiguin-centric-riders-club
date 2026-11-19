@@ -3556,7 +3556,88 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_rider_to_rider_free_inapp_voice_call(self):
+        r1_id = self._create_active_rider(name="Kuya Jun Rider", phone="09171001111")
+        r2_id = self._create_active_rider(name="Kuya Mark Rider", phone="09171002222")
+
+        # Cannot call oneself
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
+        self_call = self.client.post(
+            f"/api/rider/calls/{r1_id}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0..."}},
+        )
+        self.assertEqual(self_call.status_code, 400)
+
+        # Rider 1 starts a free in-app call to Rider 2
+        start_resp = self.client.post(
+            f"/api/rider/calls/{r2_id}/start",
+            json={"offer": {"type": "offer", "sdp": "v=0\r\no=rider1-sdp"}},
+        )
+        self.assertEqual(start_resp.status_code, 201)
+        call_data = start_resp.get_json()
+        self.assertTrue(call_data["success"])
+        call_session = call_data["call"]
+        call_id = call_session["id"]
+        self.assertEqual(call_session["status"], "ringing")
+        self.assertEqual(call_session["caller_role"], f"rider:{r1_id}")
+        self.assertEqual(call_session["callee_role"], f"rider:{r2_id}")
+        self.assertEqual(call_session["caller_name"], "Kuya Jun Rider")
+        self.assertEqual(call_session["callee_name"], "Kuya Mark Rider")
+
+        # Rider 2 polls /api/rider/calls/state and sees incoming call + offer signal
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
+        r2_state = self.client.get("/api/rider/calls/state").get_json()
+        self.assertTrue(r2_state["success"])
+        self.assertIsNotNone(r2_state["call"])
+        self.assertEqual(r2_state["call"]["id"], call_id)
+        self.assertEqual(r2_state["call"]["status"], "ringing")
+        self.assertTrue(any(s["signal_type"] == "offer" for s in r2_state["signals"]))
+
+        # Rider 2 answers the call with SDP answer
+        ans_resp = self.client.post(
+            f"/api/rider/calls/session/{call_id}/respond",
+            json={
+                "action": "accept",
+                "answer": {"type": "answer", "sdp": "v=0\r\no=rider2-answer-sdp"},
+            },
+        )
+        self.assertEqual(ans_resp.status_code, 200)
+        self.assertEqual(ans_resp.get_json()["call"]["status"], "accepted")
+
+        # Rider 1 exchanges ICE candidate
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
+        ice_resp = self.client.post(
+            f"/api/rider/calls/session/{call_id}/signal",
+            json={
+                "signal_type": "candidate",
+                "data": {"candidate": "candidate:1 1 UDP 2122252543 192.168.1.2 54321 typ host"},
+            },
+        )
+        self.assertEqual(ice_resp.status_code, 200)
+        self.assertTrue(ice_resp.get_json()["success"])
+
+        # Rider 2 polls and receives the ICE candidate
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
+        r2_connected_state = self.client.get(f"/api/rider/calls/state?call_id={call_id}").get_json()
+        self.assertEqual(r2_connected_state["call"]["status"], "accepted")
+        self.assertTrue(any(s["signal_type"] == "candidate" for s in r2_connected_state["signals"]))
+
+        # Rider 1 hangs up
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
+        end_resp = self.client.post(
+            f"/api/rider/calls/session/{call_id}/respond",
+            json={"action": "hangup"},
+        )
+        self.assertEqual(end_resp.status_code, 200)
+        self.assertEqual(end_resp.get_json()["call"]["status"], "ended")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

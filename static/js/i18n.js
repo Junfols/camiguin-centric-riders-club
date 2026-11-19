@@ -1921,6 +1921,30 @@
       zh: "骑手当前已有进行中的行程",
       ja: "ライダーは現在乗車対応中です",
     },
+    "Free Call": {
+      ceb: "Free Tawag",
+      fil: "Free Call",
+      zh: "免费通话",
+      ja: "無料通話",
+    },
+    "Fellow Club Rider": {
+      ceb: "Kaubang Club Rider",
+      fil: "Kapwa Club Rider",
+      zh: "俱乐部同伴骑手",
+      ja: "仲間クラブライダー",
+    },
+    "📞 Calling fellow rider... Waiting for answer": {
+      ceb: "📞 Nagtawag sa kaubang rider... Naghulat nga tubagon",
+      fil: "📞 Tinatawagan ang kapwa rider... Naghihintay ng sagot",
+      zh: "📞 正在呼叫同伴骑手... 等待接听",
+      ja: "📞 仲間ライダーに発信中... 応答を待っています",
+    },
+    "📞 Incoming Co-Rider Voice Call...": {
+      ceb: "📞 Naa'y Nagtawag nga Kaubang Rider...",
+      fil: "📞 May Tumatawag na Kapwa Rider...",
+      zh: "📞 同伴骑手来电...",
+      ja: "📞 仲間ライダーからの着信...",
+    },
   };
 
   function getStoredLang() {

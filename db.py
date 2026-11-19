@@ -4351,9 +4351,42 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS rider_calls (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            call_uuid TEXT NOT NULL UNIQUE,
+            caller_rider_id INTEGER NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+            caller_name TEXT NOT NULL,
+            callee_rider_id INTEGER NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+            callee_name TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'ringing',
+            end_reason TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            answered_at TEXT DEFAULT NULL,
+            ended_at TEXT DEFAULT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS rider_call_signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            call_id INTEGER NOT NULL REFERENCES rider_calls(id) ON DELETE CASCADE,
+            sender_rider_id INTEGER NOT NULL,
+            signal_type TEXT NOT NULL,
+            payload TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_booking ON booking_messages(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_call_sessions_booking ON call_sessions(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_call_signals_call ON call_signals(call_id, id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rider_calls_callee ON rider_calls(callee_rider_id, status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rider_calls_caller ON rider_calls(caller_rider_id, status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rider_call_signals_call ON rider_call_signals(call_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
@@ -4618,9 +4651,42 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS rider_calls (
+            id SERIAL PRIMARY KEY,
+            call_uuid VARCHAR(64) NOT NULL UNIQUE,
+            caller_rider_id INTEGER NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+            caller_name VARCHAR(120) NOT NULL,
+            callee_rider_id INTEGER NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+            callee_name VARCHAR(120) NOT NULL,
+            status VARCHAR(32) NOT NULL DEFAULT 'ringing',
+            end_reason TEXT DEFAULT '',
+            created_at VARCHAR(32) NOT NULL,
+            answered_at VARCHAR(32) DEFAULT NULL,
+            ended_at VARCHAR(32) DEFAULT NULL,
+            updated_at VARCHAR(32) NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS rider_call_signals (
+            id SERIAL PRIMARY KEY,
+            call_id INTEGER NOT NULL REFERENCES rider_calls(id) ON DELETE CASCADE,
+            sender_rider_id INTEGER NOT NULL,
+            signal_type VARCHAR(32) NOT NULL,
+            payload TEXT NOT NULL DEFAULT '',
+            created_at VARCHAR(32) NOT NULL
+        )
+        """
+    )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_booking ON booking_messages(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_call_sessions_booking ON call_sessions(booking_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_call_signals_call ON call_signals(call_id, id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rider_calls_callee ON rider_calls(callee_rider_id, status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rider_calls_caller ON rider_calls(caller_rider_id, status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rider_call_signals_call ON rider_call_signals(call_id, id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
@@ -6771,6 +6837,326 @@ def get_latest_call_state(
 
 
 # -----------------------------------------------------------------------------
+# Rider-to-Rider Free In-App Voice Call Functions
+# -----------------------------------------------------------------------------
+def expire_stale_rider_calls(
+    conn: DatabaseConnection,
+    rider_id: int | None = None,
+    ringing_ttl_sec: int = 45,
+    accepted_ttl_sec: int = 7200,
+) -> int:
+    sql = "SELECT id, status, created_at, updated_at FROM rider_calls WHERE status IN ('ringing', 'accepted')"
+    params: tuple[Any, ...] = ()
+    if rider_id is not None:
+        sql += " AND (caller_rider_id = ? OR callee_rider_id = ?)"
+        params = (rider_id, rider_id)
+    rows = conn.execute(sql, params).fetchall()
+    if not rows:
+        return 0
+
+    now_dt = get_now_pht()
+    now_iso = now_dt.isoformat(timespec="seconds")
+    expired = 0
+    for r in rows:
+        st = r["status"]
+        ref_dt = _parse_pht_iso(r["updated_at"] or r["created_at"])
+        if ref_dt is None:
+            continue
+        age_sec = (now_dt - ref_dt).total_seconds()
+        if st == "ringing" and age_sec > ringing_ttl_sec:
+            conn.execute(
+                """
+                UPDATE rider_calls
+                SET status = 'missed', end_reason = 'No answer', ended_at = ?, updated_at = ?
+                WHERE id = ? AND status = 'ringing'
+                """,
+                (now_iso, now_iso, r["id"]),
+            )
+            expired += 1
+        elif st == "accepted" and age_sec > accepted_ttl_sec:
+            conn.execute(
+                """
+                UPDATE rider_calls
+                SET status = 'ended', end_reason = 'Call timed out', ended_at = ?, updated_at = ?
+                WHERE id = ? AND status = 'accepted'
+                """,
+                (now_iso, now_iso, r["id"]),
+            )
+            expired += 1
+    return expired
+
+
+def get_rider_call_session(conn: DatabaseConnection, call_id: int) -> dict[str, Any] | None:
+    row = conn.execute("SELECT * FROM rider_calls WHERE id = ?", (call_id,)).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    d["call_kind"] = "rider_to_rider"
+    d["caller_role"] = f"rider:{d['caller_rider_id']}"
+    d["callee_role"] = f"rider:{d['callee_rider_id']}"
+    return d
+
+
+def get_rider_call_signals(
+    conn: DatabaseConnection,
+    call_id: int,
+    after_id: int = 0,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT id, call_id, sender_rider_id, signal_type, payload, created_at
+        FROM rider_call_signals
+        WHERE call_id = ? AND id > ?
+        ORDER BY id ASC
+        LIMIT ?
+        """,
+        (call_id, after_id, limit),
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        d["sender_role"] = f"rider:{d['sender_rider_id']}"
+        raw_payload = d.get("payload") or ""
+        try:
+            d["data"] = json.loads(raw_payload) if raw_payload else None
+        except Exception:
+            d["data"] = None
+        out.append(d)
+    return out
+
+
+def add_rider_call_signal(
+    conn: DatabaseConnection,
+    call_id: int,
+    sender_rider_id: int,
+    signal_type: str,
+    payload_data: Any = None,
+) -> int:
+    now_iso = get_now_pht().isoformat(timespec="seconds")
+    if payload_data is None:
+        payload_str = ""
+    elif isinstance(payload_data, str):
+        payload_str = payload_data
+    else:
+        payload_str = json.dumps(payload_data)
+
+    sig_id = conn.insert_returning_id(
+        """
+        INSERT INTO rider_call_signals (call_id, sender_rider_id, signal_type, payload, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (call_id, sender_rider_id, signal_type, payload_str, now_iso),
+    )
+    conn.execute("UPDATE rider_calls SET updated_at = ? WHERE id = ?", (now_iso, call_id))
+    return sig_id
+
+
+def create_rider_call_session(
+    conn: DatabaseConnection,
+    caller_rider_id: int,
+    callee_rider_id: int,
+    offer_data: Any = None,
+) -> tuple[bool, str, dict[str, Any] | None, int]:
+    if int(caller_rider_id) == int(callee_rider_id):
+        return False, "Cannot call yourself.", None, 400
+
+    caller = get_rider_by_id(conn, int(caller_rider_id))
+    callee = get_rider_by_id(conn, int(callee_rider_id))
+    if not caller or caller.get("status") != "active":
+        return False, "Your rider account is not active.", None, 403
+    if not callee or callee.get("status") != "active":
+        return False, "Fellow rider not found or not active.", None, 404
+    if not int(callee.get("is_online") or 0):
+        return False, f"{callee.get('name') or 'Fellow rider'} is currently offline.", None, 400
+
+    expire_stale_rider_calls(conn, rider_id=int(caller_rider_id))
+    expire_stale_rider_calls(conn, rider_id=int(callee_rider_id))
+
+    open_row = conn.execute(
+        """
+        SELECT * FROM rider_calls
+        WHERE status IN ('ringing', 'accepted')
+          AND (
+              caller_rider_id IN (?, ?)
+              OR callee_rider_id IN (?, ?)
+          )
+        ORDER BY id DESC LIMIT 1
+        """,
+        (caller_rider_id, callee_rider_id, caller_rider_id, callee_rider_id),
+    ).fetchone()
+    if open_row:
+        existing = dict(open_row)
+        if existing["status"] == "accepted":
+            return False, f"{callee.get('name') or 'Rider'} is already in an active voice call.", get_rider_call_session(conn, int(existing["id"])), 409
+        if int(existing["caller_rider_id"]) == int(callee_rider_id) and int(existing["callee_rider_id"]) == int(caller_rider_id):
+            return False, f"{existing['caller_name']} is already calling you. Tap Answer to connect.", get_rider_call_session(conn, int(existing["id"])), 409
+        if int(existing["caller_rider_id"]) == int(caller_rider_id):
+            now_prev = get_now_pht().isoformat(timespec="seconds")
+            conn.execute(
+                """
+                UPDATE rider_calls
+                SET status = 'ended', end_reason = 'Superseded by new call', ended_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (now_prev, now_prev, existing["id"]),
+            )
+        else:
+            return False, f"{callee.get('name') or 'Rider'} is currently receiving another call.", get_rider_call_session(conn, int(existing["id"])), 409
+
+    now_iso = get_now_pht().isoformat(timespec="seconds")
+    call_uuid = f"rcall-{secrets.token_urlsafe(10)}"
+    caller_name = (caller.get("name") or "Club Rider")[:120]
+    callee_name = (callee.get("name") or "Fellow Rider")[:120]
+
+    call_id = conn.insert_returning_id(
+        """
+        INSERT INTO rider_calls (
+            call_uuid, caller_rider_id, caller_name, callee_rider_id, callee_name,
+            status, end_reason, created_at, answered_at, ended_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'ringing', '', ?, NULL, NULL, ?)
+        """,
+        (call_uuid, int(caller_rider_id), caller_name, int(callee_rider_id), callee_name, now_iso, now_iso),
+    )
+
+    if offer_data:
+        add_rider_call_signal(conn, call_id, int(caller_rider_id), "offer", offer_data)
+
+    return True, "Calling fellow rider...", get_rider_call_session(conn, call_id), 201
+
+
+def respond_to_rider_call(
+    conn: DatabaseConnection,
+    call_id: int,
+    actor_rider_id: int,
+    action: str,
+    answer_data: Any = None,
+    reason: str = "",
+) -> tuple[bool, str, dict[str, Any] | None, int]:
+    call = get_rider_call_session(conn, call_id)
+    if not call:
+        return False, "Rider call session not found.", None, 404
+
+    expire_stale_rider_calls(conn, rider_id=int(actor_rider_id))
+    call = get_rider_call_session(conn, call_id)
+    if not call:
+        return False, "Rider call session not found.", None, 404
+
+    actor_id = int(actor_rider_id)
+    if actor_id not in (int(call["caller_rider_id"]), int(call["callee_rider_id"])):
+        return False, "Unauthorized to act on this rider call.", None, 403
+
+    act = (action or "").strip().lower()
+    now_iso = get_now_pht().isoformat(timespec="seconds")
+
+    if act == "accept":
+        if actor_id != int(call["callee_rider_id"]):
+            return False, "Only the receiving rider can answer this call.", call, 403
+        if call["status"] != "ringing":
+            return False, f"Cannot answer because call status is '{call['status']}'.", call, 409
+        conn.execute(
+            """
+            UPDATE rider_calls
+            SET status = 'accepted', answered_at = ?, updated_at = ?
+            WHERE id = ? AND status = 'ringing'
+            """,
+            (now_iso, now_iso, call_id),
+        )
+        if answer_data:
+            add_rider_call_signal(conn, call_id, actor_id, "answer", answer_data)
+        return True, "Call connected.", get_rider_call_session(conn, call_id), 200
+
+    if act == "decline":
+        if call["status"] not in ("ringing", "accepted"):
+            return True, "Call already ended.", call, 200
+        clean_reason = (reason or "Call declined")[:120]
+        conn.execute(
+            """
+            UPDATE rider_calls
+            SET status = 'declined', end_reason = ?, ended_at = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (clean_reason, now_iso, now_iso, call_id),
+        )
+        add_rider_call_signal(conn, call_id, actor_id, "decline", {"reason": clean_reason})
+        return True, "Call declined.", get_rider_call_session(conn, call_id), 200
+
+    if act in ("hangup", "end"):
+        if call["status"] not in ("ringing", "accepted"):
+            return True, "Call already ended.", call, 200
+        was_ringing_by_caller = call["status"] == "ringing" and actor_id == int(call["caller_rider_id"])
+        new_status = "missed" if was_ringing_by_caller else "ended"
+        default_reason = "Caller cancelled" if was_ringing_by_caller else "Call ended"
+        clean_reason = (reason or default_reason)[:120]
+        conn.execute(
+            """
+            UPDATE rider_calls
+            SET status = ?, end_reason = ?, ended_at = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (new_status, clean_reason, now_iso, now_iso, call_id),
+        )
+        add_rider_call_signal(conn, call_id, actor_id, "hangup", {"reason": clean_reason})
+        return True, "Call ended.", get_rider_call_session(conn, call_id), 200
+
+    return False, "Unsupported call action.", call, 400
+
+
+def get_latest_rider_call_state(
+    conn: DatabaseConnection,
+    rider_id: int,
+    active_call_id: int | None = None,
+    after_signal_id: int = 0,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    rid = int(rider_id)
+    expire_stale_rider_calls(conn, rider_id=rid)
+
+    row = conn.execute(
+        """
+        SELECT * FROM rider_calls
+        WHERE (caller_rider_id = ? OR callee_rider_id = ?)
+          AND status IN ('ringing', 'accepted')
+        ORDER BY id DESC LIMIT 1
+        """,
+        (rid, rid),
+    ).fetchone()
+
+    call_dict: dict[str, Any] | None = get_rider_call_session(conn, int(row["id"])) if row else None
+
+    if active_call_id and (not call_dict or int(call_dict["id"]) != int(active_call_id)):
+        tracked = conn.execute(
+            """
+            SELECT * FROM rider_calls
+            WHERE id = ? AND (caller_rider_id = ? OR callee_rider_id = ?)
+            """,
+            (int(active_call_id), rid, rid),
+        ).fetchone()
+        if tracked and not call_dict:
+            call_dict = get_rider_call_session(conn, int(tracked["id"]))
+
+    if not call_dict:
+        recent = conn.execute(
+            """
+            SELECT * FROM rider_calls
+            WHERE (caller_rider_id = ? OR callee_rider_id = ?)
+            ORDER BY id DESC LIMIT 1
+            """,
+            (rid, rid),
+        ).fetchone()
+        if recent:
+            rec_dict = dict(recent)
+            ref_dt = _parse_pht_iso(rec_dict.get("ended_at") or rec_dict.get("updated_at"))
+            if ref_dt and (get_now_pht() - ref_dt).total_seconds() <= 15:
+                call_dict = get_rider_call_session(conn, int(rec_dict["id"]))
+
+    if not call_dict:
+        return None, []
+
+    signals = get_rider_call_signals(conn, int(call_dict["id"]), after_id=after_signal_id)
+    return call_dict, signals
+
+
+# -----------------------------------------------------------------------------
 # Admin System Data Backup & Restore Functions
 # -----------------------------------------------------------------------------
 def export_full_backup(conn: DatabaseConnection) -> dict[str, Any]:
@@ -7427,6 +7813,8 @@ def reset_launch_data(
     try:
         if wipe_bookings:
             for tbl in (
+                "rider_call_signals",
+                "rider_calls",
                 "call_signals",
                 "call_sessions",
                 "booking_messages",
@@ -7457,7 +7845,7 @@ def reset_launch_data(
 
         # Reset Postgres auto-increment sequences if Postgres
         if conn.backend == "postgresql":
-            for seq_tbl in ("riders", "customers", "bookings", "transactions", "booking_messages", "call_sessions", "call_signals", "reviews", "tracking_logs"):
+            for seq_tbl in ("riders", "customers", "bookings", "transactions", "booking_messages", "call_sessions", "call_signals", "rider_calls", "rider_call_signals", "reviews", "tracking_logs"):
                 try:
                     conn.execute(
                         f"SELECT setval(pg_get_serial_sequence('{seq_tbl}', 'id'), 1, false);"
