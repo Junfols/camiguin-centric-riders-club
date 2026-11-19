@@ -1704,6 +1704,7 @@
         }
         if (res.ok) {
           checkActiveJob();
+          fetchCoRiders();
         } else {
           const errData = await res.json().catch(() => ({}));
           alert(errData.error || "Could not update trip status.");
@@ -1750,6 +1751,7 @@
           renderJobOnRiderMap(null);
           checkActiveJob();
           fetchAvailableJobs();
+          fetchCoRiders();
           loadRiderTransactions();
           loadRiderReviews();
         } else {
@@ -2188,15 +2190,30 @@
       transferCoridersList.innerHTML = candidates.map((r) => {
         const isBusy = Boolean(r.has_active_job);
         const isDisabled = isBusy && !allowBusy;
+        const actStatus = r.activity_status || (isBusy ? "accepted" : "available");
         const isHighlighted = Boolean(transferHighlightRiderId && Number(r.id) === transferHighlightRiderId);
         const distLabel = r.distKm !== null ? `📍 ${r.distKm.toFixed(1)} km away` : `📍 ${escapeHtml(r.municipality || "Camiguin")}`;
-        const statusBadge = isBusy
-          ? `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">Busy</span>`
-          : `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Available</span>`;
+
+        let statusBadge = "";
+        if (actStatus === "accepted") {
+          statusBadge = `<span class="badge badge-accepting" style="font-size:0.7rem;padding:2px 6px;">🟡 ${tRider("Accepting Booking")}</span>`;
+        } else if (actStatus === "in_progress") {
+          statusBadge = `<span class="badge badge-heading" style="font-size:0.7rem;padding:2px 6px;">🟠 ${tRider("Heading Destination")}</span>`;
+        } else if (isBusy) {
+          statusBadge = `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">${tRider("Busy")}</span>`;
+        } else {
+          statusBadge = `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">🟢 ${tRider("Available")}</span>`;
+        }
+
         const selectedBadge = isHighlighted
           ? `<span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fb923c;font-size:0.7rem;padding:2px 6px;">⭐ Selected</span>`
           : "";
         const highlightStyle = isHighlighted ? "border:2px solid #f97316;background:#fff7ed;" : "";
+
+        let btnLabel = tRider("Transfer Now");
+        if (isDisabled) {
+          btnLabel = actStatus === "in_progress" ? tRider("Heading Dest") : tRider("Busy");
+        }
 
         return `
           <div class="transfer-corider-option ${isDisabled ? "is-busy" : ""}" style="${highlightStyle}">
@@ -2220,7 +2237,7 @@
               data-can-transfer="${isDisabled ? "0" : "1"}"
               ${isDisabled ? "disabled" : ""}
               style="white-space:nowrap;"
-            >${isDisabled ? "Busy" : "Transfer Now"}</button>
+            >${btnLabel}</button>
           </div>
         `;
       }).join("");
@@ -2660,6 +2677,7 @@
         }
         checkActiveJob();
         fetchAvailableJobs();
+        fetchCoRiders();
       } catch (err) {
         alert(err.message);
         fetchAvailableJobs();
@@ -3009,22 +3027,62 @@
       const isSelf = r.is_self;
       const isBusy = Boolean(r.has_active_job);
       const isDisabled = isBusy && !allowBusy;
-      const avatarHtml = r.avatar_url
-        ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
-        : `<div class="co-rider-avatar-placeholder">🛵</div>`;
+      const actStatus = r.activity_status || (isBusy ? "accepted" : "available");
 
-      const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">You</span>` : '';
-      const availBadge = !isSelf
-        ? (isBusy
-            ? `<span class="badge badge-warning" style="font-size:0.68rem;padding:2px 6px;">Busy</span>`
-            : `<span class="badge badge-success" style="font-size:0.68rem;padding:2px 6px;">Available</span>`)
-        : '';
+      let avatarClass = "is-available";
+      if (actStatus === "accepted") avatarClass = "is-accepting";
+      else if (actStatus === "in_progress") avatarClass = "is-heading";
+
+      const avatarHtml = r.avatar_url
+        ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar ${avatarClass}">`
+        : `<div class="co-rider-avatar-placeholder ${avatarClass}">🛵</div>`;
+
+      const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">${tRider("You")}</span>` : '';
+
+      let statusBadge = "";
+      if (actStatus === "accepted") {
+        statusBadge = `<span class="badge badge-accepting" style="font-size:0.68rem;padding:2px 7px;">🟡 ${tRider("Accepting Booking")}</span>`;
+      } else if (actStatus === "in_progress") {
+        statusBadge = `<span class="badge badge-heading" style="font-size:0.68rem;padding:2px 7px;">🟠 ${tRider("Heading Destination")}</span>`;
+      } else if (r.recent_completed) {
+        statusBadge = `<span class="badge badge-completed" style="font-size:0.68rem;padding:2px 7px;">🟢 ${tRider("Available (Completed ✓)")}</span>`;
+      } else if (isBusy) {
+        statusBadge = `<span class="badge badge-warning" style="font-size:0.68rem;padding:2px 6px;">${tRider("Busy")}</span>`;
+      } else {
+        statusBadge = `<span class="badge badge-success" style="font-size:0.68rem;padding:2px 6px;">🟢 ${tRider("Available")}</span>`;
+      }
+
+      let detailHtml = "";
+      if (actStatus === "accepted") {
+        const destPart = r.trip_destination ? ` &bull; Dest: <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
+        detailHtml = `<div class="co-rider-status-detail status-accepting">🟡 ${tRider("Accepting booking &bull; Heading to pickup")}${destPart}</div>`;
+      } else if (actStatus === "in_progress") {
+        const destPart = r.trip_destination ? `: <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
+        detailHtml = `<div class="co-rider-status-detail status-heading">🟠 ${tRider("Heading to destination")}${destPart}</div>`;
+      } else if (r.recent_completed) {
+        detailHtml = `<div class="co-rider-status-detail status-completed">✓ ${tRider("Completed trip &bull; Ready for next booking")}</div>`;
+      } else if (!isSelf) {
+        detailHtml = `<div class="co-rider-status-detail status-available">🟢 ${tRider("Ready to take bookings")}</div>`;
+      }
+
       const town = escapeHtml(r.municipality || 'Camiguin');
       const phoneBtn = (!isSelf && r.phone)
         ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Call</a>`
         : '';
+
+      let transferTooltip = tRider("Transfer active trip to this rider");
+      let transferBtnLabel = tRider("🔄 Transfer to Rider");
+      if (isDisabled) {
+        if (actStatus === "in_progress") {
+          transferTooltip = tRider("Rider heading to destination");
+          transferBtnLabel = tRider("Heading Dest");
+        } else {
+          transferTooltip = tRider("Rider is accepting a booking");
+          transferBtnLabel = tRider("Busy");
+        }
+      }
       const transferBtn = (!isSelf && targetForCoRider)
-        ? `<button type="button" class="btn btn-sm btn-transfer-emergency co-rider-transfer-btn" data-rider-id="${r.id}" ${isDisabled ? "disabled" : ""} style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${isDisabled ? 'Rider currently has an active trip' : 'Transfer active trip to this rider'}">${isDisabled ? "Busy" : "🔄 Transfer to Rider"}</button>`
+        ? `<button type="button" class="btn btn-sm btn-transfer-emergency co-rider-transfer-btn" data-rider-id="${r.id}" ${isDisabled ? "disabled" : ""} style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${transferTooltip}">${transferBtnLabel}</button>`
         : '';
 
       return `
@@ -3034,11 +3092,12 @@
             <div class="co-rider-name-row">
               <span class="co-rider-name">${escapeHtml(r.name)}</span>
               ${selfBadge}
-              ${availBadge}
+              ${statusBadge}
             </div>
             <div class="co-rider-sub">
               🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
             </div>
+            ${detailHtml}
             <span class="co-rider-town">📍 ${town}</span>
           </div>
           <div class="co-rider-actions">
@@ -3079,7 +3138,13 @@
       const list = data.co_riders || [];
 
       if (coRidersCountPill) {
-        coRidersCountPill.textContent = `${list.length} Online`;
+        const busyCount = list.filter((x) => x.has_active_job).length;
+        const availCount = list.length - busyCount;
+        if (busyCount > 0) {
+          coRidersCountPill.textContent = `${list.length} Online (${availCount} Available, ${busyCount} Busy)`;
+        } else {
+          coRidersCountPill.textContent = `${list.length} Online`;
+        }
       }
 
       renderCoRidersList(list);
@@ -3091,9 +3156,29 @@
           if (r.last_lat && r.last_lng) {
             activeIds.add(r.id);
             const isSelf = r.is_self;
-            const iconHtml = isSelf
-              ? `<div style="background:#f97316;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🛵</div>`
-              : `<div style="background:#16a34a;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🟢</div>`;
+            const actStatus = r.activity_status || (r.has_active_job ? "accepted" : "available");
+            let pinColor = "#16a34a";
+            let pinIcon = "🟢";
+            let statusText = `🟢 ${tRider("Available")}`;
+            if (actStatus === "accepted") {
+              pinColor = "#d97706";
+              pinIcon = "🟡";
+              statusText = `🟡 ${tRider("Accepting Booking")}`;
+            } else if (actStatus === "in_progress") {
+              pinColor = "#ea580c";
+              pinIcon = "🚀";
+              statusText = `🟠 ${tRider("Heading Destination")}`;
+            } else if (r.has_active_job) {
+              pinColor = "#eab308";
+              pinIcon = "🛵";
+              statusText = `🟡 ${tRider("Busy")}`;
+            }
+            if (isSelf) {
+              pinColor = "#f97316";
+              pinIcon = "🛵";
+            }
+
+            const iconHtml = `<div style="background:${pinColor};color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">${pinIcon}</div>`;
 
             const customIcon = L.divIcon({
               className: "co-rider-radar-pin",
@@ -3102,12 +3187,17 @@
               iconAnchor: [17, 17],
             });
 
+            const destInfo = r.trip_destination ? `<br>🎯 <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
+            const popupContent = `<strong>${escapeHtml(r.name)}</strong> ${isSelf ? `(${tRider("You")})` : ""}<br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality || "Camiguin")}<br><strong>Status:</strong> ${statusText}${destInfo}`;
+
             if (!radarMarkers[r.id]) {
               radarMarkers[r.id] = L.marker([r.last_lat, r.last_lng], { icon: customIcon })
                 .addTo(radarMap)
-                .bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality)}`);
+                .bindPopup(popupContent);
             } else {
+              radarMarkers[r.id].setIcon(customIcon);
               radarMarkers[r.id].setLatLng([r.last_lat, r.last_lng]);
+              radarMarkers[r.id].setPopupContent(popupContent);
             }
           }
         });

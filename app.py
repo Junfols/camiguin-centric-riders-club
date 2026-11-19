@@ -58,6 +58,7 @@ from db import (
     get_customer_active_bookings,
     get_online_riders,
     get_rider_active_job,
+    get_rider_live_statuses,
     get_rider_scheduled_jobs,
     get_now_pht,
     get_rider_by_id,
@@ -2036,11 +2037,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"error": "Rider authentication required."}), 401
         conn = get_db()
         riders = get_online_riders(conn)
+        live_statuses = get_rider_live_statuses(conn)
         busy_ids = get_busy_rider_ids(conn)
         clean_list = []
         for r in riders:
+            rid = int(r["id"])
+            st = live_statuses.get(rid, {})
+            is_busy = bool(rid in busy_ids)
+            activity_status = st.get("activity_status", "available")
+            activity_label = st.get("activity_label", "Available")
             clean_list.append({
-                "id": r["id"],
+                "id": rid,
                 "name": r["name"],
                 "phone": r["phone"],
                 "bike_model": r["bike_model"],
@@ -2048,11 +2055,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "municipality": r.get("municipality") or "Mambajao",
                 "avatar_url": r.get("avatar_url") or "",
                 "rating_avg": r.get("rating_avg") or 5.0,
+                "total_trips": r.get("total_trips") or 0,
                 "last_lat": r.get("last_lat"),
                 "last_lng": r.get("last_lng"),
                 "last_active_at": r.get("last_active_at"),
-                "is_self": bool(current_rider_id and r["id"] == current_rider_id),
-                "has_active_job": int(r["id"]) in busy_ids,
+                "is_self": bool(current_rider_id and rid == current_rider_id),
+                "has_active_job": is_busy,
+                "activity_status": activity_status,
+                "activity_label": activity_label,
+                "trip_destination": st.get("dropoff_address", ""),
+                "trip_pickup": st.get("pickup_address", ""),
+                "service_type": st.get("service_type", ""),
+                "recent_completed": bool(st.get("recent_completed", False)),
             })
         return jsonify({
             "success": True,

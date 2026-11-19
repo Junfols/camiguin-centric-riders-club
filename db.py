@@ -4985,38 +4985,149 @@ def get_online_riders(conn: DatabaseConnection) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-def get_busy_rider_ids(conn: DatabaseConnection) -> set[int]:
-    """Returns rider IDs currently committed to an in-progress or on-demand/imminent trip."""
-    rows = conn.execute(
+def _parse_pht_iso(ts_str: str | None) -> datetime | None:
+    raw = (ts_str or "").strip()
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is not None:
+            dt = dt.replace(tzinfo=None)
+        return dt
+    except Exception:
+        return None
+
+
+def get_rider_live_statuses(conn: DatabaseConnection) -> dict[int, dict[str, Any]]:
+    """
+    Returns real-time activity details for online riders:
+    - 'accepted': Rider accepted a booking and is heading to pickup ('Accepting Booking')
+    - 'in_progress': Rider picked up customer/parcel and is heading to destination ('Heading Destination')
+    - 'available': Free and ready to take new bookings
+    Also tracks recent completions within the last 5 minutes.
+    """
+    now = get_now_pht()
+    now_dt = now.replace(tzinfo=None) if now.tzinfo is not None else now
+
+    active_rows = conn.execute(
         """
-        SELECT rider_id, status, scheduled_at
+        SELECT id, booking_code, service_type, rider_id, status,
+               pickup_address, dropoff_address, scheduled_at, accepted_at
         FROM bookings
         WHERE rider_id IS NOT NULL AND status IN ('accepted', 'in_progress')
+        ORDER BY id DESC
         """
     ).fetchall()
-    now = get_now_pht()
-    busy: set[int] = set()
-    for r in rows:
-        rid = r["rider_id"]
+
+    statuses: dict[int, dict[str, Any]] = {}
+    for r in active_rows:
+        r_dict = dict(r)
+        rid = r_dict.get("rider_id")
         if not rid:
             continue
-        if r["status"] == "in_progress":
-            busy.add(int(rid))
+        rid_int = int(rid)
+        if rid_int in statuses:
             continue
-        sched_str = (r["scheduled_at"] or "").strip()
-        if not sched_str:
-            busy.add(int(rid))
-            continue
-        try:
-            sched_dt = datetime.fromisoformat(sched_str)
-            if sched_dt.tzinfo is not None:
-                sched_dt = sched_dt.replace(tzinfo=None)
-            mins_left = (sched_dt - now).total_seconds() / 60
-            if mins_left <= 15:
-                busy.add(int(rid))
-        except Exception:
-            busy.add(int(rid))
-    return busy
+        st = r_dict.get("status")
+        sched_str = (r_dict.get("scheduled_at") or "").strip()
+        is_busy = True
+
+        if st == "in_progress":
+            activity_status = "in_progress"
+            activity_label = "Heading Destination"
+        elif st == "accepted":
+            if sched_str:
+                try:
+                    sched_dt = datetime.fromisoformat(sched_str)
+                    if sched_dt.tzinfo is not None:
+                        sched_dt = sched_dt.replace(tzinfo=None)
+                    mins_left = (sched_dt - now_dt).total_seconds() / 60
+                    if mins_left <= 15:
+                        activity_status = "accepted"
+                        activity_label = "Accepting Booking"
+                        is_busy = True
+                    else:
+                        activity_status = "available"
+                        activity_label = "Available"
+                        is_busy = False
+                except Exception:
+                    activity_status = "accepted"
+                    activity_label = "Accepting Booking"
+                    is_busy = True
+            else:
+                activity_status = "accepted"
+                activity_label = "Accepting Booking"
+                is_busy = True
+        else:
+            activity_status = "available"
+            activity_label = "Available"
+            is_busy = False
+
+        statuses[rid_int] = {
+            "booking_id": r_dict["id"],
+            "booking_code": r_dict.get("booking_code", ""),
+            "service_type": r_dict.get("service_type", ""),
+            "status": st,
+            "activity_status": activity_status,
+            "activity_label": activity_label,
+            "is_busy": is_busy,
+            "pickup_address": r_dict.get("pickup_address") or "",
+            "dropoff_address": r_dict.get("dropoff_address") or "",
+            "scheduled_at": sched_str,
+            "recent_completed": False,
+        }
+
+    # Check recently completed bookings within the last 5 minutes
+    try:
+        completed_rows = conn.execute(
+            """
+            SELECT rider_id, completed_at
+            FROM bookings
+            WHERE rider_id IS NOT NULL AND status = 'completed' AND completed_at IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 50
+            """
+        ).fetchall()
+        for c in completed_rows:
+            c_dict = dict(c)
+            c_rid = c_dict.get("rider_id")
+            if not c_rid:
+                continue
+            c_rid_int = int(c_rid)
+            if c_rid_int in statuses and statuses[c_rid_int]["is_busy"]:
+                continue
+            c_at = (c_dict.get("completed_at") or "").strip()
+            if c_at:
+                c_dt = _parse_pht_iso(c_at)
+                if c_dt:
+                    diff_sec = (now_dt - c_dt).total_seconds()
+                    if 0 <= diff_sec <= 300:
+                        if c_rid_int not in statuses:
+                            statuses[c_rid_int] = {
+                                "booking_id": None,
+                                "booking_code": "",
+                                "service_type": "",
+                                "status": "completed",
+                                "activity_status": "available",
+                                "activity_label": "Available",
+                                "is_busy": False,
+                                "pickup_address": "",
+                                "dropoff_address": "",
+                                "scheduled_at": "",
+                                "recent_completed": True,
+                            }
+                        else:
+                            statuses[c_rid_int]["recent_completed"] = True
+    except Exception:
+        pass
+
+    return statuses
+
+
+def get_busy_rider_ids(conn: DatabaseConnection) -> set[int]:
+    """Returns rider IDs currently committed to an in-progress or on-demand/imminent trip."""
+    statuses = get_rider_live_statuses(conn)
+    return {rid for rid, info in statuses.items() if info.get("is_busy")}
 
 
 # -----------------------------------------------------------------------------
@@ -6307,19 +6418,6 @@ def get_booking_messages(
 # -----------------------------------------------------------------------------
 # In-App Voice Call (WebRTC Signaling Functions via Persistent DB)
 # -----------------------------------------------------------------------------
-def _parse_pht_iso(ts_str: str | None) -> datetime | None:
-    raw = (ts_str or "").strip()
-    if not raw:
-        return None
-    try:
-        dt = datetime.fromisoformat(raw)
-        if dt.tzinfo is not None:
-            dt = dt.replace(tzinfo=None)
-        return dt
-    except Exception:
-        return None
-
-
 def expire_stale_calls(
     conn: DatabaseConnection,
     booking_id: int | None = None,

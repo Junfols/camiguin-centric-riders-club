@@ -57,9 +57,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v18", sw_text)
-        self.assertIn("/static/css/style.css?v=30", sw_text)
-        self.assertIn("/static/js/i18n.js?v=8", sw_text)
+        self.assertIn("ccrc-pwa-v19", sw_text)
+        self.assertIn("/static/css/style.css?v=31", sw_text)
+        self.assertIn("/static/js/i18n.js?v=9", sw_text)
         self.assertIn("/static/js/app.js?v=35", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
         self.assertIn("/static/js/voice_call.js?v=1", sw_text)
@@ -2277,7 +2277,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="co-riders-transfer-hint"', rider_html)
         self.assertIn('id="rider-transfer-modal"', rider_html)
         self.assertIn("Transfer to Rider", rider_html)
-        self.assertIn("rider.js?v=33", rider_html)
+        self.assertIn("rider.js?v=34", rider_html)
         rider_js = self.client.get("/static/js/rider.js").get_data(as_text=True)
         self.assertIn("scheduled-transfer-btn", rider_js)
         self.assertIn("co-rider-transfer-btn", rider_js)
@@ -2397,8 +2397,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="chat-voice-btn"',
             "voice_call.js?v=1",
             "track.js?v=34",
-            "style.css?v=30",
-            "i18n.js?v=8",
+            "style.css?v=31",
+            "i18n.js?v=9",
             "📞 Phone Call",
         ):
             self.assertIn(token, track_html)
@@ -2410,7 +2410,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="rider-chat-voice-recording-bar"',
             'id="rider-chat-voice-btn"',
             "voice_call.js?v=1",
-            "rider.js?v=33",
+            "rider.js?v=34",
             "📞 Phone Call",
         ):
             self.assertIn(token, rider_html)
@@ -2877,8 +2877,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             "gcash-recipient-row",
             "gcash-sent-row",
             "track.js?v=34",
-            "style.css?v=30",
-            "i18n.js?v=8",
+            "style.css?v=31",
+            "i18n.js?v=9",
         ):
             self.assertIn(token, track_html)
 
@@ -2898,7 +2898,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             "rider-gcash-profile-row",
             "rider-gcash-profile-info",
             "rider-active-gcash-footer",
-            "rider.js?v=33",
+            "rider.js?v=34",
         ):
             self.assertIn(token, rider_html)
 
@@ -3433,6 +3433,79 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
                 self.assertEqual(rr["group_size"], 10)
         finally:
             conn.close()
+
+    def test_fellow_riders_realtime_activity_statuses(self):
+        """
+        Tests fellow riders seeing live status changes:
+        'available' -> 'accepted' (Accepting Booking) -> 'in_progress' (Heading Destination) -> 'completed' (Available ✓),
+        allowing other riders to know who is busy and take waiting broadcast bookings.
+        """
+        r1_id = self._create_active_rider(phone="09181111111", name="Rider Juan")
+        r2_id = self._create_active_rider(phone="09182222222", name="Rider Pedro")
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
+        resp = self.client.get("/api/rider/co-riders").get_json()
+        self.assertTrue(resp["success"])
+        by_id = {r["id"]: r for r in resp["co_riders"]}
+        self.assertEqual(by_id[r1_id]["activity_status"], "available")
+        self.assertFalse(by_id[r1_id]["has_active_job"])
+
+        b_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Test Passenger",
+                "customer_phone": "09175550000",
+                "service_type": "express_ride",
+                "pickup_address": "Mambajao Port",
+                "dropoff_address": "White Island",
+            },
+        ).get_json()
+        booking_id = b_resp["booking"]["id"]
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
+        acc_resp = self.client.post(f"/api/bookings/{booking_id}/accept", json={"rider_id": r1_id})
+        self.assertEqual(acc_resp.status_code, 200)
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
+        resp = self.client.get("/api/rider/co-riders").get_json()
+        by_id = {r["id"]: r for r in resp["co_riders"]}
+        self.assertEqual(by_id[r1_id]["activity_status"], "accepted")
+        self.assertEqual(by_id[r1_id]["activity_label"], "Accepting Booking")
+        self.assertTrue(by_id[r1_id]["has_active_job"])
+        self.assertEqual(by_id[r1_id]["trip_destination"], "White Island")
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
+        prog_resp = self.client.post(f"/api/bookings/{booking_id}/status", json={"status": "in_progress"})
+        self.assertEqual(prog_resp.status_code, 200)
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
+        resp = self.client.get("/api/rider/co-riders").get_json()
+        by_id = {r["id"]: r for r in resp["co_riders"]}
+        self.assertEqual(by_id[r1_id]["activity_status"], "in_progress")
+        self.assertEqual(by_id[r1_id]["activity_label"], "Heading Destination")
+        self.assertTrue(by_id[r1_id]["has_active_job"])
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r1_id
+        comp_resp = self.client.post(f"/api/bookings/{booking_id}/status", json={"status": "completed"})
+        self.assertEqual(comp_resp.status_code, 200)
+
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r2_id
+        resp = self.client.get("/api/rider/co-riders").get_json()
+        by_id = {r["id"]: r for r in resp["co_riders"]}
+        self.assertEqual(by_id[r1_id]["activity_status"], "available")
+        self.assertFalse(by_id[r1_id]["has_active_job"])
+        self.assertTrue(by_id[r1_id]["recent_completed"])
+
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn("Accepting", rider_html)
+        self.assertIn("Heading Dest", rider_html)
 
 
 if __name__ == "__main__":

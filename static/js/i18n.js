@@ -775,12 +775,6 @@
       zh: "新骑手？点击注册",
       ja: "新規ライダー登録はこちら",
     },
-    "My GPS": {
-      ceb: "Akong GPS",
-      fil: "Aking GPS",
-      zh: "我的定位",
-      ja: "現在地GPS",
-    },
     "Route": {
       ceb: "Ruta",
       fil: "Ruta",
@@ -1819,12 +1813,6 @@
       zh: "总车费：",
       ja: "合計運賃：",
     },
-    "Rate Your Island Rider": {
-      ceb: "I-rate ang Imong Rider",
-      fil: "I-rate ang Iyong Rider",
-      zh: "为您的骑手评分",
-      ja: "ライダーを評価する",
-    },
     "Cancel this open unassigned rider slot? Only open slots waiting for a rider can be cancelled.": {
       ceb: "Kanselahon kini nga bakante nga slot? Ang mga slot lang nga wala pa nakuha sa rider ang makansela.",
       fil: "Kanselahin ang bukas na slot na ito? Tanging mga slot na naghihintay pa ng rider ang pwedeng ikansela.",
@@ -1854,6 +1842,84 @@
       fil: "Tanggapin ang Group Slot 🛵",
       zh: "接此团体单名额 🛵",
       ja: "グループ枠を受ける 🛵",
+    },
+    "Accepting Booking": {
+      ceb: "Nagdawat og Booking",
+      fil: "Tumatanggap ng Booking",
+      zh: "正在接单",
+      ja: "配車受付中",
+    },
+    "Heading Destination": {
+      ceb: "Padulong sa Destinasyon",
+      fil: "Papunta sa Destinasyon",
+      zh: "前往目的地",
+      ja: "目的地へ移動中",
+    },
+    "Heading to Destination": {
+      ceb: "Padulong sa Destinasyon",
+      fil: "Papunta sa Destinasyon",
+      zh: "Papunta sa Destinasyon",
+      ja: "目的地へ移動中",
+    },
+    "Heading to pickup": {
+      ceb: "Padulong sa pick-up",
+      fil: "Papunta sa pick-up",
+      zh: "前往上车点",
+      ja: "乗車地へ移動中",
+    },
+    "Accepting booking &bull; Heading to pickup": {
+      ceb: "Gidawat ang booking &bull; Padulong sa pick-up",
+      fil: "Tinanggap ang booking &bull; Papunta sa pick-up",
+      zh: "已接单 &bull; 正在前往上车点",
+      ja: "配車受付 &bull; 乗車地へ移動中",
+    },
+    "Heading to destination": {
+      ceb: "Padulong sa destinasyon",
+      fil: "Papunta sa destinasyon",
+      zh: "前往目的地",
+      ja: "目的地へ移動中",
+    },
+    "Ready to take bookings": {
+      ceb: "Andam modawat og mga booking",
+      fil: "Handang tumanggap ng mga booking",
+      zh: "空闲 &bull; 可随时接单",
+      ja: "空車 &bull; 新規予約を受付可能",
+    },
+    "Completed trip &bull; Ready for next booking": {
+      ceb: "Nahuman ang biyahe &bull; Andam na sa sunod booking",
+      fil: "Natapos ang biyahe &bull; Handa na sa susunod na booking",
+      zh: "行程已完成 &bull; 可接下一单",
+      ja: "乗車完了 &bull; 次の予約受付可能",
+    },
+    "Available (Completed ✓)": {
+      ceb: "Bakante (Nahuman ✓)",
+      fil: "Available (Tapos na ✓)",
+      zh: "空闲（已完单 ✓）",
+      ja: "空車（完了 ✓）",
+    },
+    "Heading Dest": {
+      ceb: "Padulong Dest",
+      fil: "Papunta Dest",
+      zh: "前往终点",
+      ja: "目的地へ",
+    },
+    "Rider heading to destination": {
+      ceb: "Ang rider padulong na sa destinasyon",
+      fil: "Ang rider ay papunta na sa destinasyon",
+      zh: "骑手正在前往目的地",
+      ja: "ライダーは目的地へ移動中です",
+    },
+    "Rider is accepting a booking": {
+      ceb: "Ang rider nagdawat og booking ug padulong sa pick-up",
+      fil: "Ang rider ay tumatanggap ng booking at papunta sa pick-up",
+      zh: "骑手已接单正在前往接客",
+      ja: "ライダーは配車受付中で乗車地へ向かっています",
+    },
+    "Rider currently has an active trip": {
+      ceb: "Ang rider aduna pay aktibong biyahe",
+      fil: "May aktibong biyahe pa ang rider",
+      zh: "骑手当前已有进行中的行程",
+      ja: "ライダーは現在乗車対応中です",
     },
   };
 

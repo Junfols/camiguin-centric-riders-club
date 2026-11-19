@@ -539,8 +539,8 @@
           </button>
         </div>
         <div id="co-riders-radar-map" style="height:280px;width:100%;"></div>
-        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;">
-          <span>🟢 Green = Active Rider &bull; 🛵 Centric Emblem = Your Location</span>
+        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+          <span>🟢 Available &bull; 🟡 Accepting &bull; 🟠 Heading Dest &bull; 🛵 You</span>
           <span>Auto-syncs live GPS</span>
         </div>
       </div>
@@ -808,5 +808,5 @@
 
 {% block scripts %}
 <script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/rider.js?v=33"></script>
+<script src="/static/js/rider.js?v=34"></script>
 {% endblock %}
