@@ -337,9 +337,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         resp.headers["Cache-Control"] = "public, max-age=86400"
         return resp
 
-    def _is_customer_authorized_for_booking(booking: dict[str, Any]) -> bool:
-        if session.get("is_admin"):
-            return True
+    def _is_customer_authorized_for_booking(booking: dict[str, Any], allow_admin: bool = True) -> bool:
         sess_code = (session.get("active_booking_code") or "").strip().upper()
         sess_group = (session.get("active_group_code") or "").strip().upper()
         b_code = (booking.get("booking_code") or "").strip().upper()
@@ -350,6 +348,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return True
         sess_phone = (session.get("customer_phone") or "").strip()
         if sess_phone and normalize_ph_phone(sess_phone) == normalize_ph_phone(booking.get("customer_phone") or ""):
+            return True
+        if allow_admin and session.get("is_admin"):
             return True
         return False
 
@@ -1237,13 +1237,31 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # -------------------------------------------------------------------------
     # In-App Chat Routes (Customer & Rider Live Messaging)
     # -------------------------------------------------------------------------
-    def _authorize_chat_role(booking: dict[str, Any]) -> str | None:
-        if session.get("is_admin"):
-            return "system"
-        if session.get("rider_id") and booking.get("rider_id") == session.get("rider_id"):
+    def _authorize_chat_role(booking: dict[str, Any], preferred_role: str = "") -> str | None:
+        is_assigned_rider = bool(
+            session.get("rider_id") and int(booking.get("rider_id") or 0) == int(session.get("rider_id") or 0)
+        )
+        is_booking_customer = _is_customer_authorized_for_booking(booking, allow_admin=False)
+        is_admin = bool(session.get("is_admin"))
+
+        pref = (preferred_role or "").strip().lower()
+        if pref == "rider" and (is_assigned_rider or is_admin):
             return "rider"
-        if _is_customer_authorized_for_booking(booking):
+        if pref == "customer" and (is_booking_customer or is_admin):
             return "customer"
+        if pref == "system" and is_admin:
+            return "system"
+
+        if is_assigned_rider and not is_booking_customer:
+            return "rider"
+        if is_booking_customer and not is_assigned_rider:
+            return "customer"
+        if is_assigned_rider:
+            return "rider"
+        if is_booking_customer:
+            return "customer"
+        if is_admin:
+            return "system"
         return None
 
     @app.get("/api/chat/<code_or_id>/messages")
@@ -1283,19 +1301,24 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
-        auth_role = _authorize_chat_role(booking)
+        data = request.get_json(silent=True) or {}
+        req_role = str(data.get("sender_role") or "").strip().lower()
+        if not req_role:
+            req_role = "rider" if code_or_id.isdigit() else "customer"
+
+        auth_role = _authorize_chat_role(booking, preferred_role=req_role)
         if not auth_role:
             return jsonify({"error": "Unauthorized to send messages for this booking."}), 401
 
-        data = request.get_json(silent=True) or {}
         text = (data.get("message") or "").strip()
         if not text:
             return jsonify({"error": "Message cannot be empty."}), 400
 
         sender_role = auth_role
         if sender_role == "rider":
-            rider = get_rider_by_id(conn, int(session["rider_id"]))
-            sender_name = (rider.get("name") if rider else None) or "Club Rider"
+            rid = session.get("rider_id") or booking.get("rider_id")
+            rider = get_rider_by_id(conn, int(rid)) if rid else None
+            sender_name = (rider.get("name") if rider else None) or booking.get("rider_name") or "Club Rider"
         elif sender_role == "system":
             sender_name = "CCRC Dispatch"
         else:
@@ -1341,7 +1364,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
-        auth_role = _authorize_chat_role(booking)
+        pref_voice_role = (
+            request.form.get("sender_role")
+            or request.args.get("role")
+            or ("rider" if code_or_id.isdigit() else "customer")
+        )
+        auth_role = _authorize_chat_role(booking, preferred_role=pref_voice_role)
         if not auth_role:
             return jsonify({"error": "Unauthorized to send voice messages for this booking."}), 401
 
@@ -1387,8 +1415,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         sender_role = auth_role
         if sender_role == "rider":
-            rider = get_rider_by_id(conn, int(session["rider_id"]))
-            sender_name = (rider.get("name") if rider else None) or "Club Rider"
+            rid = session.get("rider_id") or booking.get("rider_id")
+            rider = get_rider_by_id(conn, int(rid)) if rid else None
+            sender_name = (rider.get("name") if rider else None) or booking.get("rider_name") or "Club Rider"
         elif sender_role == "system":
             sender_name = "CCRC Dispatch"
         else:
@@ -1475,7 +1504,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
-        auth_role = _authorize_chat_role(booking)
+        pref_call_role = request.args.get("role") or ("rider" if str(code_or_id).isdigit() else "customer")
+        auth_role = _authorize_chat_role(booking, preferred_role=pref_call_role)
         if not auth_role:
             return jsonify({"error": "Unauthorized for this booking's call state."}), 401
 
@@ -1525,14 +1555,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
-        auth_role = _authorize_chat_role(booking)
+        pref_start_role = "rider" if str(code_or_id).isdigit() else "customer"
+        auth_role = _authorize_chat_role(booking, preferred_role=pref_start_role)
         if not auth_role:
             return jsonify({"error": "Unauthorized to start a call for this booking."}), 401
         if auth_role not in ("customer", "rider"):
             return jsonify({"error": "Only the passenger or assigned rider can initiate an in-app voice call."}), 403
 
         if auth_role == "rider":
-            rider = get_rider_by_id(conn, int(session["rider_id"]))
+            rid = session.get("rider_id") or booking.get("rider_id")
+            rider = get_rider_by_id(conn, int(rid)) if rid else None
             caller_name = (rider.get("name") if rider else None) or booking.get("rider_name") or "Club Rider"
         else:
             caller_name = booking.get("customer_name") or "Passenger"

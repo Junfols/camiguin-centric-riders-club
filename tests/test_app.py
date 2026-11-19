@@ -3645,6 +3645,46 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(h_db_resp.status_code, 200)
         self.assertEqual(h_db_resp.get_json()["status"], "ok")
 
+        # Verify chat messages from customer or rider are NOT turned into "CCRC Dispatch" when is_admin is also in session
+        self._create_customer(name="Customer Chat Test", phone="09175559900")
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["customer_phone"] = "09175559900"
+            sess["rider_id"] = r1_id
+        b_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Customer Chat Test",
+                "customer_phone": "09175559900",
+                "pickup_address": "Mambajao Town Plaza",
+                "dropoff_address": "White Island Ferry Terminal",
+                "service_type": "pahatud",
+            },
+        )
+        self.assertEqual(b_resp.status_code, 201)
+        b_obj = b_resp.get_json()["booking"]
+        b_code = b_obj["booking_code"]
+        b_id = b_obj["id"]
+
+        self.client.post(f"/api/bookings/{b_id}/accept")
+        c_msg_resp = self.client.post(
+            f"/api/chat/{b_code}/messages",
+            json={"sender_role": "customer", "message": "Please let me know when you arrive."},
+        )
+        self.assertEqual(c_msg_resp.status_code, 200)
+        c_msg = c_msg_resp.get_json()["message"]
+        self.assertEqual(c_msg["sender_role"], "customer")
+        self.assertEqual(c_msg["sender_name"], "Customer Chat Test")
+
+        r_msg_resp = self.client.post(
+            f"/api/chat/{b_id}/messages",
+            json={"sender_role": "rider", "message": "On my way now!"},
+        )
+        self.assertEqual(r_msg_resp.status_code, 200)
+        r_msg = r_msg_resp.get_json()["message"]
+        self.assertEqual(r_msg["sender_role"], "rider")
+        self.assertEqual(r_msg["sender_name"], "Kuya Jun Rider")
+
 
 if __name__ == "__main__":
     unittest.main()
