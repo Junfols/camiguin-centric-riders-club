@@ -57,8 +57,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         sw_resp = self.client.get("/sw.js")
         self.assertEqual(sw_resp.status_code, 200)
         sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v16", sw_text)
-        self.assertIn("/static/css/style.css?v=29", sw_text)
+        self.assertIn("ccrc-pwa-v17", sw_text)
+        self.assertIn("/static/css/style.css?v=30", sw_text)
         self.assertIn("/static/js/i18n.js?v=8", sw_text)
         self.assertIn("/static/js/app.js?v=35", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
@@ -2144,7 +2144,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="track-transfer-banner"', tr_html)
         self.assertIn("Transfer Rider One", tr_html)
         self.assertIn('id="rider-rating-wrap"', tr_html)
-        self.assertIn("track.js?v=32", tr_html)
+        self.assertIn("track.js?v=33", tr_html)
 
         # r2 sees transferred b_a prioritized BEFORE b_newer in broadcast feed, then claims and completes it
         with self.client.session_transaction() as sess:
@@ -2396,8 +2396,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="chat-voice-recording-bar"',
             'id="chat-voice-btn"',
             "voice_call.js?v=1",
-            "track.js?v=32",
-            "style.css?v=29",
+            "track.js?v=33",
+            "style.css?v=30",
             "i18n.js?v=8",
             "📞 Phone Call",
         ):
@@ -2876,8 +2876,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             'id="mark-gcash-sent-btn"',
             "gcash-recipient-row",
             "gcash-sent-row",
-            "track.js?v=32",
-            "style.css?v=29",
+            "track.js?v=33",
+            "style.css?v=30",
             "i18n.js?v=8",
         ):
             self.assertIn(token, track_html)

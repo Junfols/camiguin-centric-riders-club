@@ -639,6 +639,7 @@
               <div class="group-slot-row-sub">
                 ${escapeHtml(riderLabel)} &bull; ₱${Math.round(Number(s.fare_amount || 0)).toLocaleString()}${gcashExtra}
               </div>
+              ${s.rider_id && (s.rider_bike || s.rider_plate) ? `<div class="group-slot-row-sub">🏍️ ${escapeHtml(s.rider_bike || "")}${s.rider_plate ? ` &bull; Plate: <strong>${escapeHtml(s.rider_plate)}</strong>` : ""}</div>` : ""}
             </div>
             <div class="group-slot-row-actions">
               <button type="button" class="btn btn-sm btn-outline group-focus-slot-btn" data-slot-code="${escapeHtml(s.booking_code)}">Focus</button>

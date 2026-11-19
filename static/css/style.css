@@ -3556,6 +3556,11 @@ body.rider-logged-in .nav-rider-logged-item {
     align-items: stretch;
   }
 
+  .group-slot-row-main {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
   .group-slot-row-actions {
     width: 100%;
     justify-content: flex-start;
