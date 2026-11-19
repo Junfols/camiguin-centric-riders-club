@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Official Rider Verification — {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="ccrc-verify-page">
+  {% if rider_card %}
+    <div class="ccrc-id-card ccrc-id-card-public {% if not rider_card.is_verified %}is-unverified{% endif %}">
+      <div class="ccrc-id-shimmer" aria-hidden="true"></div>
+
+      <div class="ccrc-id-header">
+        <div class="ccrc-id-brand">
+          <img src="/static/icons/logo.png" alt="CCRC Logo" class="ccrc-id-logo">
+          <div>
+            <div class="ccrc-id-club-title">{{ rider_card.club_name }}</div>
+            <div class="ccrc-id-club-sub">OFFICIAL VERIFIED ISLAND RIDER ID</div>
+          </div>
+        </div>
+        <span class="ccrc-id-number-pill">{{ rider_card.club_id }}</span>
+      </div>
+
+      {% if rider_card.is_verified %}
+        <div class="ccrc-id-status-strip is-verified">
+          <span class="ccrc-id-live-dot"></span>
+          <span>✅ OFFICIALLY VERIFIED CCRC RIDER</span>
+        </div>
+      {% elif rider_card.status == 'pending' %}
+        <div class="ccrc-id-status-strip is-pending">
+          <span>⏳ PENDING ADMIN VERIFICATION</span>
+        </div>
+      {% else %}
+        <div class="ccrc-id-status-strip is-suspended">
+          <span>🚫 SUSPENDED / INACTIVE RIDER</span>
+        </div>
+      {% endif %}
+
+      <div class="ccrc-id-body">
+        <div class="ccrc-id-profile-block">
+          <div class="ccrc-id-avatar-wrap">
+            {% if rider_card.avatar_url %}
+              <img src="{{ rider_card.avatar_url }}" alt="{{ rider_card.name }}" class="ccrc-id-avatar-img">
+            {% else %}
+              <div class="ccrc-id-avatar-fallback">{{ (rider_card.name or 'R')[:1]|upper }}</div>
+            {% endif %}
+            {% if rider_card.is_verified %}
+              <span class="ccrc-id-verified-check" title="Verified Club Rider">✓</span>
+            {% endif %}
+          </div>
+
+          <h1 class="ccrc-id-rider-name">{{ rider_card.name }}</h1>
+          <div class="ccrc-id-rider-base">📍 {{ rider_card.municipality }}, Camiguin Island</div>
+
+          <div class="ccrc-id-metrics-row">
+            <span class="ccrc-id-metric-pill">⭐ {{ '%.1f'|format(rider_card.rating_avg) }} ({{ rider_card.review_count }} reviews)</span>
+            <span class="ccrc-id-metric-pill">🛵 {{ rider_card.total_trips }} Trips</span>
+            {% if rider_card.is_online %}
+              <span class="ccrc-id-metric-pill is-online">🟢 Online Now</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="ccrc-id-details-grid">
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">🏍️ Motorcycle</span>
+            <strong class="ccrc-id-detail-value">{{ rider_card.bike_model }}</strong>
+          </div>
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">🔢 Plate Number</span>
+            <strong class="ccrc-id-detail-value ccrc-id-mono">{{ rider_card.plate_number }}</strong>
+          </div>
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">🪪 Driver's License</span>
+            <strong class="ccrc-id-detail-value ccrc-id-mono">
+              {% if rider_card.has_license_on_file %}
+                {{ rider_card.license_no }}
+              {% else %}
+                Verified on File
+              {% endif %}
+            </strong>
+          </div>
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">📅 Member Since</span>
+            <strong class="ccrc-id-detail-value">{{ rider_card.member_since }}</strong>
+          </div>
+        </div>
+
+        <div class="ccrc-verify-live-stamp">
+          <div><strong>Live Registry Check:</strong> {{ rider_card.verified_at_pht }}</div>
+          <div>Club Safety Hotline: <a href="tel:{{ rider_card.club_hotline }}">{{ rider_card.club_hotline }}</a></div>
+        </div>
+
+        <div class="ccrc-verify-cta-row">
+          <a href="/" class="btn btn-primary btn-block">🛵 Book an Official CCRC Ride</a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="card ccrc-verify-notfound">
+      <div style="font-size:2.8rem;margin-bottom:8px;">⚠️</div>
+      <h2 style="margin:0 0 6px;color:#b91c1c;">Rider ID Not Found</h2>
+      <p class="text-muted" style="margin:0 0 14px;">
+        No official rider record matches <strong>{{ requested_club_id }}</strong> in the Camiguin Centric Riders Club registry.
+      </p>
+      <p style="font-size:0.86rem;color:#475569;margin:0 0 18px;">
+        For your safety, please only ride with verified CCRC members or contact our Club Hotline: <strong>{{ club.hotline }}</strong>.
+      </p>
+      <a href="/" class="btn btn-primary">🛵 Go to Official CCRC Booking</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -214,6 +214,16 @@
         <span id="gps-status-label">Live GPS Beacon: Active &amp; streaming location</span>
         <button type="button" id="force-gps-btn" class="btn btn-sm btn-outline" style="margin-left:auto;padding:2px 8px;font-size:0.75rem;">Sync GPS</button>
       </div>
+
+      <div class="rider-id-quick-bar">
+        <div class="rider-id-quick-meta">
+          <span class="rider-id-quick-label">Official Club ID:</span>
+          <strong id="dash-rider-club-id" class="rider-id-quick-code">CCRC-0000</strong>
+        </div>
+        <button type="button" id="open-rider-id-card-btn" class="btn btn-sm btn-official-id">
+          🪪 Official Club ID
+        </button>
+      </div>
     </div>
 
     <!-- Rider Financial Summary & Transactions Card -->
@@ -815,6 +825,103 @@
       <div id="r-gcash-paid-done-box" class="hidden" style="background:#dcfce7;border:1.5px solid #86efac;color:#15803d;border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:0.88rem;">
         ✅ GCash Payment Verified &amp; Confirmed! You may now mark this trip as Delivered / Completed.
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fullscreen Digital Official CCRC Club ID Card Modal -->
+<div id="rider-official-id-modal" class="ccrc-id-modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Digital Official CCRC Club ID Card">
+  <div class="ccrc-id-modal-shell">
+    <div class="ccrc-id-modal-topbar no-print">
+      <span class="ccrc-id-modal-topbar-title">🪪 Official Digital Club ID</span>
+      <button type="button" id="oid-close-top-btn" class="ccrc-id-close-x" aria-label="Close Official ID Card">✕</button>
+    </div>
+
+    <div id="ccrc-official-id-card-printable" class="ccrc-id-card">
+      <div class="ccrc-id-lanyard-slot no-print" aria-hidden="true"></div>
+      <div class="ccrc-id-shimmer" aria-hidden="true"></div>
+
+      <div class="ccrc-id-header">
+        <div class="ccrc-id-brand">
+          <img src="/static/icons/logo.png" alt="CCRC Logo" class="ccrc-id-logo">
+          <div>
+            <div id="oid-club-name" class="ccrc-id-club-title">{{ club.name }}</div>
+            <div class="ccrc-id-club-sub">OFFICIAL VERIFIED ISLAND RIDER ID</div>
+          </div>
+        </div>
+        <span id="oid-club-id" class="ccrc-id-number-pill">CCRC-0000</span>
+      </div>
+
+      <div id="oid-status-strip" class="ccrc-id-status-strip is-verified">
+        <span class="ccrc-id-live-dot"></span>
+        <span id="oid-status-label">✅ VERIFIED ACTIVE MEMBER</span>
+      </div>
+
+      <div class="ccrc-id-live-clock-bar">
+        <span>🛡️ Live Digital ID</span>
+        <strong id="oid-live-clock">--</strong>
+      </div>
+
+      <div class="ccrc-id-body">
+        <div class="ccrc-id-profile-block">
+          <div class="ccrc-id-avatar-wrap">
+            <img id="oid-avatar-img" src="" alt="Rider Photo" class="ccrc-id-avatar-img hidden">
+            <div id="oid-avatar-fallback" class="ccrc-id-avatar-fallback">R</div>
+            <span id="oid-verified-check" class="ccrc-id-verified-check" title="Verified Club Rider">✓</span>
+          </div>
+
+          <h2 id="oid-name" class="ccrc-id-rider-name">Club Rider</h2>
+          <div id="oid-municipality" class="ccrc-id-rider-base">📍 Mambajao, Camiguin Island</div>
+
+          <div class="ccrc-id-metrics-row">
+            <span id="oid-rating-pill" class="ccrc-id-metric-pill">⭐ 5.0</span>
+            <span id="oid-trips-pill" class="ccrc-id-metric-pill">🛵 0 Trips</span>
+            <span id="oid-online-pill" class="ccrc-id-metric-pill is-online hidden">🟢 Online Now</span>
+          </div>
+        </div>
+
+        <div class="ccrc-id-details-grid">
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">🏍️ Motorcycle</span>
+            <strong id="oid-bike" class="ccrc-id-detail-value">-</strong>
+          </div>
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">🔢 Plate Number</span>
+            <strong id="oid-plate" class="ccrc-id-detail-value ccrc-id-mono">-</strong>
+          </div>
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">🪪 Driver's License</span>
+            <strong id="oid-license" class="ccrc-id-detail-value ccrc-id-mono">-</strong>
+          </div>
+          <div class="ccrc-id-detail-tile">
+            <span class="ccrc-id-detail-label">📅 Member Since</span>
+            <strong id="oid-member-since" class="ccrc-id-detail-value">-</strong>
+          </div>
+        </div>
+
+        <div class="ccrc-id-qr-section">
+          <div class="ccrc-id-qr-frame">
+            <img id="oid-qr-img" src="" alt="Official CCRC Rider Verification QR Code" class="ccrc-id-qr-img">
+          </div>
+          <div class="ccrc-id-qr-copy">
+            <div class="ccrc-id-qr-title">Scan to Verify Rider</div>
+            <div class="ccrc-id-qr-hint">Tourists &amp; passengers can scan this QR with any phone camera to confirm official CCRC membership.</div>
+            <div class="ccrc-id-hotline-line">Club Hotline: <strong id="oid-hotline">{{ club.hotline }}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ccrc-id-modal-actions no-print">
+      <button type="button" id="oid-print-btn" class="btn btn-sm ccrc-id-action-btn">
+        🖨️ Print / Save ID
+      </button>
+      <button type="button" id="oid-copy-link-btn" class="btn btn-sm ccrc-id-action-btn">
+        🔗 Copy Verify Link
+      </button>
+      <button type="button" id="oid-close-btn" class="btn btn-sm ccrc-id-action-close">
+        ✕ Close
+      </button>
     </div>
   </div>
 </div>

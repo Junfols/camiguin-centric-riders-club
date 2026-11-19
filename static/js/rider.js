@@ -708,6 +708,10 @@
     if (dashLicense) {
       dashLicense.textContent = rider.license_no ? `License: ${rider.license_no}` : "";
     }
+    const dashClubId = document.getElementById("dash-rider-club-id");
+    if (dashClubId && rider.id) {
+      dashClubId.textContent = `CCRC-${String(Number(rider.id) || 0).padStart(4, "0")}`;
+    }
     const dashAvatar = document.getElementById("dash-rider-avatar-img");
     if (dashAvatar) {
       if (rider.avatar_url) {
@@ -3394,6 +3398,220 @@
         });
       }
     } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // Digital Official CCRC Club ID Card (Fullscreen Modal + Live Clock + QR)
+  // ---------------------------------------------------------------------------
+  const openRiderIdCardBtn = document.getElementById("open-rider-id-card-btn");
+  const riderOfficialIdModal = document.getElementById("rider-official-id-modal");
+  const oidCloseTopBtn = document.getElementById("oid-close-top-btn");
+  const oidCloseBtn = document.getElementById("oid-close-btn");
+  const oidPrintBtn = document.getElementById("oid-print-btn");
+  const oidCopyLinkBtn = document.getElementById("oid-copy-link-btn");
+  const oidClubName = document.getElementById("oid-club-name");
+  const oidClubId = document.getElementById("oid-club-id");
+  const oidStatusStrip = document.getElementById("oid-status-strip");
+  const oidStatusLabel = document.getElementById("oid-status-label");
+  const oidLiveClock = document.getElementById("oid-live-clock");
+  const oidAvatarImg = document.getElementById("oid-avatar-img");
+  const oidAvatarFallback = document.getElementById("oid-avatar-fallback");
+  const oidVerifiedCheck = document.getElementById("oid-verified-check");
+  const oidName = document.getElementById("oid-name");
+  const oidMunicipality = document.getElementById("oid-municipality");
+  const oidRatingPill = document.getElementById("oid-rating-pill");
+  const oidTripsPill = document.getElementById("oid-trips-pill");
+  const oidOnlinePill = document.getElementById("oid-online-pill");
+  const oidBike = document.getElementById("oid-bike");
+  const oidPlate = document.getElementById("oid-plate");
+  const oidLicense = document.getElementById("oid-license");
+  const oidMemberSince = document.getElementById("oid-member-since");
+  const oidQrImg = document.getElementById("oid-qr-img");
+  const oidHotline = document.getElementById("oid-hotline");
+
+  let oidClockTimer = null;
+  let currentOfficialVerifyUrl = "";
+
+  function formatOfficialPhtClock() {
+    try {
+      return new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }).format(new Date()) + " PHT";
+    } catch (_) {
+      return new Date().toLocaleString();
+    }
+  }
+
+  function startOfficialIdLiveClock() {
+    stopOfficialIdLiveClock();
+    if (oidLiveClock) oidLiveClock.textContent = formatOfficialPhtClock();
+    oidClockTimer = setInterval(() => {
+      if (oidLiveClock) oidLiveClock.textContent = formatOfficialPhtClock();
+    }, 1000);
+  }
+
+  function stopOfficialIdLiveClock() {
+    if (oidClockTimer) {
+      clearInterval(oidClockTimer);
+      oidClockTimer = null;
+    }
+  }
+
+  function populateOfficialIdCard(card) {
+    if (!card) return;
+    const clubIdText = card.club_id || `CCRC-${String(Number(card.id) || 0).padStart(4, "0")}`;
+    if (oidClubName && card.club_name) oidClubName.textContent = card.club_name;
+    if (oidClubId) oidClubId.textContent = clubIdText;
+
+    const status = String(card.status || "active").toLowerCase();
+    const isVerified = card.is_verified !== undefined ? Boolean(card.is_verified) : (status === "active");
+    if (oidStatusStrip && oidStatusLabel) {
+      oidStatusStrip.classList.remove("is-verified", "is-pending", "is-suspended");
+      if (isVerified) {
+        oidStatusStrip.classList.add("is-verified");
+        oidStatusLabel.textContent = tRider("✅ VERIFIED ACTIVE MEMBER");
+      } else if (status === "pending") {
+        oidStatusStrip.classList.add("is-pending");
+        oidStatusLabel.textContent = tRider("⏳ PENDING ADMIN VERIFICATION");
+      } else {
+        oidStatusStrip.classList.add("is-suspended");
+        oidStatusLabel.textContent = tRider("🚫 SUSPENDED / INACTIVE RIDER");
+      }
+    }
+    if (oidVerifiedCheck) {
+      oidVerifiedCheck.classList.toggle("hidden", !isVerified);
+    }
+
+    const rName = card.name || "Club Rider";
+    if (oidName) oidName.textContent = rName;
+    if (oidAvatarImg && oidAvatarFallback) {
+      if (card.avatar_url) {
+        oidAvatarImg.src = card.avatar_url;
+        oidAvatarImg.classList.remove("hidden");
+        oidAvatarFallback.classList.add("hidden");
+      } else {
+        oidAvatarImg.classList.add("hidden");
+        oidAvatarFallback.textContent = String(rName).trim().slice(0, 1).toUpperCase() || "R";
+        oidAvatarFallback.classList.remove("hidden");
+      }
+    }
+
+    const muni = card.municipality || "Mambajao";
+    if (oidMunicipality) oidMunicipality.textContent = `📍 ${muni}, Camiguin Island`;
+
+    const ratingVal = Number(card.rating_avg || 5.0).toFixed(1);
+    const revSuffix = typeof card.review_count === "number" ? ` (${card.review_count})` : "";
+    if (oidRatingPill) oidRatingPill.textContent = `⭐ ${ratingVal}${revSuffix}`;
+
+    const trips = Number(card.total_trips || 0);
+    if (oidTripsPill) oidTripsPill.textContent = `🛵 ${trips} ${trips === 1 ? "Trip" : "Trips"}`;
+
+    const isOnline = card.is_online !== undefined ? Boolean(card.is_online) : Boolean(onlineToggle && onlineToggle.checked);
+    if (oidOnlinePill) oidOnlinePill.classList.toggle("hidden", !isOnline);
+
+    if (oidBike) oidBike.textContent = card.bike_model || "Motorcycle";
+    if (oidPlate) oidPlate.textContent = String(card.plate_number || "N/A").toUpperCase();
+    if (oidLicense) oidLicense.textContent = card.license_no ? String(card.license_no).toUpperCase() : "Verified on File";
+    if (oidMemberSince) {
+      if (card.member_since) {
+        oidMemberSince.textContent = card.member_since;
+      } else if (card.created_at) {
+        oidMemberSince.textContent = String(card.created_at).slice(0, 10);
+      } else {
+        oidMemberSince.textContent = "Verified Member";
+      }
+    }
+
+    if (oidHotline && card.club_hotline) oidHotline.textContent = card.club_hotline;
+
+    const rid = card.id;
+    currentOfficialVerifyUrl = card.verify_url || (rid ? `${window.location.origin}/verify/rider/${rid}` : "");
+    if (oidQrImg && rid) {
+      const qrSrc = card.qr_svg_url || `/api/rider/${rid}/id-qr.svg`;
+      if (oidQrImg.getAttribute("data-qr-src") !== qrSrc) {
+        oidQrImg.setAttribute("data-qr-src", qrSrc);
+        oidQrImg.src = qrSrc;
+      }
+    }
+  }
+
+  function closeOfficialRiderIdCard() {
+    if (!riderOfficialIdModal) return;
+    riderOfficialIdModal.classList.add("hidden");
+    stopOfficialIdLiveClock();
+  }
+
+  async function openOfficialRiderIdCard() {
+    if (!riderOfficialIdModal || !currentRider) return;
+    // Instant hydrate from current session data
+    populateOfficialIdCard(currentRider);
+    riderOfficialIdModal.classList.remove("hidden");
+    startOfficialIdLiveClock();
+
+    // Refresh live verified stats & club hotline from DB
+    try {
+      const res = await fetch("/api/rider/id-card");
+      if (res.status === 401) {
+        closeOfficialRiderIdCard();
+        handleExpiredRiderSession();
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id_card) {
+          populateOfficialIdCard(data.id_card);
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (openRiderIdCardBtn) {
+    openRiderIdCardBtn.addEventListener("click", openOfficialRiderIdCard);
+  }
+  if (oidCloseTopBtn) {
+    oidCloseTopBtn.addEventListener("click", closeOfficialRiderIdCard);
+  }
+  if (oidCloseBtn) {
+    oidCloseBtn.addEventListener("click", closeOfficialRiderIdCard);
+  }
+  if (riderOfficialIdModal) {
+    riderOfficialIdModal.addEventListener("click", (e) => {
+      if (e.target === riderOfficialIdModal) closeOfficialRiderIdCard();
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && riderOfficialIdModal && !riderOfficialIdModal.classList.contains("hidden")) {
+      closeOfficialRiderIdCard();
+    }
+  });
+  if (oidPrintBtn) {
+    oidPrintBtn.addEventListener("click", () => {
+      window.print();
+    });
+  }
+  if (oidCopyLinkBtn) {
+    oidCopyLinkBtn.addEventListener("click", async () => {
+      if (!currentOfficialVerifyUrl) return;
+      const origLabel = oidCopyLinkBtn.textContent;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(currentOfficialVerifyUrl);
+          oidCopyLinkBtn.textContent = "✅ Link Copied!";
+          setTimeout(() => {
+            if (oidCopyLinkBtn) oidCopyLinkBtn.textContent = origLabel;
+          }, 2000);
+          return;
+        }
+      } catch (_) {}
+      prompt("Copy your Official Rider Verification link:", currentOfficialVerifyUrl);
+    });
   }
 
   // On Load: Check stored session

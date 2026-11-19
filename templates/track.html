@@ -235,6 +235,9 @@
           💬 Send SMS
         </a>
       </div>
+      <a id="rider-verify-id-link" href="{% if booking.rider_id %}/verify/rider/{{ booking.rider_id }}{% else %}#{% endif %}" target="_blank" rel="noopener" class="btn btn-outline btn-block btn-verify-rider-id {% if not booking.rider_id %}hidden{% endif %}">
+        🪪 View Official Verified Club ID
+      </a>
     </div>
   </div>
 

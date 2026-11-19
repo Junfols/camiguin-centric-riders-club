@@ -28,6 +28,7 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from qr_svg import render_qr_svg
 from db import (
     CAMIGUIN_KNOWN_PLACES,
     export_full_backup,
@@ -2360,6 +2361,119 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "gcash_qr_url": clean_rider.get("gcash_qr_url") or "",
             "rider": clean_rider,
         })
+
+    # -------------------------------------------------------------------------
+    # Digital Official CCRC Club ID Card & Public QR Verification
+    # -------------------------------------------------------------------------
+    def _format_club_rider_id(rider_id: int) -> str:
+        return f"CCRC-{int(rider_id):04d}"
+
+    def _mask_license_no(raw_license: str) -> str:
+        clean = str(raw_license or "").strip().upper()
+        if not clean:
+            return ""
+        if len(clean) <= 4:
+            return ("•" * max(0, len(clean) - 2)) + clean[-2:]
+        prefix = clean[:3]
+        suffix = clean[-3:]
+        mid = "".join(ch if not ch.isalnum() else "•" for ch in clean[3:-3])
+        return f"{prefix}{mid}{suffix}"
+
+    def _format_member_since(created_at: str | None) -> str:
+        raw = str(created_at or "").strip()
+        if not raw:
+            return "Verified Member"
+        try:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            return dt.strftime("%b %Y")
+        except Exception:
+            return raw[:10]
+
+    def _build_rider_id_payload(conn, rider: dict[str, Any], include_private: bool = False) -> dict[str, Any]:
+        rid = int(rider["id"])
+        settings = get_settings(conn)
+        reviews = get_rider_reviews(conn, rid, limit=200)
+        review_count = len(reviews)
+        status_raw = str(rider.get("status") or "pending").strip().lower()
+        is_verified = status_raw == "active"
+        base_url = request.url_root.rstrip("/")
+        verify_url = f"{base_url}/verify/rider/{rid}"
+        qr_svg_url = f"/api/rider/{rid}/id-qr.svg"
+        raw_license = str(rider.get("license_no") or "").strip().upper()
+        now_pht = get_now_pht()
+        return {
+            "id": rid,
+            "club_id": _format_club_rider_id(rid),
+            "name": rider.get("name") or "Club Rider",
+            "phone": (rider.get("phone") or "") if include_private else "",
+            "bike_model": rider.get("bike_model") or "Motorcycle",
+            "plate_number": (rider.get("plate_number") or "N/A").upper(),
+            "municipality": rider.get("municipality") or "Mambajao",
+            "license_no": raw_license if include_private else _mask_license_no(raw_license),
+            "has_license_on_file": bool(raw_license),
+            "avatar_url": rider.get("avatar_url") or "",
+            "status": status_raw,
+            "is_verified": is_verified,
+            "is_online": bool(rider.get("is_online")),
+            "total_trips": int(rider.get("total_trips") or 0),
+            "rating_avg": round(float(rider.get("rating_avg") or 5.0), 1),
+            "review_count": review_count,
+            "member_since": _format_member_since(rider.get("created_at")),
+            "created_at": rider.get("created_at") or "",
+            "verify_url": verify_url,
+            "qr_svg_url": qr_svg_url,
+            "club_name": settings.get("club_name", "Camiguin Centric Riders Club"),
+            "club_hotline": settings.get("hotline", "0917 555 0199"),
+            "verified_at_pht": now_pht.strftime("%b %d, %Y %I:%M %p PHT"),
+        }
+
+    @app.get("/api/rider/id-card")
+    def api_rider_id_card():
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Rider authentication required."}), 401
+        conn = get_db()
+        rider = get_rider_by_id(conn, int(rider_id))
+        if not rider:
+            return jsonify({"error": "Rider account not found."}), 404
+        return jsonify({
+            "success": True,
+            "id_card": _build_rider_id_payload(conn, rider, include_private=True),
+        })
+
+    @app.get("/api/rider/<int:rider_id>/id-qr.svg")
+    def api_rider_id_qr_svg(rider_id: int):
+        conn = get_db()
+        rider = get_rider_by_id(conn, int(rider_id))
+        if not rider:
+            return Response("Rider not found", status=404, mimetype="text/plain")
+        verify_url = f"{request.url_root.rstrip('/')}/verify/rider/{int(rider['id'])}"
+        svg_markup = render_qr_svg(verify_url, border=4, dark="#0f172a", light="#ffffff")
+        resp = Response(svg_markup, status=200, mimetype="image/svg+xml")
+        resp.headers["Cache-Control"] = "public, max-age=300"
+        return resp
+
+    @app.get("/verify/rider/<int:rider_id>")
+    def verify_rider_public_page(rider_id: int):
+        conn = get_db()
+        rider = get_rider_by_id(conn, int(rider_id))
+        if not rider:
+            return (
+                render_template(
+                    "verify_rider.html",
+                    active_nav="",
+                    rider_card=None,
+                    requested_club_id=_format_club_rider_id(rider_id),
+                ),
+                404,
+            )
+        card = _build_rider_id_payload(conn, rider, include_private=False)
+        return render_template(
+            "verify_rider.html",
+            active_nav="",
+            rider_card=card,
+            requested_club_id=card["club_id"],
+        )
 
     @app.get("/api/rider/co-riders")
     def get_rider_co_riders():

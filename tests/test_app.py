@@ -3877,6 +3877,100 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="chat-photo-preview-bar"', track_html)
         self.assertIn('id="ccrc-photo-lightbox"', track_html)
 
+    def test_digital_official_club_id_card_and_qr_verification(self):
+        from db import get_connection
+        import qr_svg
+
+        r_id = self._create_active_rider(
+            name="Kuya Ben Official",
+            phone="09179994455",
+        )
+        # Set realistic plate and Driver's License number on the rider
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute(
+                "UPDATE riders SET plate_number = ?, license_no = ?, bike_model = ?, municipality = ? WHERE id = ?",
+                ("CAM 8821", "K01-23-456789", "Honda Click 160", "Mambajao", r_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        expected_club_id = f"CCRC-{r_id:04d}"
+
+        # 1. Unauthenticated /api/rider/id-card is rejected with 401
+        unauth = self.client.get("/api/rider/id-card")
+        self.assertEqual(unauth.status_code, 401)
+
+        # 2. Authenticated rider receives full Official Club ID Card payload
+        with self.client.session_transaction() as sess:
+            sess["rider_id"] = r_id
+        card_resp = self.client.get("/api/rider/id-card")
+        self.assertEqual(card_resp.status_code, 200)
+        card_data = card_resp.get_json()
+        self.assertTrue(card_data["success"])
+        card = card_data["id_card"]
+        self.assertEqual(card["club_id"], expected_club_id)
+        self.assertEqual(card["name"], "Kuya Ben Official")
+        self.assertEqual(card["plate_number"], "CAM 8821")
+        self.assertEqual(card["bike_model"], "Honda Click 160")
+        self.assertEqual(card["license_no"], "K01-23-456789")
+        self.assertTrue(card["is_verified"])
+        self.assertEqual(card["qr_svg_url"], f"/api/rider/{r_id}/id-qr.svg")
+        self.assertTrue(card["verify_url"].endswith(f"/verify/rider/{r_id}"))
+
+        # 3. QR SVG endpoint returns crisp valid SVG and 404 for unknown rider
+        qr_resp = self.client.get(card["qr_svg_url"])
+        self.assertEqual(qr_resp.status_code, 200)
+        self.assertEqual(qr_resp.mimetype, "image/svg+xml")
+        svg_text = qr_resp.get_data(as_text=True)
+        self.assertIn("<svg ", svg_text)
+        self.assertIn("<path d=", svg_text)
+
+        mat = qr_svg.make_qr_matrix(card["verify_url"])
+        self.assertGreaterEqual(len(mat), 21)
+        self.assertEqual(self.client.get("/api/rider/999999/id-qr.svg").status_code, 404)
+
+        # 4. Public tourist QR verification page works without login and masks raw license
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        pub_resp = self.client.get(f"/verify/rider/{r_id}")
+        self.assertEqual(pub_resp.status_code, 200)
+        pub_html = pub_resp.get_data(as_text=True)
+        self.assertIn("OFFICIALLY VERIFIED CCRC RIDER", pub_html)
+        self.assertIn(expected_club_id, pub_html)
+        self.assertIn("Kuya Ben Official", pub_html)
+        self.assertIn("CAM 8821", pub_html)
+        self.assertIn("Honda Click 160", pub_html)
+        self.assertIn("K01-••-•••789", pub_html)
+        self.assertNotIn("K01-23-456789", pub_html)
+
+        # 5. Suspended rider shows clear red warning on live QR scan
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute("UPDATE riders SET status = ? WHERE id = ?", ("suspended", r_id))
+            conn.commit()
+        finally:
+            conn.close()
+        susp_resp = self.client.get(f"/verify/rider/{r_id}")
+        self.assertEqual(susp_resp.status_code, 200)
+        susp_html = susp_resp.get_data(as_text=True)
+        self.assertIn("SUSPENDED / INACTIVE RIDER", susp_html)
+        self.assertNotIn("OFFICIALLY VERIFIED CCRC RIDER", susp_html)
+
+        # 6. Unknown rider ID returns 404 verification warning page
+        missing_resp = self.client.get("/verify/rider/999999")
+        self.assertEqual(missing_resp.status_code, 404)
+        self.assertIn("Rider ID Not Found", missing_resp.get_data(as_text=True))
+
+        # 7. Rider Hub and Customer Track templates expose Official ID UI controls
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="open-rider-id-card-btn"', rider_html)
+        self.assertIn('id="rider-official-id-modal"', rider_html)
+        self.assertIn('id="oid-qr-img"', rider_html)
+        self.assertIn('id="oid-print-btn"', rider_html)
+        self.assertIn('id="oid-copy-link-btn"', rider_html)
+
 
 if __name__ == "__main__":
     unittest.main()

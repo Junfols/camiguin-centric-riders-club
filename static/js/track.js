@@ -61,6 +61,7 @@
   const riderAvatar = document.getElementById("rider-avatar");
   const riderCallBtn = document.getElementById("rider-call-btn");
   const riderSmsBtn = document.getElementById("rider-sms-btn");
+  const riderVerifyIdLink = document.getElementById("rider-verify-id-link");
   const inappCallRiderBtn = document.getElementById("inapp-call-rider-btn");
   const chatInappCallBtn = document.getElementById("chat-inapp-call-btn");
   const chatVoiceBtn = document.getElementById("chat-voice-btn");
@@ -813,8 +814,13 @@
       }
       if (riderCallBtn && b.rider_phone) riderCallBtn.href = `tel:${b.rider_phone}`;
       if (riderSmsBtn && b.rider_phone) riderSmsBtn.href = `sms:${b.rider_phone}`;
+      if (riderVerifyIdLink) {
+        riderVerifyIdLink.href = `/verify/rider/${encodeURIComponent(b.rider_id)}`;
+        riderVerifyIdLink.classList.remove("hidden");
+      }
     } else if (!b.rider_id && assignedRiderCard) {
       assignedRiderCard.classList.add("hidden");
+      if (riderVerifyIdLink) riderVerifyIdLink.classList.add("hidden");
     }
 
     syncFocusedMapMarkers(b, groupBookings);

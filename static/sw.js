@@ -12,7 +12,7 @@ const PRECACHE_ASSETS = [
   "/static/icons/icon.svg"
 ];
 
-const NO_CACHE_PREFIXES = ["/api/", "/admin", "/rider", "/history", "/track"];
+const NO_CACHE_PREFIXES = ["/api/", "/admin", "/rider", "/history", "/track", "/verify"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
