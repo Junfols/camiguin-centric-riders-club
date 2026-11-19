@@ -337,6 +337,26 @@
           </button>
         </form>
       </div>
+
+      <!-- Fresh Launch Wipe / Reset Section -->
+      <div style="padding:1.2rem;background:#ffffff;border:1px solid #fee2e2;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+            🧹
+          </div>
+          <div>
+            <strong style="font-size:1rem;color:#991b1b;">Wipe Test Data (Launch Reset)</strong>
+            <div class="text-muted" style="font-size:0.8rem;">Clear test bookings, chat &amp; accounts for official launch</div>
+          </div>
+        </div>
+        <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
+          Safely clear all test bookings, test customers, calls, and test rider registrations. Your official Fare Matrix and club settings remain untouched.
+        </p>
+        <button type="button" class="btn btn-block" onclick="promptLaunchReset()" style="background:#dc2626;color:#ffffff;font-weight:600;padding:10px 14px;border:none;border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span>🗑️</span> Reset Database for Launch
+        </button>
+        <div id="reset-status-msg" class="hidden" style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
+      </div>
     </div>
   </div>
 
@@ -1031,6 +1051,57 @@
       }
     });
   }
+
+  // Launch Reset Main Function
+  window.promptLaunchReset = async function() {
+    const confirmed = confirm("⚠️ DANGER ZONE: Are you sure you want to wipe all test bookings, chat logs, call history, and test accounts to prepare for official launch?\n\nClub settings and fare matrix will be preserved.");
+    if (!confirmed) return;
+
+    const pwd = prompt("Please enter your Admin Password to confirm launch wipe:");
+    if (!pwd) return;
+
+    const statusEl = document.getElementById("reset-status-msg");
+    if (statusEl) {
+      statusEl.className = "";
+      statusEl.style.display = "block";
+      statusEl.style.background = "#eff6ff";
+      statusEl.style.color = "#1e40af";
+      statusEl.textContent = "Wiping test data. Please wait...";
+    }
+
+    try {
+      const res = await fetch("/api/admin/reset-launch-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+          admin_password: pwd,
+          wipe_riders: true,
+          wipe_customers: true,
+          wipe_bookings: true
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Reset failed.");
+
+      if (statusEl) {
+        statusEl.style.background = "#ecfdf5";
+        statusEl.style.color = "#065f46";
+        statusEl.textContent = "✅ " + data.message;
+      }
+      alert("✅ " + data.message + "\n\nPage will now refresh.");
+      window.location.reload();
+    } catch (err) {
+      if (statusEl) {
+        statusEl.style.background = "#fef2f2";
+        statusEl.style.color = "#991b1b";
+        statusEl.textContent = "❌ " + err.message;
+      }
+      alert("❌ Error: " + err.message);
+    }
+  };
 
   // Google Drive Guide Modal Handlers
   window.openGdriveGuideModal = function() {

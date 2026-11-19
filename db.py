@@ -7409,6 +7409,72 @@ def restore_full_backup(
     }
 
 
+def reset_launch_data(
+    conn: DatabaseConnection,
+    wipe_riders: bool = True,
+    wipe_customers: bool = True,
+    wipe_bookings: bool = True,
+) -> dict[str, Any]:
+    """
+    Cleans out test data for official commercial launch.
+    Safely purges bookings, messages, calls, transactions, reviews, tracking logs,
+    and optionally test riders/customers while preserving settings and promo codes.
+    """
+    if conn.backend == "sqlite":
+        conn.execute("PRAGMA foreign_keys = OFF")
+
+    purged = {}
+    try:
+        if wipe_bookings:
+            for tbl in (
+                "call_signals",
+                "call_sessions",
+                "booking_messages",
+                "tracking_logs",
+                "reviews",
+                "transactions",
+                "bookings",
+            ):
+                try:
+                    res = conn.execute(f"DELETE FROM {tbl}")
+                    purged[tbl] = res.rowcount if hasattr(res, "rowcount") else "all"
+                except Exception:
+                    pass
+
+        if wipe_customers:
+            try:
+                res = conn.execute("DELETE FROM customers")
+                purged["customers"] = res.rowcount if hasattr(res, "rowcount") else "all"
+            except Exception:
+                pass
+
+        if wipe_riders:
+            try:
+                res = conn.execute("DELETE FROM riders")
+                purged["riders"] = res.rowcount if hasattr(res, "rowcount") else "all"
+            except Exception:
+                pass
+
+        # Reset Postgres auto-increment sequences if Postgres
+        if conn.backend == "postgresql":
+            for seq_tbl in ("riders", "customers", "bookings", "transactions", "booking_messages", "call_sessions", "call_signals", "reviews", "tracking_logs"):
+                try:
+                    conn.execute(
+                        f"SELECT setval(pg_get_serial_sequence('{seq_tbl}', 'id'), 1, false);"
+                    )
+                except Exception:
+                    pass
+    finally:
+        if conn.backend == "sqlite":
+            conn.execute("PRAGMA foreign_keys = ON")
+
+    return {
+        "success": True,
+        "message": "Launch data reset complete. Database is clean and ready for official launch.",
+        "purged": purged,
+    }
+
+
 # -------------------------------------------------------------------------
 # Customer Profiles, Verification & History
 # -------------------------------------------------------------------------

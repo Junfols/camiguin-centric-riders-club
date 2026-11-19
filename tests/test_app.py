@@ -3507,6 +3507,55 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Accepting", rider_html)
         self.assertIn("Heading Dest", rider_html)
 
+    def test_admin_reset_launch_data(self):
+        # 1. Unauthenticated or wrong password rejected
+        unauth_resp = self.client.post("/api/admin/reset-launch-data", json={"admin_password": "admin"})
+        self.assertEqual(unauth_resp.status_code, 401)
+
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+
+        wrong_pwd = self.client.post("/api/admin/reset-launch-data", json={"admin_password": "wrongpassword"})
+        self.assertEqual(wrong_pwd.status_code, 403)
+
+        # 2. Seed some riders, customers, and bookings
+        rid = self._create_active_rider()
+        cid = self._create_customer()
+        book_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Reset Test Cust",
+                "customer_phone": "09179998877",
+                "pickup_address": "Mambajao Town Plaza",
+                "dropoff_address": "White Island Ferry Terminal",
+                "service_type": "pahatud",
+            },
+        )
+        self.assertEqual(book_resp.status_code, 201)
+
+        # 3. Perform clean launch reset
+        reset_resp = self.client.post("/api/admin/reset-launch-data", json={"admin_password": "admin1234"})
+        self.assertEqual(reset_resp.status_code, 200)
+        res = reset_resp.get_json()
+        self.assertTrue(res["success"])
+
+        # 4. Verify tables are clean while settings and promos remain intact
+        from db import get_connection
+        conn = get_connection(self.db_path)
+        try:
+            r_cnt = conn.execute("SELECT COUNT(*) AS c FROM riders").fetchone()["c"]
+            b_cnt = conn.execute("SELECT COUNT(*) AS c FROM bookings").fetchone()["c"]
+            c_cnt = conn.execute("SELECT COUNT(*) AS c FROM customers").fetchone()["c"]
+            s_cnt = conn.execute("SELECT COUNT(*) AS c FROM settings").fetchone()["c"]
+            p_cnt = conn.execute("SELECT COUNT(*) AS c FROM promo_codes").fetchone()["c"]
+            self.assertEqual(r_cnt, 0)
+            self.assertEqual(b_cnt, 0)
+            self.assertEqual(c_cnt, 0)
+            self.assertGreater(s_cnt, 0)
+            self.assertGreater(p_cnt, 0)
+        finally:
+            conn.close()
+
 
 if __name__ == "__main__":
     unittest.main()

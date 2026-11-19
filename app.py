@@ -32,6 +32,7 @@ from db import (
     CAMIGUIN_KNOWN_PLACES,
     export_full_backup,
     restore_full_backup,
+    reset_launch_data,
     add_booking_message,
     get_booking_messages,
     add_call_signal,
@@ -2671,6 +2672,39 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except Exception as e:
             conn.rollback()
             return jsonify({"error": f"Restore failed: {str(e)}"}), 500
+
+
+    @app.post("/api/admin/reset-launch-data")
+    def admin_reset_launch_data():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin login required."}), 401
+
+        payload = request.get_json(silent=True) or {}
+        admin_pwd = (payload.get("admin_password") or "").strip()
+
+        # Verify admin password for critical destructive operation
+        conn = get_db()
+        settings = get_settings(conn)
+        stored_hash = settings.get("admin_password_hash") or ""
+        if not stored_hash or not check_password_hash(stored_hash, admin_pwd):
+            return jsonify({"error": "Incorrect admin password. Action aborted."}), 403
+
+        wipe_riders = bool(payload.get("wipe_riders", True))
+        wipe_customers = bool(payload.get("wipe_customers", True))
+        wipe_bookings = bool(payload.get("wipe_bookings", True))
+
+        try:
+            result = reset_launch_data(
+                conn,
+                wipe_riders=wipe_riders,
+                wipe_customers=wipe_customers,
+                wipe_bookings=wipe_bookings,
+            )
+            conn.commit()
+            return jsonify(result)
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": f"Reset failed: {str(e)}"}), 500
 
 
     @app.post("/api/admin/backup/google-drive")
