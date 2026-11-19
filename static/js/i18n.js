@@ -1945,6 +1945,12 @@
       zh: "📞 同伴骑手来电...",
       ja: "📞 仲間ライダーからの着信...",
     },
+    "Change Language:": {
+      ceb: "Ilisi ang Pinulongan:",
+      fil: "Palitan ang Wika:",
+      zh: "切换语言：",
+      ja: "言語を変更：",
+    },
   };
 
   function getStoredLang() {
