@@ -46,23 +46,39 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             conn.close()
 
     def test_pwa_endpoints(self):
-        # 1. Manifest
+        # 1. Manifest with separate framed 'any' & safe-zone 'maskable' icons
         m_resp = self.client.get("/manifest.webmanifest")
         self.assertEqual(m_resp.status_code, 200)
         data = m_resp.get_json()
         self.assertIn("Camiguin Centric Riders Club", data["name"])
         self.assertEqual(data["display"], "standalone")
+        icons = data.get("icons") or []
+        purposes = {ic.get("purpose") for ic in icons}
+        self.assertIn("any", purposes)
+        self.assertIn("maskable", purposes)
+        for ic in icons:
+            with self.client.get(ic["src"]) as icon_resp:
+                self.assertEqual(icon_resp.status_code, 200)
+                self.assertEqual(icon_resp.mimetype, "image/png")
 
-        # 2. Service Worker v16
-        sw_resp = self.client.get("/sw.js")
-        self.assertEqual(sw_resp.status_code, 200)
-        sw_text = sw_resp.get_data(as_text=True)
-        self.assertIn("ccrc-pwa-v19", sw_text)
+        # 1b. Favicon & Apple Touch Icon
+        with self.client.get("/favicon.ico") as fav_resp:
+            self.assertEqual(fav_resp.status_code, 200)
+        with self.client.get("/static/icons/apple-touch-icon.png?v=2") as apple_resp:
+            self.assertEqual(apple_resp.status_code, 200)
+            self.assertEqual(apple_resp.mimetype, "image/png")
+
+        # 2. Service Worker v20
+        with self.client.get("/sw.js") as sw_resp:
+            self.assertEqual(sw_resp.status_code, 200)
+            sw_text = sw_resp.get_data(as_text=True)
+        self.assertIn("ccrc-pwa-v20", sw_text)
         self.assertIn("/static/css/style.css?v=31", sw_text)
         self.assertIn("/static/js/i18n.js?v=9", sw_text)
         self.assertIn("/static/js/app.js?v=35", sw_text)
         self.assertIn("/static/js/auth.js?v=1", sw_text)
         self.assertIn("/static/js/voice_call.js?v=1", sw_text)
+        self.assertIn("/static/icons/icon-maskable-192.png?v=2", sw_text)
 
         # 3. Offline fallback in English
         off_resp = self.client.get("/offline")

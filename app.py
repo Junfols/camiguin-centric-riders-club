@@ -249,32 +249,52 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         settings = get_settings(conn)
         club_name = settings.get("club_name", "Camiguin Centric Riders Club")
-        return jsonify(
+        resp = jsonify(
             {
                 "name": club_name,
                 "short_name": "Centric Riders",
                 "description": "On-Demand Island Rider & Express Delivery Booking — Passenger Ride-Hailing, Parcel Courier, & Buy-For-Me in Camiguin.",
                 "start_url": "/",
                 "display": "standalone",
-                "background_color": "#ffffff",
+                "background_color": "#f5f7fa",
                 "theme_color": "#f97316",
                 "orientation": "portrait-primary",
                 "icons": [
                     {
-                        "src": "/static/icons/icon-192.png",
+                        "src": "/static/icons/icon-192.png?v=2",
                         "sizes": "192x192",
                         "type": "image/png",
-                        "purpose": "any maskable",
+                        "purpose": "any",
                     },
                     {
-                        "src": "/static/icons/icon-512.png",
+                        "src": "/static/icons/icon-512.png?v=2",
                         "sizes": "512x512",
                         "type": "image/png",
-                        "purpose": "any maskable",
+                        "purpose": "any",
+                    },
+                    {
+                        "src": "/static/icons/icon-maskable-192.png?v=2",
+                        "sizes": "192x192",
+                        "type": "image/png",
+                        "purpose": "maskable",
+                    },
+                    {
+                        "src": "/static/icons/icon-maskable-512.png?v=2",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "maskable",
                     },
                 ],
             }
         )
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+    @app.get("/favicon.ico")
+    def favicon():
+        response = send_from_directory("static/icons", "icon-192.png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response
 
     @app.get("/sw.js")
     def service_worker():
