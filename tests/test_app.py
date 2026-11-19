@@ -3636,6 +3636,15 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(end_resp.status_code, 200)
         self.assertEqual(end_resp.get_json()["call"]["status"], "ended")
 
+        # Lightweight health ping (does not wake DB unless ?db=1 is passed)
+        h_resp = self.client.get("/api/health")
+        self.assertEqual(h_resp.status_code, 200)
+        self.assertEqual(h_resp.get_json()["status"], "ok")
+
+        h_db_resp = self.client.get("/api/health?db=1")
+        self.assertEqual(h_db_resp.status_code, 200)
+        self.assertEqual(h_db_resp.get_json()["status"], "ok")
+
 
 if __name__ == "__main__":
     unittest.main()

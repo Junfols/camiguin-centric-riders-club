@@ -276,6 +276,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def offline_page():
         return render_template("offline.html")
 
+    @app.get("/api/health")
+    def health():
+        raw_url = (
+            os.environ.get("DATABASE_URL")
+            or os.environ.get("POSTGRES_URL")
+            or os.environ.get("SUPABASE_DB_URL")
+            or ""
+        ).strip()
+        is_pg = (not app.config.get("TESTING")) and raw_url.startswith(("postgres://", "postgresql://"))
+        backend = "postgresql" if is_pg else "sqlite"
+        if (request.args.get("db") or "").strip().lower() in ("1", "true", "yes"):
+            conn = get_db()
+            conn.execute("SELECT 1").fetchone()
+            backend = getattr(conn, "backend", backend)
+        return jsonify({
+            "status": "ok",
+            "backend": backend,
+            "date": get_now_pht().date().isoformat(),
+        })
+
     @app.get("/media/<path:filename>")
     def serve_uploaded_media(filename: str):
         conn = get_db()
