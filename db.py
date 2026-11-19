@@ -4029,6 +4029,10 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE booking_messages ADD COLUMN IF NOT EXISTS msg_type VARCHAR(24) DEFAULT 'text'",
             "ALTER TABLE booking_messages ADD COLUMN IF NOT EXISTS media_url TEXT DEFAULT ''",
             "ALTER TABLE booking_messages ADD COLUMN IF NOT EXISTS media_duration DOUBLE PRECISION DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS group_code VARCHAR(32) DEFAULT ''",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS rider_slot INTEGER DEFAULT 1",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS group_size INTEGER DEFAULT 1",
+            "CREATE INDEX IF NOT EXISTS idx_bookings_group_code ON bookings(group_code)",
         ]:
             try:
                 conn.execute(migration)
@@ -4055,6 +4059,10 @@ def init_db(conn: DatabaseConnection) -> None:
             "ALTER TABLE booking_messages ADD COLUMN msg_type TEXT DEFAULT 'text'",
             "ALTER TABLE booking_messages ADD COLUMN media_url TEXT DEFAULT ''",
             "ALTER TABLE booking_messages ADD COLUMN media_duration REAL DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN group_code TEXT DEFAULT ''",
+            "ALTER TABLE bookings ADD COLUMN rider_slot INTEGER DEFAULT 1",
+            "ALTER TABLE bookings ADD COLUMN group_size INTEGER DEFAULT 1",
+            "CREATE INDEX IF NOT EXISTS idx_bookings_group_code ON bookings(group_code)",
         ]:
             try:
                 conn.execute(migration)
@@ -4313,7 +4321,6 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_customer_phone ON bookings(customer_phone)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_group_code ON bookings(group_code)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
@@ -4581,7 +4588,6 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_rider ON bookings(rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_status_rider ON bookings(status, rider_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_customer_phone ON bookings(customer_phone)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_bookings_group_code ON bookings(group_code)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_riders_online ON riders(is_online, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_booking ON tracking_logs(booking_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_rider ON transactions(rider_id)")
