@@ -39,6 +39,27 @@
   const riderChatVoiceTimer = document.getElementById("rider-chat-voice-timer");
   const riderChatVoiceCancelBtn = document.getElementById("rider-chat-voice-cancel-btn");
   const riderChatVoiceSendBtn = document.getElementById("rider-chat-voice-send-btn");
+  const riderChatPhotoBtn = document.getElementById("rider-chat-photo-btn");
+  const riderChatPhotoInput = document.getElementById("rider-chat-photo-input");
+  const riderChatPhotoPreviewBar = document.getElementById("rider-chat-photo-preview-bar");
+  const riderChatPhotoPreviewThumb = document.getElementById("rider-chat-photo-preview-thumb");
+  const riderChatPhotoCaptionInput = document.getElementById("rider-chat-photo-caption-input");
+  const riderChatPhotoCancelBtn = document.getElementById("rider-chat-photo-cancel-btn");
+  const riderChatPhotoSendBtn = document.getElementById("rider-chat-photo-send-btn");
+  let pendingRiderChatPhotoDataUrl = "";
+  let isSendingRiderChatPhoto = false;
+
+  function clearRiderChatPhotoPreview() {
+    pendingRiderChatPhotoDataUrl = "";
+    if (riderChatPhotoInput) riderChatPhotoInput.value = "";
+    if (riderChatPhotoCaptionInput) riderChatPhotoCaptionInput.value = "";
+    if (riderChatPhotoPreviewThumb) riderChatPhotoPreviewThumb.removeAttribute("src");
+    if (riderChatPhotoPreviewBar) riderChatPhotoPreviewBar.classList.add("hidden");
+    if (riderChatPhotoSendBtn) {
+      riderChatPhotoSendBtn.disabled = false;
+      riderChatPhotoSendBtn.textContent = (typeof window.ccrcT === "function") ? window.ccrcT("Send Photo ✈️") : "Send Photo ✈️";
+    }
+  }
   const navPickupBtn = document.getElementById("nav-pickup-btn");
   const navDropoffBtn = document.getElementById("nav-dropoff-btn");
   const jobInProgressBtn = document.getElementById("job-in-progress-btn");
@@ -2773,6 +2794,15 @@
           <audio controls preload="metadata" src="${escapeHtml(safeMediaUrl)}" class="chat-voice-player"></audio>
         </div>
       `;
+    } else if (msg.msg_type === "image" && safeMediaUrl) {
+      const rawCaption = String(msg.message || "").trim();
+      const hasCaption = Boolean(rawCaption && rawCaption !== "📸 Photo");
+      bodyHtml = `
+        <div class="chat-photo-bubble-body">
+          <img src="${escapeHtml(safeMediaUrl)}" alt="${escapeHtml(hasCaption ? rawCaption : "Chat photo")}" class="chat-photo-thumb" loading="lazy" title="Tap photo to zoom">
+          ${hasCaption ? `<div class="chat-photo-caption">${escapeHtml(rawCaption)}</div>` : ""}
+        </div>
+      `;
     } else {
       bodyHtml = escapeHtml(msg.message);
     }
@@ -2784,6 +2814,20 @@
         <span class="chat-time">${timeStr}</span>
       </div>
     `;
+
+    if (msg.msg_type === "image" && safeMediaUrl) {
+      const thumbEl = wrap.querySelector(".chat-photo-thumb");
+      if (thumbEl) {
+        thumbEl.addEventListener("click", () => {
+          if (typeof window.openCcrcPhotoLightbox === "function") {
+            window.openCcrcPhotoLightbox(safeMediaUrl, String(msg.message || "").trim());
+          }
+        });
+        thumbEl.addEventListener("load", () => {
+          if (riderChatBox) riderChatBox.scrollTop = riderChatBox.scrollHeight;
+        }, { once: true });
+      }
+    }
 
     riderChatBox.appendChild(wrap);
     riderChatBox.scrollTop = riderChatBox.scrollHeight;
@@ -2879,17 +2923,121 @@
     });
   }
 
+  async function sendRiderChatPhoto() {
+    if (!pendingRiderChatPhotoDataUrl || isSendingRiderChatPhoto || !activeJob || !activeJob.id) return;
+    isSendingRiderChatPhoto = true;
+    if (riderChatPhotoSendBtn) {
+      riderChatPhotoSendBtn.disabled = true;
+      riderChatPhotoSendBtn.textContent = "Sending...";
+    }
+    try {
+      const caption = riderChatPhotoCaptionInput ? riderChatPhotoCaptionInput.value.trim() : "";
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const headers = { "Content-Type": "application/json" };
+      if (csrfMeta && csrfMeta.getAttribute("content")) {
+        headers["X-CSRF-Token"] = csrfMeta.getAttribute("content");
+      }
+      const res = await fetch(`/api/chat/${activeJob.id}/photo?after=${riderLastMessageId}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          photo_base64: pendingRiderChatPhotoDataUrl,
+          caption,
+          sender_role: "rider",
+        }),
+      });
+      if (res.status === 401) {
+        handleExpiredRiderSession();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert((data && data.error) || "Could not send photo. Please try again.");
+        return;
+      }
+      const list = (data && Array.isArray(data.messages) && data.messages.length > 0)
+        ? data.messages
+        : (data && data.message ? [data.message] : []);
+      for (const m of list) {
+        if (m && m.id > riderLastMessageId) {
+          riderLastMessageId = m.id;
+          appendRiderChatMessage(m, m.sender_role === "rider");
+        }
+      }
+      clearRiderChatPhotoPreview();
+    } catch (_) {
+      alert("Network error while sending photo. Please try again.");
+    } finally {
+      isSendingRiderChatPhoto = false;
+      if (riderChatPhotoSendBtn) {
+        riderChatPhotoSendBtn.disabled = false;
+        riderChatPhotoSendBtn.textContent = (typeof window.ccrcT === "function") ? window.ccrcT("Send Photo ✈️") : "Send Photo ✈️";
+      }
+    }
+  }
+
+  if (riderChatPhotoBtn && riderChatPhotoInput) {
+    riderChatPhotoBtn.addEventListener("click", () => {
+      if (isSendingRiderChatPhoto) return;
+      riderChatPhotoInput.value = "";
+      riderChatPhotoInput.click();
+    });
+    riderChatPhotoInput.addEventListener("change", async () => {
+      const file = riderChatPhotoInput.files && riderChatPhotoInput.files[0];
+      if (!file) return;
+      if (typeof window.ccrcCompressChatPhoto !== "function") return;
+      riderChatPhotoBtn.disabled = true;
+      riderChatPhotoBtn.textContent = "⏳";
+      try {
+        const compressed = await window.ccrcCompressChatPhoto(file);
+        pendingRiderChatPhotoDataUrl = compressed.dataUrl;
+        if (riderChatPhotoPreviewThumb) riderChatPhotoPreviewThumb.src = pendingRiderChatPhotoDataUrl;
+        if (riderChatPhotoPreviewBar) riderChatPhotoPreviewBar.classList.remove("hidden");
+        if (riderChatPhotoCaptionInput) riderChatPhotoCaptionInput.focus();
+      } catch (err) {
+        clearRiderChatPhotoPreview();
+        alert((err && err.message) || "Could not load photo.");
+      } finally {
+        riderChatPhotoBtn.disabled = false;
+        riderChatPhotoBtn.textContent = "📷";
+      }
+    });
+  }
+  if (riderChatPhotoPreviewThumb) {
+    riderChatPhotoPreviewThumb.addEventListener("click", () => {
+      if (pendingRiderChatPhotoDataUrl && typeof window.openCcrcPhotoLightbox === "function") {
+        window.openCcrcPhotoLightbox(pendingRiderChatPhotoDataUrl, riderChatPhotoCaptionInput ? riderChatPhotoCaptionInput.value.trim() : "");
+      }
+    });
+  }
+  if (riderChatPhotoCancelBtn) {
+    riderChatPhotoCancelBtn.addEventListener("click", clearRiderChatPhotoPreview);
+  }
+  if (riderChatPhotoSendBtn) {
+    riderChatPhotoSendBtn.addEventListener("click", sendRiderChatPhoto);
+  }
+  if (riderChatPhotoCaptionInput) {
+    riderChatPhotoCaptionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendRiderChatPhoto();
+      }
+    });
+  }
+
   function resetRiderChat(job) {
     if (!job) {
       if (riderChatPollTimer) clearInterval(riderChatPollTimer);
       riderChatPollTimer = null;
       currentActiveJobId = null;
       if (riderChatVoiceBar) riderChatVoiceBar.classList.add("hidden");
+      clearRiderChatPhotoPreview();
       return;
     }
     if (currentActiveJobId !== job.id) {
       currentActiveJobId = job.id;
       riderLastMessageId = 0;
+      clearRiderChatPhotoPreview();
       if (riderChatBox) riderChatBox.innerHTML = "";
       if (riderChatEmptyHint) {
         riderChatEmptyHint.style.display = "block";

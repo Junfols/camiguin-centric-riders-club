@@ -6469,7 +6469,7 @@ def add_booking_message(
     media_duration: float = 0.0,
 ) -> dict[str, Any]:
     now = get_now_pht().isoformat(timespec="seconds")
-    clean_type = "voice" if msg_type == "voice" else "text"
+    clean_type = msg_type if msg_type in ("voice", "image") else "text"
     clean_url = (media_url or "").strip()
     try:
         clean_dur = max(0.0, round(float(media_duration or 0.0), 1))

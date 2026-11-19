@@ -68,6 +68,27 @@
   const chatVoiceTimer = document.getElementById("chat-voice-timer");
   const chatVoiceCancelBtn = document.getElementById("chat-voice-cancel-btn");
   const chatVoiceSendBtn = document.getElementById("chat-voice-send-btn");
+  const chatPhotoBtn = document.getElementById("chat-photo-btn");
+  const chatPhotoInput = document.getElementById("chat-photo-input");
+  const chatPhotoPreviewBar = document.getElementById("chat-photo-preview-bar");
+  const chatPhotoPreviewThumb = document.getElementById("chat-photo-preview-thumb");
+  const chatPhotoCaptionInput = document.getElementById("chat-photo-caption-input");
+  const chatPhotoCancelBtn = document.getElementById("chat-photo-cancel-btn");
+  const chatPhotoSendBtn = document.getElementById("chat-photo-send-btn");
+  let pendingChatPhotoDataUrl = "";
+  let isSendingChatPhoto = false;
+
+  function clearCustomerChatPhotoPreview() {
+    pendingChatPhotoDataUrl = "";
+    if (chatPhotoInput) chatPhotoInput.value = "";
+    if (chatPhotoCaptionInput) chatPhotoCaptionInput.value = "";
+    if (chatPhotoPreviewThumb) chatPhotoPreviewThumb.removeAttribute("src");
+    if (chatPhotoPreviewBar) chatPhotoPreviewBar.classList.add("hidden");
+    if (chatPhotoSendBtn) {
+      chatPhotoSendBtn.disabled = false;
+      chatPhotoSendBtn.textContent = (typeof window.ccrcT === "function") ? window.ccrcT("Send Photo ✈️") : "Send Photo ✈️";
+    }
+  }
   const liveDistanceIndicator = document.getElementById("live-distance-indicator");
 
   function syncCustomerVoiceCallContext(b) {
@@ -706,6 +727,7 @@
         }
       }
       if (chatVoiceBar) chatVoiceBar.classList.add("hidden");
+      clearCustomerChatPhotoPreview();
       lastGcashPaymentStatus = String(b.payment_status || "pending").toLowerCase();
       if (gcashCustomerFeedback) gcashCustomerFeedback.classList.add("hidden");
       if (gcashRefInput) {
@@ -1038,6 +1060,15 @@
           <audio controls preload="metadata" src="${escapeHtml(safeMediaUrl)}" class="chat-voice-player"></audio>
         </div>
       `;
+    } else if (msg.msg_type === "image" && safeMediaUrl) {
+      const rawCaption = String(msg.message || "").trim();
+      const hasCaption = Boolean(rawCaption && rawCaption !== "📸 Photo");
+      bodyHtml = `
+        <div class="chat-photo-bubble-body">
+          <img src="${escapeHtml(safeMediaUrl)}" alt="${escapeHtml(hasCaption ? rawCaption : "Chat photo")}" class="chat-photo-thumb" loading="lazy" title="Tap photo to zoom">
+          ${hasCaption ? `<div class="chat-photo-caption">${escapeHtml(rawCaption)}</div>` : ""}
+        </div>
+      `;
     } else {
       bodyHtml = escapeHtml(msg.message);
     }
@@ -1049,6 +1080,20 @@
         <span class="chat-time">${timeStr}</span>
       </div>
     `;
+
+    if (msg.msg_type === "image" && safeMediaUrl) {
+      const thumbEl = wrap.querySelector(".chat-photo-thumb");
+      if (thumbEl) {
+        thumbEl.addEventListener("click", () => {
+          if (typeof window.openCcrcPhotoLightbox === "function") {
+            window.openCcrcPhotoLightbox(safeMediaUrl, String(msg.message || "").trim());
+          }
+        });
+        thumbEl.addEventListener("load", () => {
+          if (chatMessagesBox) chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight;
+        }, { once: true });
+      }
+    }
 
     chatMessagesBox.appendChild(wrap);
     chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight;
@@ -1138,6 +1183,104 @@
           }
         }
       },
+    });
+  }
+
+  async function sendCustomerChatPhoto() {
+    if (!pendingChatPhotoDataUrl || isSendingChatPhoto || !booking || !booking.booking_code) return;
+    isSendingChatPhoto = true;
+    if (chatPhotoSendBtn) {
+      chatPhotoSendBtn.disabled = true;
+      chatPhotoSendBtn.textContent = "Sending...";
+    }
+    try {
+      const caption = chatPhotoCaptionInput ? chatPhotoCaptionInput.value.trim() : "";
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const headers = { "Content-Type": "application/json" };
+      if (csrfMeta && csrfMeta.getAttribute("content")) {
+        headers["X-CSRF-Token"] = csrfMeta.getAttribute("content");
+      }
+      const res = await fetch(`/api/chat/${encodeURIComponent(booking.booking_code)}/photo?after=${lastMessageId}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          photo_base64: pendingChatPhotoDataUrl,
+          caption,
+          sender_role: "customer",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert((data && data.error) || "Could not send photo. Please try again.");
+        return;
+      }
+      const list = (data && Array.isArray(data.messages) && data.messages.length > 0)
+        ? data.messages
+        : (data && data.message ? [data.message] : []);
+      for (const m of list) {
+        if (m && m.id > lastMessageId) {
+          lastMessageId = m.id;
+          appendChatMessage(m, m.sender_role === "customer");
+        }
+      }
+      clearCustomerChatPhotoPreview();
+    } catch (_) {
+      alert("Network error while sending photo. Please try again.");
+    } finally {
+      isSendingChatPhoto = false;
+      if (chatPhotoSendBtn) {
+        chatPhotoSendBtn.disabled = false;
+        chatPhotoSendBtn.textContent = (typeof window.ccrcT === "function") ? window.ccrcT("Send Photo ✈️") : "Send Photo ✈️";
+      }
+    }
+  }
+
+  if (chatPhotoBtn && chatPhotoInput) {
+    chatPhotoBtn.addEventListener("click", () => {
+      if (isSendingChatPhoto) return;
+      chatPhotoInput.value = "";
+      chatPhotoInput.click();
+    });
+    chatPhotoInput.addEventListener("change", async () => {
+      const file = chatPhotoInput.files && chatPhotoInput.files[0];
+      if (!file) return;
+      if (typeof window.ccrcCompressChatPhoto !== "function") return;
+      chatPhotoBtn.disabled = true;
+      chatPhotoBtn.textContent = "⏳";
+      try {
+        const compressed = await window.ccrcCompressChatPhoto(file);
+        pendingChatPhotoDataUrl = compressed.dataUrl;
+        if (chatPhotoPreviewThumb) chatPhotoPreviewThumb.src = pendingChatPhotoDataUrl;
+        if (chatPhotoPreviewBar) chatPhotoPreviewBar.classList.remove("hidden");
+        if (chatPhotoCaptionInput) chatPhotoCaptionInput.focus();
+      } catch (err) {
+        clearCustomerChatPhotoPreview();
+        alert((err && err.message) || "Could not load photo.");
+      } finally {
+        chatPhotoBtn.disabled = false;
+        chatPhotoBtn.textContent = "📷";
+      }
+    });
+  }
+  if (chatPhotoPreviewThumb) {
+    chatPhotoPreviewThumb.addEventListener("click", () => {
+      if (pendingChatPhotoDataUrl && typeof window.openCcrcPhotoLightbox === "function") {
+        window.openCcrcPhotoLightbox(pendingChatPhotoDataUrl, chatPhotoCaptionInput ? chatPhotoCaptionInput.value.trim() : "");
+      }
+    });
+  }
+  if (chatPhotoCancelBtn) {
+    chatPhotoCancelBtn.addEventListener("click", clearCustomerChatPhotoPreview);
+  }
+  if (chatPhotoSendBtn) {
+    chatPhotoSendBtn.addEventListener("click", sendCustomerChatPhoto);
+  }
+  if (chatPhotoCaptionInput) {
+    chatPhotoCaptionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendCustomerChatPhoto();
+      }
     });
   }
 

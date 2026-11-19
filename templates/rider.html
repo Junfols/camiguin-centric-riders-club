@@ -467,8 +467,22 @@
           </div>
         </div>
 
+        <!-- Photo Attachment Preview Bar -->
+        <div id="rider-chat-photo-preview-bar" class="chat-photo-preview-bar hidden">
+          <div class="chat-photo-preview-top">
+            <img id="rider-chat-photo-preview-thumb" src="" alt="Selected photo preview" class="chat-photo-preview-thumb">
+            <input type="text" id="rider-chat-photo-caption-input" class="chat-photo-caption-input" placeholder="Add caption (receipt, landmark, proof)..." maxlength="240" autocomplete="off">
+          </div>
+          <div class="chat-photo-preview-actions">
+            <button type="button" id="rider-chat-photo-cancel-btn" class="btn btn-sm btn-outline" style="padding:5px 10px;font-size:0.78rem;">Cancel</button>
+            <button type="button" id="rider-chat-photo-send-btn" class="btn btn-sm btn-primary" style="padding:5px 12px;font-size:0.78rem;">Send Photo ✈️</button>
+          </div>
+        </div>
+
         <!-- Input Form -->
         <form class="chat-input-bar" id="rider-chat-form" style="margin-top:8px;">
+          <input type="file" id="rider-chat-photo-input" accept="image/*" class="hidden">
+          <button type="button" id="rider-chat-photo-btn" class="chat-photo-btn" title="Send Photo (Receipt, Landmark, Proof)" aria-label="Send Photo">📷</button>
           <button type="button" id="rider-chat-voice-btn" class="chat-voice-btn" title="Record Voice Message">🎙️</button>
           <input type="text" id="rider-chat-input-field" placeholder="Reply to customer..." maxlength="300" autocomplete="off" required>
           <button type="submit" id="rider-chat-send-btn" class="btn btn-primary chat-send-btn">

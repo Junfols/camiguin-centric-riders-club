@@ -389,8 +389,22 @@
       </div>
     </div>
 
+    <!-- Photo Attachment Preview Bar -->
+    <div id="chat-photo-preview-bar" class="chat-photo-preview-bar hidden">
+      <div class="chat-photo-preview-top">
+        <img id="chat-photo-preview-thumb" src="" alt="Selected photo preview" class="chat-photo-preview-thumb">
+        <input type="text" id="chat-photo-caption-input" class="chat-photo-caption-input" placeholder="Add caption (receipt, landmark, proof)..." maxlength="240" autocomplete="off">
+      </div>
+      <div class="chat-photo-preview-actions">
+        <button type="button" id="chat-photo-cancel-btn" class="btn btn-sm btn-outline" style="padding:5px 10px;font-size:0.78rem;">Cancel</button>
+        <button type="button" id="chat-photo-send-btn" class="btn btn-sm btn-primary" style="padding:5px 12px;font-size:0.78rem;">Send Photo ✈️</button>
+      </div>
+    </div>
+
     <!-- Input Form -->
     <form class="chat-input-bar" id="chat-form">
+      <input type="file" id="chat-photo-input" accept="image/*" class="hidden">
+      <button type="button" id="chat-photo-btn" class="chat-photo-btn" title="Send Photo (Receipt, Landmark, Proof)" aria-label="Send Photo">📷</button>
       <button type="button" id="chat-voice-btn" class="chat-voice-btn" title="Record Voice Message">🎙️</button>
       <input type="text" id="chat-input-field" placeholder="Type a message to rider..." maxlength="300" autocomplete="off" required>
       <button type="submit" id="chat-send-btn" class="btn btn-primary chat-send-btn" title="Send message">

@@ -3715,7 +3715,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         )
         self.assertEqual(sent_resp.status_code, 200)
         self.assertTrue(sent_resp.get_json()["success"])
-        self.assertEqual(sent_resp.get_json()["booking"]["payment_status"], "customer_marked_paid")
+        self.assertEqual(sent_resp.get_json()["booking"]["payment_status"], "customer_sent")
 
         # Verify ride history shows unreviewed completed trip and updates after late rating submission
         hist_before = self.client.get("/api/customer/history/09175559900").get_json()
@@ -3739,6 +3739,143 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         comp_trip_after = next(x for x in hist_after["history"] if x["id"] == b_id)
         self.assertTrue(comp_trip_after["already_reviewed"])
         self.assertEqual(comp_trip_after["review_rating"], 5)
+
+    def test_chat_photo_attachment_upload_and_display(self):
+        import base64
+        import io
+
+        r_id = self._create_active_rider(name="Kuya Photo Rider", phone="09178881122")
+        self._create_customer(name="Maria Photo Passenger", phone="09178883344")
+
+        # Create booking as customer and accept as rider
+        with self.client.session_transaction() as sess:
+            sess["customer_phone"] = "09178883344"
+        b_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Maria Photo Passenger",
+                "customer_phone": "09178883344",
+                "pickup_address": "Mambajao Public Market",
+                "dropoff_address": "Agoho Resort",
+                "service_type": "pabili",
+            },
+        )
+        self.assertEqual(b_resp.status_code, 201)
+        b_obj = b_resp.get_json()["booking"]
+        b_code = b_obj["booking_code"]
+        b_id = b_obj["id"]
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r_id
+        acc_resp = self.client.post(f"/api/bookings/{b_id}/accept")
+        self.assertEqual(acc_resp.status_code, 200)
+
+        # Minimal valid PNG & JPEG byte payloads (>= 20 bytes)
+        png_bytes = (
+            b"\x89PNG\r\n\x1a\n"
+            b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+            b"\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        jpg_bytes = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xd9"
+        png_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+
+        # 1. Unauthorized user cannot upload a photo
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        unauth_resp = self.client.post(
+            f"/api/chat/{b_code}/photo",
+            json={"photo_base64": png_data_url, "caption": "Should fail"},
+        )
+        self.assertEqual(unauth_resp.status_code, 401)
+
+        # 2. Customer uploads landmark photo via base64 JSON
+        with self.client.session_transaction() as sess:
+            sess["customer_phone"] = "09178883344"
+        cust_photo_resp = self.client.post(
+            f"/api/chat/{b_code}/photo",
+            json={
+                "photo_base64": png_data_url,
+                "caption": "Blue gate beside bakery",
+                "sender_role": "customer",
+            },
+        )
+        self.assertEqual(cust_photo_resp.status_code, 201)
+        cust_data = cust_photo_resp.get_json()
+        self.assertTrue(cust_data["success"])
+        cust_msg = cust_data["message"]
+        self.assertEqual(cust_msg["msg_type"], "image")
+        self.assertEqual(cust_msg["sender_role"], "customer")
+        self.assertEqual(cust_msg["message"], "Blue gate beside bakery")
+        self.assertTrue(cust_msg["media_url"].startswith("/media/chat_photo_"))
+
+        # Verify uploaded PNG is served cleanly from /media/
+        served_png = self.client.get(cust_msg["media_url"])
+        self.assertEqual(served_png.status_code, 200)
+        self.assertEqual(served_png.mimetype, "image/png")
+        self.assertEqual(served_png.data, png_bytes)
+
+        # 3. Invalid non-image format is rejected with 400
+        bad_b64 = base64.b64encode(b"this is definitely not an image file 1234567890").decode("ascii")
+        bad_resp = self.client.post(
+            f"/api/chat/{b_code}/photo",
+            json={"photo_base64": bad_b64, "sender_role": "customer"},
+        )
+        self.assertEqual(bad_resp.status_code, 400)
+
+        # 4. Rider uploads Pabili receipt photo via multipart/form-data (without caption & with caption)
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["rider_id"] = r_id
+        rider_photo_resp = self.client.post(
+            f"/api/chat/{b_id}/photo",
+            data={
+                "photo": (io.BytesIO(jpg_bytes), "receipt.jpg"),
+                "caption": "Store receipt Php 285",
+                "sender_role": "rider",
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(rider_photo_resp.status_code, 201)
+        rider_msg = rider_photo_resp.get_json()["message"]
+        self.assertEqual(rider_msg["msg_type"], "image")
+        self.assertEqual(rider_msg["sender_role"], "rider")
+        self.assertEqual(rider_msg["sender_name"], "Kuya Photo Rider")
+        self.assertEqual(rider_msg["message"], "Store receipt Php 285")
+        served_jpg = self.client.get(rider_msg["media_url"])
+        self.assertEqual(served_jpg.status_code, 200)
+        self.assertEqual(served_jpg.mimetype, "image/jpeg")
+        self.assertEqual(served_jpg.data, jpg_bytes)
+
+        # Blank caption falls back to "📸 Photo"
+        rider_nocap_resp = self.client.post(
+            f"/api/chat/{b_id}/photo",
+            json={"photo_base64": png_data_url, "caption": "   ", "sender_role": "rider"},
+        )
+        self.assertEqual(rider_nocap_resp.status_code, 201)
+        self.assertEqual(rider_nocap_resp.get_json()["message"]["message"], "📸 Photo")
+
+        # 5. Chat messages feed returns all image messages with media_url
+        feed = self.client.get(f"/api/chat/{b_id}/messages").get_json()
+        img_msgs = [m for m in feed["messages"] if m.get("msg_type") == "image"]
+        self.assertEqual(len(img_msgs), 3)
+        self.assertTrue(all(m.get("media_url", "").startswith("/media/chat_photo_") for m in img_msgs))
+
+        # 6. Templates and static assets expose chat photo & lightbox hooks
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="rider-chat-photo-btn"', rider_html)
+        self.assertIn('id="rider-chat-photo-preview-bar"', rider_html)
+        self.assertIn('id="ccrc-photo-lightbox"', rider_html)
+        self.assertIn("openCcrcPhotoLightbox", rider_html)
+        self.assertIn("ccrcCompressChatPhoto", rider_html)
+
+        with self.client.session_transaction() as sess:
+            sess.clear()
+            sess["customer_phone"] = "09178883344"
+        track_html = self.client.get(f"/track/{b_code}").get_data(as_text=True)
+        self.assertIn('id="chat-photo-btn"', track_html)
+        self.assertIn('id="chat-photo-preview-bar"', track_html)
+        self.assertIn('id="ccrc-photo-lightbox"', track_html)
 
 
 if __name__ == "__main__":

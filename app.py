@@ -1468,6 +1468,103 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "messages": messages,
         }), 201
 
+    _MAX_CHAT_PHOTO_BYTES = 2_500_000
+
+    @app.post("/api/chat/<code_or_id>/photo")
+    def post_chat_photo_message(code_or_id: str):
+        conn = get_db()
+        booking = None
+        if code_or_id.isdigit():
+            booking = get_booking_by_id(conn, int(code_or_id))
+        if not booking:
+            booking = get_booking_by_code(conn, code_or_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+
+        data = request.get_json(silent=True) or {}
+        pref_photo_role = (
+            request.form.get("sender_role")
+            or data.get("sender_role")
+            or request.args.get("role")
+            or ("rider" if code_or_id.isdigit() else "customer")
+        )
+        auth_role = _authorize_chat_role(booking, preferred_role=str(pref_photo_role))
+        if not auth_role:
+            return jsonify({"error": "Unauthorized to send photos for this booking."}), 401
+
+        raw_bytes = b""
+        caption = ""
+
+        photo_file = request.files.get("photo") or request.files.get("image")
+        if photo_file is not None:
+            raw_bytes = photo_file.read(_MAX_CHAT_PHOTO_BYTES + 1)
+            caption = (request.form.get("caption") or request.form.get("message") or "").strip()
+        else:
+            b64_val = (data.get("photo_base64") or data.get("image_base64") or "").strip()
+            caption = (data.get("caption") or data.get("message") or "").strip()
+            if b64_val:
+                if b64_val.startswith("data:") and "," in b64_val:
+                    _, b64_payload = b64_val.split(",", 1)
+                else:
+                    b64_payload = b64_val
+                try:
+                    raw_bytes = base64.b64decode(b64_payload, validate=True)
+                except Exception:
+                    return jsonify({"error": "Invalid photo encoding. Please upload a PNG, JPG, or WebP image."}), 400
+
+        if len(raw_bytes) < 20:
+            return jsonify({"error": "Photo is empty or invalid."}), 400
+        if len(raw_bytes) > _MAX_CHAT_PHOTO_BYTES:
+            return jsonify({"error": "Photo is too large (maximum 2.5 MB)."}), 413
+
+        if raw_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+            mime, ext = "image/png", "png"
+        elif raw_bytes.startswith(b"\xff\xd8\xff"):
+            mime, ext = "image/jpeg", "jpg"
+        elif len(raw_bytes) >= 12 and raw_bytes[:4] == b"RIFF" and raw_bytes[8:12] == b"WEBP":
+            mime, ext = "image/webp", "webp"
+        else:
+            return jsonify({"error": "Unsupported photo format. Please upload a JPG, PNG, or WebP image."}), 400
+
+        sender_role = auth_role
+        if sender_role == "rider":
+            rid = session.get("rider_id") or booking.get("rider_id")
+            rider = get_rider_by_id(conn, int(rid)) if rid else None
+            sender_name = (rider.get("name") if rider else None) or booking.get("rider_name") or "Club Rider"
+        elif sender_role == "system":
+            sender_name = "CCRC Dispatch"
+        else:
+            sender_name = booking.get("customer_name") or "Passenger"
+
+        fname = f"chat_photo_{booking['id']}_{secrets.token_hex(8)}.{ext}"
+        media_url = save_uploaded_media(conn, fname, raw_bytes, mime)
+
+        clean_caption = caption[:240]
+        msg_text = clean_caption if clean_caption else "📸 Photo"
+
+        new_msg = add_booking_message(
+            conn,
+            booking["id"],
+            sender_role,
+            sender_name,
+            msg_text,
+            msg_type="image",
+            media_url=media_url,
+            media_duration=0.0,
+        )
+        conn.commit()
+
+        try:
+            after_id = max(0, int(request.args.get("after") or 0))
+        except (ValueError, TypeError):
+            after_id = 0
+        messages = get_booking_messages(conn, booking["id"], after_id=after_id)
+        return jsonify({
+            "success": True,
+            "message": new_msg,
+            "messages": messages,
+        }), 201
+
     # -------------------------------------------------------------------------
     # Free In-App Voice Call Routes (WebRTC Peer Audio + DB Signaling)
     # -------------------------------------------------------------------------

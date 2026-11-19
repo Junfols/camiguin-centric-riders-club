@@ -1951,6 +1951,42 @@
       zh: "切换语言：",
       ja: "言語を変更：",
     },
+    "Send Photo (Receipt, Landmark, Proof)": {
+      ceb: "Padala og Litrato (Resibo, Landmark, Proof)",
+      fil: "Magpadala ng Larawan (Resibo, Landmark, Proof)",
+      zh: "发送照片（小票、地标、凭证）",
+      ja: "写真を送信（レシート・目印・配達証明）",
+    },
+    "Send Photo ✈️": {
+      ceb: "Ipadala ang Litrato ✈️",
+      fil: "Ipadala ang Larawan ✈️",
+      zh: "发送照片 ✈️",
+      ja: "写真を送信 ✈️",
+    },
+    "Add caption (receipt, landmark, proof)...": {
+      ceb: "Dugangi og caption (resibo, landmark, proof)...",
+      fil: "Magdagdag ng caption (resibo, landmark, proof)...",
+      zh: "添加说明（小票、地标、送达凭证）...",
+      ja: "キャプションを追加（レシート・目印・証明）...",
+    },
+    "Tap photo to zoom": {
+      ceb: "Pinduta ang litrato aron modako",
+      fil: "I-tap ang larawan para palakihin",
+      zh: "点击照片放大查看",
+      ja: "写真をタップして拡大",
+    },
+    "⬇️ Save": {
+      ceb: "⬇️ I-save",
+      fil: "⬇️ I-save",
+      zh: "⬇️ 保存",
+      ja: "⬇️ 保存",
+    },
+    "Download Photo": {
+      ceb: "I-download ang Litrato",
+      fil: "I-download ang Larawan",
+      zh: "下载照片",
+      ja: "写真をダウンロード",
+    },
   };
 
   function getStoredLang() {
