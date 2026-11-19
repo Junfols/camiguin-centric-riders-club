@@ -4864,6 +4864,143 @@ def update_settings(conn: DatabaseConnection, updates: dict[str, str]) -> None:
         )
 
 
+ADVISORY_CATEGORIES: dict[str, dict[str, str]] = {
+    "ferry": {"icon": "⛴️", "label": "Port / Ferry Advisory"},
+    "weather": {"icon": "🌧️", "label": "Weather Advisory"},
+    "night_fare": {"icon": "🌙", "label": "Night-Fare Advisory"},
+    "promo": {"icon": "🎉", "label": "Club Announcement"},
+    "urgent": {"icon": "🚨", "label": "Urgent Traffic / Road Alert"},
+    "info": {"icon": "📢", "label": "Club Advisory"},
+}
+
+
+def _parse_advisory_pht_iso(raw: str | None) -> datetime | None:
+    val = str(raw or "").strip()
+    if not val:
+        return None
+    try:
+        dt = datetime.fromisoformat(val)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=PHT)
+        else:
+            dt = dt.astimezone(PHT)
+        return dt
+    except Exception:
+        return None
+
+
+def get_club_advisory(
+    conn: DatabaseConnection,
+    settings: dict[str, str] | None = None,
+    now_pht: datetime | None = None,
+) -> dict[str, Any]:
+    """Return normalized Admin Live Club Advisory banner state, honoring expiry timestamps."""
+    s = settings if settings is not None else get_settings(conn)
+    now_dt = now_pht if now_pht is not None else get_now_pht()
+    if now_dt.tzinfo is None:
+        now_dt = now_dt.replace(tzinfo=PHT)
+    else:
+        now_dt = now_dt.astimezone(PHT)
+
+    enabled = str(s.get("advisory_enabled") or "0").strip().lower() in ("1", "true", "yes", "on")
+    category = str(s.get("advisory_category") or "info").strip().lower()
+    if category not in ADVISORY_CATEGORIES:
+        category = "info"
+    cat_meta = ADVISORY_CATEGORIES[category]
+
+    title = str(s.get("advisory_title") or "").strip()[:120]
+    message = str(s.get("advisory_message") or "").strip()[:400]
+    audience = str(s.get("advisory_audience") or "all").strip().lower()
+    if audience not in ("all", "customers", "riders"):
+        audience = "all"
+
+    expires_at_raw = str(s.get("advisory_expires_at") or "").strip()
+    expires_dt = _parse_advisory_pht_iso(expires_at_raw)
+    is_expired = bool(expires_dt is not None and now_dt >= expires_dt)
+
+    updated_at_raw = str(s.get("advisory_updated_at") or "").strip()
+    updated_dt = _parse_advisory_pht_iso(updated_at_raw)
+
+    has_content = bool(title or message)
+    is_active = bool(enabled and has_content and not is_expired)
+
+    return {
+        "enabled": enabled,
+        "is_active": is_active,
+        "is_expired": is_expired,
+        "category": category,
+        "category_icon": cat_meta["icon"],
+        "category_label": cat_meta["label"],
+        "title": title,
+        "message": message,
+        "audience": audience,
+        "show_customers": bool(is_active and audience in ("all", "customers")),
+        "show_riders": bool(is_active and audience in ("all", "riders")),
+        "expires_at": expires_dt.isoformat() if expires_dt else "",
+        "expires_label": expires_dt.strftime("%b %d, %I:%M %p PHT") if expires_dt else "",
+        "updated_at": updated_dt.isoformat() if updated_dt else updated_at_raw,
+        "updated_label": updated_dt.strftime("%b %d, %I:%M %p PHT") if updated_dt else "",
+        "revision": updated_at_raw or f"{category}:{title[:24]}",
+    }
+
+
+def save_club_advisory(
+    conn: DatabaseConnection,
+    *,
+    enabled: bool,
+    category: str = "info",
+    title: str = "",
+    message: str = "",
+    audience: str = "all",
+    duration_hours: float = 0,
+    expires_at: str = "",
+    now_pht: datetime | None = None,
+) -> dict[str, Any]:
+    """Persist Admin Live Club Advisory settings into the settings table."""
+    now_dt = now_pht if now_pht is not None else get_now_pht()
+    if now_dt.tzinfo is None:
+        now_dt = now_dt.replace(tzinfo=PHT)
+    else:
+        now_dt = now_dt.astimezone(PHT)
+
+    clean_cat = str(category or "info").strip().lower()
+    if clean_cat not in ADVISORY_CATEGORIES:
+        clean_cat = "info"
+
+    clean_aud = str(audience or "all").strip().lower()
+    if clean_aud not in ("all", "customers", "riders"):
+        clean_aud = "all"
+
+    clean_title = str(title or "").strip()[:120]
+    clean_msg = str(message or "").strip()[:400]
+
+    clean_exp = ""
+    if enabled:
+        explicit_dt = _parse_advisory_pht_iso(expires_at)
+        if explicit_dt is not None:
+            clean_exp = explicit_dt.isoformat()
+        else:
+            try:
+                hrs = float(duration_hours or 0)
+            except (TypeError, ValueError):
+                hrs = 0.0
+            if hrs > 0:
+                hrs = min(hrs, 168.0)  # Max 7 days auto-expire
+                clean_exp = (now_dt + timedelta(hours=hrs)).isoformat()
+
+    updates = {
+        "advisory_enabled": "1" if (enabled and (clean_title or clean_msg)) else "0",
+        "advisory_category": clean_cat,
+        "advisory_title": clean_title,
+        "advisory_message": clean_msg,
+        "advisory_audience": clean_aud,
+        "advisory_expires_at": clean_exp,
+        "advisory_updated_at": now_dt.isoformat(),
+    }
+    update_settings(conn, updates)
+    return get_club_advisory(conn, now_pht=now_dt)
+
+
 # -----------------------------------------------------------------------------
 # Rider Management Functions
 # -----------------------------------------------------------------------------

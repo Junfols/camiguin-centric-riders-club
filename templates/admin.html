@@ -89,7 +89,118 @@
     </div>
   </div>
 
+  <!-- Admin Live Club Advisory Banner Control Card -->
+  <div class="card ccrc-admin-advisory-card" style="margin-top:1.5rem;">
+    <div class="ccrc-admin-advisory-head">
+      <div>
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>📢</span> Live Club Advisory Banner
+          <span id="admin-advisory-live-badge" class="badge {% if club_advisory.is_active %}ccrc-adv-status-live{% elif club_advisory.is_expired %}ccrc-adv-status-expired{% else %}ccrc-adv-status-off{% endif %}">
+            {% if club_advisory.is_active %}
+              🟢 LIVE ON SITE
+            {% elif club_advisory.is_expired %}
+              ⏱️ EXPIRED
+            {% else %}
+              ⚪ OFF / HIDDEN
+            {% endif %}
+          </span>
+        </h3>
+        <p class="text-muted" style="margin:4px 0 0;font-size:0.84rem;">
+          Broadcast instant port ferry arrivals (Benoni / Balbagon), weather alerts, or night-fare advisories to passengers and riders.
+        </p>
+      </div>
+      {% if club_advisory.updated_label %}
+      <small id="admin-advisory-updated-text" class="text-muted" style="font-size:0.78rem;">
+        Last updated: {{ club_advisory.updated_label }}
+        {% if club_advisory.expires_label %} &bull; Auto-hides: {{ club_advisory.expires_label }}{% endif %}
+      </small>
+      {% else %}
+      <small id="admin-advisory-updated-text" class="text-muted" style="font-size:0.78rem;"></small>
+      {% endif %}
+    </div>
 
+    <!-- One-Tap Camiguin Quick Presets -->
+    <div class="ccrc-advisory-presets-row">
+      <span class="ccrc-advisory-presets-label">⚡ Quick Presets:</span>
+      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('benoni')">⛴️ Benoni Port Ferry</button>
+      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('balbagon')">⛴️ Balbagon Port Ferry</button>
+      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('weather')">🌧️ Weather / Rain Alert</button>
+      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('night_fare')">🌙 Night-Fare Advisory</button>
+    </div>
+
+    <form id="admin-advisory-form" style="margin-top:12px;">
+      <div class="ccrc-advisory-form-grid">
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="advisory-category">Advisory Type</label>
+          <select id="advisory-category" name="category" oninput="updateAdminAdvisoryPreview()" onchange="updateAdminAdvisoryPreview()">
+            <option value="ferry" {% if club_advisory.category == 'ferry' %}selected{% endif %}>⛴️ Port / Ferry Arrival</option>
+            <option value="weather" {% if club_advisory.category == 'weather' %}selected{% endif %}>🌧️ Weather / Rain Advisory</option>
+            <option value="night_fare" {% if club_advisory.category == 'night_fare' %}selected{% endif %}>🌙 Night-Fare / Schedule Notice</option>
+            <option value="promo" {% if club_advisory.category == 'promo' %}selected{% endif %}>🎉 Club Event / Announcement</option>
+            <option value="urgent" {% if club_advisory.category == 'urgent' %}selected{% endif %}>🚨 Urgent Traffic / Road Alert</option>
+            <option value="info" {% if club_advisory.category == 'info' %}selected{% endif %}>📢 General Club Advisory</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="advisory-audience">Show Banner To</label>
+          <select id="advisory-audience" name="audience">
+            <option value="all" {% if club_advisory.audience == 'all' %}selected{% endif %}>Everyone (Homepage &amp; Rider Hub)</option>
+            <option value="customers" {% if club_advisory.audience == 'customers' %}selected{% endif %}>Passengers / Homepage Only</option>
+            <option value="riders" {% if club_advisory.audience == 'riders' %}selected{% endif %}>Riders Hub Only</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="advisory-duration">Auto-Hide Timer</label>
+          <select id="advisory-duration" name="duration_hours">
+            <option value="0">Stay active until turned off</option>
+            <option value="2">Auto-hide in 2 hours</option>
+            <option value="4">Auto-hide in 4 hours</option>
+            <option value="8">Auto-hide in 8 hours</option>
+            <option value="24">Auto-hide in 24 hours</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:10px;margin-bottom:10px;">
+        <label for="advisory-title">Advisory Headline *</label>
+        <input type="text" id="advisory-title" name="title" maxlength="120" value="{{ club_advisory.title }}" placeholder="e.g., Benoni Port Ferry Arrival — Verified CCRC Riders Standing By!" oninput="updateAdminAdvisoryPreview()">
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label for="advisory-message">Details / Instructions</label>
+        <textarea id="advisory-message" name="message" rows="2" maxlength="400" placeholder="e.g., FastCraft &amp; RoRo passengers arriving at Benoni Port. Book through the app for fair-rate island pickup." oninput="updateAdminAdvisoryPreview()">{{ club_advisory.message }}</textarea>
+      </div>
+
+      <!-- Live Banner Preview -->
+      <div id="admin-advisory-preview" class="ccrc-advisory-banner is-{{ club_advisory.category }} ccrc-advisory-preview-box">
+        <div class="ccrc-advisory-inner">
+          <div class="ccrc-advisory-top-row">
+            <span class="ccrc-advisory-badge">
+              <span class="ccrc-advisory-live-dot"></span>
+              <span id="admin-adv-prev-icon">{{ club_advisory.category_icon }}</span>
+              <span id="admin-adv-prev-cat">{{ club_advisory.category_label }}</span>
+            </span>
+            <span class="ccrc-advisory-meta">LIVE PREVIEW</span>
+          </div>
+          <div id="admin-adv-prev-title" class="ccrc-advisory-title">{{ club_advisory.title or 'Select a Quick Preset or type your advisory headline above...' }}</div>
+          <div id="admin-adv-prev-msg" class="ccrc-advisory-msg">{{ club_advisory.message or 'Passengers and riders will see this banner live on the homepage and Rider Hub.' }}</div>
+        </div>
+      </div>
+
+      <div id="advisory-save-feedback" class="hidden" style="margin-top:10px;padding:9px 12px;border-radius:8px;font-size:0.84rem;font-weight:600;"></div>
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;">
+        <button type="submit" id="save-advisory-btn" class="btn btn-primary">
+          📢 Publish Live Advisory
+        </button>
+        <button type="button" id="turn-off-advisory-btn" onclick="turnOffAdminAdvisory()" class="btn btn-outline" style="border-color:#ef4444;color:#dc2626;">
+          🔕 Turn Off Banner
+        </button>
+      </div>
+    </form>
+  </div>
 
   <!-- 2-Column Grid: Settings & Recent Bookings -->
   <div class="admin-grid-2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;margin-top:1.5rem;">
@@ -1497,5 +1608,179 @@
   document.getElementById("admin-close-transfer-btn")?.addEventListener("click", closeAdminTransferModal);
   document.getElementById("admin-refresh-coriders-btn")?.addEventListener("click", loadAdminTransferRiders);
   document.getElementById("admin-transfer-rebroadcast-btn")?.addEventListener("click", () => executeAdminBookingTransfer(null));
+
+  // Admin Live Club Advisory Banner Controls
+  const CCRC_ADVISORY_META = {
+    ferry: { icon: "⛴️", label: "Port / Ferry Advisory" },
+    weather: { icon: "🌧️", label: "Weather Advisory" },
+    night_fare: { icon: "🌙", label: "Night-Fare Advisory" },
+    promo: { icon: "🎉", label: "Club Announcement" },
+    urgent: { icon: "🚨", label: "Urgent Traffic / Road Alert" },
+    info: { icon: "📢", label: "Club Advisory" },
+  };
+
+  const CCRC_ADVISORY_PRESETS = {
+    benoni: {
+      category: "ferry",
+      audience: "all",
+      duration_hours: "4",
+      title: "Benoni Port Ferry Arrival — Verified CCRC Riders Standing By!",
+      message: "New RoRo / FastCraft passengers arriving at Benoni Port. Book through the app now for fast, fair-rate island pickup by verified CCRC riders.",
+    },
+    balbagon: {
+      category: "ferry",
+      audience: "all",
+      duration_hours: "4",
+      title: "Balbagon Port Arrival — Book Your Ride Now!",
+      message: "Ferry docking at Balbagon Port (Mambajao). Verified CCRC riders are online nearby for direct pickup to resorts, hotels, and town centers.",
+    },
+    weather: {
+      category: "weather",
+      audience: "all",
+      duration_hours: "8",
+      title: "Camiguin Weather & Road Safety Advisory",
+      message: "Rainy weather reported in parts of Camiguin. Our riders are driving safely with raincoats — please allow a few extra minutes for pickup.",
+    },
+    night_fare: {
+      category: "night_fare",
+      audience: "all",
+      duration_hours: "8",
+      title: "Night Operations & Standard Fair Tariff Advisory",
+      message: "Nighttime island dispatch is active! Standard transparent CCRC night rates apply. Always book in-app for verified riders and live GPS tracking.",
+    },
+  };
+
+  window.updateAdminAdvisoryPreview = function() {
+    const cat = document.getElementById("advisory-category")?.value || "info";
+    const title = (document.getElementById("advisory-title")?.value || "").trim();
+    const msg = (document.getElementById("advisory-message")?.value || "").trim();
+    const meta = CCRC_ADVISORY_META[cat] || CCRC_ADVISORY_META.info;
+    const box = document.getElementById("admin-advisory-preview");
+    if (box) {
+      box.className = `ccrc-advisory-banner is-${cat} ccrc-advisory-preview-box`;
+    }
+    const iconEl = document.getElementById("admin-adv-prev-icon");
+    const catEl = document.getElementById("admin-adv-prev-cat");
+    const titleEl = document.getElementById("admin-adv-prev-title");
+    const msgEl = document.getElementById("admin-adv-prev-msg");
+    if (iconEl) iconEl.textContent = meta.icon;
+    if (catEl) catEl.textContent = meta.label;
+    if (titleEl) titleEl.textContent = title || "Select a Quick Preset or type your advisory headline above...";
+    if (msgEl) msgEl.textContent = msg || "Passengers and riders will see this banner live on the homepage and Rider Hub.";
+  };
+
+  window.applyAdvisoryPreset = function(presetKey) {
+    const preset = CCRC_ADVISORY_PRESETS[presetKey];
+    if (!preset) return;
+    const catEl = document.getElementById("advisory-category");
+    const audEl = document.getElementById("advisory-audience");
+    const durEl = document.getElementById("advisory-duration");
+    const titleEl = document.getElementById("advisory-title");
+    const msgEl = document.getElementById("advisory-message");
+    if (catEl) catEl.value = preset.category;
+    if (audEl) audEl.value = preset.audience;
+    if (durEl) durEl.value = preset.duration_hours;
+    if (titleEl) titleEl.value = preset.title;
+    if (msgEl) msgEl.value = preset.message;
+    updateAdminAdvisoryPreview();
+  };
+
+  function renderAdminAdvisoryStatus(advisory) {
+    const badge = document.getElementById("admin-advisory-live-badge");
+    const updatedEl = document.getElementById("admin-advisory-updated-text");
+    if (badge && advisory) {
+      badge.className = "badge " + (advisory.is_active ? "ccrc-adv-status-live" : (advisory.is_expired ? "ccrc-adv-status-expired" : "ccrc-adv-status-off"));
+      badge.textContent = advisory.is_active ? "🟢 LIVE ON SITE" : (advisory.is_expired ? "⏱️ EXPIRED" : "⚪ OFF / HIDDEN");
+    }
+    if (updatedEl && advisory) {
+      let txt = advisory.updated_label ? `Last updated: ${advisory.updated_label}` : "";
+      if (advisory.is_active && advisory.expires_label) {
+        txt += (txt ? " • " : "") + `Auto-hides: ${advisory.expires_label}`;
+      }
+      updatedEl.textContent = txt;
+    }
+  }
+
+  function showAdvisoryFeedback(text, isError) {
+    const fb = document.getElementById("advisory-save-feedback");
+    if (!fb) return;
+    fb.textContent = text;
+    fb.className = isError ? "alert-danger" : "alert-success";
+    fb.classList.remove("hidden");
+  }
+
+  document.getElementById("admin-advisory-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("save-advisory-btn");
+    const origText = btn ? btn.textContent : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Publishing...";
+    }
+    try {
+      const payload = {
+        enabled: true,
+        category: document.getElementById("advisory-category")?.value || "info",
+        audience: document.getElementById("advisory-audience")?.value || "all",
+        duration_hours: Number(document.getElementById("advisory-duration")?.value || 0),
+        title: (document.getElementById("advisory-title")?.value || "").trim(),
+        message: (document.getElementById("advisory-message")?.value || "").trim(),
+      };
+      const res = await fetch("/api/admin/advisory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to publish live advisory.");
+      }
+      renderAdminAdvisoryStatus(data.advisory);
+      showAdvisoryFeedback("✅ " + (data.message || "Live Club Advisory Banner is now LIVE!"), false);
+    } catch (err) {
+      showAdvisoryFeedback("❌ " + (err.message || "Failed to publish live advisory."), true);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = origText || "📢 Publish Live Advisory";
+      }
+    }
+  });
+
+  window.turnOffAdminAdvisory = async function() {
+    const btn = document.getElementById("turn-off-advisory-btn");
+    const origText = btn ? btn.textContent : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Turning off...";
+    }
+    try {
+      const payload = {
+        enabled: false,
+        category: document.getElementById("advisory-category")?.value || "info",
+        audience: document.getElementById("advisory-audience")?.value || "all",
+        title: (document.getElementById("advisory-title")?.value || "").trim(),
+        message: (document.getElementById("advisory-message")?.value || "").trim(),
+      };
+      const res = await fetch("/api/admin/advisory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to turn off banner.");
+      }
+      renderAdminAdvisoryStatus(data.advisory);
+      showAdvisoryFeedback("🔕 Live Club Advisory Banner is now hidden from passengers and riders.", false);
+    } catch (err) {
+      showAdvisoryFeedback("❌ " + (err.message || "Failed to turn off banner."), true);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = origText || "🔕 Turn Off Banner";
+      }
+    }
+  };
 </script>
 {% endblock %}

@@ -4136,6 +4136,126 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         ):
             self.assertIn(token, rider_dash_html)
 
+    def test_admin_live_club_advisory_banner(self):
+        # 1. Default state: hidden on homepage & /api/advisory reports visible=False
+        init_api = self.client.get("/api/advisory?audience=customers")
+        self.assertEqual(init_api.status_code, 200)
+        init_data = init_api.get_json()
+        self.assertTrue(init_data["success"])
+        self.assertFalse(init_data["visible"])
+        self.assertFalse(init_data["advisory"]["is_active"])
+
+        home_before = self.client.get("/").get_data(as_text=True)
+        self.assertIn('id="ccrc-live-advisory-banner"', home_before)
+        self.assertIn('class="ccrc-advisory-banner is-info hidden"', home_before)
+
+        # 2. Non-admin cannot publish or clear advisories
+        unauth = self.client.post(
+            "/api/admin/advisory",
+            json={"enabled": True, "category": "ferry", "title": "Unauthorized"},
+        )
+        self.assertEqual(unauth.status_code, 403)
+
+        # 3. Admin validation rejects empty published advisory
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+
+        empty_pub = self.client.post(
+            "/api/admin/advisory",
+            json={"enabled": True, "category": "ferry", "title": "   ", "message": ""},
+        )
+        self.assertEqual(empty_pub.status_code, 400)
+
+        # 4. Admin publishes a Benoni Port Ferry Arrival advisory for everyone
+        pub_resp = self.client.post(
+            "/api/admin/advisory",
+            json={
+                "enabled": True,
+                "category": "ferry",
+                "audience": "all",
+                "duration_hours": 4,
+                "title": "Benoni Port Ferry Arriving — Riders Ready!",
+                "message": "FastCraft arriving at Benoni Port. Book now for fair-rate CCRC pickup.",
+            },
+        )
+        self.assertEqual(pub_resp.status_code, 200)
+        pub_data = pub_resp.get_json()
+        self.assertTrue(pub_data["success"])
+        self.assertTrue(pub_data["advisory"]["is_active"])
+        self.assertTrue(pub_data["advisory"]["show_customers"])
+        self.assertTrue(pub_data["advisory"]["show_riders"])
+        self.assertEqual(pub_data["advisory"]["category"], "ferry")
+        self.assertTrue(bool(pub_data["advisory"]["expires_at"]))
+
+        # Public API reflects live status for both customers & riders
+        cust_api = self.client.get("/api/advisory?audience=customers").get_json()
+        rider_api = self.client.get("/api/advisory?audience=riders").get_json()
+        self.assertTrue(cust_api["visible"])
+        self.assertTrue(rider_api["visible"])
+
+        # Homepage & Rider Hub render the live banner visibly
+        home_live = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Benoni Port Ferry Arriving — Riders Ready!", home_live)
+        self.assertIn("FastCraft arriving at Benoni Port", home_live)
+        self.assertIn('class="ccrc-advisory-banner is-ferry "', home_live)
+
+        rider_live = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="rider-live-advisory-banner"', rider_live)
+        self.assertIn("Benoni Port Ferry Arriving — Riders Ready!", rider_live)
+        self.assertIn('class="ccrc-advisory-banner is-ferry "', rider_live)
+
+        # Admin panel shows LIVE badge and quick presets
+        admin_html = self.client.get("/admin").get_data(as_text=True)
+        for token in (
+            'id="admin-advisory-form"',
+            'id="admin-advisory-live-badge"',
+            "LIVE ON SITE",
+            "applyAdvisoryPreset('benoni')",
+            "applyAdvisoryPreset('balbagon')",
+            "applyAdvisoryPreset('weather')",
+            "applyAdvisoryPreset('night_fare')",
+        ):
+            self.assertIn(token, admin_html)
+
+        # 5. Audience filtering: Homepage / Passengers only hides from Rider Hub
+        cust_only = self.client.post(
+            "/api/admin/advisory",
+            json={
+                "enabled": True,
+                "category": "night_fare",
+                "audience": "customers",
+                "title": "Night-Fare Advisory Active",
+                "message": "Standard night rates apply across Camiguin.",
+            },
+        )
+        self.assertEqual(cust_only.status_code, 200)
+        self.assertTrue(self.client.get("/api/advisory?audience=customers").get_json()["visible"])
+        self.assertFalse(self.client.get("/api/advisory?audience=riders").get_json()["visible"])
+
+        # 6. Auto-expiry hides expired advisories cleanly
+        expired_resp = self.client.post(
+            "/api/admin/advisory",
+            json={
+                "enabled": True,
+                "category": "weather",
+                "audience": "all",
+                "title": "Old Rain Alert",
+                "message": "Should be expired already.",
+                "expires_at": "2020-01-01T00:00:00+08:00",
+            },
+        )
+        self.assertEqual(expired_resp.status_code, 200)
+        exp_state = self.client.get("/api/advisory?audience=customers").get_json()
+        self.assertFalse(exp_state["visible"])
+        self.assertFalse(exp_state["advisory"]["is_active"])
+        self.assertTrue(exp_state["advisory"]["is_expired"])
+
+        # 7. Clear / Turn Off disables banner completely
+        clear_resp = self.client.post("/api/admin/advisory", json={"action": "clear"})
+        self.assertEqual(clear_resp.status_code, 200)
+        self.assertFalse(clear_resp.get_json()["advisory"]["is_active"])
+        self.assertFalse(self.client.get("/api/advisory").get_json()["visible"])
+
 
 if __name__ == "__main__":
     unittest.main()

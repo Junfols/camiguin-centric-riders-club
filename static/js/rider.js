@@ -3677,6 +3677,79 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Admin Live Club Advisory Banner for Riders (Auto-Refresh + Dismiss)
+  // ---------------------------------------------------------------------------
+  const riderAdvBanner = document.getElementById("rider-live-advisory-banner");
+  if (riderAdvBanner) {
+    const RIDER_ADV_DISMISS_KEY = "ccrc_dismissed_advisory_rider";
+    const rAdvIconEl = document.getElementById("rider-advisory-icon");
+    const rAdvCatEl = document.getElementById("rider-advisory-cat-label");
+    const rAdvMetaEl = document.getElementById("rider-advisory-meta");
+    const rAdvTitleEl = document.getElementById("rider-advisory-title");
+    const rAdvMsgEl = document.getElementById("rider-advisory-message");
+    const rAdvDismissBtn = document.getElementById("rider-advisory-dismiss-btn");
+
+    function getRiderDismissedRev() {
+      try { return sessionStorage.getItem(RIDER_ADV_DISMISS_KEY) || ""; } catch (_) { return ""; }
+    }
+
+    function applyRiderAdvisory(advisory, visible) {
+      if (!advisory || !visible) {
+        riderAdvBanner.classList.add("hidden");
+        return;
+      }
+      const rev = String(advisory.revision || "");
+      riderAdvBanner.setAttribute("data-revision", rev);
+      if (rev && getRiderDismissedRev() === rev) {
+        riderAdvBanner.classList.add("hidden");
+        return;
+      }
+      const cat = String(advisory.category || "info");
+      riderAdvBanner.className = `ccrc-advisory-banner is-${cat}`;
+      if (rAdvIconEl) rAdvIconEl.textContent = advisory.category_icon || "📢";
+      if (rAdvCatEl) rAdvCatEl.textContent = advisory.category_label || "Club Advisory";
+      if (rAdvMetaEl) rAdvMetaEl.textContent = advisory.updated_label ? `Updated ${advisory.updated_label}` : "";
+      if (rAdvTitleEl) rAdvTitleEl.textContent = advisory.title || "";
+      if (rAdvMsgEl) {
+        const m = String(advisory.message || "").trim();
+        rAdvMsgEl.textContent = m;
+        rAdvMsgEl.classList.toggle("hidden", !m);
+      }
+      riderAdvBanner.classList.remove("hidden");
+    }
+
+    const initRiderAdvRev = riderAdvBanner.getAttribute("data-revision") || "";
+    if (initRiderAdvRev && getRiderDismissedRev() === initRiderAdvRev) {
+      riderAdvBanner.classList.add("hidden");
+    }
+
+    if (rAdvDismissBtn) {
+      rAdvDismissBtn.addEventListener("click", () => {
+        const rev = riderAdvBanner.getAttribute("data-revision") || "";
+        try { if (rev) sessionStorage.setItem(RIDER_ADV_DISMISS_KEY, rev); } catch (_) {}
+        riderAdvBanner.classList.add("hidden");
+      });
+    }
+
+    async function refreshRiderLiveAdvisory() {
+      if (document.hidden) return;
+      try {
+        const res = await fetch("/api/advisory?audience=riders", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.success) {
+          applyRiderAdvisory(data.advisory, Boolean(data.visible));
+        }
+      } catch (_) {}
+    }
+
+    setInterval(refreshRiderLiveAdvisory, 45000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshRiderLiveAdvisory();
+    });
+  }
+
   // On Load: Check stored session
   window.addEventListener("DOMContentLoaded", () => {
     const saved = getStoredRider();

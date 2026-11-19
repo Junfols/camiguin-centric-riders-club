@@ -5521,4 +5521,78 @@
 
   // Initialize customer session check on load
   updateCustomerAuthUI();
+
+  // ---------------------------------------------------------------------------
+  // Admin Live Club Advisory Banner (Auto-Refresh + Revision-Aware Dismiss)
+  // ---------------------------------------------------------------------------
+  const liveAdvisoryBanner = document.getElementById("ccrc-live-advisory-banner");
+  if (liveAdvisoryBanner) {
+    const ADV_DISMISS_KEY = "ccrc_dismissed_advisory_customer";
+    const advIconEl = document.getElementById("live-advisory-icon");
+    const advCatEl = document.getElementById("live-advisory-cat-label");
+    const advMetaEl = document.getElementById("live-advisory-meta");
+    const advTitleEl = document.getElementById("live-advisory-title");
+    const advMsgEl = document.getElementById("live-advisory-message");
+    const advDismissBtn = document.getElementById("live-advisory-dismiss-btn");
+
+    function getDismissedAdvRev() {
+      try { return sessionStorage.getItem(ADV_DISMISS_KEY) || ""; } catch (_) { return ""; }
+    }
+
+    function applyCustomerAdvisory(advisory, visible) {
+      if (!advisory || !visible) {
+        liveAdvisoryBanner.classList.add("hidden");
+        return;
+      }
+      const rev = String(advisory.revision || "");
+      liveAdvisoryBanner.setAttribute("data-revision", rev);
+      if (rev && getDismissedAdvRev() === rev) {
+        liveAdvisoryBanner.classList.add("hidden");
+        return;
+      }
+      const cat = String(advisory.category || "info");
+      liveAdvisoryBanner.className = `ccrc-advisory-banner is-${cat}`;
+      if (advIconEl) advIconEl.textContent = advisory.category_icon || "📢";
+      if (advCatEl) advCatEl.textContent = advisory.category_label || "Club Advisory";
+      if (advMetaEl) advMetaEl.textContent = advisory.updated_label ? `Updated ${advisory.updated_label}` : "";
+      if (advTitleEl) advTitleEl.textContent = advisory.title || "";
+      if (advMsgEl) {
+        const m = String(advisory.message || "").trim();
+        advMsgEl.textContent = m;
+        advMsgEl.classList.toggle("hidden", !m);
+      }
+      liveAdvisoryBanner.classList.remove("hidden");
+    }
+
+    // Honor sessionStorage dismiss on initial SSR load
+    const initialRev = liveAdvisoryBanner.getAttribute("data-revision") || "";
+    if (initialRev && getDismissedAdvRev() === initialRev) {
+      liveAdvisoryBanner.classList.add("hidden");
+    }
+
+    if (advDismissBtn) {
+      advDismissBtn.addEventListener("click", () => {
+        const rev = liveAdvisoryBanner.getAttribute("data-revision") || "";
+        try { if (rev) sessionStorage.setItem(ADV_DISMISS_KEY, rev); } catch (_) {}
+        liveAdvisoryBanner.classList.add("hidden");
+      });
+    }
+
+    async function refreshCustomerLiveAdvisory() {
+      if (document.hidden) return;
+      try {
+        const res = await fetch("/api/advisory?audience=customers", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.success) {
+          applyCustomerAdvisory(data.advisory, Boolean(data.visible));
+        }
+      } catch (_) {}
+    }
+
+    setInterval(refreshCustomerLiveAdvisory, 45000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshCustomerLiveAdvisory();
+    });
+  }
 })();

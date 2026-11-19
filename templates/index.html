@@ -14,6 +14,33 @@
     <p class="booking-hero-sub">Fast, verified on-demand island transport, deliveries &amp; errands across Camiguin Island.</p>
   </section>
 
+  <!-- Admin Live Club Advisory Banner (Port Ferry Arrivals, Weather, Night-Fare) -->
+  <section
+    id="ccrc-live-advisory-banner"
+    class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not club_advisory.show_customers %}hidden{% endif %}"
+    data-revision="{{ club_advisory.revision }}"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="ccrc-advisory-inner">
+      <div class="ccrc-advisory-top-row">
+        <span class="ccrc-advisory-badge">
+          <span class="ccrc-advisory-live-dot"></span>
+          <span id="live-advisory-icon">{{ club_advisory.category_icon }}</span>
+          <span id="live-advisory-cat-label">{{ club_advisory.category_label }}</span>
+        </span>
+        <div class="ccrc-advisory-right-meta">
+          <span id="live-advisory-meta" class="ccrc-advisory-meta">
+            {% if club_advisory.updated_label %}Updated {{ club_advisory.updated_label }}{% endif %}
+          </span>
+          <button type="button" id="live-advisory-dismiss-btn" class="ccrc-advisory-dismiss" aria-label="Dismiss advisory" title="Dismiss advisory">&times;</button>
+        </div>
+      </div>
+      <div id="live-advisory-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
+      <div id="live-advisory-message" class="ccrc-advisory-msg {% if not club_advisory.message %}hidden{% endif %}">{{ club_advisory.message }}</div>
+    </div>
+  </section>
+
   <!-- Persistent Active Ride Notification for Customer -->
   <div id="customer-active-ride-card" class="card active-ride-banner {% if not active_booking %}hidden{% endif %}" style="border: 2px solid #f97316; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%); padding: 18px 20px; border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.15);">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">

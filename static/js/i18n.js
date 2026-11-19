@@ -2245,6 +2245,90 @@
       zh: "← 返回骑手中心",
       ja: "← ライダーハブに戻る",
     },
+    "Port / Ferry Advisory": {
+      ceb: "Pahibalo sa Pantalan / Barko",
+      fil: "Abiso sa Pantalan / Barko",
+      zh: "港口 / 渡轮到港通告",
+      ja: "港・フェリー到着のお知らせ",
+    },
+    "Weather Advisory": {
+      ceb: "Pahibalo sa Panahon",
+      fil: "Abiso sa Panahon",
+      zh: "天气安全通告",
+      ja: "天候に関するお知らせ",
+    },
+    "Night-Fare Advisory": {
+      ceb: "Pahibalo sa Plete sa Gabii",
+      fil: "Abiso sa Pamasahe sa Gabi",
+      zh: "夜间运价通告",
+      ja: "夜間料金のお知らせ",
+    },
+    "Club Announcement": {
+      ceb: "Anunsyo sa Club",
+      fil: "Anunsyo ng Club",
+      zh: "俱乐部公告",
+      ja: "クラブからのお知らせ",
+    },
+    "Urgent Traffic / Road Alert": {
+      ceb: "Alerto sa Dalan / Trapiko",
+      fil: "Alerto sa Kalsada / Trapiko",
+      zh: "紧急路况 / 交通警报",
+      ja: "緊急交通・道路情報",
+    },
+    "Club Advisory": {
+      ceb: "Opisyal nga Pahibalo sa Club",
+      fil: "Opisyal na Abiso ng Club",
+      zh: "俱乐部通告",
+      ja: "公式クラブお知らせ",
+    },
+    "Live Club Advisory Banner": {
+      ceb: "Live nga Banner sa Pahibalo sa Club",
+      fil: "Live na Banner ng Abiso ng Club",
+      zh: "实时俱乐部公告横幅",
+      ja: "ライブクラブお知らせバナー",
+    },
+    "📢 Publish Live Advisory": {
+      ceb: "📢 I-publish ang Live nga Pahibalo",
+      fil: "📢 I-publish ang Live na Abiso",
+      zh: "📢 发布实时通告",
+      ja: "📢 お知らせを公開",
+    },
+    "🔕 Turn Off Banner": {
+      ceb: "🔕 I-off ang Banner",
+      fil: "🔕 I-off ang Banner",
+      zh: "🔕 关闭横幅",
+      ja: "🔕 バナーを非表示",
+    },
+    "⚡ Quick Presets:": {
+      ceb: "⚡ Dali nga Preset:",
+      fil: "⚡ Mabilisang Preset:",
+      zh: "⚡ 快捷模板：",
+      ja: "⚡ クイックテンプレート：",
+    },
+    "⛴️ Benoni Port Ferry": {
+      ceb: "⛴️ Barko sa Benoni Port",
+      fil: "⛴️ Barko sa Benoni Port",
+      zh: "⛴️ 贝诺尼港渡轮",
+      ja: "⛴️ ベノニ港フェリー",
+    },
+    "⛴️ Balbagon Port Ferry": {
+      ceb: "⛴️ Barko sa Balbagon Port",
+      fil: "⛴️ Barko sa Balbagon Port",
+      zh: "⛴️ 巴尔巴贡港渡轮",
+      ja: "⛴️ バルバゴン港フェリー",
+    },
+    "🌧️ Weather / Rain Alert": {
+      ceb: "🌧️ Alerto sa Ulan / Panahon",
+      fil: "🌧️ Alerto sa Ulan / Panahon",
+      zh: "🌧️ 降雨 / 天气提醒",
+      ja: "🌧️ 雨天・天候アラート",
+    },
+    "🌙 Night-Fare Advisory": {
+      ceb: "🌙 Pahibalo sa Plete sa Gabii",
+      fil: "🌙 Abiso sa Pamasahe sa Gabi",
+      zh: "🌙 夜间运价提醒",
+      ja: "🌙 夜間料金のお知らせ",
+    },
   };
 
   function getStoredLang() {

@@ -73,6 +73,8 @@ from db import (
     get_rider_by_id,
     get_rider_by_phone,
     get_settings,
+    get_club_advisory,
+    save_club_advisory,
     get_uploaded_media,
     init_db,
     is_hinterland_route,
@@ -230,6 +232,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "bulky_order_fee": settings.get("bulky_order_fee", "20"),
                 "hinterland_fee": settings.get("hinterland_fee", "30"),
             },
+            "club_advisory": get_club_advisory(conn, settings=settings),
             "db_backend": getattr(conn, "backend", "sqlite"),
             "year": datetime.now().year,
         }
@@ -3385,6 +3388,74 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         return jsonify({"success": True, "settings": get_settings(conn)})
 
+    # -------------------------------------------------------------------------
+    # Admin Live Club Advisory Banner API (Ferry Arrivals, Weather, Night-Fare)
+    # -------------------------------------------------------------------------
+    @app.get("/api/advisory")
+    def api_get_club_advisory():
+        conn = get_db()
+        advisory = get_club_advisory(conn)
+        audience = (request.args.get("audience") or "").strip().lower()
+        if audience == "customers":
+            visible = advisory["show_customers"]
+        elif audience == "riders":
+            visible = advisory["show_riders"]
+        else:
+            visible = advisory["is_active"]
+        resp = jsonify({"success": True, "advisory": advisory, "visible": visible})
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    @app.post("/api/admin/advisory")
+    def admin_save_club_advisory():
+        if not session.get("is_admin"):
+            return jsonify({"error": "Admin access required."}), 403
+        conn = get_db()
+        data = request.get_json(silent=True) or {}
+        action = str(data.get("action") or "").strip().lower()
+
+        if action == "clear":
+            advisory = save_club_advisory(
+                conn,
+                enabled=False,
+                category="info",
+                title="",
+                message="",
+                audience="all",
+                duration_hours=0,
+            )
+            conn.commit()
+            return jsonify({"success": True, "advisory": advisory, "message": "Live advisory banner cleared."})
+
+        raw_enabled = data.get("enabled", True)
+        if isinstance(raw_enabled, bool):
+            enabled = raw_enabled
+        else:
+            enabled = str(raw_enabled).strip().lower() in ("1", "true", "yes", "on")
+
+        category = str(data.get("category") or "info").strip().lower()
+        title = str(data.get("title") or "").strip()
+        message = str(data.get("message") or "").strip()
+        audience = str(data.get("audience") or "all").strip().lower()
+        duration_hours = data.get("duration_hours", 0)
+        expires_at = str(data.get("expires_at") or "").strip()
+
+        if enabled and not (title or message):
+            return jsonify({"error": "Please enter an advisory headline or message before publishing."}), 400
+
+        advisory = save_club_advisory(
+            conn,
+            enabled=enabled,
+            category=category,
+            title=title,
+            message=message,
+            audience=audience,
+            duration_hours=duration_hours,
+            expires_at=expires_at,
+        )
+        conn.commit()
+        status_msg = "Live Club Advisory Banner is now LIVE!" if advisory["is_active"] else "Live Club Advisory Banner turned off."
+        return jsonify({"success": True, "advisory": advisory, "message": status_msg})
 
     @app.get("/api/admin/backup")
     def admin_download_backup():
