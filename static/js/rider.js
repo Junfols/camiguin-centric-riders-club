@@ -3047,19 +3047,19 @@
         ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar ${avatarClass}">`
         : `<div class="co-rider-avatar-placeholder ${avatarClass}">🛵</div>`;
 
-      const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">${tRider("You")}</span>` : '';
+      const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;white-space:nowrap;">${tRider("You")}</span>` : '';
 
       let statusBadge = "";
       if (actStatus === "accepted") {
-        statusBadge = `<span class="badge badge-accepting" style="font-size:0.68rem;padding:2px 7px;">🟡 ${tRider("Accepting Booking")}</span>`;
+        statusBadge = `<span class="badge badge-accepting" style="font-size:0.68rem;padding:2px 7px;white-space:nowrap;">🟡 ${tRider("Accepting Booking")}</span>`;
       } else if (actStatus === "in_progress") {
-        statusBadge = `<span class="badge badge-heading" style="font-size:0.68rem;padding:2px 7px;">🟠 ${tRider("Heading Destination")}</span>`;
+        statusBadge = `<span class="badge badge-heading" style="font-size:0.68rem;padding:2px 7px;white-space:nowrap;">🟠 ${tRider("Heading Destination")}</span>`;
       } else if (r.recent_completed) {
-        statusBadge = `<span class="badge badge-completed" style="font-size:0.68rem;padding:2px 7px;">🟢 ${tRider("Available (Completed ✓)")}</span>`;
+        statusBadge = `<span class="badge badge-completed" style="font-size:0.68rem;padding:2px 7px;white-space:nowrap;">🟢 ${tRider("Available (Completed ✓)")}</span>`;
       } else if (isBusy) {
-        statusBadge = `<span class="badge badge-warning" style="font-size:0.68rem;padding:2px 6px;">${tRider("Busy")}</span>`;
+        statusBadge = `<span class="badge badge-warning" style="font-size:0.68rem;padding:2px 6px;white-space:nowrap;">${tRider("Busy")}</span>`;
       } else {
-        statusBadge = `<span class="badge badge-success" style="font-size:0.68rem;padding:2px 6px;">🟢 ${tRider("Available")}</span>`;
+        statusBadge = `<span class="badge badge-success" style="font-size:0.68rem;padding:2px 6px;white-space:nowrap;">🟢 ${tRider("Available")}</span>`;
       }
 
       let detailHtml = "";
@@ -3098,6 +3098,11 @@
         ? `<button type="button" class="btn btn-sm btn-transfer-emergency co-rider-transfer-btn" data-rider-id="${r.id}" ${isDisabled ? "disabled" : ""} style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${transferTooltip}">${transferBtnLabel}</button>`
         : '';
 
+      const hasActions = Boolean(transferBtn || freeCallBtn || phoneBtn);
+      const actionsHtml = hasActions
+        ? `<div class="co-rider-actions">${transferBtn}${freeCallBtn}${phoneBtn}</div>`
+        : '';
+
       return `
         <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
           ${avatarHtml}
@@ -3111,12 +3116,10 @@
               🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
             </div>
             ${detailHtml}
-            <span class="co-rider-town">📍 ${town}</span>
-          </div>
-          <div class="co-rider-actions">
-            ${transferBtn}
-            ${freeCallBtn}
-            ${phoneBtn}
+            <div class="co-rider-footer-row">
+              <span class="co-rider-town">📍 ${town}</span>
+              ${actionsHtml}
+            </div>
           </div>
         </div>
       `;

@@ -2277,9 +2277,9 @@ body.rider-logged-in .nav-rider-logged-item {
 
 .co-rider-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -2304,6 +2304,7 @@ body.rider-logged-in .nav-rider-logged-item {
   object-fit: cover;
   border: 2px solid #16a34a;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .co-rider-avatar-placeholder {
@@ -2317,6 +2318,7 @@ body.rider-logged-in .nav-rider-logged-item {
   font-size: 1.3rem;
   border: 2px solid #16a34a;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .co-rider-info {
@@ -2333,28 +2335,36 @@ body.rider-logged-in .nav-rider-logged-item {
 
 .co-rider-name {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   color: #0f172a;
 }
 
 .co-rider-sub {
-  font-size: 0.78rem;
-  color: #64748b;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 3px;
+  line-height: 1.35;
+}
+
+.co-rider-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 .co-rider-town {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.72rem;
   font-weight: 600;
   color: #0369a1;
   background: #e0f2fe;
-  padding: 1px 7px;
+  padding: 2px 8px;
   border-radius: 10px;
-  margin-top: 3px;
+  white-space: nowrap;
 }
 
 .co-rider-avatar.is-accepting,
@@ -2419,10 +2429,8 @@ body.rider-logged-in .nav-rider-logged-item {
 .co-rider-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
-  flex-shrink: 0;
 }
 
 .alert-success {
