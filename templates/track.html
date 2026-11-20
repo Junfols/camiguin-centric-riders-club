@@ -289,9 +289,6 @@
           <div style="display:flex;justify-content:space-between;"><span>Service:</span><span style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
           <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span>{{ booking.estimated_km }} km</span></div>
           <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
-          {% if 'hinterland' in (booking.item_notes|lower) or 'bukid' in (booking.item_notes|lower) or 'soro' in (booking.dropoff_address|lower) or 'katibawasan' in (booking.dropoff_address|lower) %}
-          <div style="display:flex;justify-content:space-between;color:#b45309;font-size:0.88rem;font-weight:600;"><span>🏔️ Mountain Route Surcharge:</span><span>+₱30</span></div>
-          {% endif %}
           {% if booking.promo_code %}
           <div style="display:flex;justify-content:space-between;color:#16a34a;"><span>Voucher ({{ booking.promo_code }}):</span><span>-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span></div>
           {% endif %}
