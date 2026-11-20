@@ -121,6 +121,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def inject_club_context():
         conn = get_db()
         settings = get_settings(conn)
+        advisory_data = {
+            "category": settings.get("advisory_category", "info"),
+            "category_icon": settings.get("advisory_icon", "📢"),
+            "category_label": settings.get("advisory_label", "Club Advisory"),
+            "revision": int(settings.get("advisory_revision", 1) or 1),
+            "show_customers": str(settings.get("advisory_show_customers", "0")).lower() in ("1", "true", "yes"),
+            "show_riders": str(settings.get("advisory_show_riders", "0")).lower() in ("1", "true", "yes"),
+            "message": settings.get("advisory_message", ""),
+            "title": settings.get("advisory_title", "Camiguin Centric Advisory"),
+            "updated_label": settings.get("advisory_updated_label", ""),
+        }
         return {
             "club": {
                 "name": settings.get("club_name", "Camiguin Centric Riders Club"),
@@ -136,6 +147,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "bulky_order_fee": settings.get("bulky_order_fee", "20"),
                 "hinterland_fee": settings.get("hinterland_fee", "30"),
             },
+            "club_advisory": advisory_data,
+            "active_group_summary": None,
             "db_backend": getattr(conn, "backend", "sqlite"),
             "year": datetime.now().year,
         }
@@ -942,9 +955,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def rider_logout():
         rider_id = session.pop("rider_id", None)
         if rider_id:
-            conn = get_db()
-            update_rider_online_status(conn, rider_id, False)
-            conn.commit()
+            try:
+                conn = get_db()
+                update_rider_online_status(conn, int(rider_id), False)
+                conn.commit()
+            except Exception as e:
+                print("Error updating rider offline status on logout:", e)
         return jsonify({"success": True})
 
     @app.post("/api/rider/login")
