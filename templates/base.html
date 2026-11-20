@@ -81,7 +81,7 @@
           <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
         {% elif active_nav == 'rider' or session.get('rider_id') %}
           <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
-          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="try{localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">Log Out 🚪</button>
+          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">Log Out 🚪</button>
         {% else %}
           <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
           <a href="#" id="nav-active-trip-pill" class="nav-link nav-active-trip-pill" style="display:none;color:#ea580c;font-weight:700;align-items:center;gap:6px;">
@@ -103,7 +103,7 @@
             <span class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:20px;">
               🛵 Rider Hub
             </span>
-            <button type="button" id="header-rider-logout-btn2" onclick="try{localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
+            <button type="button" id="header-rider-logout-btn2" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
               🚪
             </button>
           </div>

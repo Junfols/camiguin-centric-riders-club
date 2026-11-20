@@ -15,31 +15,34 @@
   </section>
 
   <!-- Admin Live Club Advisory Banner (Port Ferry Arrivals, Weather, Night-Fare) -->
+  {% if club_advisory and club_advisory.show_customers %}
   <section
     id="ccrc-live-advisory-banner"
-    class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not club_advisory.show_customers %}hidden{% endif %}"
-    data-revision="{{ club_advisory.revision }}"
+    class="ccrc-advisory-banner is-{{ club_advisory.category or 'info' }}"
+    data-revision="{{ club_advisory.revision or 1 }}"
     role="status"
     aria-live="polite"
+    style="margin-bottom: 1.2rem;"
   >
-    <div class="ccrc-advisory-inner">
-      <div class="ccrc-advisory-top-row">
-        <span class="ccrc-advisory-badge">
-          <span class="ccrc-advisory-live-dot"></span>
-          <span id="live-advisory-icon">{{ club_advisory.category_icon }}</span>
-          <span id="live-advisory-cat-label">{{ club_advisory.category_label }}</span>
+    <div class="ccrc-advisory-inner" style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:12px 16px;">
+      <div class="ccrc-advisory-top-row" style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="ccrc-advisory-badge" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:0.85rem;">
+          <span class="live-pulse-dot" style="width:8px;height:8px;"></span>
+          <span id="live-advisory-icon">{{ club_advisory.category_icon or '📢' }}</span>
+          <span id="live-advisory-cat-label">{{ club_advisory.category_label or 'Club Advisory' }}</span>
         </span>
-        <div class="ccrc-advisory-right-meta">
-          <span id="live-advisory-meta" class="ccrc-advisory-meta">
+        <div class="ccrc-advisory-right-meta" style="display:flex;align-items:center;gap:8px;">
+          <span id="live-advisory-meta" class="ccrc-advisory-meta" style="font-size:0.75rem;color:#64748b;">
             {% if club_advisory.updated_label %}Updated {{ club_advisory.updated_label }}{% endif %}
           </span>
-          <button type="button" id="live-advisory-dismiss-btn" class="ccrc-advisory-dismiss" aria-label="Dismiss advisory" title="Dismiss advisory">&times;</button>
+          <button type="button" id="live-advisory-dismiss-btn" onclick="document.getElementById('ccrc-live-advisory-banner')?.remove()" class="ccrc-advisory-dismiss" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#94a3b8;" aria-label="Dismiss advisory">&times;</button>
         </div>
       </div>
-      <div id="live-advisory-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
-      <div id="live-advisory-message" class="ccrc-advisory-msg {% if not club_advisory.message %}hidden{% endif %}">{{ club_advisory.message }}</div>
+      <div id="live-advisory-title" class="ccrc-advisory-title" style="font-weight:700;font-size:1rem;margin-top:6px;color:#1e293b;">{{ club_advisory.title or 'Island Advisory' }}</div>
+      <div id="live-advisory-message" class="ccrc-advisory-msg {% if not club_advisory.message %}hidden{% endif %}" style="font-size:0.85rem;color:#475569;margin-top:2px;">{{ club_advisory.message or '' }}</div>
     </div>
   </section>
+  {% endif %}
 
   <!-- Persistent Active Ride Notification for Customer -->
   <div id="customer-active-ride-card" class="card active-ride-banner {% if not active_booking %}hidden{% endif %}" style="border: 2px solid #f97316; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%); padding: 18px 20px; border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.15);">
@@ -48,24 +51,11 @@
         <span class="live-pulse-dot" style="width:12px;height:12px;background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,0.25);"></span>
         <div>
           <span style="font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; color:#c2410c;">Active Island Trip Detected</span>
-          <h3 id="active-card-code" style="margin:2px 0 0; font-size:1.15rem; color:#9a3412;">{{ active_group_summary.group_code if active_group_summary else (active_booking.booking_code if active_booking else '') }}</h3>
-          <span id="active-card-group-badge" class="badge {% if not active_group_summary %}hidden{% endif %}" style="background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:12px;font-weight:700;font-size:0.74rem;margin-top:4px;display:inline-block;">
-            {% if active_group_summary %}
-              👥 Group Ride ({{ active_group_summary.total_riders }} Riders) &bull; {{ active_group_summary.assigned_count }}/{{ active_group_summary.total_riders }} Assigned
-            {% endif %}
-          </span>
+          <h3 id="active-card-code" style="margin:2px 0 0; font-size:1.15rem; color:#9a3412;">{{ active_booking.booking_code if active_booking else '' }}</h3>
         </div>
       </div>
       <span id="active-card-status-badge" class="badge" style="background:#ea580c; color:white; padding:6px 14px; border-radius:20px; font-weight:700; font-size:0.82rem;">
-        {% if active_group_summary %}
-          {% if active_group_summary.assigned_count >= active_group_summary.total_riders %}
-            🛵 All {{ active_group_summary.total_riders }} Riders Assigned!
-          {% elif active_group_summary.assigned_count > 0 %}
-            🛵 {{ active_group_summary.assigned_count }}/{{ active_group_summary.total_riders }} Riders Assigned
-          {% else %}
-            ⏳ Waiting for {{ active_group_summary.total_riders }} Riders...
-          {% endif %}
-        {% elif active_booking and active_booking.status == 'accepted' %}
+        {% if active_booking and active_booking.status == 'accepted' %}
           🛵 Rider Accepted &amp; Heading to Pickup!
         {% elif active_booking and active_booking.status == 'in_progress' %}
           🚀 In Transit / On the Way!
@@ -103,27 +93,18 @@
     <div style="margin-top:12px; font-size:0.88rem; color:#475569; display:grid; gap:4px;">
       <div>📍 Pickup: <strong id="active-card-pickup" style="color:#1e293b;">{{ active_booking.pickup_address if active_booking else '' }}</strong></div>
       <div>🏁 Destination: <strong id="active-card-dropoff" style="color:#1e293b;">{{ active_booking.dropoff_address if active_booking else '' }}</strong></div>
-      <div style="margin-top:4px;">
-        💰 Fare:
-        <strong id="active-card-fare" style="color:#ea580c; font-size:1.05rem;">₱{{ '{:,.0f}'.format(active_group_summary.active_total_fare if active_group_summary.cancelled_count > 0 else active_group_summary.total_fare) if active_group_summary else ('{:,.0f}'.format(active_booking.fare_amount) if active_booking else '') }}</strong>
-        <small id="active-card-group-progress" class="text-muted {% if not active_group_summary %}hidden{% endif %}" style="font-weight:600;margin-left:6px;">
-          {% if active_group_summary %}
-            ({{ active_group_summary.open_count }} open, {{ active_group_summary.completed_count }} completed)
-          {% endif %}
-        </small>
-      </div>
+      <div style="margin-top:4px;">💰 Fare: <strong id="active-card-fare" style="color:#ea580c; font-size:1.05rem;">₱{{ '{:,.0f}'.format(active_booking.fare_amount) if active_booking else '' }}</strong></div>
     </div>
 
     <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
-      <a id="active-card-track-btn" href="{{ active_tracking_url if active_tracking_url else ('/track/' ~ active_booking.booking_code if active_booking else '#') }}" class="btn btn-primary btn-block" style="flex:2; padding:12px 18px; font-weight:700; text-align:center; font-size:0.95rem; border-radius:10px;">
+      <a id="active-card-track-btn" href="{{ '/track/' ~ active_booking.booking_code if active_booking else '#' }}" class="btn btn-primary btn-block" style="flex:2; padding:12px 18px; font-weight:700; text-align:center; font-size:0.95rem; border-radius:10px;">
         🗺️ Resume Live GPS Tracking &rarr;
       </a>
-      <button type="button" id="active-card-dismiss-btn" class="btn btn-outline" style="flex:1; font-size:0.85rem; border-radius:10px; white-space:nowrap;" onclick="document.getElementById('booking-request-form')?.scrollIntoView({behavior:'smooth'})">
+      <button type="button" id="active-card-dismiss-btn" class="btn btn-outline" style="flex:1; font-size:0.85rem; border-radius:10px; white-space:nowrap;" onclick="document.getElementById('booking-form')?.scrollIntoView({behavior:'smooth'})">
         Book Another Ride +
       </button>
     </div>
   </div>
-  <div id="customer-active-trips-extra" class="active-trips-extra-list hidden"></div>
 
   <!-- Main Booking App Layout -->
   <div class="booking-grid">
@@ -135,19 +116,19 @@
         <button type="button" class="service-tab-btn active" data-service="pahatud">
           <span class="service-icon">🛵</span>
           <span class="service-title">Passenger</span>
-          <span class="service-tag">Motorcycle Ride</span>
+          <span class="service-tag">Habal-habal</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pasugo">
           <span class="service-icon">📦</span>
-          <span class="service-title">Courier</span>
-          <span class="service-tag">Delivery (+₱20)</span>
+          <span class="service-title">Padala</span>
+          <span class="service-tag">Courier (+₱20)</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabili">
           <span class="service-icon">🛒</span>
-          <span class="service-title">Errand</span>
-          <span class="service-tag">Shopping (+₱20)</span>
+          <span class="service-title">Pabili</span>
+          <span class="service-tag">Errand (+₱20)</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabayad">
@@ -173,7 +154,7 @@
             <div class="route-input-row">
               <label for="pickup-address" class="route-field-label">PICKUP / MEETING POINT</label>
               <div class="route-field-wrap">
-                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off">
+                <input type="text" id="pickup-address" name="pickup_address" required placeholder="Where should the rider pick you up?" autocomplete="off" list="camiguin-places-list">
                 <button type="button" id="clear-pickup-btn" class="input-clear-btn hidden" aria-label="Clear pickup" title="Erase text">✕</button>
                 <div class="route-actions-inline">
                   <button type="button" id="locate-pickup-gps-btn" class="route-mini-btn" title="Use current GPS">📍 My GPS</button>
@@ -191,7 +172,7 @@
             <div class="route-input-row">
               <label for="dropoff-address" class="route-field-label">DESTINATION / DROP-OFF</label>
               <div class="route-field-wrap">
-                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off">
+                <input type="text" id="dropoff-address" name="dropoff_address" required placeholder="Where are you going in Camiguin?" autocomplete="off" list="camiguin-places-list">
                 <button type="button" id="clear-dropoff-btn" class="input-clear-btn hidden" aria-label="Clear dropoff" title="Erase text">✕</button>
                 <div class="route-actions-inline">
                   <button type="button" id="locate-dropoff-gps-btn" class="route-mini-btn" title="Pin on Map">📍 Pin Map</button>
@@ -204,58 +185,100 @@
           </div>
         </div>
 
-        <!-- Saved Addresses Quick Bar (🏠 Home / 🏢 Work / ⭐ Favorite — 100% Fair Broadcast Dispatch) -->
-        <div id="saved-addresses-bar" class="saved-addresses-box">
-          <div class="saved-addresses-header">
-            <span class="saved-addresses-title">📍 My Saved Places</span>
-            <div class="saved-addresses-controls">
-              <div class="saved-addr-target-toggle" role="group" aria-label="Apply saved place to">
-                <button type="button" id="saved-addr-target-pickup" class="saved-target-btn active" data-saved-target="pickup">🟢 Pickup</button>
-                <button type="button" id="saved-addr-target-dropoff" class="saved-target-btn" data-saved-target="dropoff">🏁 Drop-off</button>
-              </div>
-              <button type="button" id="manage-saved-addresses-btn" class="saved-manage-btn" title="Edit Home, Work &amp; Favorite addresses">⚙️ Edit</button>
-            </div>
-          </div>
-          <div id="saved-address-chips" class="saved-address-chips">
-            <button type="button" class="saved-addr-chip is-empty" data-slot="home">
-              <span class="saved-addr-chip-icon">🏠</span>
-              <span class="saved-addr-chip-copy">
-                <strong class="saved-addr-chip-label">Home</strong>
-                <small class="saved-addr-chip-sub">+ Tap to save</small>
-              </span>
-            </button>
-            <button type="button" class="saved-addr-chip is-empty" data-slot="work">
-              <span class="saved-addr-chip-icon">🏢</span>
-              <span class="saved-addr-chip-copy">
-                <strong class="saved-addr-chip-label">Work</strong>
-                <small class="saved-addr-chip-sub">+ Tap to save</small>
-              </span>
-            </button>
-            <button type="button" class="saved-addr-chip is-empty" data-slot="favorite">
-              <span class="saved-addr-chip-icon">⭐</span>
-              <span class="saved-addr-chip-copy">
-                <strong class="saved-addr-chip-label">Favorite</strong>
-                <small class="saved-addr-chip-sub">+ Tap to save</small>
-              </span>
-            </button>
-          </div>
-        </div>
+        <datalist id="camiguin-places-list">
+          <!-- Gasolinahan -->
+          <option value="Petron Gas Station Mambajao (Balbagon)">
+          <option value="Petron Gas Station Poblacion Mambajao">
+          <option value="Shell Gas Station Mambajao (Tupsan)">
+          <option value="Phoenix Gas Station Mambajao (Lakas)">
+          <option value="Petron Gas Station Catarman">
+          <option value="Petron Gas Station Mahinog (Benoni)">
+          <!-- Schools -->
+          <option value="Mambajao Central School">
+          <option value="Fatima College of Camiguin (FCC)">
+          <option value="Camiguin Polytechnic State College (CPSC / CSU)">
+          <option value="Camiguin National High School (CNHS)">
+          <option value="Yumbing National High School">
+          <!-- Churches -->
+          <option value="San Nicolas de Tolentino Parish Church, Mambajao">
+          <option value="IFI Parish of the Good Shepherd, Mambajao">
+          <option value="Iglesia Ni Cristo (INC), Mambajao">
+          <option value="San Roque Parish Church, Mahinog">
+          <option value="Our Lady of Mount Carmel Parish Church, Catarman">
+          <option value="Holy Rosary Parish Church, Sagay">
+          <option value="Our Lady of Consolation Parish Church, Guinsiliban">
+          <!-- Restaurants & Cafes -->
+          <option value="Moonflower Garden and Restaurant, Baylao">
+          <option value="Samuel Restaurant, Mambajao (Placido Reyes St)">
+          <option value="Kurma Eco Restaurant & Cafe, Yumbing">
+          <option value="Julie's Bakeshop, Mambajao">
+          <option value="Goldilocks Bakeshop, Mambajao">
+          <option value="CheckPoint Food Park, Mambajao">
+          <option value="Jollibee Camiguin, Mambajao (Burgos St)">
+          <option value="Gaisano Capital Camiguin (Placido Reyes St)">
+          <option value="Placido Reyes Street, Mambajao">
+          <option value="Burgos Street, Mambajao">
+          <option value="Bonifacio Aranas Street, Mambajao">
+          <option value="Plaridel Street, Mambajao">
+          <option value="Rizal Street, Mambajao">
+          <option value="Mabini Street, Mambajao">
+          <option value="Mambajao Public Market">
+          <option value="7-Eleven Mambajao Town Center">
+          <option value="Balbagon Port (FastCat)">
+          <option value="Benoni Passenger Terminal, Mahinog">
+          <option value="Benoni Port / Ferry Wharf, Mahinog">
+          <option value="Boloc-boloc, Mambajao">
+          <option value="Sa-ay Cold Spring, Mambajao">
+          <option value="Baylao, Mambajao">
+          <option value="Gaisano Capital Camiguin">
+          <option value="Davilett Store, Mambajao">
+          <option value="Nene Uy Store, Mambajao">
+          <option value="7-Eleven Mambajao">
+          <option value="Mambajao Public Market">
+          <option value="Mambajao Town Plaza">
+          <option value="Balbagon Port (FastCat)">
+          <option value="Benoni Passenger Terminal, Mahinog">
+          <option value="Benoni Port / Ferry Wharf, Mahinog">
+          <option value="Camiguin Airport">
+          <option value="Camiguin General Hospital">
+          <option value="Provincial Capitol, Mambajao">
+          <option value="Agoho, Mambajao">
+          <option value="Yumbing, Mambajao">
+          <option value="Paras Beach Resort, Yumbing">
+          <option value="Balyali Beach Resort, Yumbing">
+          <option value="White Island Boat Jump-off">
+          <option value="Tongatok Cliff Resort">
+          <option value="Lanzones Resort, Mambajao">
+          <option value="Camiguin Highland Resort / Soro-soro">
+          <option value="Katibawasan Falls">
+          <option value="Ardent Hot Spring">
+          <option value="Sunken Cemetery, Catarman">
+          <option value="Old Church Ruins, Bonbon">
+          <option value="Tuasan Falls, Catarman">
+          <option value="Sto. Niño Cold Spring, Catarman">
+          <option value="Bura Soda Water Park, Catarman">
+          <option value="Mantigue Island Jump-off, Mahinog">
+          <option value="Taguines Lagoon, Mahinog">
+          <option value="Poblacion Mahinog">
+          <option value="Poblacion Catarman">
+          <option value="Poblacion Sagay">
+          <option value="Poblacion Guinsiliban">
+        </datalist>
 
         <!-- Quick Destination Pills -->
         <div class="landmarks-clean-box">
           <span class="landmarks-clean-title">Popular Destinations:</span>
           <div class="landmark-chips-scroll" id="quick-landmark-chips">
             <button type="button" class="chip-pill" data-name="Jollibee Camiguin, Mambajao" data-lat="9.24971" data-lng="124.71667">🍔 Jollibee Camiguin</button>
-            <button type="button" class="chip-pill" data-name="Gaisano Capital Camiguin (Placido Reyes St)" data-lat="9.25281" data-lng="124.71617">🛒 Gaisano (Placido Reyes St)</button>
-            <button type="button" class="chip-pill" data-name="Ardent Hot Spring, Esperanza" data-lat="9.22702" data-lng="124.68798">🔥 Ardent Hot Spring</button>
-            <button type="button" class="chip-pill" data-name="Benoni Port / Ferry Wharf, Mahinog" data-lat="9.13904" data-lng="124.79420">🚢 Benoni Port</button>
-            <button type="button" class="chip-pill" data-name="Balbagon Port (FastCat &amp; Ferry Wharf)" data-lat="9.24390" data-lng="124.73794">⛴️ Balbagon Port</button>
-            <button type="button" class="chip-pill" data-name="White Island Boat Jump-off, Yumbing" data-lat="9.24368" data-lng="124.66090">🏝️ White Island</button>
-            <button type="button" class="chip-pill" data-name="Paras Beach Resort, Yumbing" data-lat="9.24379" data-lng="124.66164">🏖️ Paras Beach</button>
-            <button type="button" class="chip-pill" data-name="Camiguin Airport" data-lat="9.25111" data-lng="124.70459">✈️ Airport</button>
-            <button type="button" class="chip-pill" data-name="Mambajao Public Market" data-lat="9.25310" data-lng="124.71660">🏪 Market</button>
-            <button type="button" class="chip-pill" data-name="Katibawasan Falls" data-lat="9.21358" data-lng="124.71793">💧 Katibawasan</button>
-            <button type="button" class="chip-pill" data-name="Sunken Cemetery &amp; Giant Cross, Bonbon" data-lat="9.20680" data-lng="124.63277">⚓ Sunken Cemetery</button>
+            <button type="button" class="chip-pill" data-name="Gaisano Capital Camiguin (Placido Reyes St)" data-lat="9.25290" data-lng="124.71613">🛒 Gaisano (Placido Reyes St)</button>
+            <button type="button" class="chip-pill" data-name="Benoni Port (Mahinog)" data-lat="9.1306" data-lng="124.7937">🚢 Benoni Port</button>
+            <button type="button" class="chip-pill" data-name="Balbagon Port (Mambajao)" data-lat="9.2561" data-lng="124.7175">⛴️ Balbagon Port</button>
+            <button type="button" class="chip-pill" data-name="White Island Boat Jump-off" data-lat="9.2538" data-lng="124.6532">🏝️ White Island</button>
+            <button type="button" class="chip-pill" data-name="Paras Beach Resort (Yumbing)" data-lat="9.2553" data-lng="124.6468">🏖️ Paras Beach</button>
+            <button type="button" class="chip-pill" data-name="Camiguin Airport" data-lat="9.2530" data-lng="124.7061">✈️ Airport</button>
+            <button type="button" class="chip-pill" data-name="Mambajao Public Market" data-lat="9.25319" data-lng="124.71660">🏪 Market</button>
+            <button type="button" class="chip-pill" data-name="Katibawasan Falls" data-lat="9.2152" data-lng="124.7188">💧 Katibawasan</button>
+            <button type="button" class="chip-pill" data-name="Sunken Cemetery, Catarman" data-lat="9.2025" data-lng="124.6300">⚓ Sunken Cemetery</button>
           </div>
         </div>
 
@@ -301,7 +324,7 @@
               <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
               <div>
                 <strong>Hinterland / Mountain Route (+₱30)</strong>
-                <small class="text-muted">Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon</small>
+                <small class="text-muted">Soro-soro, Highland, Utopia, Binunsaran, Granelandia</small>
               </div>
             </label>
           </div>
@@ -332,15 +355,15 @@
           <div id="booking-register-option" style="margin-top:10px;border-top:1px dashed #e2e8f0;padding-top:8px;">
             <label style="font-size:0.82rem;font-weight:600;color:#1d4ed8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none;">
               <input type="checkbox" id="reg-during-booking-toggle" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
-              <span>🔒 Secure and verify this phone number with a Password (Verified Passenger Badge 🛡️)</span>
+              <span>🔒 I-secure ug i-verify kini nga phone number gamit ang Password (Legit Passenger Badge 🛡️)</span>
             </label>
             <div id="reg-during-booking-fields" class="hidden" style="margin-top:8px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
               <div style="font-size:0.8rem;color:#15803d;margin-bottom:8px;font-weight:600;">
-                ✓ Zero bogus or prank bookings: Registered customers display a <strong>Verified Badge 🛡️</strong> visible to all riders.
+                ✓ Walay bogus o prank booking: Ang rehistradong customer adunay <strong>Verified Badge 🛡️</strong> nga makita sa tanang riders.
               </div>
               <div class="form-grid-2">
                 <div class="form-group">
-                  <label for="reg-booking-pwd" style="font-size:0.8rem;font-weight:600;color:#334155;">Create Password (min. 6 characters) *</label>
+                  <label for="reg-booking-pwd" style="font-size:0.8rem;font-weight:600;color:#334155;">Paghimo og Password (min. 6 characters) *</label>
                   <input type="password" id="reg-booking-pwd" placeholder="Enter password to secure account" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;">
                 </div>
                 <div class="form-group">
@@ -356,36 +379,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Number of Riders Needed (1 to 10 Simultaneous Riders) -->
-        <div class="booking-option-card riders-count-card" id="riders-count-card" style="margin-top:14px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-            <div class="section-badge-title">👥 Number of Riders Needed (1–10)</div>
-            <span id="riders-count-badge" class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:0.75rem;font-weight:700;">1 Rider (Solo)</span>
-          </div>
-          <div class="riders-stepper-row">
-            <div class="riders-stepper">
-              <button type="button" id="riders-count-dec" class="riders-step-btn" aria-label="Decrease number of riders" disabled>&minus;</button>
-              <div class="riders-step-display">
-                <strong id="riders-count-val">1</strong>
-                <small id="riders-count-unit">rider</small>
-              </div>
-              <button type="button" id="riders-count-inc" class="riders-step-btn" aria-label="Increase number of riders">+</button>
-            </div>
-            <div class="riders-preset-pills" role="group" aria-label="Quick rider count presets">
-              <button type="button" class="riders-preset-btn active" data-riders-preset="1">1</button>
-              <button type="button" class="riders-preset-btn" data-riders-preset="2">2</button>
-              <button type="button" class="riders-preset-btn" data-riders-preset="3">3</button>
-              <button type="button" class="riders-preset-btn" data-riders-preset="4">4</button>
-              <button type="button" class="riders-preset-btn" data-riders-preset="5">5</button>
-              <button type="button" class="riders-preset-btn" data-riders-preset="10">10</button>
-            </div>
-          </div>
-          <input type="hidden" id="riders-count-input" name="riders_count" value="1">
-          <small class="text-muted" style="display:block;margin-top:6px;font-size:0.76rem;line-height:1.4;">
-            Book 1 rider for solo trips, or up to 10 riders simultaneously for families &amp; groups. Each rider gets paid directly.
-          </small>
         </div>
 
         <!-- Ride Timing & Scheduling Options -->
@@ -461,22 +454,15 @@
         <div class="fare-estimate-card-clean">
           <div class="fare-summary-row">
             <div>
-              <span class="fare-clean-label" id="fare-estimate-label">Estimated Fare</span>
+              <span class="fare-clean-label">Estimated Fare</span>
               <div class="fare-clean-number">
                 <span class="peso-sign">₱</span><strong id="fare-display">40</strong>
               </div>
             </div>
             <div class="fare-distance-pill">
               <span id="fare-km-display">~0.0 km</span>
-              <small class="text-muted">🛣️ Road Route</small>
+              <small class="text-muted">🛣️ Kalsada / Road Route</small>
             </div>
-          </div>
-
-          <div id="fare-breakdown-badges" class="fare-breakdown-badges hidden"></div>
-
-          <div id="fare-group-summary-row" class="fare-group-summary-row hidden">
-            <span id="fare-group-summary-label">👥 Group Fare Breakdown:</span>
-            <strong id="fare-group-summary-val">₱40 per rider × 1 = ₱40</strong>
           </div>
 
           <div id="promo-discount-row" class="hidden" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;color:#16a34a;font-weight:600;font-size:0.9rem;">
@@ -484,7 +470,7 @@
             <span id="promo-discount-val">-₱0</span>
           </div>
 
-          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 per succeeding road km. Follows real road routes!</p>
+          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 kada succeeding road km. Subay gyud sa kalsada!</p>
 
           <div style="text-align:right;margin-top:4px;">
             <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.8rem;color:var(--primary);font-weight:600;">
@@ -538,16 +524,16 @@
 
         <!-- Floating Quick Controls (Top-Right on map) -->
         <div class="map-floating-bar">
-          <span class="map-island-badge" title="Exclusive routes within Camiguin Island only">🏝️ Camiguin Island</span>
+          <span class="map-island-badge" title="Eksklusibo nga rota sa Isla sa Camiguin lamang">🏝️ Camiguin Island</span>
           <div class="map-layer-pill">
-            <button type="button" class="layer-pill-btn active" data-layer-target="street" title="Standard Road Map">🗺️ Street</button>
+            <button type="button" class="layer-pill-btn active" data-layer-target="street" title="Standard Road Map">🗺️ Kalsada</button>
             <button type="button" class="layer-pill-btn" data-layer-target="satellite" title="Photorealistic Satellite Aerial View">🛰️ Satellite</button>
           </div>
-          <button type="button" class="map-float-btn btn-locate-me" title="Use your current GPS location">
-            <span>🎯</span> My Location
+          <button type="button" class="map-float-btn btn-locate-me" title="Gamita ang imong kasamtangang GPS lokasyon">
+            <span>🎯</span> Akong Lokasyon
           </button>
-          <button type="button" class="map-float-btn btn-fullscreen-toggle" title="Expand map for mobile">
-            <span>⛶</span> Expand
+          <button type="button" class="map-float-btn btn-fullscreen-toggle" title="Padak-a ang mapa para sa cellphone">
+            <span>⛶</span> Padak-a
           </button>
         </div>
 
@@ -573,12 +559,12 @@
           <img id="cust-home-avatar-img" src="" alt="Avatar" class="hidden" style="width:100%;height:100%;object-fit:cover;">
         </div>
         <div>
-          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Total Rides Booked</span>
-          <div id="customer-home-trips-count" style="font-size:1.8rem;font-weight:800;color:#38bdf8;">0 trips</div>
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Naka-book na og (Total Trips)</span>
+          <div id="customer-home-trips-count" style="font-size:1.8rem;font-weight:800;color:#38bdf8;">0 ka biyahe</div>
         </div>
       </div>
       <div style="text-align:right;">
-        <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Total Spent (Fare)</span>
+        <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Total Nagasto (Fare)</span>
         <div id="customer-home-spent-amount" style="font-size:1.4rem;font-weight:700;color:#4ade80;">₱0.00</div>
       </div>
     </div>
@@ -588,7 +574,7 @@
         <span style="color:#16a34a;font-size:1rem;">🛡️✓</span> <strong>Verified CCRC Passenger:</strong> <span id="customer-home-name">Passenger</span>
       </span>
       <a href="/history" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:6px 14px;font-size:0.8rem;text-decoration:none;font-weight:600;">
-        📜 View Full History &rarr;
+        📜 Tan-awa ang Tibuok History &rarr;
       </a>
     </div>
 
@@ -664,7 +650,7 @@
           <li><strong>Large Store Queuing:</strong> +₱30 when queuing at Gaisano, Davilett, Nene Uy</li>
           <li><strong>Additional Store Stops:</strong> +₱20 per extra store</li>
           <li><strong>Bulky Orders (&gt;=₱2,000):</strong> +₱20</li>
-          <li><strong>Hinterland / Mountain Route:</strong> +₱30 auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon, etc.)</li>
+          <li><strong>Hinterland / Mountain Route:</strong> +₱30 in Soro-soro, Highland, Utopia, etc.</li>
         </ul>
       </div>
     </div>
@@ -675,7 +661,7 @@
 <div id="broadcast-success-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
   <div class="modal-card modal-md text-center">
     <div class="modal-body" style="padding:2.5rem 1.8rem;">
-      <div class="success-icon-pulse"><img src="/static/icons/logo.png?v=3" alt="CCRC" style="width:68px;height:68px;object-fit:contain;border-radius:50%;display:block;margin:0 auto;"></div>
+      <div class="success-icon-pulse"><img src="/static/icons/logo.png" alt="CCRC" style="width:68px;height:68px;object-fit:contain;border-radius:50%;display:block;margin:0 auto;"></div>
       <h2 style="margin:12px 0 6px;font-size:1.5rem;">Booking Broadcasted!</h2>
       <p class="text-muted" style="font-size:0.92rem;">Active riders on Camiguin island are receiving your dispatch chime right now.</p>
 
@@ -683,77 +669,10 @@
         <span class="code-label" style="display:block;font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Your Booking Code</span>
         <strong id="modal-booking-code" class="code-val" style="font-size:1.4rem;font-family:monospace;color:var(--primary);">CCRC-0000-00</strong>
       </div>
-      <p id="modal-group-note" class="text-muted hidden" style="font-size:0.84rem;margin:0 0 8px;"></p>
 
       <a id="modal-track-link" href="#" class="btn btn-primary btn-lg btn-block" style="margin-top:14px;padding:14px;border-radius:12px;font-weight:700;">
         Track Live Rider GPS &amp; Status &rarr;
       </a>
-    </div>
-  </div>
-</div>
-
-<!-- Saved Addresses Modal (🏠 Home / 🏢 Work / ⭐ Favorite) -->
-<div id="saved-address-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="saved-address-modal-title">
-  <div class="modal-card modal-md saved-address-modal-card">
-    <div class="modal-header saved-addr-modal-header">
-      <h3 id="saved-address-modal-title">📍 Manage Saved Places</h3>
-      <button type="button" id="close-saved-address-modal-btn" class="text-btn saved-addr-close-btn" aria-label="Close">&times;</button>
-    </div>
-    <div class="modal-body saved-addr-modal-body">
-      <div id="saved-addr-sync-note" class="saved-addr-sync-note">
-        📱 Saved on this device (Sign in to sync across devices)
-      </div>
-
-      <div class="saved-slot-tabs" role="tablist" aria-label="Saved place slot">
-        <button type="button" id="saved-slot-tab-home" class="saved-slot-tab active" data-saved-slot="home" role="tab" aria-selected="true">🏠 Home</button>
-        <button type="button" id="saved-slot-tab-work" class="saved-slot-tab" data-saved-slot="work" role="tab" aria-selected="false">🏢 Work</button>
-        <button type="button" id="saved-slot-tab-favorite" class="saved-slot-tab" data-saved-slot="favorite" role="tab" aria-selected="false">⭐ Favorite</button>
-      </div>
-
-      <div class="saved-quick-fill-row">
-        <button type="button" id="saved-copy-pickup-btn" class="saved-quick-btn">🟢 Use Current Pickup</button>
-        <button type="button" id="saved-copy-dropoff-btn" class="saved-quick-btn">🏁 Use Current Drop-off</button>
-        <button type="button" id="saved-detect-gps-btn" class="saved-quick-btn">🛰️ Use My GPS</button>
-      </div>
-
-      <form id="saved-address-form" class="saved-address-form" autocomplete="off">
-        <input type="hidden" id="saved-addr-slot-input" value="home">
-        <input type="hidden" id="saved-addr-lat-input" value="">
-        <input type="hidden" id="saved-addr-lng-input" value="">
-
-        <div class="saved-addr-field">
-          <label for="saved-addr-address-input">Address / Barangay / Landmark *</label>
-          <div class="saved-addr-autocomplete-wrap">
-            <input type="text" id="saved-addr-address-input" placeholder="e.g., Brgy. Agoho, Mambajao or Gaisano Camiguin" maxlength="180" required>
-            <div id="saved-addr-suggestions" class="places-dropdown hidden"></div>
-          </div>
-          <small id="saved-addr-pin-status" class="saved-addr-pin-status">📍 Tip: Pick a suggestion, use GPS, or copy from the map for exact pin.</small>
-        </div>
-
-        <div class="saved-addr-field-grid">
-          <div class="saved-addr-field">
-            <label for="saved-addr-label-input">Custom Label (Optional)</label>
-            <input type="text" id="saved-addr-label-input" placeholder="Home, Office, School, Market..." maxlength="40">
-          </div>
-          <div class="saved-addr-field">
-            <label for="saved-addr-note-input">Gate / Landmark Note (Optional)</label>
-            <input type="text" id="saved-addr-note-input" placeholder="e.g., Blue gate beside sari-sari store" maxlength="140">
-          </div>
-        </div>
-
-        <div id="saved-addr-feedback" class="saved-addr-feedback hidden" role="status"></div>
-
-        <div class="saved-addr-form-actions">
-          <button type="submit" id="saved-addr-save-btn" class="btn btn-primary saved-addr-save-btn">💾 Save Place</button>
-          <button type="button" id="saved-addr-delete-btn" class="saved-addr-delete-btn hidden">🗑️ Remove</button>
-        </div>
-      </form>
-
-      <div id="saved-addr-modal-list" class="saved-addr-modal-list"></div>
-
-      <p class="saved-addr-fairness-note">
-        ⚡ Saved places make booking faster — every ride is still broadcast fairly to all online CCRC riders.
-      </p>
     </div>
   </div>
 </div>
@@ -762,7 +681,6 @@
 {% block scripts %}
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
-  window.SERVER_ACTIVE_TRIPS = {{ active_trips | tojson if active_trips else '[]' }};
 </script>
-<script src="/static/js/app.js?v=35"></script>
+<script src="/static/js/app.js?v=27"></script>
 {% endblock %}
