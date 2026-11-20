@@ -1435,6 +1435,7 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "highland resort",
             "highland",
             "sorosoro",
+            "sorosro",
             "soro-soro",
             "soro'soro"
         ],
@@ -1683,6 +1684,7 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
         "keywords": [
             "soro-soro",
             "sorosoro",
+            "sorosro",
             "soro soro",
             "brgy sorosoro"
         ],
@@ -1698,8 +1700,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "brgy tagdo",
             "barangay tagdo"
         ],
-        "lat": 9.238,
-        "lng": 124.682,
+        "lat": 9.231,
+        "lng": 124.756,
         "mun": "Mambajao"
     },
     {

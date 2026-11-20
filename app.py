@@ -279,7 +279,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         # Auto-detect hinterland route from addresses or explicit flag
         full_addr = f"{p_addr} {d_addr}".lower()
         hinterland_keywords = [
-            "sorosoro", "soro'soro", "soro-soro", "soro soro",
+            "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
             "highland", "utopia", "binunsaran", "granelandia",
             "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
             "vulcan", "bukid", "mountain", "hinterland"
@@ -762,7 +762,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         # Auto-detect hinterland route
         full_addr = f"{pickup_address} {dropoff_address} {item_notes}".lower()
         hinterland_keywords = [
-            "sorosoro", "soro'soro", "soro-soro", "soro soro",
+            "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
             "highland", "utopia", "binunsaran", "granelandia",
             "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
             "vulcan", "bukid", "mountain", "hinterland"
