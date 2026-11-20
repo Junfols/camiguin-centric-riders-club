@@ -1472,6 +1472,7 @@
       "highland resort",
       "highland",
       "sorosoro",
+      "sorosro",
       "soro-soro",
       "soro'soro"
     ],
@@ -1720,6 +1721,7 @@
     "keywords": [
       "soro-soro",
       "sorosoro",
+      "sorosro",
       "soro soro",
       "brgy sorosoro"
     ],
@@ -1735,8 +1737,8 @@
       "brgy tagdo",
       "barangay tagdo"
     ],
-    "lat": 9.238,
-    "lng": 124.682,
+    "lat": 9.231,
+    "lng": 124.756,
     "mun": "Mambajao"
   },
   {
