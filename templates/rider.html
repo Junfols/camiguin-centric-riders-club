@@ -302,6 +302,35 @@
             </a>
           </div>
         </div>
+
+        <!-- Resibo / Proof of Purchase / Delivery Photo Upload -->
+        <div id="active-job-receipt-section" class="loc-step" style="background:#f8fafc;padding:12px;border-radius:10px;border:1.5px dashed #cbd5e1;margin-top:10px;">
+          <span class="loc-icon">📸</span>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+              <strong style="font-size:0.85rem;">Resibo / Proof of Purchase:</strong>
+              <span id="rider-receipt-status-badge" class="badge" style="background:#e2e8f0;color:#475569;font-size:0.75rem;">Walay Resibo</span>
+            </div>
+            <p style="margin:4px 0 8px;font-size:0.78rem;color:#64748b;">
+              Kuhaa og litrato ang opisyal nga resibo (Gaisano, Botika, Grocery) o proof of parcel handover.
+            </p>
+
+            <!-- Thumbnail Preview if already uploaded -->
+            <div id="rider-receipt-preview-wrap" class="hidden" style="margin-bottom:8px;">
+              <a id="rider-receipt-preview-link" href="#" target="_blank" rel="noopener">
+                <img id="rider-receipt-img-preview" src="" alt="Resibo Preview" style="max-height:160px;border-radius:8px;border:1px solid #cbd5e1;object-fit:cover;cursor:pointer;display:block;" title="I-click aron makita sa full size">
+              </a>
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <label for="rider-receipt-file-input" class="btn btn-sm" style="background:#ea580c;color:white;cursor:pointer;border-radius:8px;padding:6px 12px;font-size:0.8rem;display:inline-flex;align-items:center;gap:6px;font-weight:600;">
+                <span>📷</span> <span id="rider-receipt-btn-text">Take / Upload Resibo</span>
+              </label>
+              <input type="file" id="rider-receipt-file-input" accept="image/*" capture="environment" style="display:none;">
+              <span id="rider-receipt-uploading-spinner" class="hidden" style="font-size:0.8rem;color:#ea580c;font-weight:600;">⏳ Gi-upload ang resibo...</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Interactive Rider Trip Map (Live GPS, Route, Pickup, Dropoff) -->
@@ -476,6 +505,14 @@
           <span id="r-modal-total">₱0</span>
         </div>
       </div>
+
+      <div id="r-modal-receipt-img-wrap" class="hidden" style="margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:12px;text-align:center;">
+        <strong style="display:block;font-size:0.85rem;margin-bottom:6px;color:#334155;">Store Official Receipt / Photo Proof:</strong>
+        <a id="r-modal-receipt-img-link" href="#" target="_blank" rel="noopener">
+          <img id="r-modal-receipt-img" src="" alt="Resibo" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #cbd5e1;object-fit:cover;">
+        </a>
+      </div>
+
       <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save Receipt</button>
     </div>
   </div>
@@ -498,5 +535,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=28"></script>
+<script src="/static/js/rider.js?v=29"></script>
 {% endblock %}

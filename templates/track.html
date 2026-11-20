@@ -27,33 +27,13 @@
           ✕ Booking has been cancelled.
         {% endif %}
       </span>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span id="track-active-slot-pill" class="badge {% if not (group_summary and group_bookings|length > 1) %}hidden{% endif %}" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:700;">
-          {% if group_summary and group_bookings|length > 1 %}
-            Rider {{ booking.rider_slot or 1 }} of {{ group_summary.total_riders }} &bull; {{ group_summary.group_code }}
-          {% endif %}
-        </span>
-        <span class="booking-code-pill" id="track-booking-code-pill">{{ booking.booking_code }}</span>
-      </div>
+      <span class="booking-code-pill">{{ booking.booking_code }}</span>
     </div>
 
-    <div id="track-transfer-banner" class="transfer-urgency-banner {% if not (booking.transfer_count and booking.transfer_count > 0) %}hidden{% endif %}" style="margin-top:10px;text-align:left;">
-      <strong>🚨 Rider Emergency Handover Notice</strong>
-      <div id="track-transfer-banner-text" style="font-size:0.82rem;margin-top:2px;">
-        {% if booking.status == 'broadcast' and booking.transferred_from_rider_name %}
-          {{ booking.transferred_from_rider_name }} requested an emergency rider transfer{% if booking.transfer_reason %} ({{ booking.transfer_reason }}){% endif %}. Finding the nearest available club rider now...
-        {% elif booking.transferred_from_rider_name and booking.rider_name %}
-          Transferred from {{ booking.transferred_from_rider_name }} to rescue rider {{ booking.rider_name }}{% if booking.transfer_reason %} ({{ booking.transfer_reason }}){% endif %}.
-        {% elif booking.transfer_reason %}
-          Transferred to a rescue rider ({{ booking.transfer_reason }}).
-        {% endif %}
-      </div>
-    </div>
-
-    <h1 id="track-header-title" style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
+    <h1 style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
       {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
     </h1>
-    <div id="track-header-meta" class="text-muted" style="font-size:0.86rem;">
+    <div class="text-muted" style="font-size:0.86rem;">
       Fare: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Distance: <strong>{{ booking.estimated_km }} km</strong>
       {% if booking.estimated_budget and booking.estimated_budget > 0 %}
         &bull; Shopping Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
@@ -74,81 +54,13 @@
       <button type="button" id="view-receipt-btn" onclick="document.getElementById('receipt-modal')?.classList.remove('hidden')" class="btn-sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
         <span>🧾</span> View Receipt
       </button>
-      <button type="button" id="track-cancel-open-slot-btn" class="btn-sm btn-cancel-open-slot {% if booking.status != 'broadcast' %}hidden{% endif %}">
-        <span>✕</span> Cancel Open Slot
-      </button>
     </div>
 
     <!-- Dedicated Back to Dashboard Button when Completed / Delivered -->
     <div id="track-completed-back-wrap" class="{% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:14px;border-top:1px solid #e2e8f0;padding-top:12px;">
       <a href="/" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:0.95rem;font-weight:700;padding:12px;background:#16a34a;border-color:#16a34a;text-decoration:none;border-radius:10px;color:white;">
-        <span>🏠</span> Back to Dashboard (Book Another Ride)
+        <span>🏠</span> Balik sa Dashboard (Book Another Ride)
       </a>
-    </div>
-  </div>
-
-  <!-- Group Rides Summary & Slot Switcher (Shown when booking has > 1 rider slot) -->
-  <div id="group-summary-card" class="card group-summary-card {% if not (group_summary and group_bookings|length > 1) %}hidden{% endif %}">
-    <div class="group-summary-header">
-      <div>
-        <span class="group-kicker">👥 Multi-Rider Group Booking</span>
-        <div class="group-code-heading">
-          <strong id="group-code-label">{{ group_summary.group_code if group_summary else '' }}</strong>
-          <span id="group-progress-pill" class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:700;">
-            {% if group_summary %}
-              {{ group_summary.assigned_count }} / {{ group_summary.total_riders }} Riders Assigned
-            {% endif %}
-          </span>
-        </div>
-      </div>
-      <div class="group-total-fare-wrap">
-        <small class="text-muted" style="display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;">Total Group Fare</small>
-        <strong id="group-total-fare" style="font-size:1.25rem;color:var(--primary);">
-          {% if group_summary %}₱{{ '{:,.0f}'.format(group_summary.active_total_fare if group_summary.cancelled_count > 0 else group_summary.total_fare) }}{% endif %}
-        </strong>
-      </div>
-    </div>
-
-    <div id="group-slot-tabs" class="group-slot-tabs" role="tablist" aria-label="Rider Slots">
-      {% if group_bookings and group_bookings|length > 1 %}
-        {% for s in group_bookings %}
-          <button type="button" class="group-slot-tab {% if s.booking_code == booking.booking_code %}active{% endif %} slot-status-{{ s.status }}" data-slot-code="{{ s.booking_code }}">
-            <span class="slot-tab-num">Rider {{ s.rider_slot or loop.index }}</span>
-            <span class="slot-tab-state">
-              {% if s.status == 'broadcast' %}⏳ Open{% elif s.status == 'accepted' %}🛵 Assigned{% elif s.status == 'in_progress' %}🚀 Transit{% elif s.status == 'completed' %}✅ Done{% else %}✕ Cancelled{% endif %}
-            </span>
-          </button>
-        {% endfor %}
-      {% endif %}
-    </div>
-
-    <div id="group-slots-overview" class="group-slots-overview">
-      {% if group_bookings and group_bookings|length > 1 %}
-        {% for s in group_bookings %}
-          <div class="group-slot-row {% if s.booking_code == booking.booking_code %}is-focused{% endif %}" data-slot-code="{{ s.booking_code }}">
-            <div class="group-slot-row-main">
-              <div class="group-slot-row-title">
-                <strong>Rider {{ s.rider_slot or loop.index }}</strong>
-                <span class="slot-code-mono">{{ s.booking_code }}</span>
-                <span class="badge slot-status-badge status-{{ s.status }}">{{ s.status|replace('_', ' ')|title }}</span>
-              </div>
-              <div class="group-slot-row-sub">
-                {% if s.rider_name %}{{ s.rider_name }} &bull; {% else %}Waiting for rider &bull; {% endif %}
-                ₱{{ '{:,.0f}'.format(s.fare_amount) }}
-                {% if (s.payment_method or '')|lower == 'gcash' %}
-                  &bull; 💙 {{ (s.payment_status or 'pending')|replace('_', ' ')|title }}
-                {% endif %}
-              </div>
-            </div>
-            <div class="group-slot-row-actions">
-              <button type="button" class="btn btn-sm btn-outline group-focus-slot-btn" data-slot-code="{{ s.booking_code }}">Focus</button>
-              {% if s.status == 'broadcast' %}
-                <button type="button" class="btn btn-sm btn-cancel-open-slot group-cancel-slot-btn" data-booking-id="{{ s.id }}" data-slot-code="{{ s.booking_code }}">✕ Cancel Open Slot</button>
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
-      {% endif %}
     </div>
   </div>
 
@@ -179,13 +91,13 @@
     <!-- Floating Quick Controls on Tracking Map -->
     <div class="map-floating-bar" style="top:18px;right:18px;">
       <div class="map-layer-pill">
-        <button type="button" class="layer-pill-btn active" data-track-layer="street">🗺️ Street</button>
+        <button type="button" class="layer-pill-btn active" data-track-layer="street">🗺️ Kalsada</button>
         <button type="button" class="layer-pill-btn" data-track-layer="satellite">🛰️ Satellite</button>
       </div>
-      <button type="button" id="track-recenter-btn" class="map-float-btn" title="Focus on Rider Location">
-        <span>🎯</span> Focus on Rider
+      <button type="button" id="track-recenter-btn" class="map-float-btn" title="I-focus sa lokasyon sa Rider">
+        <span>🎯</span> I-focus sa Rider
       </button>
-      <button type="button" id="track-fullscreen-btn" class="map-float-btn" title="Expand Map">
+      <button type="button" id="track-fullscreen-btn" class="map-float-btn" title="Padak-a ang Mapa">
         <span>⛶</span>
       </button>
     </div>
@@ -217,129 +129,19 @@
         <div class="text-muted" id="rider-bike-text" style="font-size:0.85rem;">
           {{ booking.rider_bike }} &bull; Plate: <strong>{{ booking.rider_plate }}</strong>
         </div>
-        <div class="rider-stars" id="rider-rating-wrap" style="color:#f59e0b;font-size:0.85rem;">
+        <div class="rider-stars" style="color:#f59e0b;font-size:0.85rem;">
           ★ <strong>{{ booking.rider_rating or 5.0 }}</strong> (Verified CCRC Member)
         </div>
       </div>
     </div>
 
-    <div class="rider-actions-grid" style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
-      <button type="button" id="inapp-call-rider-btn" class="btn btn-inapp-call btn-block {% if not (booking.rider_id and booking.status in ['accepted', 'in_progress']) %}hidden{% endif %}" style="padding:11px 14px;border-radius:12px;font-size:0.96rem;">
-        🔊 Free In-App Call
-      </button>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <a id="rider-call-btn" href="tel:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
-          📞 Phone Call
-        </a>
-        <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
-          💬 Send SMS
-        </a>
-      </div>
-      <a id="rider-verify-id-link" href="{% if booking.rider_id %}/verify/rider/{{ booking.rider_id }}{% else %}#{% endif %}" target="_blank" rel="noopener" class="btn btn-outline btn-block btn-verify-rider-id {% if not booking.rider_id %}hidden{% endif %}">
-        🪪 View Official Verified Club ID
+    <div class="rider-actions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      <a id="rider-call-btn" href="tel:{{ booking.rider_phone }}" class="btn btn-primary" style="text-align:center;">
+        📞 Call Rider
       </a>
-    </div>
-  </div>
-
-  <!-- Official GCash Payment Card (Shown when payment_method == 'gcash') -->
-  <div id="gcash-payment-card" class="card gcash-card {% if (booking.payment_method or '')|lower != 'gcash' or booking.status == 'cancelled' %}hidden{% endif %}">
-    <div class="gcash-brand-header">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 200px;">
-        <span style="font-size:1.5rem;">💙</span>
-        <div style="min-width:0;">
-          <h3 style="margin:0;font-size:1.05rem;color:#0047b8;">Pay via Official GCash</h3>
-          <span class="text-muted" style="font-size:0.78rem;">Scan or send fare directly to your assigned rider's GCash</span>
-        </div>
-      </div>
-      {% set p_stat = (booking.payment_status or 'pending')|lower %}
-      <span id="gcash-track-status-badge" class="gcash-status-pill {% if p_stat == 'paid' %}paid{% elif p_stat == 'customer_sent' %}sent{% else %}pending{% endif %}">
-        {% if p_stat == 'paid' %}
-          ✅ GCash Verified &amp; Paid
-        {% elif p_stat == 'customer_sent' %}
-          📲 Sent — Awaiting Rider Confirmation
-        {% else %}
-          ⏳ Waiting for GCash Payment
-        {% endif %}
-      </span>
-    </div>
-
-    <div class="gcash-amount-box">
-      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;color:#475569;font-weight:700;">Exact Fare Amount to Send via GCash</div>
-      <div id="gcash-amount-due" style="font-size:1.65rem;font-weight:800;color:#0057d9;">₱{{ '{:,.0f}'.format(booking.fare_amount) }}</div>
-      {% if booking.estimated_budget and booking.estimated_budget > 0 %}
-        <div style="font-size:0.76rem;color:#92400e;margin-top:3px;">
-          + Shopping/Errand Budget ₱{{ '{:,.0f}'.format(booking.estimated_budget) }} (coordinate items &amp; receipt directly with rider)
-        </div>
-      {% endif %}
-    </div>
-
-    <div id="gcash-waiting-rider-msg" class="{% if booking.rider_id %}hidden{% endif %}" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:10px 12px;font-size:0.84rem;margin-bottom:12px;text-align:center;">
-      ⏳ Waiting for a club rider to accept your booking so their official GCash QR code &amp; number appear here.
-    </div>
-
-    <div id="gcash-rider-recipient-section" class="{% if not booking.rider_id %}hidden{% endif %}">
-      <div class="gcash-recipient-row">
-        <div class="gcash-recipient-info">
-          <div style="font-size:0.75rem;color:#64748b;font-weight:700;">Rider's GCash Account</div>
-          <div id="gcash-rider-name" style="font-weight:700;color:#0f172a;font-size:0.95rem;">{{ booking.rider_name or 'Club Rider' }}</div>
-          <div id="gcash-rider-number" style="font-family:monospace;font-size:0.95rem;color:#0057d9;font-weight:700;">
-            {{ booking.rider_gcash_number or booking.rider_phone or 'No number listed' }}
-          </div>
-        </div>
-        <button type="button" id="copy-rider-gcash-btn" class="btn btn-sm btn-outline gcash-copy-btn">
-          📋 Copy Number
-        </button>
-      </div>
-
-      <div class="gcash-qr-frame">
-        <div id="gcash-qr-img-wrap" class="{% if not booking.rider_gcash_qr %}hidden{% endif %}">
-          <img id="gcash-rider-qr-img" src="{{ booking.rider_gcash_qr or '' }}" alt="Rider GCash QR Code" class="gcash-qr-img">
-          <div style="margin-top:8px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
-            <a id="download-rider-qr-btn" href="{{ booking.rider_gcash_qr or '#' }}" download="CCRC-GCash-QR-{{ booking.booking_code }}.png" class="btn btn-sm btn-outline">
-              💾 Save QR Image
-            </a>
-          </div>
-          <small class="text-muted" style="display:block;margin-top:6px;font-size:0.75rem;">
-            Same phone? Tap <strong>Save QR Image</strong>, then tap <strong>Open Official GCash</strong> &rarr; <strong>Pay QR</strong> &rarr; Upload QR from Gallery.
-          </small>
-        </div>
-        <div id="gcash-no-qr-hint" class="{% if booking.rider_gcash_qr %}hidden{% endif %}" style="font-size:0.84rem;color:#475569;padding:6px;">
-          📱 Rider hasn't uploaded a QR photo yet — tap <strong>Open Official GCash</strong> below and send to their GCash number above, or scan their phone's QR code in person.
-        </div>
-      </div>
-    </div>
-
-    <button type="button" id="open-official-gcash-btn" class="btn btn-block btn-lg btn-gcash-official" style="padding:12px 16px;border-radius:12px;font-size:1rem;">
-      <span>💙</span> <span>Open Official GCash</span>
-    </button>
-    <div id="gcash-launch-hint" style="text-align:center;margin-top:8px;font-size:0.76rem;color:#475569;line-height:1.4;">
-      Opens the official GCash app on your phone.
-      <span id="gcash-store-links" style="display:inline-block;margin-left:4px;">
-        (<a href="https://play.google.com/store/apps/details?id=com.globe.gcash.android" target="_blank" rel="noopener" style="color:#0057d9;">Google Play</a> &bull; <a href="https://apps.apple.com/ph/app/gcash/id520020791" target="_blank" rel="noopener" style="color:#0057d9;">App Store</a>)
-      </span>
-    </div>
-
-    <div id="gcash-sent-form-wrap" class="{% if not booking.rider_id or p_stat == 'paid' or booking.status == 'completed' %}hidden{% endif %}" style="margin-top:14px;padding-top:12px;border-top:1px dashed #93c5fd;">
-      <form id="gcash-sent-form">
-        <label for="gcash-ref-input" style="font-size:0.82rem;font-weight:700;color:#1e293b;display:block;margin-bottom:4px;">
-          GCash Reference No. (Optional — helps rider verify faster)
-        </label>
-        <div class="gcash-sent-row">
-          <input type="text" id="gcash-ref-input" value="{{ booking.payment_ref or '' }}" maxlength="64" placeholder="e.g. 9024 118 4521" style="flex:1 1 180px;min-width:0;padding:9px 11px;border:1.5px solid #93c5fd;border-radius:10px;font-size:0.88rem;background:#ffffff;">
-          <button type="submit" id="mark-gcash-sent-btn" class="btn btn-primary gcash-sent-submit-btn">
-            {% if p_stat == 'customer_sent' %}
-              🔄 Update Reference No.
-            {% else %}
-              ✓ I've Sent GCash Payment
-            {% endif %}
-          </button>
-        </div>
-      </form>
-      <div id="gcash-customer-feedback" class="hidden" style="margin-top:8px;font-size:0.82rem;font-weight:600;padding:8px 10px;border-radius:8px;"></div>
-    </div>
-
-    <div id="gcash-paid-banner" class="{% if p_stat != 'paid' %}hidden{% endif %}" style="margin-top:12px;background:#dcfce7;border:1.5px solid #86efac;color:#15803d;border-radius:10px;padding:10px 12px;font-size:0.86rem;font-weight:700;text-align:center;">
-      ✅ GCash payment confirmed by your rider!<span id="gcash-paid-ref-text">{% if booking.payment_ref %} (Ref: {{ booking.payment_ref }}){% endif %}</span>
+      <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
+        💬 Send SMS
+      </a>
     </div>
   </div>
 
@@ -356,20 +158,15 @@
           </span>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button type="button" id="chat-inapp-call-btn" class="btn-inapp-call-mini {% if not (booking.rider_id and booking.status in ['accepted', 'in_progress']) %}hidden{% endif %}" title="Start Free In-App Voice Call">
-          📞 Call
-        </button>
-        <span class="badge badge-success" id="chat-online-badge">Online</span>
-      </div>
+      <span class="badge badge-success" id="chat-online-badge">Online</span>
     </div>
 
     <!-- Quick Canned Replies for Customer -->
     <div class="canned-replies" id="customer-canned-replies">
-      <button type="button" class="canned-btn" data-msg="Where are you right now?">📍 Where are you right now?</button>
-      <button type="button" class="canned-btn" data-msg="I'm waiting outside.">🏠 I'm waiting outside.</button>
-      <button type="button" class="canned-btn" data-msg="Thank you!">👍 Thank you!</button>
-      <button type="button" class="canned-btn" data-msg="Please let me know when you arrive.">🛵 Let me know when you arrive.</button>
+      <button type="button" class="canned-btn" data-msg="Asa na dapit Kuya?">📍 Asa na dapit Kuya?</button>
+      <button type="button" class="canned-btn" data-msg="Diri ra ko sa gawas naghulat Kuya.">🏠 Diri ra ko sa gawas naghulat.</button>
+      <button type="button" class="canned-btn" data-msg="Salamat Kuya!">👍 Salamat Kuya!</button>
+      <button type="button" class="canned-btn" data-msg="Palihug ko pag-abot Kuya.">🛵 Palihug ko pag-abot.</button>
     </div>
 
     <!-- Messages Container -->
@@ -379,36 +176,8 @@
       </div>
     </div>
 
-    <!-- Voice Recording Live Bar -->
-    <div id="chat-voice-recording-bar" class="chat-voice-recording-bar hidden">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="voice-rec-dot"></span>
-        <span>Recording Voice...</span>
-        <strong id="chat-voice-timer">0:00</strong>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <button type="button" id="chat-voice-cancel-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">Cancel</button>
-        <button type="button" id="chat-voice-send-btn" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;">Send Voice ✈️</button>
-      </div>
-    </div>
-
-    <!-- Photo Attachment Preview Bar -->
-    <div id="chat-photo-preview-bar" class="chat-photo-preview-bar hidden">
-      <div class="chat-photo-preview-top">
-        <img id="chat-photo-preview-thumb" src="" alt="Selected photo preview" class="chat-photo-preview-thumb">
-        <input type="text" id="chat-photo-caption-input" class="chat-photo-caption-input" placeholder="Add caption (receipt, landmark, proof)..." maxlength="240" autocomplete="off">
-      </div>
-      <div class="chat-photo-preview-actions">
-        <button type="button" id="chat-photo-cancel-btn" class="btn btn-sm btn-outline" style="padding:5px 10px;font-size:0.78rem;">Cancel</button>
-        <button type="button" id="chat-photo-send-btn" class="btn btn-sm btn-primary" style="padding:5px 12px;font-size:0.78rem;">Send Photo ✈️</button>
-      </div>
-    </div>
-
     <!-- Input Form -->
     <form class="chat-input-bar" id="chat-form">
-      <input type="file" id="chat-photo-input" accept="image/*" class="hidden">
-      <button type="button" id="chat-photo-btn" class="chat-photo-btn" title="Send Photo (Receipt, Landmark, Proof)" aria-label="Send Photo">📷</button>
-      <button type="button" id="chat-voice-btn" class="chat-voice-btn" title="Record Voice Message">🎙️</button>
       <input type="text" id="chat-input-field" placeholder="Type a message to rider..." maxlength="300" autocomplete="off" required>
       <button type="submit" id="chat-send-btn" class="btn btn-primary chat-send-btn" title="Send message">
         <span>Send</span> ✈️
@@ -420,19 +189,10 @@
   <div id="review-submission-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;border:2px solid #fed7aa;background:#fffaf5;">
     <div style="text-align:center;padding:10px 0;">
       <span style="font-size:2rem;">⭐</span>
-      <h3 id="review-slot-title" style="margin:6px 0 2px;">Rate Your Island Rider</h3>
-      <div id="review-already-done-box" class="{% if not already_reviewed %}hidden{% endif %}">
-        {% if already_reviewed %}
-        <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">Your rating and feedback have been recorded.</p>
-        <div id="review-already-done-msg" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;">
-          ✓ Thank you very much! Your review has already been submitted.<br>
-          <div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">&larr; Back to Dashboard</a></div>
-        </div>
-        {% endif %}
-      </div>
+      <h3 style="margin:6px 0 2px;">Rate Your Island Rider</h3>
+      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
 
-      <form id="track-review-form" class="{% if already_reviewed %}hidden{% endif %}">
-        <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
+      <form id="track-review-form">
         <input type="hidden" id="review-rider-id" value="{{ booking.rider_id or '' }}">
         <input type="hidden" id="review-booking-id" value="{{ booking.id }}">
         <div class="star-rating-select" style="display:flex;justify-content:center;gap:8px;font-size:2rem;cursor:pointer;margin-bottom:12px;" id="star-picker">
@@ -459,11 +219,11 @@
     <div style="font-size:2.5rem;margin-bottom:6px;">🎉</div>
     <h2 style="margin:0 0 6px;color:#15803d;font-size:1.3rem;">✓ Delivered! Thank you for using CCRC.</h2>
     <p style="color:#166534;font-size:0.88rem;margin:0 0 16px;">
-      Your booking has been completed successfully. Thank you for trusting Camiguin Centric Riders Club!
+      Ang imong booking malampusong nahuman. Daghang salamat sa pagsalig sa Camiguin Centric Riders Club!
     </p>
     <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
       <a href="/" class="btn btn-primary" style="padding:10px 22px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#16a34a;border-color:#16a34a;text-decoration:none;color:white;">
-        <span>🏠</span> Back to Dashboard
+        <span>🏠</span> Balik sa Dashboard
       </a>
       <a href="/history" class="btn btn-outline" style="padding:10px 18px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:white;text-decoration:none;">
         <span>📜</span> View Ride History
@@ -524,41 +284,27 @@
           <small class="text-muted">Verified Island Transport &bull; Official Island Tariff</small>
         </div>
         <div style="font-size:0.88rem;display:grid;gap:6px;">
-          <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong id="receipt-booking-code">{{ booking.booking_code }}</strong></div>
-          <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span id="receipt-passenger-name">{{ booking.customer_name }}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>Service:</span><span id="receipt-service-type" style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span id="receipt-distance-km">{{ booking.estimated_km }} km</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span id="receipt-payment-method" style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
-          {% set rcpt_slots = group_bookings if group_bookings else [booking] %}
-          {% set rcpt_is_group = rcpt_slots|length > 1 %}
-          {% set rcpt_live = rcpt_slots|rejectattr('status', 'equalto', 'cancelled')|list %}
-          <div id="receipt-group-row" class="{% if not rcpt_is_group %}hidden{% endif %}" style="display:flex;justify-content:space-between;">
-            <span>Group Booking:</span><strong id="receipt-group-code">{{ group_summary.group_code if group_summary else '' }}</strong>
-          </div>
-          <div style="border-top:1px dashed #cbd5e1;padding-top:8px;margin-top:2px;">
-            <div id="receipt-riders-title" style="font-weight:700;margin-bottom:6px;">🛵 {% if rcpt_is_group %}Riders ({{ rcpt_slots|length }}){% else %}Rider{% endif %}</div>
-            <div id="receipt-riders-list" style="display:grid;gap:8px;">
-              {% for s in rcpt_slots %}
-              <div class="receipt-rider-row" style="display:flex;justify-content:space-between;gap:10px;{% if s.status == 'cancelled' %}opacity:0.6;text-decoration:line-through;{% endif %}">
-                <div>
-                  <strong>{% if rcpt_is_group %}Rider {{ s.rider_slot or loop.index }}: {% endif %}</strong>{{ s.rider_name or 'Waiting for rider' }}
-                  {% if s.rider_name and (s.rider_bike or s.rider_plate) %}<br><small class="text-muted">{{ s.rider_bike or '' }}{% if s.rider_plate %} &bull; Plate: {{ s.rider_plate }}{% endif %}</small>{% endif %}
-                  {% if s.status == 'cancelled' %}<br><small>Cancelled</small>{% endif %}
-                </div>
-                <span style="white-space:nowrap;">₱{{ '{:,.0f}'.format(s.fare_amount or 0) }}</span>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          <div id="receipt-promo-row" class="{% if not booking.promo_code %}hidden{% endif %}" style="display:flex;justify-content:space-between;color:#16a34a;">
-            <span id="receipt-promo-label">Voucher ({{ booking.promo_code or '' }}):</span>
-            <span id="receipt-promo-val">-₱{{ '{:,.0f}'.format(rcpt_slots|map(attribute='discount_amount')|map('float')|sum if rcpt_is_group else (booking.discount_amount or 0)) }}</span>
-          </div>
+          <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong>{{ booking.booking_code }}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span>{{ booking.customer_name }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Service:</span><span style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span>{{ booking.estimated_km }} km</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
+          {% if booking.promo_code %}
+          <div style="display:flex;justify-content:space-between;color:#16a34a;"><span>Voucher ({{ booking.promo_code }}):</span><span>-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span></div>
+          {% endif %}
           <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;border-top:2px solid #1e293b;padding-top:8px;margin-top:6px;">
-            <span id="receipt-fare-label">{% if rcpt_is_group %}Total Group Fare:{% else %}Total Fare:{% endif %}</span>
-            <span id="receipt-fare-amount">₱{{ '{:,.0f}'.format((rcpt_live|map(attribute='fare_amount')|map('float')|sum) if rcpt_is_group else booking.fare_amount) }}</span>
+            <span>Total Fare:</span>
+            <span>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</span>
           </div>
         </div>
+
+        <div id="modal-receipt-img-wrap" class="{% if not booking.receipt_url %}hidden{% endif %}" style="margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:12px;text-align:center;">
+          <strong style="display:block;font-size:0.85rem;margin-bottom:6px;color:#334155;">Store Official Receipt / Photo Proof:</strong>
+          <a id="modal-receipt-img-link" href="{{ booking.receipt_url or '#' }}" target="_blank" rel="noopener">
+            <img id="modal-receipt-img" src="{{ booking.receipt_url or '' }}" alt="Resibo" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #cbd5e1;object-fit:cover;">
+          </a>
+        </div>
+
         <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save PDF</button>
       </div>
     </div>
@@ -570,23 +316,37 @@
     <div class="trip-details-list">
       <div class="trip-detail-item">
         <span class="detail-label">Service Type:</span>
-        <strong id="trip-detail-service" style="text-transform:uppercase;">{{ booking.service_type }}</strong>
+        <strong style="text-transform:uppercase;">{{ booking.service_type }}</strong>
       </div>
       <div class="trip-detail-item">
         <span class="detail-label">Pickup Point:</span>
-        <span id="trip-detail-pickup">{{ booking.pickup_address }}</span>
+        <span>{{ booking.pickup_address }}</span>
       </div>
       <div class="trip-detail-item">
         <span class="detail-label">Drop-off Destination:</span>
-        <span id="trip-detail-dropoff">{{ booking.dropoff_address }}</span>
+        <span>{{ booking.dropoff_address }}</span>
       </div>
-      <div id="trip-detail-notes-wrap" class="trip-detail-item {% if not booking.item_notes %}hidden{% endif %}">
+      {% if booking.item_notes %}
+      <div class="trip-detail-item">
         <span class="detail-label">Item Notes / Instructions:</span>
-        <span id="trip-detail-notes" class="item-notes-text">{% if booking.item_notes %}&ldquo;{{ booking.item_notes }}&rdquo;{% endif %}</span>
+        <span class="item-notes-text">&ldquo;{{ booking.item_notes }}&rdquo;</span>
       </div>
+      {% endif %}
       <div class="trip-detail-item">
         <span class="detail-label">Customer:</span>
-        <span id="trip-detail-customer">{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
+        <span>{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
+      </div>
+
+      <!-- Store Receipt / Proof of Delivery Photo Section -->
+      <div id="track-receipt-item" class="trip-detail-item {% if not booking.receipt_url %}hidden{% endif %}" style="display:block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="detail-label" style="color:#166534;font-weight:700;">🧾 Store Receipt / Proof of Delivery:</span>
+          <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.75rem;font-weight:700;">Verified by Rider ✓</span>
+        </div>
+        <a id="track-receipt-link" href="{{ booking.receipt_url or '#' }}" target="_blank" rel="noopener" title="I-click aron makita sa full size">
+          <img id="track-receipt-img" src="{{ booking.receipt_url or '' }}" alt="Store Official Receipt" style="width:100%;max-height:280px;object-fit:cover;border-radius:8px;border:1px solid #86efac;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <small style="display:block;margin-top:4px;color:#15803d;font-weight:600;text-align:center;">🔍 I-click ang imahe para sa Full Resolution</small>
+        </a>
       </div>
     </div>
   </div>
@@ -599,11 +359,7 @@
 {% if booking %}
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
-  window.INITIAL_GROUP_BOOKINGS = {{ group_bookings | tojson if group_bookings else '[]' }};
-  window.INITIAL_GROUP_SUMMARY = {{ group_summary | tojson if group_summary else 'null' }};
-  window.TRACK_LOOKUP_CODE = {{ (track_code if track_code else booking.booking_code) | tojson }};
 </script>
-<script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/track.js?v=34"></script>
+<script src="/static/js/track.js?v=28"></script>
 {% endif %}
 {% endblock %}
