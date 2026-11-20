@@ -1088,8 +1088,120 @@
       }
     }
 
+    // Receipt / Proof Photo Section
+    renderRiderReceiptSection(job);
+
     // Interactive Live GPS Route Map for Active Job
     renderJobOnRiderMap(job);
+  }
+
+  // -------------------------------------------------------------------------
+  // Resibo / Proof-of-Purchase & Delivery Photo Handling
+  // -------------------------------------------------------------------------
+  function renderRiderReceiptSection(job) {
+    const sec = document.getElementById("active-job-receipt-section");
+    const previewWrap = document.getElementById("rider-receipt-preview-wrap");
+    const imgPreview = document.getElementById("rider-receipt-img-preview");
+    const linkPreview = document.getElementById("rider-receipt-preview-link");
+    const badge = document.getElementById("rider-receipt-status-badge");
+    const btnText = document.getElementById("rider-receipt-btn-text");
+
+    if (!sec) return;
+    if (!job) {
+      sec.classList.add("hidden");
+      return;
+    }
+    sec.classList.remove("hidden");
+
+    if (job.receipt_url) {
+      if (previewWrap) previewWrap.classList.remove("hidden");
+      if (imgPreview) imgPreview.src = job.receipt_url;
+      if (linkPreview) linkPreview.href = job.receipt_url;
+      if (badge) {
+        badge.textContent = "✅ Na-upload na ang Resibo";
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#15803d";
+      }
+      if (btnText) btnText.textContent = "Ilisi ang Litrato";
+    } else {
+      if (previewWrap) previewWrap.classList.add("hidden");
+      if (imgPreview) imgPreview.src = "";
+      if (linkPreview) linkPreview.href = "#";
+      if (badge) {
+        badge.textContent = "Walay Resibo";
+        badge.style.background = "#e2e8f0";
+        badge.style.color = "#475569";
+      }
+      if (btnText) btnText.textContent = "Take / Upload Resibo";
+    }
+  }
+
+  // Setup Receipt Upload Listener
+  const receiptFileInput = document.getElementById("rider-receipt-file-input");
+  const receiptSpinner = document.getElementById("rider-receipt-uploading-spinner");
+  if (receiptFileInput) {
+    receiptFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !activeJob) return;
+
+      if (receiptSpinner) receiptSpinner.classList.remove("hidden");
+
+      try {
+        const dataUrl = await resizeImageToDataUrl(file, 1200, 1200, 0.82);
+
+        const res = await fetch(`/api/bookings/${activeJob.id}/receipt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ receipt_image: dataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to upload receipt.");
+
+        activeJob.receipt_url = data.receipt_url;
+        renderRiderReceiptSection(activeJob);
+        if ("vibrate" in navigator) {
+          try { navigator.vibrate([150, 80, 150]); } catch (_) {}
+        }
+        alert("✅ Malampusong na-upload ang litrato sa resibo / proof of purchase!");
+      } catch (err) {
+        alert("Error uploading receipt: " + err.message);
+      } finally {
+        if (receiptSpinner) receiptSpinner.classList.add("hidden");
+        receiptFileInput.value = "";
+      }
+    });
+  }
+
+  function resizeImageToDataUrl(file, maxWidth, maxHeight, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (readerEvent) => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = readerEvent.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   // Check Active Job
@@ -1303,6 +1415,17 @@
         promoRow?.classList.remove("hidden");
       } else {
         promoRow?.classList.add("hidden");
+      }
+
+      const imgWrap = document.getElementById("r-modal-receipt-img-wrap");
+      const imgLink = document.getElementById("r-modal-receipt-img-link");
+      const imgEl = document.getElementById("r-modal-receipt-img");
+      if (activeJob.receipt_url) {
+        if (imgWrap) imgWrap.classList.remove("hidden");
+        if (imgLink) imgLink.href = activeJob.receipt_url;
+        if (imgEl) imgEl.src = activeJob.receipt_url;
+      } else {
+        if (imgWrap) imgWrap.classList.add("hidden");
       }
       riderReceiptModal.classList.remove("hidden");
     });
