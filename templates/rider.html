@@ -7,7 +7,7 @@
   <!-- Auth Screen (if not logged in) -->
   <div id="rider-auth-section" class="card">
     <div class="auth-header text-center">
-      <img src="/static/icons/logo.png?v=3" alt="CCRC Logo" style="width:72px;height:72px;object-fit:contain;border-radius:50%;margin:0 auto 8px;display:block;box-shadow:0 4px 14px rgba(249,115,22,0.25);">
+      <img src="/static/icons/logo.png" alt="CCRC Logo" style="width:72px;height:72px;object-fit:contain;border-radius:50%;margin:0 auto 8px;display:block;box-shadow:0 4px 14px rgba(249,115,22,0.25);">
       <h2 style="margin:8px 0 4px;">Rider Dispatch Portal</h2>
       <p class="text-muted">Log in with your registered mobile number to receive island booking dispatches in Camiguin.</p>
     </div>
@@ -16,13 +16,13 @@
     <form id="rider-login-form" style="margin-top:1.5rem;">
       <div class="form-group">
         <label for="login-phone">Mobile Phone Number or Email *</label>
-        <input type="text" id="login-phone" name="phone" required placeholder="0917 123 4567 or email@gmail.com">
+        <input type="text" id="login-phone" name="phone" required placeholder="0917 123 4567 o email@gmail.com">
       </div>
       <div class="form-group">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <label for="login-password" style="margin:0;">Password *</label>
           <button type="button" id="switch-to-forgot-btn" class="text-btn" style="font-size:0.8rem;color:#0284c7;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;">
-            Forgot Password?
+            Nakalimot sa Password?
           </button>
         </div>
         <input type="password" id="login-password" name="password" required placeholder="Enter your password">
@@ -42,12 +42,12 @@
     <!-- Register Form (hidden initially) -->
     <form id="rider-register-form" class="hidden" style="margin-top:1.5rem;">
       <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#1e40af;line-height:1.45;">
-        <strong>ℹ️ Applicant Notice:</strong><br>
-        After submitting this application, your account will be saved as <strong>PENDING APPROVAL</strong>. To be inspected and activated as a <strong>Verified CCRC Rider</strong>, please visit the <strong>CCRC Club Admin in person</strong> with your:
+        <strong>ℹ️ Pahibalo sa Mag-apply:</strong><br>
+        Human nimo mapasa kining application, ang imong account ma-save isip <strong>PENDING APPROVAL</strong>. Aron ma-inspeksyon ug ma-activate isip <strong>Verified CCRC Rider</strong>, palihug bisitaha ang <strong>CCRC Club Admin sa personal</strong> dala ang imong:
         <ul style="margin:4px 0 0 16px;padding:0;font-size:0.8rem;">
           <li>Driver's License</li>
-          <li>Motorcycle OR/CR</li>
-          <li>Motorcycle for physical inspection</li>
+          <li>OR/CR sa Motorsiklo</li>
+          <li>Motorsiklo para sa physical inspection</li>
         </ul>
       </div>
       <div class="form-group">
@@ -61,7 +61,7 @@
       <div class="form-group">
         <label for="reg-email">Email Address (Optional / Recommended)</label>
         <input type="email" id="reg-email" placeholder="e.g. rider@gmail.com">
-        <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">You can log in using either your email or mobile number.</small>
+        <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">Maka-log in ka gamit ang email o mobile number.</small>
       </div>
 
       <!-- Driver's License Number & Profile Picture -->
@@ -109,29 +109,6 @@
         <input type="password" id="reg-password" required minlength="6" placeholder="Create your password">
       </div>
 
-      <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:12px;margin-bottom:12px;">
-        <div style="font-weight:700;color:#0047b8;font-size:0.88rem;margin-bottom:6px;">
-          💙 GCash Payment Receiving Setup (Optional — can add later)
-        </div>
-        <div class="form-group" style="margin-bottom:8px;">
-          <label for="reg-gcash-number" style="font-size:0.82rem;">GCash Mobile Number (Optional)</label>
-          <input type="tel" id="reg-gcash-number" placeholder="e.g. 0917 123 4567 (defaults to mobile #)">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label for="reg-gcash-qr-file" style="font-size:0.82rem;">My Official GCash QR Code Image (Optional)</label>
-          <div style="display:flex;align-items:center;gap:10px;background:#ffffff;padding:8px 10px;border:1.5px dashed #93c5fd;border-radius:10px;">
-            <div style="width:52px;height:52px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
-              <span id="reg-gcash-qr-placeholder" style="font-size:1.5rem;">📱</span>
-              <img id="reg-gcash-qr-preview" src="" alt="GCash QR Preview" class="hidden" style="width:100%;height:100%;object-fit:contain;">
-            </div>
-            <div style="flex:1;min-width:0;">
-              <input type="file" id="reg-gcash-qr-file" accept="image/*" style="font-size:0.82rem;width:100%;">
-              <small class="text-muted" style="display:block;margin-top:3px;font-size:0.73rem;">Upload your GCash QR screenshot so passengers paying via GCash can scan &amp; pay you.</small>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="register-error-msg" class="alert-error hidden"></div>
 
       <button type="submit" id="rider-register-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:10px;">
@@ -147,7 +124,7 @@
     <form id="rider-forgot-form" class="hidden" style="margin-top:1.5rem;">
       <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#166534;line-height:1.45;">
         <strong>🔑 Reset Rider Password:</strong><br>
-        Enter your registered <strong>Mobile Number</strong> and your <strong>Driver's License Number</strong> to verify your rider account and set a new password.
+        Ibutang ang imong rehistradong <strong>Mobile Number</strong> ug ang imong <strong>Plate Number</strong> o <strong>Driver's License Number</strong> aron ma-verify ang imong pagka-rider ug maka-set og bag-ong password.
       </div>
 
       <div class="form-group">
@@ -156,73 +133,43 @@
       </div>
 
       <div class="form-group">
-        <label for="forgot-identifier">Driver's License Number *</label>
-        <input type="text" id="forgot-identifier" required placeholder="e.g. K01-12-123456" style="text-transform:uppercase;">
+        <label for="forgot-identifier">Plate Number O Driver's License Number *</label>
+        <input type="text" id="forgot-identifier" required placeholder="e.g. 123-XYZ o K01-12-123456" style="text-transform:uppercase;">
       </div>
 
       <div class="form-group">
-        <label for="forgot-new-pwd">New Password (min. 6 characters) *</label>
+        <label for="forgot-new-pwd">Bag-ong Password (min. 6 characters) *</label>
         <input type="password" id="forgot-new-pwd" required minlength="6" placeholder="Choose a new password">
       </div>
 
       <div class="form-group">
-        <label for="forgot-confirm-pwd">Confirm New Password *</label>
+        <label for="forgot-confirm-pwd">I-kumpirma ang Bag-ong Password *</label>
         <input type="password" id="forgot-confirm-pwd" required minlength="6" placeholder="Re-type new password">
       </div>
 
       <div id="forgot-status-msg" class="hidden" style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;"></div>
 
       <button type="submit" id="rider-reset-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:8px;">
-        Save New Password &rarr;
+        I-save ang Bag-ong Password &rarr;
       </button>
 
       <div style="text-align:center;margin-top:14px;">
-        <button type="button" id="switch-forgot-to-login-btn" class="text-btn">&larr; Back to Log In</button>
+        <button type="button" id="switch-forgot-to-login-btn" class="text-btn">&larr; Balik sa Log In</button>
       </div>
     </form>
   </div>
 
   <!-- Rider Dashboard (when logged in) -->
   <div id="rider-dashboard-section" class="hidden">
-    <!-- Admin Live Club Advisory Banner for Riders -->
-    <section
-      id="rider-live-advisory-banner"
-      class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not club_advisory.show_riders %}hidden{% endif %}"
-      data-revision="{{ club_advisory.revision }}"
-      role="status"
-      aria-live="polite"
-    >
-      <div class="ccrc-advisory-inner">
-        <div class="ccrc-advisory-top-row">
-          <span class="ccrc-advisory-badge">
-            <span class="ccrc-advisory-live-dot"></span>
-            <span id="rider-advisory-icon">{{ club_advisory.category_icon }}</span>
-            <span id="rider-advisory-cat-label">{{ club_advisory.category_label }}</span>
-          </span>
-          <div class="ccrc-advisory-right-meta">
-            <span id="rider-advisory-meta" class="ccrc-advisory-meta">
-              {% if club_advisory.updated_label %}Updated {{ club_advisory.updated_label }}{% endif %}
-            </span>
-            <button type="button" id="rider-advisory-dismiss-btn" class="ccrc-advisory-dismiss" aria-label="Dismiss advisory" title="Dismiss advisory">&times;</button>
-          </div>
-        </div>
-        <div id="rider-advisory-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
-        <div id="rider-advisory-message" class="ccrc-advisory-msg {% if not club_advisory.message %}hidden{% endif %}">{{ club_advisory.message }}</div>
-      </div>
-    </section>
-
     <!-- Header with Online Switch -->
     <div class="card rider-status-banner">
       <div class="rider-header-row">
         <div style="display:flex;align-items:center;gap:12px;">
           <img id="dash-rider-avatar-img" src="" alt="Rider Photo" class="hidden" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.15);">
           <div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span class="badge badge-accent">CCRC Verified Rider</span>
-              <span id="dash-rider-rating-badge" class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-weight:700;">⭐ 5.0</span>
-            </div>
-            <h2 id="dash-rider-name" style="margin:4px 0 2px;">Club Rider</h2>
-            <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motorcycle &bull; Plate #</div>
+            <span class="badge badge-accent">CCRC Verified Rider</span>
+            <h2 id="dash-rider-name" style="margin:4px 0 2px;">Kuya Rider</h2>
+            <div class="text-muted" id="dash-rider-bike" style="font-size:0.85rem;">Motor &bull; Plate #</div>
             <div class="text-muted" id="dash-rider-license" style="font-size:0.78rem;color:#64748b;margin-top:2px;">License: #</div>
           </div>
         </div>
@@ -242,62 +189,30 @@
         <button type="button" id="force-gps-btn" class="btn btn-sm btn-outline" style="margin-left:auto;padding:2px 8px;font-size:0.75rem;">Sync GPS</button>
       </div>
 
-      <div class="rider-id-quick-bar">
-        <div class="rider-id-quick-meta">
-          <span class="rider-id-quick-label">Official Club ID:</span>
-          <strong id="dash-rider-club-id" class="rider-id-quick-code">CCRC-0000</strong>
-        </div>
-        <button type="button" id="open-rider-id-card-btn" class="btn btn-sm btn-official-id">
-          🪪 Official Club ID
-        </button>
+      <!-- Screen WakeLock Keep-Awake Bar -->
+      <div class="wakelock-bar" id="wakelock-bar" style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;margin-top:8px;font-size:0.8rem;color:#92400e;">
+        <span id="wakelock-icon" style="font-size:1.05rem;">🔆</span>
+        <span id="wakelock-status-label" style="flex:1;"><strong>Screen Awake:</strong> Aktibo (Dili mapalong ang screen sa motor)</span>
+        <button type="button" id="wakelock-toggle-btn" class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:0.75rem;background:#fff;border-color:#f59e0b;color:#b45309;cursor:pointer;">Awake: ON</button>
       </div>
     </div>
 
     <!-- Rider Financial Summary & Transactions Card -->
     <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
-      <div class="rider-earnings-stats">
-        <div style="min-width:0;">
-          <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;font-weight:700;display:block;">Today's Completed Earnings</span>
-          <div id="rider-today-earnings" style="font-size:1.55rem;font-weight:800;color:#4ade80;">₱0.00</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Today's Completed Earnings</span>
+          <div id="rider-today-earnings" style="font-size:1.6rem;font-weight:800;color:#4ade80;">₱0.00</div>
         </div>
-        <div style="text-align:right;min-width:0;">
-          <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;font-weight:700;display:block;">All-Time Earnings</span>
+        <div style="text-align:right;">
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">All-Time Earnings</span>
           <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
         </div>
       </div>
-      <div class="rider-earnings-actions-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
         <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
-        <div class="rider-earnings-btn-group">
-          <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 10px;font-size:0.78rem;cursor:pointer;">
-            📜 View Transactions Ledger
-          </button>
-          <button type="button" id="rider-export-csv-btn" class="btn btn-sm rider-btn-csv">
-            📥 Export CSV
-          </button>
-          <button type="button" id="rider-print-report-btn" class="btn btn-sm rider-btn-report">
-            🖨️ Earnings Report
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Rider GCash QR & Account Profile Card -->
-    <div id="rider-gcash-profile-card" class="card rider-gcash-setup-banner" style="padding:14px 16px;">
-      <div class="rider-gcash-profile-row">
-        <div class="rider-gcash-profile-info">
-          <div class="rider-gcash-profile-thumb">
-            <span id="dash-gcash-qr-fallback" style="font-size:1.5rem;">💙</span>
-            <img id="dash-gcash-qr-thumb" src="" alt="My GCash QR" class="hidden" style="width:100%;height:100%;object-fit:contain;background:#fff;">
-          </div>
-          <div class="rider-gcash-profile-text">
-            <div style="font-weight:800;color:#0047b8;font-size:0.96rem;">My Official GCash QR &amp; Number</div>
-            <div id="dash-gcash-status-text" style="font-size:0.82rem;color:#334155;margin-top:3px;">
-              No GCash QR uploaded yet — upload your QR so customers can pay via GCash.
-            </div>
-          </div>
-        </div>
-        <button type="button" id="open-rider-gcash-setup-btn" class="btn btn-sm btn-gcash-qr rider-gcash-setup-btn">
-          ⚙️ Setup / Update GCash QR
+        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
+          📜 View Transactions Ledger
         </button>
       </div>
     </div>
@@ -332,54 +247,16 @@
     <!-- Active Job (if currently handling one) -->
     <div id="rider-active-job-box" class="card active-job-card hidden">
       <div class="active-job-head">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <span class="badge badge-success" id="active-job-status-badge">Ongoing Active Trip</span>
-          <span id="active-job-group-badge" class="badge hidden" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:700;"></span>
-        </div>
+        <span class="badge badge-success" id="active-job-status-badge">Ongoing Active Trip</span>
         <strong id="active-job-code" style="font-family:monospace;font-size:1.05rem;">CCRC-0000</strong>
       </div>
 
-      <div id="active-job-group-banner" class="group-slot-rider-banner hidden"></div>
-
-      <div id="active-job-transfer-alert" class="transfer-urgency-banner hidden" style="margin-top:10px;">
-        <strong>🔄 Emergency Transfer / Handover Trip</strong>
-        <div id="active-job-transfer-meta" style="font-size:0.82rem;margin-top:2px;"></div>
-      </div>
-
       <h3 id="active-job-title" style="margin:8px 0 4px;font-size:1.25rem;">Service &rarr; Destination</h3>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="text-muted" id="active-job-fare" style="font-weight:700;color:var(--primary);font-size:1.05rem;">Fare: ₱0.00</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <button type="button" id="job-gcash-top-btn" class="btn btn-sm btn-gcash-qr hidden" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
-            📱 GCash QR
-          </button>
-          <button type="button" id="job-transfer-top-btn" class="btn btn-sm btn-transfer-emergency" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
-            🔄 Transfer to Rider
-          </button>
-          <button type="button" id="rider-view-receipt-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
-            🧾 View Receipt
-          </button>
-        </div>
-      </div>
-
-      <!-- GCash Payment Verification Panel (Shown when active job uses GCash) -->
-      <div id="active-job-gcash-box" class="rider-active-gcash-box hidden">
-        <div class="rider-active-gcash-head">
-          <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 180px;">
-            <span style="font-size:1.25rem;">💙</span>
-            <strong style="color:#0047b8;font-size:0.95rem;">GCash Payment Verification Required</strong>
-          </div>
-          <span id="active-job-gcash-status-pill" class="gcash-status-pill pending">⏳ Waiting Customer GCash</span>
-        </div>
-        <div class="rider-active-gcash-footer">
-          <div style="font-size:0.84rem;color:#1e293b;">
-            <div>Exact GCash Fare: <strong id="active-job-gcash-amount" style="color:#0057d9;">₱0</strong></div>
-            <div id="active-job-gcash-ref" class="hidden" style="font-family:monospace;font-size:0.8rem;color:#1d4ed8;margin-top:2px;">Ref: -</div>
-          </div>
-          <button type="button" id="job-show-gcash-qr-btn" class="btn btn-sm btn-gcash-official" style="padding:7px 14px;border-radius:10px;font-size:0.84rem;">
-            📱 Show My GCash QR
-          </button>
-        </div>
+        <button type="button" id="rider-view-receipt-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;">
+          🧾 View Receipt
+        </button>
       </div>
 
       <div class="active-locations-box">
@@ -420,14 +297,9 @@
             <strong style="font-size:0.85rem;">Customer:</strong>
             <div id="active-job-customer" class="loc-text">Customer Name</div>
             <div id="active-job-customer-badge" style="margin:4px 0;"></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;">
-              <button type="button" id="active-job-inapp-call-btn" class="btn btn-sm btn-inapp-call nav-map-btn">
-                🔊 Free In-App Call
-              </button>
-              <a id="active-job-call-btn" href="#" class="btn btn-sm btn-outline nav-map-btn">
-                📞 Phone Call
-              </a>
-            </div>
+            <a id="active-job-call-btn" href="#" class="btn btn-sm btn-primary nav-map-btn">
+              📞 Call Customer
+            </a>
           </div>
         </div>
       </div>
@@ -437,16 +309,16 @@
         <!-- Floating Quick Controls on Rider Map -->
         <div class="map-floating-bar" style="position:absolute;top:18px;right:18px;z-index:1000;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <div class="map-layer-pill" style="display:flex;background:rgba(255,255,255,0.95);border-radius:20px;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,0.15);border:1px solid #cbd5e1;">
-            <button type="button" class="layer-pill-btn active" id="rider-job-layer-street" data-rider-job-layer="street" style="border:none;background:#f97316;color:#fff;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🗺️ Street</button>
+            <button type="button" class="layer-pill-btn active" id="rider-job-layer-street" data-rider-job-layer="street" style="border:none;background:#f97316;color:#fff;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🗺️ Kalsada</button>
             <button type="button" class="layer-pill-btn" id="rider-job-layer-sat" data-rider-job-layer="satellite" style="border:none;background:transparent;color:#475569;padding:5px 10px;border-radius:16px;font-size:0.75rem;font-weight:700;cursor:pointer;">🛰️ Satellite</button>
           </div>
-          <button type="button" id="rider-job-recenter-btn" class="map-float-btn" title="Focus on My Location" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <span>🎯</span> My GPS
+          <button type="button" id="rider-job-recenter-btn" class="map-float-btn" title="I-focus sa Akong Lokasyon" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>🎯</span> Akong GPS
           </button>
-          <button type="button" id="rider-job-fit-route-btn" class="map-float-btn" title="Fit entire route" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <span>🗺️</span> Route
+          <button type="button" id="rider-job-fit-route-btn" class="map-float-btn" title="I-fit ang tibuok ruta" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <span>🗺️</span> Ruta
           </button>
-          <button type="button" id="rider-job-fullscreen-btn" class="map-float-btn" title="Expand Map for Mobile" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 9px;font-size:0.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <button type="button" id="rider-job-fullscreen-btn" class="map-float-btn" title="Padak-a ang Mapa para sa Celpon / Motor" style="background:#fff;border:1px solid #cbd5e1;border-radius:20px;padding:5px 9px;font-size:0.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
             <span>⛶</span>
           </button>
         </div>
@@ -455,10 +327,10 @@
 
         <div class="tracking-legend" style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px 2px;font-size:0.78rem;color:#334155;flex-wrap:wrap;gap:8px;">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f97316;margin-right:4px;vertical-align:middle;box-shadow:0 0 4px #f97316;"></span> <strong>You (Rider 🛵)</strong></span>
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f97316;margin-right:4px;vertical-align:middle;box-shadow:0 0 4px #f97316;"></span> <strong>Ikaw (Rider 🛵)</strong></span>
             <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#16a34a;margin-right:4px;vertical-align:middle;"></span> <strong>Pickup 🟢</strong></span>
             <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#dc2626;margin-right:4px;vertical-align:middle;"></span> <strong>Dropoff 🏁</strong></span>
-            <span><span style="display:inline-block;width:18px;height:4px;background:#ef4444;border-radius:2px;margin-right:4px;vertical-align:middle;"></span> <strong>Route</strong></span>
+            <span><span style="display:inline-block;width:18px;height:4px;background:#ef4444;border-radius:2px;margin-right:4px;vertical-align:middle;"></span> <strong>Ruta</strong></span>
           </div>
           <span id="rider-job-distance-info" style="font-weight:700;color:#0284c7;font-size:0.82rem;"></span>
         </div>
@@ -475,21 +347,16 @@
               <span class="chat-subtitle text-muted" style="font-size:0.8rem;">Direct in-app messaging</span>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <button type="button" id="rider-chat-inapp-call-btn" class="btn-inapp-call-mini" title="Start Free In-App Voice Call">
-              📞 Call
-            </button>
-            <span class="badge badge-accent" id="rider-chat-badge">Active Chat</span>
-          </div>
+          <span class="badge badge-accent" id="rider-chat-badge">Active Chat</span>
         </div>
 
         <!-- Quick Canned Replies for Rider -->
         <div class="canned-replies" id="rider-canned-replies" style="margin:8px 0;">
-          <button type="button" class="canned-btn" data-msg="I'm on my way, Ma'am/Sir!">🛵 On my way!</button>
-          <button type="button" class="canned-btn" data-msg="I'm at the pickup point, Ma'am/Sir.">📍 At pickup point.</button>
-          <button type="button" class="canned-btn" data-msg="Please wait a moment, Ma'am/Sir.">⏳ Please wait a moment.</button>
-          <button type="button" class="canned-btn" data-msg="I'm outside now!">🏠 I'm outside now!</button>
-          <button type="button" class="canned-btn" data-msg="Thank you, Ma'am/Sir!">👍 Thank you!</button>
+          <button type="button" class="canned-btn" data-msg="Padulong nako Ma'am/Sir!">🛵 Padulong nako!</button>
+          <button type="button" class="canned-btn" data-msg="Naa nako sa pickup point Ma'am/Sir.">📍 Naa nako sa pickup point.</button>
+          <button type="button" class="canned-btn" data-msg="Paabot lang kadali Ma'am/Sir.">⏳ Paabot lang kadali.</button>
+          <button type="button" class="canned-btn" data-msg="Naa nako sa gawas!">🏠 Naa nako sa gawas!</button>
+          <button type="button" class="canned-btn" data-msg="Salamat Ma'am/Sir!">👍 Salamat Ma'am/Sir!</button>
         </div>
 
         <!-- Messages Container -->
@@ -499,36 +366,8 @@
           </div>
         </div>
 
-        <!-- Voice Recording Live Bar -->
-        <div id="rider-chat-voice-recording-bar" class="chat-voice-recording-bar hidden">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="voice-rec-dot"></span>
-            <span>Recording Voice...</span>
-            <strong id="rider-chat-voice-timer">0:00</strong>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <button type="button" id="rider-chat-voice-cancel-btn" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">Cancel</button>
-            <button type="button" id="rider-chat-voice-send-btn" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;">Send Voice ✈️</button>
-          </div>
-        </div>
-
-        <!-- Photo Attachment Preview Bar -->
-        <div id="rider-chat-photo-preview-bar" class="chat-photo-preview-bar hidden">
-          <div class="chat-photo-preview-top">
-            <img id="rider-chat-photo-preview-thumb" src="" alt="Selected photo preview" class="chat-photo-preview-thumb">
-            <input type="text" id="rider-chat-photo-caption-input" class="chat-photo-caption-input" placeholder="Add caption (receipt, landmark, proof)..." maxlength="240" autocomplete="off">
-          </div>
-          <div class="chat-photo-preview-actions">
-            <button type="button" id="rider-chat-photo-cancel-btn" class="btn btn-sm btn-outline" style="padding:5px 10px;font-size:0.78rem;">Cancel</button>
-            <button type="button" id="rider-chat-photo-send-btn" class="btn btn-sm btn-primary" style="padding:5px 12px;font-size:0.78rem;">Send Photo ✈️</button>
-          </div>
-        </div>
-
         <!-- Input Form -->
         <form class="chat-input-bar" id="rider-chat-form" style="margin-top:8px;">
-          <input type="file" id="rider-chat-photo-input" accept="image/*" class="hidden">
-          <button type="button" id="rider-chat-photo-btn" class="chat-photo-btn" title="Send Photo (Receipt, Landmark, Proof)" aria-label="Send Photo">📷</button>
-          <button type="button" id="rider-chat-voice-btn" class="chat-voice-btn" title="Record Voice Message">🎙️</button>
           <input type="text" id="rider-chat-input-field" placeholder="Reply to customer..." maxlength="300" autocomplete="off" required>
           <button type="submit" id="rider-chat-send-btn" class="btn btn-primary chat-send-btn">
             <span>Send</span> ✈️
@@ -543,12 +382,6 @@
         </button>
         <button type="button" id="job-complete-btn" class="btn btn-success btn-block btn-lg hidden" style="background:#15803d;border-color:#15803d;">
           ✓ Delivered (Mark as Completed)
-        </button>
-        <div id="rider-gcash-gate-hint" class="hidden" style="margin-top:6px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:8px;padding:7px 10px;font-size:0.78rem;font-weight:600;text-align:center;">
-          🔒 Confirm GCash payment via "Show My GCash QR" above before marking this trip Delivered / Completed.
-        </div>
-        <button type="button" id="job-transfer-btn" class="btn btn-outline btn-block btn-transfer-emergency" style="margin-top:8px;">
-          ⚠️ Transfer to Rider (Flat / Emergency)
         </button>
       </div>
     </div>
@@ -570,19 +403,19 @@
       </div>
     </div>
 
-    <!-- Fellow Online Riders Roster -->
+    <!-- Fellow Online Riders Roster (Kauban nga Online) -->
     <div class="card co-riders-card" style="margin-top:1.5rem;">
-      <div class="dispatch-feed-header" style="margin:0 0 12px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:10px;flex:1 1 200px;min-width:190px;">
-          <span style="font-size:1.35rem;flex-shrink:0;">🛵</span>
+      <div class="dispatch-feed-header" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.4rem;">🛵</span>
           <div>
-            <h3 style="margin:0;font-size:1.05rem;line-height:1.25;">Fellow Online Riders</h3>
-            <span class="text-muted" style="font-size:0.78rem;display:block;line-height:1.3;">Active on-duty club riders across Camiguin</span>
+            <h3 style="margin:0;font-size:1.1rem;">Kauban nga Online Riders</h3>
+            <span class="text-muted" style="font-size:0.8rem;">Active on-duty club riders across Camiguin</span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <button type="button" id="toggle-radar-map-btn" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 10px;white-space:nowrap;">🗺️ Radar Map</button>
-          <span id="co-riders-count-pill" class="badge badge-success" style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;">0 Online</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" id="toggle-radar-map-btn" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 9px;">🗺️ Radar Map</button>
+          <span id="co-riders-count-pill" class="badge badge-success" style="font-size:0.8rem;padding:4px 9px;">0 Online</span>
         </div>
       </div>
 
@@ -590,23 +423,18 @@
       <div id="radar-map-container" class="hidden" style="margin-bottom:14px;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1;position:relative;">
         <div class="map-floating-bar" style="top:8px;right:8px;">
           <div class="map-layer-pill">
-            <button type="button" class="layer-pill-btn active" data-radar-layer="street">🗺️ Street</button>
+            <button type="button" class="layer-pill-btn active" data-radar-layer="street">🗺️ Kalsada</button>
             <button type="button" class="layer-pill-btn" data-radar-layer="satellite">🛰️ Satellite</button>
           </div>
-          <button type="button" id="radar-recenter-btn" class="map-float-btn" title="Focus on Camiguin">
+          <button type="button" id="radar-recenter-btn" class="map-float-btn" title="I-focus sa Camiguin">
             <span>🎯</span> Center
           </button>
         </div>
         <div id="co-riders-radar-map" style="height:280px;width:100%;"></div>
-        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-          <span>🟢 Available &bull; 🟡 Accepting &bull; 🟠 Heading Dest &bull; 🛵 You</span>
+        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;">
+          <span>🟢 Green = Active Rider &bull; 🛵 Centric Emblem = Your Location</span>
           <span>Auto-syncs live GPS</span>
         </div>
-      </div>
-
-      <!-- Contextual Transfer to Rider Tip -->
-      <div id="co-riders-transfer-hint" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:8px 11px;font-size:0.78rem;margin-bottom:10px;line-height:1.4;">
-        🔄 <strong>Transfer to Rider:</strong> Accept a booking or select an active/scheduled trip to enable direct emergency trip transfer to an online co-rider.
       </div>
 
       <!-- Online Co-Riders Grid/List -->
@@ -617,20 +445,6 @@
       </div>
     </div>
 
-
-    <!-- Customer Ratings & Reviews Card -->
-    <div class="card" id="rider-reviews-section" style="margin-top:1.25rem;border:1px solid #fde68a;background:linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
-        <div>
-          <h3 style="margin:0;font-size:1.05rem;">⭐ Customer Ratings &amp; Feedback</h3>
-          <span class="text-muted" style="font-size:0.8rem;">Comments and star ratings from your passengers</span>
-        </div>
-        <span id="rider-reviews-summary-pill" class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:700;">⭐ 5.0 (0 reviews)</span>
-      </div>
-      <div id="rider-reviews-list" style="display:grid;gap:8px;">
-        <div class="text-muted" style="font-size:0.85rem;padding:8px 0;">Loading customer feedback...</div>
-      </div>
-    </div>
 
     <div style="margin-top:1.5rem;text-align:center;">
       <button type="button" id="rider-logout-btn" class="text-btn text-danger">Log Out of Rider Account</button>
@@ -676,307 +490,13 @@
       </h3>
       <button type="button" id="close-rider-txns-btn" onclick="document.getElementById('rider-transactions-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
     </div>
-    <div class="ccrc-rider-modal-report-bar">
-      <div class="ccrc-rider-modal-month-wrap">
-        <label for="rider-report-month" style="font-size:0.76rem;font-weight:700;color:#475569;">Month:</label>
-        <input type="month" id="rider-report-month" class="ccrc-report-month-input" aria-label="Earnings Report Month">
-      </div>
-      <div class="ccrc-rider-modal-report-btns">
-        <button type="button" id="rider-modal-export-csv-btn" class="btn btn-sm ccrc-btn-csv">
-          📥 Download CSV
-        </button>
-        <button type="button" id="rider-modal-print-report-btn" class="btn btn-sm btn-primary ccrc-btn-print">
-          🖨️ Printable Summary
-        </button>
-      </div>
-    </div>
     <div id="rider-txns-modal-body" style="padding:18px;font-size:0.85rem;">
       <div class="text-muted" style="text-align:center;padding:20px;">Loading your transactions...</div>
-    </div>
-  </div>
-</div>
-
-<!-- Emergency Booking Transfer / Re-Broadcast Modal -->
-<div id="rider-transfer-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
-  <div class="modal-card modal-md" style="max-height:90vh;overflow-y:auto;background:#ffffff;border-radius:16px;border:2px solid #f59e0b;">
-    <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:#fffbeb;border-bottom:1px solid #fde68a;">
-      <div>
-        <h3 style="margin:0;font-size:1.08rem;color:#92400e;display:flex;align-items:center;gap:6px;">
-          <span>⚠️</span> Emergency Transfer / Re-Broadcast
-        </h3>
-        <small id="transfer-modal-job-subtitle" style="color:#b45309;font-size:0.78rem;">Hand over this trip safely to another CCRC rider</small>
-      </div>
-      <button type="button" id="close-rider-transfer-btn" onclick="document.getElementById('rider-transfer-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#92400e;line-height:1;">&times;</button>
-    </div>
-
-    <div class="modal-body" style="padding:16px 18px;">
-      <div class="form-group" style="margin-bottom:12px;">
-        <label for="transfer-reason-select" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Reason for Transfer *</label>
-        <select id="transfer-reason-select" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.9rem;background:#fff;">
-          <option value="Flat tire / tire puncture">🛞 Flat tire / tire puncture</option>
-          <option value="Engine / mechanical trouble">🔧 Engine / mechanical trouble</option>
-          <option value="Fuel / battery issue">⛽ Fuel / battery issue</option>
-          <option value="Personal / family emergency">🚨 Personal / family emergency</option>
-          <option value="Heavy load / safety concern">📦 Heavy load / safety concern</option>
-        </select>
-      </div>
-
-      <div class="form-group" style="margin-bottom:12px;">
-        <label for="transfer-note-input" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Exact Meetup Note for Rescue Rider &amp; Customer (Optional)</label>
-        <input type="text" id="transfer-note-input" maxlength="200" placeholder="e.g., Waiting near Balbagon Crossing sari-sari store..." style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.88rem;">
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:12px;display:grid;gap:8px;">
-        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.82rem;color:#334155;">
-          <input type="checkbox" id="transfer-update-gps-chk" style="margin-top:2px;width:16px;height:16px;accent-color:#f97316;">
-          <span>
-            <strong>Update pickup pin to my current GPS location</strong>
-            <small id="transfer-gps-hint" style="display:block;color:#64748b;font-size:0.75rem;">Useful if you already picked up the passenger or stopped along the road.</small>
-          </span>
-        </label>
-        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.82rem;color:#334155;">
-          <input type="checkbox" id="transfer-go-offline-chk" checked style="margin-top:2px;width:16px;height:16px;accent-color:#f97316;">
-          <span>
-            <strong>Set my status to Offline after transfer</strong>
-            <small style="display:block;color:#64748b;font-size:0.75rem;">Prevents new dispatch alerts while you fix your motorcycle.</small>
-          </span>
-        </label>
-      </div>
-
-      <div id="transfer-status-error" class="alert-error hidden" style="margin-bottom:10px;"></div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <strong style="font-size:0.88rem;color:#0f172a;">Option 1: Direct Transfer to Nearby Co-Rider</strong>
-        <button type="button" id="transfer-refresh-coriders-btn" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 9px;">🔄 Refresh</button>
-      </div>
-
-      <div id="transfer-coriders-list" style="display:grid;gap:8px;max-height:220px;overflow-y:auto;margin-bottom:14px;">
-        <div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Checking online co-riders...</div>
-      </div>
-
-      <div style="border-top:1px dashed #cbd5e1;padding-top:12px;">
-        <strong style="font-size:0.85rem;color:#0f172a;display:block;margin-bottom:6px;">Option 2: Urgent Broadcast to All Online Riders</strong>
-        <button type="button" id="transfer-rebroadcast-btn" class="btn btn-block" style="background:#dc2626;color:#ffffff;border:none;font-weight:700;padding:11px 14px;border-radius:10px;cursor:pointer;">
-          📡 Re-Broadcast to All Online Riders (Urgent)
-        </button>
-        <small class="text-muted" style="display:block;margin-top:6px;font-size:0.76rem;text-align:center;">
-          Original fare stays unchanged and the customer will be notified automatically.
-        </small>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Rider GCash QR & Account Setup Modal -->
-<div id="rider-gcash-setup-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
-  <div class="modal-card modal-md" style="max-height:90vh;overflow-y:auto;background:#ffffff;border-radius:16px;border:2px solid #60a5fa;">
-    <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border-bottom:1px solid #bfdbfe;">
-      <div>
-        <h3 style="margin:0;font-size:1.08rem;color:#0047b8;display:flex;align-items:center;gap:6px;">
-          <span>💙</span> Official GCash QR &amp; Account Setup
-        </h3>
-        <small style="color:#1e40af;font-size:0.78rem;">Shown automatically to GCash passengers &amp; in your Show QR modal</small>
-      </div>
-      <button type="button" id="close-gcash-setup-btn" onclick="document.getElementById('rider-gcash-setup-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#0047b8;line-height:1;">&times;</button>
-    </div>
-    <div class="modal-body" style="padding:16px 18px;">
-      <form id="rider-gcash-setup-form">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label for="gcash-setup-number" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Registered GCash Mobile Number</label>
-          <input type="tel" id="gcash-setup-number" placeholder="09XX XXX XXXX" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.92rem;">
-        </div>
-        <div class="form-group" style="margin-bottom:12px;">
-          <label for="gcash-setup-qr-file" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Upload Your Official GCash QR Code Image</label>
-          <div class="gcash-qr-frame" style="margin-bottom:8px;">
-            <img id="gcash-setup-qr-preview" src="" alt="GCash QR Preview" class="gcash-qr-img hidden">
-            <div id="gcash-setup-qr-placeholder" style="font-size:0.82rem;color:#475569;padding:12px 6px;">
-              📱 No GCash QR uploaded yet. Open Official GCash &rarr; Generate QR &rarr; Save QR / Screenshot, then upload it here.
-            </div>
-          </div>
-          <input type="file" id="gcash-setup-qr-file" accept="image/*" style="font-size:0.85rem;width:100%;">
-          <div style="margin-top:8px;">
-            <button type="button" id="gcash-setup-clear-qr-btn" class="btn btn-sm btn-outline hidden" style="color:#dc2626;border-color:#fca5a5;">
-              🗑️ Remove Uploaded QR
-            </button>
-          </div>
-        </div>
-        <div id="gcash-setup-msg" class="hidden" style="margin-bottom:10px;padding:8px 10px;border-radius:8px;font-size:0.83rem;font-weight:600;"></div>
-        <button type="submit" id="gcash-setup-save-btn" class="btn btn-block btn-lg btn-gcash-official" style="padding:11px 14px;border-radius:10px;">
-          💾 Save GCash QR &amp; Details
-        </button>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Rider Collect & Show GCash QR Modal (Active Trip) -->
-<div id="rider-gcash-qr-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.75);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
-  <div class="modal-card modal-md" style="max-height:92vh;overflow-y:auto;background:#ffffff;border-radius:16px;border:2px solid #007dfe;">
-    <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border-bottom:1px solid #bfdbfe;">
-      <div>
-        <h3 style="margin:0;font-size:1.08rem;color:#0047b8;display:flex;align-items:center;gap:6px;">
-          <span>📱</span> Collect GCash Fare Payment
-        </h3>
-        <small id="r-gcash-booking-code" style="font-family:monospace;color:#1d4ed8;font-weight:700;font-size:0.82rem;">CCRC-0000</small>
-      </div>
-      <button type="button" id="close-rider-gcash-qr-btn" onclick="document.getElementById('rider-gcash-qr-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#0047b8;line-height:1;">&times;</button>
-    </div>
-    <div class="modal-body" style="padding:16px 18px;">
-      <div class="gcash-amount-box">
-        <div style="font-size:0.78rem;color:#475569;font-weight:600;">
-          Passenger: <strong id="r-gcash-cust-name">-</strong>
-        </div>
-        <div id="r-gcash-amount" style="font-size:1.85rem;font-weight:800;color:#0057d9;margin:2px 0;">₱0</div>
-        <div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;">
-          <span id="r-gcash-status-pill" class="gcash-status-pill pending">⏳ Waiting Customer GCash</span>
-          <span id="r-gcash-ref-display" class="hidden" style="font-family:monospace;font-size:0.8rem;color:#0f172a;background:#f1f5f9;padding:3px 8px;border-radius:8px;font-weight:700;">Ref: -</span>
-        </div>
-      </div>
-
-      <div id="r-gcash-qr-box" class="gcash-qr-frame">
-        <div style="font-size:0.8rem;font-weight:700;color:#0047b8;margin-bottom:8px;">Let your passenger scan this official GCash QR code:</div>
-        <img id="r-gcash-qr-img" src="" alt="Your GCash QR Code" class="gcash-qr-img">
-        <div style="margin-top:8px;font-size:0.84rem;color:#334155;">
-          GCash Number: <strong id="r-gcash-number-display" style="font-family:monospace;color:#0057d9;">-</strong>
-        </div>
-      </div>
-
-      <div id="r-gcash-missing-box" class="hidden" style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:12px;text-align:center;margin-bottom:12px;">
-        <div style="font-size:0.86rem;color:#92400e;font-weight:700;margin-bottom:6px;">
-          ⚠️ You haven't uploaded your GCash QR code yet.
-        </div>
-        <div style="font-size:0.8rem;color:#78350f;margin-bottom:10px;">
-          Your passenger can send to your GCash number <strong id="r-gcash-missing-number">-</strong>, or upload your QR screenshot now:
-        </div>
-        <button type="button" id="r-gcash-quick-upload-btn" class="btn btn-sm btn-gcash-qr">
-          ⚙️ Upload My GCash QR Now
-        </button>
-      </div>
-
-      <div id="r-gcash-confirm-section" style="border-top:1px dashed #cbd5e1;padding-top:12px;">
-        <div class="form-group" style="margin-bottom:10px;">
-          <label for="r-gcash-confirm-ref" style="font-size:0.82rem;font-weight:700;color:#1e293b;">GCash Reference No. (Optional / From Customer Receipt)</label>
-          <input type="text" id="r-gcash-confirm-ref" maxlength="64" placeholder="Enter or verify GCash Ref No." style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.88rem;">
-        </div>
-        <label id="r-gcash-offline-wrap" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.82rem;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px;margin-bottom:10px;">
-          <input type="checkbox" id="r-gcash-offline-chk" style="margin-top:2px;width:16px;height:16px;accent-color:#15803d;">
-          <span>
-            <strong>Verified GCash receipt in person</strong>
-            <small style="display:block;color:#64748b;font-size:0.75rem;">Check this if the customer scanned your QR right beside you and you checked the GCash amount arrived in your app.</small>
-          </span>
-        </label>
-        <div id="r-gcash-confirm-error" class="alert-error hidden" style="margin-bottom:10px;"></div>
-        <button type="button" id="r-gcash-confirm-btn" class="btn btn-block btn-lg" style="background:#15803d;border-color:#15803d;color:#ffffff;font-weight:800;border-radius:10px;padding:11px 14px;">
-          ✓ Confirm GCash Payment Received
-        </button>
-      </div>
-
-      <div id="r-gcash-paid-done-box" class="hidden" style="background:#dcfce7;border:1.5px solid #86efac;color:#15803d;border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:0.88rem;">
-        ✅ GCash Payment Verified &amp; Confirmed! You may now mark this trip as Delivered / Completed.
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Fullscreen Digital Official CCRC Club ID Card Modal -->
-<div id="rider-official-id-modal" class="ccrc-id-modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Digital Official CCRC Club ID Card">
-  <div class="ccrc-id-modal-shell">
-    <div class="ccrc-id-modal-topbar no-print">
-      <span class="ccrc-id-modal-topbar-title">🪪 Official Digital Club ID</span>
-      <button type="button" id="oid-close-top-btn" class="ccrc-id-close-x" aria-label="Close Official ID Card">✕</button>
-    </div>
-
-    <div id="ccrc-official-id-card-printable" class="ccrc-id-card">
-      <div class="ccrc-id-lanyard-slot no-print" aria-hidden="true"></div>
-      <div class="ccrc-id-shimmer" aria-hidden="true"></div>
-
-      <div class="ccrc-id-header">
-        <div class="ccrc-id-brand">
-          <img src="/static/icons/logo.png?v=3" alt="CCRC Logo" class="ccrc-id-logo">
-          <div>
-            <div id="oid-club-name" class="ccrc-id-club-title">{{ club.name }}</div>
-            <div class="ccrc-id-club-sub">OFFICIAL VERIFIED ISLAND RIDER ID</div>
-          </div>
-        </div>
-        <span id="oid-club-id" class="ccrc-id-number-pill">CCRC-0000</span>
-      </div>
-
-      <div id="oid-status-strip" class="ccrc-id-status-strip is-verified">
-        <span class="ccrc-id-live-dot"></span>
-        <span id="oid-status-label">✅ VERIFIED ACTIVE MEMBER</span>
-      </div>
-
-      <div class="ccrc-id-live-clock-bar">
-        <span>🛡️ Live Digital ID</span>
-        <strong id="oid-live-clock">--</strong>
-      </div>
-
-      <div class="ccrc-id-body">
-        <div class="ccrc-id-profile-block">
-          <div class="ccrc-id-avatar-wrap">
-            <img id="oid-avatar-img" src="" alt="Rider Photo" class="ccrc-id-avatar-img hidden">
-            <div id="oid-avatar-fallback" class="ccrc-id-avatar-fallback">R</div>
-            <span id="oid-verified-check" class="ccrc-id-verified-check" title="Verified Club Rider">✓</span>
-          </div>
-
-          <h2 id="oid-name" class="ccrc-id-rider-name">Club Rider</h2>
-          <div id="oid-municipality" class="ccrc-id-rider-base">📍 Mambajao, Camiguin Island</div>
-
-          <div class="ccrc-id-metrics-row">
-            <span id="oid-rating-pill" class="ccrc-id-metric-pill">⭐ 5.0</span>
-            <span id="oid-trips-pill" class="ccrc-id-metric-pill">🛵 0 Trips</span>
-            <span id="oid-online-pill" class="ccrc-id-metric-pill is-online hidden">🟢 Online Now</span>
-          </div>
-        </div>
-
-        <div class="ccrc-id-details-grid">
-          <div class="ccrc-id-detail-tile">
-            <span class="ccrc-id-detail-label">🏍️ Motorcycle</span>
-            <strong id="oid-bike" class="ccrc-id-detail-value">-</strong>
-          </div>
-          <div class="ccrc-id-detail-tile">
-            <span class="ccrc-id-detail-label">🔢 Plate Number</span>
-            <strong id="oid-plate" class="ccrc-id-detail-value ccrc-id-mono">-</strong>
-          </div>
-          <div class="ccrc-id-detail-tile">
-            <span class="ccrc-id-detail-label">🪪 Driver's License</span>
-            <strong id="oid-license" class="ccrc-id-detail-value ccrc-id-mono">-</strong>
-          </div>
-          <div class="ccrc-id-detail-tile">
-            <span class="ccrc-id-detail-label">📅 Member Since</span>
-            <strong id="oid-member-since" class="ccrc-id-detail-value">-</strong>
-          </div>
-        </div>
-
-        <div class="ccrc-id-qr-section">
-          <div class="ccrc-id-qr-frame">
-            <img id="oid-qr-img" src="" alt="Official CCRC Rider Verification QR Code" class="ccrc-id-qr-img">
-          </div>
-          <div class="ccrc-id-qr-copy">
-            <div class="ccrc-id-qr-title">Scan to Verify Rider</div>
-            <div class="ccrc-id-qr-hint">Tourists &amp; passengers can scan this QR with any phone camera to confirm official CCRC membership.</div>
-            <div class="ccrc-id-hotline-line">Club Hotline: <strong id="oid-hotline">{{ club.hotline }}</strong></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="ccrc-id-modal-actions no-print">
-      <button type="button" id="oid-print-btn" class="btn btn-sm ccrc-id-action-btn">
-        🖨️ Print / Save ID
-      </button>
-      <button type="button" id="oid-copy-link-btn" class="btn btn-sm ccrc-id-action-btn">
-        🔗 Copy Verify Link
-      </button>
-      <button type="button" id="oid-close-btn" class="btn btn-sm ccrc-id-action-close">
-        ✕ Close
-      </button>
     </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/voice_call.js?v=1"></script>
-<script src="/static/js/rider.js?v=34"></script>
+<script src="/static/js/rider.js?v=28"></script>
 {% endblock %}
