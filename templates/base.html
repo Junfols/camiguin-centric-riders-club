@@ -81,7 +81,8 @@
           <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
         {% elif active_nav == 'rider' or session.get('rider_id') %}
           <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
-          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">Log Out 🚪</button>
+          <a href="/" class="nav-link rider-unlogged-only {% if session.get('rider_id') %}hidden{% endif %}" id="header-rider-back-link" style="color:var(--primary);font-weight:600;">&larr; Balik sa Main Dashboard 🏠</a>
+          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger rider-logged-only {% if not session.get('rider_id') %}hidden{% endif %}" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">Log Out 🚪</button>
         {% else %}
           <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
           <a href="#" id="nav-active-trip-pill" class="nav-link nav-active-trip-pill" style="display:none;color:#ea580c;font-weight:700;align-items:center;gap:6px;">
@@ -98,12 +99,15 @@
         {% if active_nav == 'admin' %}
           <!-- Admin mode: No customer sign-in button -->
         {% elif active_nav == 'rider' or session.get('rider_id') %}
-          <!-- Rider mode: Strictly show Rider Badge & Logout, never customer sign-in -->
+          <!-- Rider mode -->
           <div id="rider-header-badge" style="display:inline-flex;align-items:center;gap:6px;">
-            <span class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:20px;">
+            <a href="/" class="btn btn-outline btn-sm rider-unlogged-only {% if session.get('rider_id') %}hidden{% endif %}" id="header-rider-back-btn" style="font-size:0.8rem;padding:5px 12px;border-radius:20px;color:#ea580c;border-color:#fdba74;text-decoration:none;font-weight:700;">
+              🏠 Main Dashboard
+            </a>
+            <span class="badge rider-logged-only {% if not session.get('rider_id') %}hidden{% endif %}" id="header-rider-logged-badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-size:0.8rem;font-weight:700;padding:4px 10px;border-radius:20px;">
               🛵 Rider Hub
             </span>
-            <button type="button" id="header-rider-logout-btn2" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
+            <button type="button" id="header-rider-logout-btn2" class="btn btn-sm btn-outline rider-logged-only {% if not session.get('rider_id') %}hidden{% endif %}" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
               🚪
             </button>
           </div>
@@ -161,16 +165,20 @@
     </a>
   </nav>
   {% elif active_nav == 'rider' or session.get('rider_id') %}
-  <nav class="bottom-nav" aria-label="Rider Navigation">
-    <a href="/rider" class="bottom-nav-item active">
+  <nav class="bottom-nav" aria-label="Rider Navigation" id="rider-bottom-nav">
+    <a href="/rider" class="bottom-nav-item active" id="bottom-rider-hub-btn">
       <span class="bottom-nav-icon">📱</span>
       <span>Rider Hub</span>
     </a>
-    <a href="javascript:void(0)" id="bottom-rider-refresh-btn" class="bottom-nav-item">
+    <a href="/" class="bottom-nav-item rider-unlogged-only {% if session.get('rider_id') %}hidden{% endif %}" id="bottom-rider-back-btn">
+      <span class="bottom-nav-icon">🏠</span>
+      <span>Main Dashboard</span>
+    </a>
+    <a href="javascript:void(0)" id="bottom-rider-refresh-btn" class="bottom-nav-item rider-logged-only {% if not session.get('rider_id') %}hidden{% endif %}">
       <span class="bottom-nav-icon">🔄</span>
       <span>Refresh</span>
     </a>
-    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger" onclick="try{localStorage.removeItem('ccrc_rider');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger rider-logged-only {% if not session.get('rider_id') %}hidden{% endif %}" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">
       <span class="bottom-nav-icon">🚪</span>
       <span>Log Out</span>
     </a>
@@ -199,7 +207,7 @@
       <span>Riders</span>
     </a>
     {% endif %}
-    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item nav-rider-logged-item text-danger hidden">
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout-global" class="bottom-nav-item nav-rider-logged-item text-danger hidden" onclick="try{localStorage.removeItem('ccrc_rider');localStorage.removeItem('ccrc_rider_session');}catch(_){};fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});">
       <span class="bottom-nav-icon">🚪</span>
       <span>Log Out</span>
     </a>
