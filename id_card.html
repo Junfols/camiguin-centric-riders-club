@@ -1,560 +1,311 @@
 <!DOCTYPE html>
 <html lang="ceb">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CCRC Official Member ID — {{ rider.name }}</title>
-  <link rel="icon" type="image/png" href="/static/icons/logo.png">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CCRC PVC ID - {{ rider.name }}</title>
   <style>
-    :root {
-      --ccrc-orange: #f97316;
-      --ccrc-dark: #0f172a;
-      --ccrc-slate: #334155;
-      --ccrc-gold: #eab308;
-      --ccrc-light: #f8fafc;
-      --card-w: 85.6mm;
-      --card-h: 53.98mm;
+    @page {
+      size: 85.6mm 54mm;
+      margin: 0;
     }
-
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-
     body {
       background: #0b1120;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px 12px;
-      color: var(--ccrc-light);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
     }
-
-    /* Print Action Toolbar */
-    .toolbar {
+    .print-bar {
+      margin-bottom: 20px;
       display: flex;
       gap: 12px;
-      margin-bottom: 24px;
-      background: #1e293b;
-      padding: 10px 18px;
-      border-radius: 9999px;
-      border: 1px solid #334155;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
     }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--ccrc-orange);
-      color: #fff;
-      font-weight: 700;
-      font-size: 13px;
-      padding: 8px 16px;
-      border-radius: 9999px;
+    .btn-print {
+      background: #f97316;
+      color: #ffffff;
       border: none;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 14px;
       cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);
     }
-
-    .btn:hover {
-      background: #ea580c;
-      transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-      background: #334155;
-      color: #cbd5e1;
-    }
-
-    .btn-secondary:hover {
-      background: #475569;
-      color: #fff;
-    }
-
-    /* ID Cards Stage Wrapper */
-    .id-card-stage {
+    .cards-wrapper {
       display: flex;
       flex-wrap: wrap;
-      gap: 28px;
+      gap: 25px;
       justify-content: center;
-      perspective: 1000px;
     }
-
-    /* Standard CR80 PVC Form Factor */
+    
+    /* Standard CR80 PVC Card Dimensions */
     .pvc-card {
-      width: var(--card-w);
-      height: var(--card-h);
-      border-radius: 3.18mm; /* Standard PVC round corners */
+      width: 85.6mm;
+      height: 53.98mm;
       background: #ffffff;
-      color: var(--ccrc-dark);
-      position: relative;
+      border-radius: 3.18mm;
       overflow: hidden;
-      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+      position: relative;
       display: flex;
       flex-direction: column;
-      user-select: none;
     }
 
-    /* ==========================================================================
-       FRONT CARD DESIGN
-       ========================================================================== */
+    /* FRONT DESIGN */
     .card-front .header-band {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      border-bottom: 2.5px solid var(--ccrc-orange);
+      background: linear-gradient(135deg, #051127 0%, #0f172a 100%);
+      color: #ffffff;
       padding: 5px 8px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      color: #fff;
+      gap: 8px;
+      border-bottom: 2.5px solid #f97316;
     }
-
-    .header-band .brand-logo {
+    .card-front .header-logo {
       width: 28px;
       height: 28px;
-      object-fit: contain;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      border-radius: 50%;
+      border: 1px solid #f97316;
+      background: #051127;
+      object-fit: cover;
     }
-
-    .header-band .brand-text {
-      flex: 1;
-      line-height: 1.1;
-    }
-
-    .header-band h1 {
-      font-size: 8.5pt;
+    .card-front .header-titles h1 {
+      margin: 0;
+      font-size: 7.8pt;
       font-weight: 900;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.02em;
       color: #ffffff;
     }
-
-    .header-band p {
+    .card-front .header-titles p {
+      margin: 0;
       font-size: 5pt;
+      color: #f97316;
       font-weight: 700;
-      color: var(--ccrc-orange);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.05em;
     }
-
-    .card-front .body-content {
+    .card-front .body-wrap {
       flex: 1;
-      padding: 6px 8px;
       display: flex;
-      gap: 8px;
-      position: relative;
-      background: radial-gradient(circle at 80% 20%, #fff7ed 0%, #ffffff 80%);
+      padding: 7px 9px;
+      gap: 9px;
+      align-items: center;
     }
-
-    /* Watermark */
-    .body-content::after {
-      content: "";
-      position: absolute;
-      right: 4mm;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 32mm;
-      height: 32mm;
-      background: url('/static/icons/logo.png') no-repeat center;
-      background-size: contain;
-      opacity: 0.06;
-      pointer-events: none;
-    }
-
-    /* Rider Avatar Photo Box */
-    .photo-box {
-      width: 25mm;
+    .card-front .photo-frame {
+      width: 24mm;
       height: 31mm;
-      border: 1.8px solid var(--ccrc-dark);
       border-radius: 2mm;
+      border: 1.5px solid #0f172a;
       overflow: hidden;
       background: #f1f5f9;
-      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
       flex-shrink: 0;
     }
-
-    .photo-box img {
+    .card-front .photo-frame img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-
-    .photo-box .placeholder-icon {
-      font-size: 24pt;
-      color: #94a3b8;
-    }
-
-    /* Member Verified Hologram Seal Tag */
-    .hologram-seal {
-      position: absolute;
-      bottom: 1.5mm;
-      left: 1.5mm;
-      background: linear-gradient(135deg, #fef08a 0%, #ca8a04 50%, #fef08a 100%);
-      color: #422006;
-      font-size: 4pt;
-      font-weight: 900;
-      padding: 1px 4px;
-      border-radius: 9999px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-
-    /* Info Grid */
-    .info-box {
+    .card-front .info-box {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      z-index: 1;
+      line-height: 1.25;
     }
-
-    .info-name {
-      line-height: 1.1;
-    }
-
-    .info-name .label {
-      font-size: 4.5pt;
-      color: #64748b;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .info-name .val {
-      font-size: 9.5pt;
+    .card-front .rider-name {
+      font-size: 9pt;
       font-weight: 900;
       color: #0f172a;
       text-transform: uppercase;
+      margin-bottom: 3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 48mm;
     }
-
-    .info-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 2px;
-    }
-
-    .info-table td {
-      padding: 1px 0;
-      vertical-align: top;
-    }
-
-    .info-table .lbl {
-      font-size: 4.8pt;
+    .card-front .data-line {
+      font-size: 5.2pt;
       color: #64748b;
-      font-weight: 700;
+      margin-bottom: 1.5px;
       text-transform: uppercase;
-      width: 17mm;
     }
-
-    .info-table .data {
+    .card-front .data-line strong {
+      color: #0f172a;
       font-size: 6.2pt;
-      font-weight: 800;
-      color: #1e293b;
     }
-
-    .badge-status {
+    .card-front .badge-verified {
       display: inline-block;
-      padding: 1px 4px;
       background: #dcfce7;
       color: #15803d;
-      border-radius: 3px;
-      font-size: 5pt;
+      padding: 1.5px 5px;
+      border-radius: 2.5px;
       font-weight: 900;
-      text-transform: uppercase;
+      font-size: 5pt;
+      margin-top: 2px;
+      border: 0.5px solid #86efac;
     }
-
-    .card-front .footer-band {
-      background: #0f172a;
+    .card-front .footer-strip {
+      background: #051127;
       color: #94a3b8;
-      font-size: 4.5pt;
-      font-weight: 600;
-      padding: 2.5px 8px;
+      font-size: 4.8pt;
+      padding: 3px 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-top: 1px solid #e2e8f0;
     }
 
-    .footer-band strong {
-      color: #f8fafc;
-    }
-
-    /* ==========================================================================
-       BACK CARD DESIGN
-       ========================================================================== */
+    /* BACK DESIGN (QR VERIFICATION) */
     .card-back {
       background: #ffffff;
-      padding: 5mm;
+      padding: 8px 10px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
-
-    .magnetic-stripe {
-      position: absolute;
-      top: 3.5mm;
-      left: 0;
-      width: 100%;
-      height: 8mm;
-      background: #1e293b;
-    }
-
-    .back-content {
-      margin-top: 8.5mm;
+    .card-back .back-top {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
+      flex: 1;
     }
-
-    .qr-container {
-      width: 25mm;
-      height: 25mm;
-      padding: 1.5mm;
+    .card-back .qr-frame {
+      width: 28mm;
+      height: 28mm;
       background: #ffffff;
       border: 1px solid #cbd5e1;
       border-radius: 2mm;
+      padding: 2px;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
-
-    .qr-container svg {
+    .card-back .qr-frame svg {
       width: 100%;
       height: 100%;
     }
-
-    .qr-container span {
-      font-size: 4pt;
-      font-weight: 800;
-      color: var(--ccrc-dark);
-      margin-top: 1px;
-      letter-spacing: 0.2px;
-    }
-
-    .back-disclaimer {
+    .card-back .instructions {
       flex: 1;
-      font-size: 4.5pt;
-      line-height: 1.35;
-      color: #475569;
     }
-
-    .back-disclaimer h4 {
-      font-size: 5.8pt;
+    .card-back .instructions h3 {
+      margin: 0 0 3px;
+      font-size: 7pt;
       font-weight: 900;
       color: #0f172a;
-      margin-bottom: 2px;
       text-transform: uppercase;
-      border-bottom: 1px solid var(--ccrc-orange);
-      padding-bottom: 1px;
     }
-
-    .back-disclaimer ul {
-      margin-left: 10px;
-      margin-top: 2px;
-      margin-bottom: 4px;
+    .card-back .instructions p {
+      margin: 0;
+      font-size: 4.8pt;
+      color: #475569;
+      line-height: 1.35;
     }
-
-    .back-footer {
-      border-top: 1px solid #e2e8f0;
-      padding-top: 2px;
+    .card-back .disclaimer-box {
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 4px;
+      font-size: 4.2pt;
+      color: #64748b;
+      line-height: 1.25;
+      text-align: justify;
+    }
+    .card-back .emergency-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-    }
-
-    .signature-box {
-      text-align: center;
-      width: 28mm;
-    }
-
-    .signature-line {
-      border-top: 1px solid #0f172a;
-      margin-top: 6mm;
-      padding-top: 1px;
-      font-size: 4.2pt;
-      font-weight: 700;
-      text-transform: uppercase;
+      font-weight: 800;
       color: #0f172a;
+      font-size: 4.8pt;
+      margin-top: 3px;
     }
 
-    .hotline-box {
-      text-align: right;
-      font-size: 4.5pt;
-      color: #64748b;
-    }
-
-    .hotline-box strong {
-      color: var(--ccrc-orange);
-      font-size: 5.5pt;
-      font-weight: 900;
-      display: block;
-    }
-
-    /* ==========================================================================
-       PRINT SETUP FOR EXACT CR80 PLASTIC CARD / SHEET
-       ========================================================================== */
+    /* PRINT RULES */
     @media print {
       body {
-        background: transparent !important;
-        padding: 0 !important;
-        min-height: auto !important;
+        background: transparent;
+        padding: 0;
+        min-height: auto;
       }
-
-      .toolbar, .no-print {
+      .print-bar {
         display: none !important;
       }
-
-      .id-card-stage {
+      .cards-wrapper {
         gap: 0;
-        margin: 0;
       }
-
       .pvc-card {
-        box-shadow: none !important;
+        box-shadow: none;
         border: 0.1mm solid #cbd5e1;
-        page-break-inside: avoid;
-        margin: 5mm;
-      }
-
-      @page {
-        size: auto;
-        margin: 5mm;
+        page-break-after: always;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Action Controls -->
-  <div class="toolbar no-print">
-    <button class="btn" onclick="window.print()">
-      🖨️ Print PVC ID (CR80)
-    </button>
-    <a href="/rider" class="btn btn-secondary">
-      📱 Back to Rider Hub
-    </a>
+  <div class="print-bar">
+    <button class="btn-print" onclick="window.print()">🖨️ I-print ang PVC ID (Front &amp; Back)</button>
   </div>
 
-  <!-- Cards Stage -->
-  <div class="id-card-stage">
-
-    <!-- FRONT CARD -->
+  <div class="cards-wrapper">
+    <!-- FRONT OF PVC CARD -->
     <div class="pvc-card card-front">
       <div class="header-band">
-        <img src="/static/icons/logo.png" alt="CCRC" class="brand-logo" onerror="this.src='/static/icons/icon-192.png'">
-        <div class="brand-text">
+        <img class="header-logo" src="/static/icons/logo.png" onerror="this.src='/static/icons/icon-192.png'">
+        <div class="header-titles">
           <h1>CAMIGUIN CENTRIC RIDERS CLUB</h1>
-          <p>Verified Island Express Driver</p>
+          <p>OFFICIAL VERIFIED ISLAND DRIVER</p>
         </div>
       </div>
-
-      <div class="body-content">
-        <div class="photo-box">
+      <div class="body-wrap">
+        <div class="photo-frame">
           {% if rider.avatar_url %}
-            <img src="{{ rider.avatar_url }}" alt="{{ rider.name }}">
+          <img src="{{ rider.avatar_url }}" alt="{{ rider.name }}">
           {% else %}
-            <span class="placeholder-icon">👤</span>
+          <span style="font-size: 26pt;">👤</span>
           {% endif %}
-          <div class="hologram-seal">🛡️ CCRC SEAL</div>
         </div>
-
         <div class="info-box">
-          <div class="info-name">
-            <span class="label">Rider Full Name</span>
-            <div class="val">{{ rider.name }}</div>
-          </div>
-
-          <table class="info-table">
-            <tr>
-              <td class="lbl">Control No.:</td>
-              <td class="data" style="color: #ea580c; font-family: monospace;">
-                CCRC-{{ "%04d"|format(rider.id) }}-R
-              </td>
-            </tr>
-            <tr>
-              <td class="lbl">Municipality:</td>
-              <td class="data">{{ rider.municipality or 'Mambajao' }}, Camiguin</td>
-            </tr>
-            <tr>
-              <td class="lbl">Plate Number:</td>
-              <td class="data" style="font-family: monospace; letter-spacing: 0.5px;">
-                {{ rider.plate_number }}
-              </td>
-            </tr>
-            <tr>
-              <td class="lbl">Motorcycle:</td>
-              <td class="data">{{ rider.bike_model }}</td>
-            </tr>
-            <tr>
-              <td class="lbl">Status:</td>
-              <td>
-                <span class="badge-status">
-                  ✓ {{ rider.status|upper if rider.status else 'ACTIVE' }}
-                </span>
-              </td>
-            </tr>
-          </table>
+          <div class="rider-name">{{ rider.name }}</div>
+          <div class="data-line">ID No: <strong style="color:#ea580c; font-family: monospace;">CCRC-{{ "%04d" % rider.id }}-R</strong></div>
+          <div class="data-line">Motorcycle: <strong>{{ rider.bike_model }}</strong></div>
+          <div class="data-line">Plate No: <strong style="font-family: monospace;">{{ rider.plate_number }}</strong></div>
+          <div class="data-line">License: <strong style="font-family: monospace;">{{ rider.license_no or 'VERIFIED' }}</strong></div>
+          <div class="data-line">Station: <strong>{{ rider.municipality or 'Mambajao' }}, Camiguin</strong></div>
+          <div><span class="badge-verified">✓ ACTIVE MEMBER</span></div>
         </div>
       </div>
-
-      <div class="footer-band">
-        <span>Emergency Hotline: <strong>{{ club.hotline or '0917 555 0199' }}</strong></span>
-        <span>JRG IT SOLUTIONS 2026</span>
+      <div class="footer-strip">
+        <span>Hotline: 0917 555 0199</span>
+        <span>ISSUED: 2026</span>
       </div>
     </div>
 
-    <!-- BACK CARD -->
+    <!-- BACK OF PVC CARD (WITH QR CODE) -->
     <div class="pvc-card card-back">
-      <div class="magnetic-stripe"></div>
-
-      <div class="back-content">
-        <div class="qr-container">
-          {% if qr_svg %}
-            {{ qr_svg|safe }}
-          {% else %}
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={{ request.url_root }}verify/rider/{{ rider.id }}" alt="QR Code" style="width:100%;height:100%;object-fit:contain;">
-          {% endif %}
-          <span>SCAN TO VERIFY</span>
+      <div class="back-top">
+        <div class="qr-frame">
+          {{ qr_svg | safe }}
         </div>
-
-        <div class="back-disclaimer">
-          <h4>Terms &amp; Club Agreement</h4>
-          <ul>
-            <li>Ang nagdala niining ID usa ka rehistrado ug otorisadong miyembro sa Camiguin Centric Riders Club.</li>
-            <li>Kinahanglan kining i-presentar kon pangayuon sa pasahero o mga awtoridad sa trapiko.</li>
-            <li>Dili mabalhin (Non-transferable). Kon mapalgan, palihug i-uli sa CCRC Operations Office.</li>
-          </ul>
+        <div class="instructions">
+          <h3>SCAN TO VERIFY</h3>
+          <p>Gamita ang camera sa imong smartphone aron masubay ang official active verification status niining rider sa isla sa Camiguin.</p>
+          <div class="emergency-row">
+            <span>DISPATCH:</span>
+            <span>0917 555 0199</span>
+          </div>
         </div>
       </div>
 
-      <div class="back-footer">
-        <div class="signature-box">
-          <div class="signature-line">Club President / Secretary</div>
-        </div>
-        <div class="hotline-box">
-          <span>Official Dispatcher &amp; Help Desk</span>
-          <strong>{{ club.hotline or '0917 555 0199' }}</strong>
-          <span>Mambajao, Camiguin Island</span>
-        </div>
+      <div class="disclaimer-box">
+        Kini nga kard gipanag-iya sa Camiguin Centric Riders Club. Non-transferable. Kon makit-an, palihug iuli sa CCRC Central Dispatch Office, Mambajao, Camiguin Island.
       </div>
     </div>
-
   </div>
 
 </body>
