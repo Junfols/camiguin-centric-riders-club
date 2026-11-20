@@ -1424,7 +1424,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 transactions=[],
                 customers=[],
                 fin_summary={"total_transactions": 0, "total_revenue": 0.0, "cash_revenue": 0.0, "digital_revenue": 0.0, "total_customers": 0, "verified_customers": 0},
-                stats={"total_bookings": 0, "completed": 0, "active_now": 0, "online_riders": 0, "total_riders": 0, "total_revenue": 0.0, "total_transactions": 0, "verified_customers": 0, "total_customers": 0},
+                stats={"total_bookings": 0, "completed": 0, "active_now": 0, "online_riders": 0, "pending_riders": 0, "total_riders": 0, "total_revenue": 0.0, "total_transactions": 0, "verified_customers": 0, "total_customers": 0},
                 active_nav="admin",
                 is_admin=False,
             )
