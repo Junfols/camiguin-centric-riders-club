@@ -2456,65 +2456,23 @@
     }
   });
 
-  // Handle typing inside Pickup and Dropoff inputs with immediate map center & flyTo!
-  function handleTypedAddress(isPickup) {
-    const input = isPickup ? pickupInput : dropoffInput;
-    const text = input.value.trim();
-
-    if (text.length >= 2) {
-      const found = matchCamiguinPlace(text);
-      if (found) {
-        if (isPickup) {
-          pickupLatInput.value = found.lat;
-          pickupLngInput.value = found.lng;
-          setPickupPoint(found.lat, found.lng, found.name);
-          if (map) {
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }
-          if (pickupMarker) {
-            pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(found.name)}`).openPopup();
-          }
-          showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
-        } else {
-          dropoffLatInput.value = found.lat;
-          dropoffLngInput.value = found.lng;
-          setDropoffPoint(found.lat, found.lng, found.name);
-          if (map) {
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }
-          if (dropoffMarker) {
-            dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(found.name)}`).openPopup();
-          }
-          showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
-        }
-        updateRouteLine();
-      }
-    }
-    recalculateFare();
-  }
-
-  let typeTimer = null;
   if (pickupInput) {
     pickupInput.addEventListener("input", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      clearTimeout(typeTimer);
-      typeTimer = setTimeout(() => handleTypedAddress(true), 250);
     });
     pickupInput.addEventListener("change", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      handleTypedAddress(true);
+      recalculateFare();
     });
   }
 
   if (dropoffInput) {
     dropoffInput.addEventListener("input", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      clearTimeout(typeTimer);
-      typeTimer = setTimeout(() => handleTypedAddress(false), 250);
     });
     dropoffInput.addEventListener("change", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      handleTypedAddress(false);
+      recalculateFare();
     });
   }
   // Clear 'X' Button Handlers for Pickup and Drop-off
