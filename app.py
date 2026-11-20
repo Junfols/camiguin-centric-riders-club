@@ -22,6 +22,7 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from qr_svg import render_qr_svg
 from db import (
     CAMIGUIN_KNOWN_PLACES,
     export_full_backup,
@@ -276,7 +277,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         extra_stores_count = int(data.get("extra_stores_count") or 0)
         is_bulky = bool(data.get("is_bulky_or_high_value", False))
 
-        # Auto-detect hinterland route from addresses or explicit flag
         full_addr = f"{p_addr} {d_addr}".lower()
         hinterland_keywords = [
             "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
@@ -286,7 +286,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         ]
         is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
 
-        # Auto-geocode text addresses if coordinates are missing
         if (not p_lat or not p_lng) and p_addr:
             geo_p = geocode_camiguin_location(p_addr)
             if geo_p:
@@ -297,7 +296,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if geo_d:
                 d_lat, d_lng = geo_d["lat"], geo_d["lng"]
 
-        # Client may have provided pre-fetched road route distance from browser OSRM
         client_road_km = None
         try:
             if data.get("road_km"):
@@ -313,7 +311,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 road_km, road_coords = calculate_road_km(p_lat, p_lng, d_lat, d_lng)
                 km = road_km
         else:
-            km = 1.5  # default close island distance (₱40 base)
+            km = 1.5
 
         fare, estimated_km, breakdown = calculate_fare(
             km=km,
@@ -334,7 +332,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "resolved_dropoff": {"lat": d_lat, "lng": d_lng} if d_lat and d_lng else None,
             "route_coords": road_coords,
         })
-
 
     # -------------------------------------------------------------------------
     # Public Information & Feature Pages
@@ -396,7 +393,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
 
     # -------------------------------------------------------------------------
-    # New Extended APIs: Tours, Promos, Customer, Reviews, Online Riders
+    # Official CCRC Member ID View Route
+    # -------------------------------------------------------------------------
+    @app.get("/rider/<int:rider_id>/id-card")
+    def rider_id_card_view(rider_id: int):
+        conn = get_db()
+        rider = get_rider_by_id(conn, rider_id)
+        if not rider:
+            return "Wala makit-i ang rider account.", 404
+
+        verify_url = f"{request.host_url}verify/rider/{rider['id']}"
+        qr_code_svg = render_qr_svg(verify_url, border=1)
+
+        return render_template("id_card.html", rider=rider, qr_svg=qr_code_svg)
+
+    # -------------------------------------------------------------------------
+    # Extended APIs: Tours, Promos, Customer, Reviews, Online Riders
     # -------------------------------------------------------------------------
     @app.get("/api/tour-packages")
     def api_tour_packages():
@@ -458,9 +470,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         session.pop("active_booking_code", None)
         return jsonify({"active": False, "booking": None})
 
-    # -------------------------------------------------------------------------
-    # Customer Authentication & Legit Verification Routes
-    # -------------------------------------------------------------------------
     @app.post("/api/customer/register")
     def api_customer_register():
         conn = get_db()
@@ -722,7 +731,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except (ValueError, TypeError):
             pickup_lat = pickup_lng = dropoff_lat = dropoff_lng = None
 
-        # Auto-geocode text addresses if coordinates are missing
         if (not pickup_lat or not pickup_lng) and pickup_address:
             geo_p = geocode_camiguin_location(pickup_address)
             if geo_p:
@@ -754,12 +762,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except (ValueError, TypeError):
             estimated_budget = 0.0
 
-        # Special options from Fare Matrix
         is_large_store = bool(data.get("is_large_store", False))
         extra_stores_count = int(data.get("extra_stores_count") or 0)
         is_bulky = bool(data.get("is_bulky_or_high_value", False)) or (estimated_budget >= 2000.0)
 
-        # Auto-detect hinterland route
         full_addr = f"{pickup_address} {dropoff_address} {item_notes}".lower()
         hinterland_keywords = [
             "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
@@ -769,7 +775,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         ]
         is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
 
-        # Prepend note tag if hinterland route is active and not yet mentioned
         if is_hinterland and "hinterland" not in item_notes.lower() and "bukid" not in item_notes.lower():
             tag = "[🏔️ Hinterland / Bukid Route +₱30]"
             item_notes = f"{tag} {item_notes}".strip()
@@ -799,7 +804,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 fare_amount = promo_res["new_fare"]
                 apply_promo_code(conn, promo_code)
 
-        # Auto-register / update customer profile
         customer_password = (data.get("customer_password") or "").strip()
         customer_barangay = (data.get("customer_barangay") or "").strip()
         is_authenticated = bool(session.get("customer_phone") and session.get("customer_phone") == customer_phone)
@@ -857,9 +861,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "tracking_url": f"/track/{booking['booking_code']}",
         }), 201
 
-
     # -------------------------------------------------------------------------
-    # In-App Chat Routes (Customer & Rider Live Messaging)
+    # In-App Chat Routes
     # -------------------------------------------------------------------------
     @app.get("/api/chat/<code_or_id>/messages")
     def get_chat_messages(code_or_id: str):
@@ -943,7 +946,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if booking.get("id"):
             trail = get_booking_tracking_trail(conn, booking["id"], limit=20)
 
-        # Compute real-time road distance from rider to pickup/dropoff
         distance_to_pickup_km = None
         if booking.get("rider_lat") and booking.get("rider_lng") and booking.get("pickup_lat") and booking.get("pickup_lng"):
             distance_to_pickup_km, _ = calculate_road_km(
@@ -1016,7 +1018,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         update_rider_online_status(conn, rider["id"], True)
         conn.commit()
 
-        # Sanitize sensitive field
         clean_rider = {k: v for k, v in rider.items() if k != "password_hash"}
         clean_rider["is_online"] = 1
         return jsonify({"success": True, "rider": clean_rider})
@@ -1086,7 +1087,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if existing_email:
                 return jsonify({"error": "This email address is already registered as a rider. Please log in."}), 409
 
-        # Process and save profile picture
         avatar_url = ""
         if avatar_b64 and "," in avatar_b64:
             import base64
@@ -1129,7 +1129,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "rider": clean_rider,
             "message": f"✅ Malampusong napasa ang imong Rider Application, {name}! Ang imong account anaa pa sa PENDING APPROVAL. Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon, ma-verify ug ma-activate ang imong account."
         }), 201
-
 
     @app.get("/api/rider/co-riders")
     def get_rider_co_riders():
@@ -1215,10 +1214,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             except Exception:
                 pass
 
-        # Check if rider already has an active ongoing job
         active = get_rider_active_job(conn, int(rider_id))
         if active and active["id"] != booking_id and not is_target_advance:
-            # If the current active job is a future advance job (not in_progress and scheduled > 15m), allow taking this on-demand job!
             is_active_advance = False
             act_sched = (active.get("scheduled_at") or "").strip()
             if act_sched and active.get("status") != "in_progress":
@@ -1554,7 +1551,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         return jsonify({"success": True, "settings": get_settings(conn)})
 
-
     @app.get("/api/admin/backup")
     def admin_download_backup():
         if not session.get("is_admin"):
@@ -1617,7 +1613,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             conn.rollback()
             return jsonify({"error": f"Restore failed: {str(e)}"}), 500
 
-
     @app.post("/api/admin/backup/google-drive")
     def admin_upload_backup_google_drive():
         if not session.get("is_admin"):
@@ -1652,7 +1647,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "filename": filename,
             })
 
-        # Send to Google Apps Script Web App / Webhook
         try:
             payload = {
                 "filename": filename,
