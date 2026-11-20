@@ -182,6 +182,40 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertTrue(data["estimated_km"] > 0)
         self.assertIn("breakdown", data)
 
+    def test_hinterland_auto_detection_and_fare(self):
+        # Auto-detection from address keyword
+        est_resp = self.client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_lat": 9.248,
+                "pickup_lng": 124.745,
+                "dropoff_lat": 9.215,
+                "dropoff_lng": 124.718,
+                "service_type": "pahatud",
+                "dropoff_address": "Soro-soro, Mambajao",
+            },
+        )
+        self.assertEqual(est_resp.status_code, 200)
+        data = est_resp.get_json()
+        self.assertEqual(data["breakdown"]["hinterland_fee"], 30.0)
+
+        # Booking creation auto-tagging
+        b_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "service_type": "pahatud",
+                "customer_name": "Test Mountain Passenger",
+                "customer_phone": "09171234567",
+                "pickup_address": "Poblacion, Mambajao",
+                "dropoff_address": "Katibawasan Falls",
+                "item_notes": "",
+            },
+        )
+        self.assertEqual(b_resp.status_code, 201)
+        b_json = b_resp.get_json()
+        self.assertEqual(b_json["breakdown"]["hinterland_fee"], 30.0)
+        self.assertIn("[🏔️ Hinterland / Bukid Route +₱30]", b_json["booking"]["item_notes"])
+
     def test_booking_creation_for_different_services(self):
         # 1. Passenger Ride
         p_resp = self.client.post(
