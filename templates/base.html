@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block title %}{{ club.name }} — On-Demand Island Express Riders{% endblock %}</title>
+  <meta name="description" content="Passenger Ride-Hailing, Parcel Courier, & Buy-For-Me in Camiguin Island — Camiguin Centric Riders Club.">
+  <meta name="theme-color" content="#f97316">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CentricRiders">
+
+  <link rel="manifest" href="/manifest.webmanifest?v=3">
+  <link rel="icon" type="image/png" href="/static/icons/logo.png?v=3">
+  <link rel="shortcut icon" href="/static/icons/logo.png?v=3">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png?v=3">
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css?v=31">
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem("ccrc_rider_session")) {
+          document.documentElement.classList.add("is-rider-session");
+        }
+      } catch(_) {}
+      try {
+        const origFetch = window.fetch;
+        window.fetch = function(input, init) {
+          const opts = init ? Object.assign({}, init) : {};
+          const method = (opts.method || (input && input.method) || "GET").toUpperCase();
+          if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+            const urlStr = typeof input === "string" ? input : (input && input.url) || "";
+            const isSameOrigin = !urlStr.startsWith("http") || urlStr.startsWith(window.location.origin);
+            if (isSameOrigin) {
+              const meta = document.querySelector('meta[name="csrf-token"]');
+              const token = meta ? meta.getAttribute("content") : "";
+              if (token) {
+                const headers = new Headers(opts.headers || {});
+                if (!headers.has("X-CSRF-Token")) {
+                  headers.set("X-CSRF-Token", token);
+                }
+                opts.headers = headers;
+              }
+            }
+          }
+          return origFetch.call(this, input, opts);
+        };
+      } catch(_) {}
+    })();
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body class="app-body">
+  <!-- App Splash / Loading Screen -->
+  <div id="app-splash-screen" class="app-splash-screen" role="status" aria-label="Loading Application">
+    <div class="splash-inner">
+      <div class="splash-logo-wrap">
+        <img src="/static/icons/logo.png?v=3" alt="Camiguin Centric Riders Club Logo" class="splash-logo-img">
+        <div class="splash-pulse-ring"></div>
+      </div>
+      <h1 class="splash-title">CAMIGUIN CENTRIC RIDERS CLUB</h1>
+      <p class="splash-tagline">YOUR SAFETY IS OUR PRIORITY</p>
+
+      <div class="splash-loader-wrap">
+        <div class="splash-loader-bar"></div>
+      </div>
+      <span class="splash-status-text">Connecting to Island Express Riders...</span>
+    </div>
+  </div>
+  <div id="offline-banner" class="offline-banner hidden" role="status">
+    <span>⚠️ Offline mode — No internet connection detected.</span>
+  </div>
+
+  <!-- Header Navigation: Strictly Role-Specific -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand-link">
+        <div class="brand-logo-wrap" id="secret-admin-trigger" style="user-select:none;touch-action:manipulation;cursor:pointer;" title="{{ club.name }}">
+          <img src="/static/icons/logo.png?v=3" alt="{{ club.name }}" class="brand-logo-img">
+        </div>
+        <a href="{% if session.get('rider_id') or active_nav == 'rider' %}/rider{% elif active_nav == 'admin' %}/admin{% else %}/{% endif %}" class="brand-text" aria-label="{{ club.name }} Home">
+          <span class="brand-name">{{ club.name }}</span>
+          <span class="brand-sub">
+            {% if active_nav == 'rider' %}
+              Rider Dispatch Portal 📱
+            {% elif active_nav == 'admin' %}
+              Club Admin Control Center ⚙️
+            {% else %}
+              Camiguin Island On-Demand Express
+            {% endif %}
+          </span>
+        </a>
+      </div>
+
+      <nav class="desktop-nav" aria-label="Main Navigation">
+        {% if active_nav == 'admin' %}
+          <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#1e293b;color:white;border-radius:20px;font-weight:600;">⚙️ Club Admin Mode</span>
+          <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
+        {% elif active_nav == 'rider' or session.get('rider_id') %}
+          <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
+          <button type="button" id="header-rider-logout-btn" class="nav-link text-danger" style="background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="if(window.ccrcRiderLogout){window.ccrcRiderLogout();return false;}if(confirm('Are you sure you want to log out of your Rider Account?')){try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){}fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});}return false;">Log Out 🚪</button>
+        {% else %}
+          <a href="/" class="nav-link {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="nav-book-link">Book a Ride 🛵</a>
+          <a href="#" id="nav-active-trip-pill" class="nav-link nav-active-trip-pill" style="display:none;color:#ea580c;font-weight:700;align-items:center;gap:6px;">
+            <span class="live-pulse-dot" style="background:#ea580c;box-shadow:0 0 0 3px rgba(234,88,12,0.3);"></span>
+            <span>Live Trip 🛵</span>
+          </a>
+          <a href="/tours" class="nav-link {% if active_nav == 'tours' %}active{% endif %}">Island Tours 🏝️</a>
+          <a href="/history" class="nav-link {% if active_nav == 'history' %}active{% endif %}">Ride History 📜</a>
+          <a href="/rider" class="nav-link {% if active_nav == 'rider' %}active{% endif %}" id="nav-rider-link">Rider Hub 📱</a>
+        {% endif %}
+      </nav>
+
+      <div class="header-actions">
+        {% if active_nav == 'admin' %}
+          <!-- Admin mode: No customer sign-in button -->
+        {% elif active_nav == 'rider' or session.get('rider_id') %}
+          <!-- Rider mode: Strictly show Rider Badge & Logout, never customer sign-in -->
+          <div id="rider-header-badge" class="header-rider-badge">
+            <span class="badge header-rider-pill">
+              🛵 Rider Hub
+            </span>
+            <button type="button" id="header-rider-logout-btn2" onclick="if(window.ccrcRiderLogout){window.ccrcRiderLogout();return false;}if(confirm('Are you sure you want to log out of your Rider Account?')){try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){}fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});}return false;" class="btn btn-sm btn-outline" title="Log Out as Rider" style="font-size:0.75rem;padding:5px 8px;border-radius:12px;color:#ef4444;border-color:#fca5a5;cursor:pointer;">
+              🚪
+            </button>
+          </div>
+        {% else %}
+          <!-- Customer Mode: Check server session and client-side status -->
+          {% set cust_logged = session.get('customer_phone') %}
+          {% set cust_display_name = (session.get('customer_name') or 'Account').split(' ')[0] %}
+
+          <!-- When NOT logged in: Show Sign In button (hidden if server knows customer is logged in) -->
+          <button type="button" id="customer-signin-btn" class="btn btn-outline btn-sm header-signin-btn {% if cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:none;{% else %}display:inline-flex;{% endif %}">
+            <span>👤</span> <span>Sign In</span>
+          </button>
+
+          <!-- When LOGGED IN: Show single compact Verified Profile pill (Logout is inside Profile modal) -->
+          <div id="customer-logged-pill" class="header-logged-pill {% if not cust_logged %}hidden{% endif %}" style="{% if cust_logged %}display:inline-flex;{% else %}display:none;{% endif %}">
+            <button type="button" id="customer-profile-btn" class="header-profile-pill-btn" title="Open Profile &amp; Log Out" aria-label="Open Verified Profile and Log Out">
+              <span id="header-cust-avatar-wrap" class="header-cust-avatar-wrap">
+                <span id="header-cust-placeholder" class="header-cust-placeholder">🛡️</span>
+                <img id="header-cust-avatar-img" src="{{ session.get('customer_avatar', '') }}" alt="" class="header-cust-avatar-img {% if not session.get('customer_avatar') %}hidden{% endif %}">
+              </span>
+              <span id="customer-pill-name" class="header-pill-name">{{ cust_display_name }} ✓</span>
+              <span class="header-pill-caret" aria-hidden="true">▾</span>
+            </button>
+          </div>
+        {% endif %}
+
+        <button type="button" id="install-app-btn" class="btn btn-install" title="Install App on Phone">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/>
+            <path d="m7 10 5 5 5-5"/>
+            <path d="M5 21h14"/>
+          </svg>
+          <span>Install App</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Bottom Language Switcher Bar -->
+  <footer class="ccrc-lang-footer" style="max-width:960px;margin:0 auto;padding:10px 16px 96px;text-align:center;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#ffffff;border:1px solid #e2e8f0;border-radius:999px;padding:7px 16px;box-shadow:0 2px 6px rgba(15,23,42,0.04);">
+      <label for="ccrc-lang-select" style="font-size:0.82rem;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0;">
+        <span>🌐</span> <span>Change Language:</span>
+      </label>
+      <select id="ccrc-lang-select" aria-label="Change Language" title="Change Language" style="font-size:0.82rem;padding:5px 12px;border-radius:999px;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;font-weight:700;cursor:pointer;outline:none;">
+        <option value="en">🇺🇸 English (EN)</option>
+        <option value="ceb">🇵🇭 Binisaya / Cebuano (CEB)</option>
+        <option value="fil">🇵🇭 Filipino / Tagalog (FIL)</option>
+        <option value="zh">🇨🇳 中文 (Chinese)</option>
+        <option value="ja">🇯🇵 日本語 (Japanese)</option>
+      </select>
+    </div>
+  </footer>
+
+  <!-- Mobile Bottom Navigation: Customer & Rider unified (Admin hidden) -->
+  {% if active_nav == 'admin' %}
+  <nav class="bottom-nav" aria-label="Admin Navigation">
+    <a href="/admin" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">⚙️</span>
+      <span>Admin Panel</span>
+    </a>
+    <a href="/" class="bottom-nav-item">
+      <span class="bottom-nav-icon">🏠</span>
+      <span>Exit to App</span>
+    </a>
+  </nav>
+  {% elif active_nav == 'rider' or session.get('rider_id') %}
+  <nav class="bottom-nav" aria-label="Rider Navigation">
+    <a href="/rider" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📱</span>
+      <span>Rider Hub</span>
+    </a>
+    <a href="javascript:void(0)" id="bottom-rider-refresh-btn" class="bottom-nav-item">
+      <span class="bottom-nav-icon">🔄</span>
+      <span>Refresh</span>
+    </a>
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item text-danger" onclick="if(window.ccrcRiderLogout){window.ccrcRiderLogout();return false;}if(confirm('Are you sure you want to log out of your Rider Account?')){try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){}fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});}return false;">
+      <span class="bottom-nav-icon">🚪</span>
+      <span>Log Out</span>
+    </a>
+  </nav>
+  {% else %}
+  <nav class="bottom-nav" aria-label="App Navigation">
+    <a href="/" class="bottom-nav-item {% if active_nav == 'book' %}active{% endif %} nav-book-item" id="bottom-nav-book">
+      <span class="bottom-nav-icon">🛵</span>
+      <span>Book</span>
+    </a>
+    <a href="#" id="bottom-active-trip-item" class="bottom-nav-item bottom-active-trip" style="display:none;color:#ea580c;font-weight:700;">
+      <span class="bottom-nav-icon" style="position:relative;">🛵<span class="live-pulse-dot" style="position:absolute;top:2px;right:4px;width:7px;height:7px;background:#ea580c;"></span></span>
+      <span>Live Trip</span>
+    </a>
+    <a href="/tours" class="bottom-nav-item {% if active_nav == 'tours' %}active{% endif %}">
+      <span class="bottom-nav-icon">🏝️</span>
+      <span>Tours</span>
+    </a>
+    <a href="/history" class="bottom-nav-item {% if active_nav == 'history' %}active{% endif %}">
+      <span class="bottom-nav-icon">📜</span>
+      <span>History</span>
+    </a>
+    {% if not session.get('customer_id') and not session.get('customer_phone') %}
+    <a href="/rider" class="bottom-nav-item {% if active_nav == 'rider' %}active{% endif %}" id="bottom-nav-rider">
+      <span class="bottom-nav-icon">📱</span>
+      <span>Riders</span>
+    </a>
+    {% endif %}
+    <a href="javascript:void(0)" id="bottom-nav-rider-logout" class="bottom-nav-item nav-rider-logged-item text-danger hidden" onclick="if(window.ccrcRiderLogout){window.ccrcRiderLogout();return false;}if(confirm('Are you sure you want to log out of your Rider Account?')){try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){}fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});}return false;">
+      <span class="bottom-nav-icon">🚪</span>
+      <span>Log Out</span>
+    </a>
+  </nav>
+  {% endif %}
+
+  <script>
+    (function() {
+      try {
+        const activeCode = localStorage.getItem("ccrc_active_booking");
+        if (activeCode) {
+          const navPill = document.getElementById("nav-active-trip-pill");
+          const bottomPill = document.getElementById("bottom-active-trip-item");
+          if (navPill) {
+            navPill.href = "/track/" + encodeURIComponent(activeCode);
+            navPill.style.display = "inline-flex";
+          }
+          if (bottomPill) {
+            bottomPill.href = "/track/" + encodeURIComponent(activeCode);
+            bottomPill.style.display = "flex";
+          }
+        }
+      } catch(_) {}
+    })();
+  </script>
+
+  <!-- Footer: Clean & Professional with JRG IT SOLUTIONS 2026 -->
+  <footer class="site-footer" style="padding:2.5rem 1rem 6.5rem;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(0,0,0,0.06);margin-top:3rem;">
+    <div style="margin-bottom:12px;display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:0.85rem;">
+      <a href="/tours" style="color:#64748b;text-decoration:none;">🏝️ Island Tours</a>
+      <a href="/history" style="color:#64748b;text-decoration:none;">📜 Ride History</a>
+      <a href="/about" style="color:#64748b;text-decoration:none;">ℹ️ About Us</a>
+      <a href="/faq" style="color:#64748b;text-decoration:none;">❓ FAQs</a>
+      <a href="/terms" style="color:#64748b;text-decoration:none;">📋 Terms &amp; Safety</a>
+    </div>
+    <p>&copy; 2026 Camiguin Centric Riders Club &bull; Safe Island Rides &amp; Deliveries across all 5 municipalities</p>
+    <p style="margin-top:8px;font-size:0.78rem;color:#64748b;letter-spacing:0.3px;">
+      Designed &amp; Developed by <strong>JRG IT SOLUTIONS 2026</strong>
+    </p>
+  </footer>
+
+  <!-- Audio Dispatch Chime Generator (Web Audio API) -->
+  <script>
+    window.playDispatchChime = function() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(587.33, now);
+        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.25);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(880, now + 0.28);
+        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.45);
+        gain2.gain.setValueAtTime(0.35, now + 0.28);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.28);
+        osc2.stop(now + 0.6);
+      } catch (e) {
+        console.warn("Audio chime prevented by autoplay policy:", e);
+      }
+    };
+  </script>
+
+  <!-- PWA Service Worker & Intelligent Install Hide Logic -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(console.error);
+      });
+    }
+
+    function isAppAlreadyInstalled() {
+      // 1. Running in standalone window / PWA mode
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        return true;
+      }
+      // 2. Previously marked installed on this device
+      if (localStorage.getItem("pwa_installed") === "true") {
+        return true;
+      }
+      return false;
+    }
+
+    let deferredPrompt;
+    const installBtn = document.getElementById("install-app-btn");
+
+    // Immediately hide if already installed
+    if (isAppAlreadyInstalled() && installBtn) {
+      installBtn.style.display = "none";
+      installBtn.classList.remove("visible");
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      if (isAppAlreadyInstalled()) {
+        if (installBtn) {
+          installBtn.style.display = "none";
+          installBtn.classList.remove("visible");
+        }
+        return;
+      }
+      deferredPrompt = e;
+      if (installBtn) {
+        installBtn.classList.add("visible");
+      }
+    });
+
+    window.addEventListener("appinstalled", () => {
+      localStorage.setItem("pwa_installed", "true");
+      if (installBtn) {
+        installBtn.classList.remove("visible");
+        installBtn.style.display = "none";
+      }
+      deferredPrompt = null;
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener("click", async () => {
+        if (!deferredPrompt) {
+          localStorage.setItem("pwa_installed", "true");
+          installBtn.style.display = "none";
+          return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          localStorage.setItem("pwa_installed", "true");
+          installBtn.classList.remove("visible");
+          installBtn.style.display = "none";
+        }
+        deferredPrompt = null;
+      });
+    }
+  </script>
+
+  <!-- Customer Account / Legit Verification Modal -->
+  <div id="customer-auth-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+    <div class="modal-card modal-md" style="max-height:85vh;overflow-y:auto;background:#ffffff;border-radius:14px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
+      <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+        <h3 id="cust-modal-title" style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>👤</span> Passenger Account
+        </h3>
+        <button type="button" id="close-cust-auth-modal-btn" onclick="document.getElementById('customer-auth-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+      </div>
+
+      <!-- State 1: Not Logged In Tabs (Login vs Register) -->
+      <div id="cust-auth-unauthed-view" style="padding:18px;">
+        <div id="cust-auth-tab-bar" style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
+          <button type="button" id="cust-tab-login" class="btn" style="flex:1;border:none;border-bottom:3px solid var(--primary);border-radius:0;background:none;font-weight:700;padding:8px;color:var(--primary);">
+            Log In
+          </button>
+          <button type="button" id="cust-tab-register" class="btn" style="flex:1;border:none;border-bottom:3px solid transparent;border-radius:0;background:none;font-weight:600;padding:8px;color:#64748b;">
+            Register (Legit Badge 🛡️)
+          </button>
+        </div>
+
+        <!-- Tab Form: Login -->
+        <form id="cust-login-form">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="c-login-phone" style="font-size:0.85rem;font-weight:600;">Phone Number or Email *</label>
+            <input type="text" id="c-login-phone" name="phone" required placeholder="0917 123 4567 or email@gmail.com" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <label for="c-login-pwd" style="font-size:0.85rem;font-weight:600;margin:0;">Password *</label>
+              <button type="button" id="c-switch-forgot-btn" class="text-btn" style="font-size:0.78rem;color:#0284c7;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;">
+                Forgot Password?
+              </button>
+            </div>
+            <input type="password" id="c-login-pwd" name="password" required placeholder="Enter your password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div id="c-login-err" class="alert-error hidden" style="margin-bottom:10px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
+          <button type="submit" id="c-login-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;">
+            Log In to CCRC &rarr;
+          </button>
+        </form>
+
+        <!-- Tab Form: Register -->
+        <form id="cust-register-form" class="hidden">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-name" style="font-size:0.85rem;font-weight:600;">Full Name *</label>
+            <input type="text" id="c-reg-name" name="name" required placeholder="e.g. Maria Santos" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-phone" style="font-size:0.85rem;font-weight:600;">Philippine Mobile Number *</label>
+            <input type="tel" id="c-reg-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-email" style="font-size:0.85rem;font-weight:600;">Email Address *</label>
+            <input type="email" id="c-reg-email" name="email" required placeholder="e.g. maria@gmail.com" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <!-- Customer Profile Picture (Camera / Gallery) -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:0.85rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+              <span>Passenger Profile Picture *</span>
+              <small class="text-muted" style="font-size:0.75rem;">Required for Verification</small>
+            </label>
+            <div style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:10px 12px;border:1.5px dashed #cbd5e1;border-radius:10px;">
+              <div id="c-reg-photo-preview-wrap" style="width:56px;height:56px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid #cbd5e1;">
+                <span id="c-reg-photo-placeholder" style="font-size:1.6rem;">👤</span>
+                <img id="c-reg-photo-img" src="" alt="Preview" class="hidden" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                  <button type="button" id="c-photo-camera-btn" class="btn btn-sm" style="background:#0284c7;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                    📷 Camera
+                  </button>
+                  <button type="button" id="c-photo-gallery-btn" class="btn btn-sm" style="background:#475569;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                    🖼️ Gallery
+                  </button>
+                </div>
+                <!-- Native file inputs -->
+                <input type="file" id="c-reg-file-camera" accept="image/*" capture="user" style="display:none;">
+                <input type="file" id="c-reg-file-gallery" accept="image/*" style="display:none;">
+                <small class="text-muted" id="c-photo-status" style="display:block;font-size:0.74rem;">Take a photo with your camera or choose from gallery.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-reg-barangay" style="font-size:0.85rem;font-weight:600;">Camiguin Municipality / Barangay</label>
+            <select id="c-reg-barangay" name="barangay" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;">
+              <option value="Mambajao">Mambajao</option>
+              <option value="Catarman">Catarman</option>
+              <option value="Mahinog">Mahinog</option>
+              <option value="Sagay">Sagay</option>
+              <option value="Guinsiliban">Guinsiliban</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="c-reg-pwd" style="font-size:0.85rem;font-weight:600;">Create Password (min. 6 characters) *</label>
+            <input type="password" id="c-reg-pwd" name="password" required minlength="6" placeholder="Choose a password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+          <div id="c-reg-err" class="alert-error hidden" style="margin-bottom:10px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
+          <button type="submit" id="c-reg-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;background:#16a34a;border-color:#16a34a;">
+            Register &amp; Get Verified Badge 🛡️
+          </button>
+        </form>
+
+        <!-- Tab Form: Forgot Password -->
+        <form id="cust-forgot-form" class="hidden">
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.82rem;color:#166534;line-height:1.45;">
+            <strong>🔑 Reset Passenger Password:</strong><br>
+            Enter your registered <strong>Mobile Phone Number</strong> and <strong>Email Address</strong> to verify your account and set a new password.
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-forgot-phone" style="font-size:0.85rem;font-weight:600;">Registered Phone Number *</label>
+            <input type="tel" id="c-forgot-phone" name="phone" required placeholder="0917 123 4567" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-forgot-email" style="font-size:0.85rem;font-weight:600;">Registered Email Address *</label>
+            <input type="email" id="c-forgot-email" name="email" required placeholder="e.g. maria@gmail.com" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="c-forgot-new-pwd" style="font-size:0.85rem;font-weight:600;">New Password (min. 6 characters) *</label>
+            <input type="password" id="c-forgot-new-pwd" name="new_password" required minlength="6" placeholder="Choose a new password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="c-forgot-confirm-pwd" style="font-size:0.85rem;font-weight:600;">Confirm New Password *</label>
+            <input type="password" id="c-forgot-confirm-pwd" required minlength="6" placeholder="Re-type new password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          </div>
+
+          <div id="c-forgot-msg" class="hidden" style="margin-bottom:10px;font-size:0.82rem;padding:10px 12px;border-radius:8px;"></div>
+
+          <button type="submit" id="c-forgot-btn" class="btn btn-primary btn-block" style="padding:10px;font-weight:700;background:#0284c7;border-color:#0284c7;">
+            Save New Password &rarr;
+          </button>
+
+          <div style="text-align:center;margin-top:12px;">
+            <button type="button" id="c-forgot-back-btn" class="text-btn" style="font-size:0.82rem;color:#64748b;cursor:pointer;background:none;border:none;">
+              &larr; Back to Log In
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- State 2: Logged In Customer Profile View -->
+      <div id="cust-auth-authed-view" class="hidden" style="padding:18px;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <div id="cust-profile-avatar-wrap" style="width:76px;height:76px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 10px;overflow:hidden;border:2.5px solid #0284c7;box-shadow:0 4px 10px -2px rgba(2,132,199,0.25);">
+            <span id="c-profile-avatar-placeholder" style="font-size:2.2rem;">👤</span>
+            <img id="c-profile-avatar-img" src="" alt="Passenger Profile Photo" class="hidden" style="width:100%;height:100%;object-fit:cover;">
+          </div>
+          <h3 id="c-profile-name" style="margin:0 0 4px;font-size:1.25rem;font-weight:700;">Customer Name</h3>
+          <div id="c-profile-phone" class="text-muted" style="font-size:0.9rem;font-weight:600;">0917 000 0000</div>
+          <div id="c-profile-email" style="font-size:0.82rem;color:#0284c7;margin-top:2px;word-break:break-all;"></div>
+          <div id="c-profile-badge" style="margin-top:8px;">
+            <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.8rem;font-weight:700;padding:4px 12px;border-radius:12px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;">
+              🛡️ Verified CCRC Passenger Account ✓
+            </span>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;">
+          <div>
+            <span style="font-size:0.75rem;color:#64748b;text-transform:uppercase;">Completed Trips</span>
+            <div id="c-profile-rides" style="font-size:1.3rem;font-weight:700;color:#0f172a;">0</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem;color:#64748b;text-transform:uppercase;">Total Spent</span>
+            <div id="c-profile-spent" style="font-size:1.3rem;font-weight:700;color:var(--primary);">₱0.00</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a href="/history" class="btn btn-outline btn-block" style="text-align:center;padding:10px;font-weight:600;text-decoration:none;">
+            📜 View My Past Bookings &amp; Receipts
+          </a>
+          <button type="button" id="c-profile-logout-btn" class="btn btn-block" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:10px;font-weight:600;cursor:pointer;">
+            🚪 Log Out of Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Free In-App Voice Call Modal (Shared between Customer Tracking & Rider Hub) -->
+  <div id="ccrc-call-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(15,23,42,0.82);z-index:10050;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);">
+    <div class="modal-card modal-sm ccrc-call-card" style="width:100%;max-width:380px;background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);color:#f8fafc;border-radius:22px;padding:24px 20px;text-align:center;box-shadow:0 24px 48px rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.12);">
+      <div class="ccrc-call-badge-row" style="margin-bottom:14px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,0.18);color:#4ade80;border:1px solid rgba(74,222,128,0.35);border-radius:20px;padding:4px 12px;font-size:0.74rem;font-weight:700;">
+          <span>🔊</span> <span>Free In-App Voice Call</span>
+        </span>
+      </div>
+
+      <div id="ccrc-call-avatar-ring" class="ccrc-call-avatar-ring ringing">
+        <span id="ccrc-call-avatar-icon" style="font-size:2.3rem;">📞</span>
+      </div>
+
+      <div id="ccrc-call-peer-role" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;font-weight:700;margin-top:12px;">
+        CCRC Voice
+      </div>
+      <h3 id="ccrc-call-peer-name" style="margin:4px 0 2px;font-size:1.3rem;color:#ffffff;">Connecting...</h3>
+      <div id="ccrc-call-booking-code" style="font-family:monospace;font-size:0.78rem;color:#fb923c;margin-bottom:10px;">CCRC</div>
+
+      <div id="ccrc-call-status-text" style="font-size:0.92rem;color:#cbd5e1;font-weight:600;min-height:22px;">
+        Calling...
+      </div>
+      <div id="ccrc-call-timer" class="hidden" style="font-family:monospace;font-size:1.4rem;font-weight:800;color:#4ade80;margin-top:6px;">
+        00:00
+      </div>
+
+      <!-- Incoming Call Action Row -->
+      <div id="ccrc-call-incoming-actions" class="hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;">
+        <button type="button" id="ccrc-call-decline-btn" class="btn" style="background:#dc2626;color:#fff;border:none;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.95rem;">
+          ✕ Decline
+        </button>
+        <button type="button" id="ccrc-call-answer-btn" class="btn ccrc-btn-pulse-green" style="background:#16a34a;color:#fff;border:none;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.95rem;">
+          📞 Answer
+        </button>
+      </div>
+
+      <!-- Active / Outgoing Call Action Row -->
+      <div id="ccrc-call-active-actions" class="hidden" style="display:flex;justify-content:center;gap:12px;margin-top:20px;">
+        <button type="button" id="ccrc-call-mute-btn" class="btn" style="flex:1;background:#334155;color:#f8fafc;border:1px solid #475569;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.9rem;">
+          🎙️ Mute
+        </button>
+        <button type="button" id="ccrc-call-hangup-btn" class="btn" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:14px;padding:12px 10px;font-weight:700;cursor:pointer;font-size:0.9rem;">
+          📵 End Call
+        </button>
+      </div>
+
+      <!-- Fallback & Close Options -->
+      <div id="ccrc-call-fallback-wrap" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.1);display:grid;gap:8px;">
+        <a id="ccrc-call-tel-fallback" href="#" class="btn btn-sm" style="background:rgba(255,255,255,0.08);color:#e2e8f0;border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:8px 12px;text-decoration:none;font-size:0.8rem;font-weight:600;">
+          📞 Regular Phone Call (Backup)
+        </a>
+        <button type="button" id="ccrc-call-voice-note-fallback" class="btn btn-sm" style="background:rgba(249,115,22,0.16);color:#fdba74;border:1px solid rgba(249,115,22,0.4);border-radius:10px;padding:8px 12px;font-size:0.8rem;font-weight:600;cursor:pointer;">
+          🎙️ Send Voice Message Instead
+        </button>
+        <button type="button" id="ccrc-call-close-btn" class="btn btn-sm hidden" style="background:#475569;color:#ffffff;border:none;border-radius:10px;padding:9px 12px;font-size:0.84rem;font-weight:700;cursor:pointer;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+  <audio id="ccrc-remote-audio" autoplay playsinline style="display:none;"></audio>
+
+  <!-- Shared Fullscreen Photo Lightbox (Chat Receipts, Landmarks, Proof of Delivery) -->
+  <div id="ccrc-photo-lightbox" class="ccrc-photo-lightbox hidden" role="dialog" aria-modal="true" aria-label="Chat Photo Preview">
+    <div class="ccrc-lightbox-inner">
+      <div class="ccrc-lightbox-topbar">
+        <a id="ccrc-lightbox-download" href="#" download class="ccrc-lightbox-action" title="Download Photo">⬇️ Save</a>
+        <button type="button" id="ccrc-lightbox-close-btn" class="ccrc-lightbox-close" aria-label="Close photo preview">✕</button>
+      </div>
+      <img id="ccrc-lightbox-img" src="" alt="Chat photo preview" class="ccrc-lightbox-img">
+      <div id="ccrc-lightbox-caption" class="ccrc-lightbox-caption hidden"></div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const lightbox = document.getElementById("ccrc-photo-lightbox");
+      const lbImg = document.getElementById("ccrc-lightbox-img");
+      const lbCaption = document.getElementById("ccrc-lightbox-caption");
+      const lbDownload = document.getElementById("ccrc-lightbox-download");
+      const lbClose = document.getElementById("ccrc-lightbox-close-btn");
+
+      function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.classList.add("hidden");
+        if (lbImg) lbImg.removeAttribute("src");
+      }
+
+      window.closeCcrcPhotoLightbox = closeLightbox;
+
+      window.openCcrcPhotoLightbox = function(url, caption) {
+        if (!lightbox || !lbImg || typeof url !== "string") return;
+        if (!url.startsWith("/") && !url.startsWith("data:image/")) return;
+        lbImg.src = url;
+        const cleanCap = (caption || "").trim();
+        lbImg.alt = cleanCap || "Chat photo";
+        if (lbCaption) {
+          if (cleanCap && cleanCap !== "📸 Photo") {
+            lbCaption.textContent = cleanCap;
+            lbCaption.classList.remove("hidden");
+          } else {
+            lbCaption.textContent = "";
+            lbCaption.classList.add("hidden");
+          }
+        }
+        if (lbDownload) {
+          lbDownload.href = url;
+        }
+        lightbox.classList.remove("hidden");
+      };
+
+      if (lbClose) lbClose.addEventListener("click", closeLightbox);
+      if (lightbox) {
+        lightbox.addEventListener("click", function(e) {
+          if (e.target === lightbox) closeLightbox();
+        });
+      }
+      document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && lightbox && !lightbox.classList.contains("hidden")) {
+          closeLightbox();
+        }
+      });
+
+      window.ccrcCompressChatPhoto = function(file) {
+        return new Promise(function(resolve, reject) {
+          if (!file) {
+            reject(new Error("No photo selected."));
+            return;
+          }
+          if (file.type && !file.type.startsWith("image/")) {
+            reject(new Error("Please choose a valid image file (JPG, PNG, or WebP)."));
+            return;
+          }
+          if (file.size > 20 * 1024 * 1024) {
+            reject(new Error("Photo file is too large (max 20 MB)."));
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onerror = function() {
+            reject(new Error("Could not read photo file."));
+          };
+          reader.onload = function(ev) {
+            const rawDataUrl = ev.target && ev.target.result;
+            if (typeof rawDataUrl !== "string") {
+              reject(new Error("Could not read photo data."));
+              return;
+            }
+            const img = new Image();
+            img.onerror = function() {
+              reject(new Error("Unsupported photo format. Please use JPG, PNG, or WebP."));
+            };
+            img.onload = function() {
+              try {
+                function renderScaled(maxEdge, quality) {
+                  let w = img.naturalWidth || img.width || 1;
+                  let h = img.naturalHeight || img.height || 1;
+                  const longest = Math.max(w, h);
+                  if (longest > maxEdge) {
+                    const ratio = maxEdge / longest;
+                    w = Math.max(1, Math.round(w * ratio));
+                    h = Math.max(1, Math.round(h * ratio));
+                  }
+                  const canvas = document.createElement("canvas");
+                  canvas.width = w;
+                  canvas.height = h;
+                  const ctx = canvas.getContext("2d");
+                  if (!ctx) return { dataUrl: rawDataUrl, width: w, height: h };
+                  ctx.fillStyle = "#ffffff";
+                  ctx.fillRect(0, 0, w, h);
+                  ctx.drawImage(img, 0, 0, w, h);
+                  return { dataUrl: canvas.toDataURL("image/jpeg", quality), width: w, height: h };
+                }
+
+                let out = renderScaled(1280, 0.82);
+                if (out.dataUrl.length > 2400000) {
+                  out = renderScaled(1280, 0.72);
+                }
+                if (out.dataUrl.length > 2800000) {
+                  out = renderScaled(960, 0.68);
+                }
+                resolve(out);
+              } catch (err) {
+                reject(new Error("Could not process photo. Please try another image."));
+              }
+            };
+            img.src = rawDataUrl;
+          };
+          reader.readAsDataURL(file);
+        });
+      };
+    })();
+  </script>
+
+  <script src="/static/js/i18n.js?v=9"></script>
+  <script src="/static/js/auth.js?v=1"></script>
+  {% block scripts %}{% endblock %}
+  <!-- Secret 10-Tap on 🛵 Logo Icon to Unlock Admin -->
+  <script>
+    (function() {
+      let taps = 0;
+      let tapTimer = null;
+      let lastTapTime = 0;
+
+      const logo = document.getElementById("secret-admin-trigger");
+      if (!logo) return;
+
+      function onIconTap(e) {
+        const now = Date.now();
+        if (now - lastTapTime < 60) return; // Debounce rapid ghost triggers
+        lastTapTime = now;
+
+        if (e && e.cancelable) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+
+        taps++;
+        clearTimeout(tapTimer);
+
+        // Visual bounce animation on the 🛵 logo
+        logo.style.transition = "transform 0.08s ease";
+        logo.style.transform = "scale(0.75)";
+        setTimeout(() => {
+          if (logo) logo.style.transform = "";
+        }, 110);
+
+        // Subtle haptic vibration per tap on mobile
+        if (navigator.vibrate) {
+          try { navigator.vibrate(30); } catch(err) {}
+        }
+
+        // When reached exactly 10 taps!
+        if (taps >= 10) {
+          taps = 0;
+          if (navigator.vibrate) {
+            try { navigator.vibrate([100, 50, 150]); } catch(err) {}
+          }
+          window.location.href = "/admin";
+          return;
+        }
+
+        // Rolling timeout: reset after 4.5 seconds of inactivity
+        tapTimer = setTimeout(() => {
+          taps = 0;
+        }, 4500);
+      }
+
+      logo.addEventListener("pointerdown", onIconTap, { passive: false });
+      logo.addEventListener("click", onIconTap, { passive: false });
+    })();
+  </script>
+  <!-- Splash Screen Auto-Dismissal -->
+  <script>
+    (function () {
+      const splash = document.getElementById("app-splash-screen");
+      if (!splash) return;
+
+      function hideSplash() {
+        if (splash.classList.contains("fade-out")) return;
+        splash.classList.add("fade-out");
+        setTimeout(function() {
+          splash.style.display = "none";
+        }, 500);
+      }
+
+      window.addEventListener("load", function() {
+        setTimeout(hideSplash, 650);
+      });
+      setTimeout(hideSplash, 1800);
+      splash.addEventListener("click", hideSplash);
+    })();
+  </script>
+
+  <!-- Universal Header Auth Sync (Syncs Customer & Rider Auth on all pages) -->
+  <script>
+    if (window.CCRCAuth && typeof window.CCRCAuth.syncUI === "function") {
+      window.CCRCAuth.syncUI();
+    }
+  </script>
+</body>
+
+</html>
