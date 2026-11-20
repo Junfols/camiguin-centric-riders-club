@@ -21,8 +21,6 @@
 
   const activeJobBox = document.getElementById("rider-active-job-box");
   const activeJobCode = document.getElementById("active-job-code");
-  const activeJobGroupBadge = document.getElementById("active-job-group-badge");
-  const activeJobGroupBanner = document.getElementById("active-job-group-banner");
   const activeJobTitle = document.getElementById("active-job-title");
   const activeJobFare = document.getElementById("active-job-fare");
   const activeJobPickup = document.getElementById("active-job-pickup");
@@ -32,93 +30,18 @@
   const activeJobBudget = document.getElementById("active-job-budget");
   const activeJobCustomer = document.getElementById("active-job-customer");
   const activeJobCallBtn = document.getElementById("active-job-call-btn");
-  const activeJobInappCallBtn = document.getElementById("active-job-inapp-call-btn");
-  const riderChatInappCallBtn = document.getElementById("rider-chat-inapp-call-btn");
-  const riderChatVoiceBtn = document.getElementById("rider-chat-voice-btn");
-  const riderChatVoiceBar = document.getElementById("rider-chat-voice-recording-bar");
-  const riderChatVoiceTimer = document.getElementById("rider-chat-voice-timer");
-  const riderChatVoiceCancelBtn = document.getElementById("rider-chat-voice-cancel-btn");
-  const riderChatVoiceSendBtn = document.getElementById("rider-chat-voice-send-btn");
-  const riderChatPhotoBtn = document.getElementById("rider-chat-photo-btn");
-  const riderChatPhotoInput = document.getElementById("rider-chat-photo-input");
-  const riderChatPhotoPreviewBar = document.getElementById("rider-chat-photo-preview-bar");
-  const riderChatPhotoPreviewThumb = document.getElementById("rider-chat-photo-preview-thumb");
-  const riderChatPhotoCaptionInput = document.getElementById("rider-chat-photo-caption-input");
-  const riderChatPhotoCancelBtn = document.getElementById("rider-chat-photo-cancel-btn");
-  const riderChatPhotoSendBtn = document.getElementById("rider-chat-photo-send-btn");
-  let pendingRiderChatPhotoDataUrl = "";
-  let isSendingRiderChatPhoto = false;
-
-  function clearRiderChatPhotoPreview() {
-    pendingRiderChatPhotoDataUrl = "";
-    if (riderChatPhotoInput) riderChatPhotoInput.value = "";
-    if (riderChatPhotoCaptionInput) riderChatPhotoCaptionInput.value = "";
-    if (riderChatPhotoPreviewThumb) riderChatPhotoPreviewThumb.removeAttribute("src");
-    if (riderChatPhotoPreviewBar) riderChatPhotoPreviewBar.classList.add("hidden");
-    if (riderChatPhotoSendBtn) {
-      riderChatPhotoSendBtn.disabled = false;
-      riderChatPhotoSendBtn.textContent = (typeof window.ccrcT === "function") ? window.ccrcT("Send Photo ✈️") : "Send Photo ✈️";
-    }
-  }
   const navPickupBtn = document.getElementById("nav-pickup-btn");
   const navDropoffBtn = document.getElementById("nav-dropoff-btn");
   const jobInProgressBtn = document.getElementById("job-in-progress-btn");
   const jobCompleteBtn = document.getElementById("job-complete-btn");
-  const jobTransferBtn = document.getElementById("job-transfer-btn");
-  const jobTransferTopBtn = document.getElementById("job-transfer-top-btn");
-  const jobGcashTopBtn = document.getElementById("job-gcash-top-btn");
-  const activeJobGcashBox = document.getElementById("active-job-gcash-box");
-  const activeJobGcashStatusPill = document.getElementById("active-job-gcash-status-pill");
-  const activeJobGcashAmount = document.getElementById("active-job-gcash-amount");
-  const activeJobGcashRef = document.getElementById("active-job-gcash-ref");
-  const jobShowGcashQrBtn = document.getElementById("job-show-gcash-qr-btn");
-  const riderGcashGateHint = document.getElementById("rider-gcash-gate-hint");
-
-  const gcashSetupModal = document.getElementById("rider-gcash-setup-modal");
-  const openGcashSetupBtn = document.getElementById("open-rider-gcash-setup-btn");
-  const gcashSetupForm = document.getElementById("rider-gcash-setup-form");
-  const gcashSetupNumberInput = document.getElementById("gcash-setup-number");
-  const gcashSetupQrFileInput = document.getElementById("gcash-setup-qr-file");
-  const gcashSetupQrPreview = document.getElementById("gcash-setup-qr-preview");
-  const gcashSetupQrPlaceholder = document.getElementById("gcash-setup-qr-placeholder");
-  const gcashSetupClearQrBtn = document.getElementById("gcash-setup-clear-qr-btn");
-  const gcashSetupMsg = document.getElementById("gcash-setup-msg");
-  const gcashSetupSaveBtn = document.getElementById("gcash-setup-save-btn");
-
-  const gcashQrModal = document.getElementById("rider-gcash-qr-modal");
-  const rGcashConfirmBtn = document.getElementById("r-gcash-confirm-btn");
-  const rGcashConfirmRefInput = document.getElementById("r-gcash-confirm-ref");
-  const rGcashOfflineChk = document.getElementById("r-gcash-offline-chk");
-  const rGcashConfirmError = document.getElementById("r-gcash-confirm-error");
-  const rGcashQuickUploadBtn = document.getElementById("r-gcash-quick-upload-btn");
-
-  const transferModal = document.getElementById("rider-transfer-modal");
-  const transferModalSubtitle = document.getElementById("transfer-modal-job-subtitle");
-  const transferReasonSelect = document.getElementById("transfer-reason-select");
-  const transferNoteInput = document.getElementById("transfer-note-input");
-  const transferUpdateGpsChk = document.getElementById("transfer-update-gps-chk");
-  const transferGoOfflineChk = document.getElementById("transfer-go-offline-chk");
-  const transferStatusError = document.getElementById("transfer-status-error");
-  const transferCoridersList = document.getElementById("transfer-coriders-list");
-  const transferRefreshCoridersBtn = document.getElementById("transfer-refresh-coriders-btn");
-  const transferRebroadcastBtn = document.getElementById("transfer-rebroadcast-btn");
 
   const jobsFeedList = document.getElementById("available-jobs-feed");
   const jobsCountPill = document.getElementById("jobs-count-pill");
   const refreshJobsBtn = document.getElementById("refresh-jobs-btn");
 
-  const tRider = (str) => (typeof window.ccrcT === "function" ? window.ccrcT(str) : str);
-
   let currentRider = null;
   let activeJob = null;
-  let currentScheduledJobs = [];
-  let transferTargetJob = null;
-  let transferHighlightRiderId = null;
-  let cachedCoRiders = [];
-  let knownJobKeys = new Set();
-  let prevActiveJobKey = null;
-  let prevGcashPayStatus = null;
-  let reopenQrAfterSetup = false;
+  let knownJobIds = new Set();
   let pollInterval = null;
   let gpsWatchId = null;
   let lastReminderChimeTime = 0;
@@ -139,101 +62,6 @@
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  }
-
-  function readQrImageAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      if (!file) {
-        reject(new Error("No file selected."));
-        return;
-      }
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Could not read image file."));
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onerror = () => reject(new Error("Invalid image file. Please select a PNG, JPG, or WebP screenshot."));
-        img.onload = () => {
-          const maxDim = 900;
-          let w = img.width || 600;
-          let h = img.height || 600;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.max(1, Math.round((h * maxDim) / w));
-              w = maxDim;
-            } else {
-              w = Math.max(1, Math.round((w * maxDim) / h));
-              h = maxDim;
-            }
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          let dataUrl = canvas.toDataURL("image/png");
-          if (dataUrl.length > 2_300_000) {
-            dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-          }
-          resolve(dataUrl);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function syncRiderVoiceCallContext() {
-    const liveJob = (currentRider && activeJob && ["accepted", "in_progress"].includes(activeJob.status))
-      ? activeJob
-      : null;
-    const schedJob = (!liveJob && currentRider && currentScheduledJobs && currentScheduledJobs.length > 0 && ["accepted", "in_progress"].includes(currentScheduledJobs[0].status))
-      ? currentScheduledJobs[0]
-      : null;
-    const targetJob = liveJob || schedJob;
-    const canCall = Boolean(targetJob);
-
-    if (activeJobInappCallBtn) {
-      activeJobInappCallBtn.classList.toggle("hidden", !liveJob);
-    }
-    if (riderChatInappCallBtn) {
-      riderChatInappCallBtn.classList.toggle("hidden", !liveJob);
-    }
-    if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.configure === "function") {
-      window.CCRCVoiceCall.configure({
-        role: "rider",
-        riderId: currentRider ? currentRider.id : null,
-        bookingRef: targetJob ? targetJob.id : null,
-        bookingCode: targetJob ? (targetJob.booking_code || "") : "",
-        peerName: targetJob ? (targetJob.customer_name || "Passenger") : "Passenger",
-        peerPhone: targetJob ? (targetJob.customer_phone || "") : "",
-        peerRoleLabel: "Passenger",
-        canCall: canCall,
-        onFallbackVoiceNote: () => {
-          const card = document.querySelector(".rider-chat-card");
-          if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
-          if (riderChatVoiceBtn) riderChatVoiceBtn.focus();
-        },
-      });
-    }
-  }
-
-  window.startCoRiderInAppCall = function (riderId, name, phone, town) {
-    if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.startRiderCall === "function") {
-      window.CCRCVoiceCall.startRiderCall(riderId, name, phone, town);
-    }
-  };
-
-  if (activeJobInappCallBtn) {
-    activeJobInappCallBtn.addEventListener("click", () => {
-      if (window.CCRCVoiceCall) window.CCRCVoiceCall.startCall();
-    });
-  }
-  if (riderChatInappCallBtn) {
-    riderChatInappCallBtn.addEventListener("click", () => {
-      if (window.CCRCVoiceCall) window.CCRCVoiceCall.startCall();
-    });
   }
 
   // Switch between Login, Register, and Forgot Password Forms
@@ -297,13 +125,13 @@
         forgotStatusMsg.style.background = "#fee2e2";
         forgotStatusMsg.style.color = "#991b1b";
         forgotStatusMsg.style.border = "1px solid #fca5a5";
-        forgotStatusMsg.textContent = "New password and confirmation password do not match.";
+        forgotStatusMsg.textContent = "Dili pareho ang bag-ong password ug ang confirmation password.";
         forgotStatusMsg.classList.remove("hidden");
         return;
       }
 
       resetBtn.disabled = true;
-      resetBtn.textContent = "Verifying and saving...";
+      resetBtn.textContent = "Ginasusi ug gina-save...";
 
       try {
         const res = await fetch("/api/rider/forgot-password", {
@@ -323,7 +151,7 @@
         forgotStatusMsg.style.background = "#dcfce7";
         forgotStatusMsg.style.color = "#166534";
         forgotStatusMsg.style.border = "1px solid #86efac";
-        forgotStatusMsg.innerHTML = "✅ <strong>Success!</strong> " + (data.message || "Your password has been reset.") + "<br><small>Redirecting you to Log In...</small>";
+        forgotStatusMsg.innerHTML = "✅ <strong>Malampuson!</strong> " + (data.message || "Na-reset na ang imong password.") + "<br><small>Ibalik na tika sa Log In...</small>";
         forgotStatusMsg.classList.remove("hidden");
 
         // Prefill login phone
@@ -345,7 +173,7 @@
         forgotStatusMsg.classList.remove("hidden");
       } finally {
         resetBtn.disabled = false;
-        resetBtn.textContent = "Save New Password →";
+        resetBtn.textContent = "I-save ang Bag-ong Password →";
       }
     });
   }
@@ -375,7 +203,7 @@
             loginErrorMsg.style.color = "#854d0e";
             loginErrorMsg.style.backgroundColor = "#fef9c3";
             loginErrorMsg.style.borderColor = "#facc15";
-            loginErrorMsg.innerHTML = "⏳ <strong>ACCOUNT PENDING APPROVAL</strong><br>" + (data.error || "Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection and account activation.");
+            loginErrorMsg.innerHTML = "⏳ <strong>ACCOUNT PENDING APPROVAL</strong><br>" + (data.error || "Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon ug ma-activate ang imong account.");
             loginErrorMsg.classList.remove("hidden");
             return;
           }
@@ -446,35 +274,6 @@
     });
   }
 
-  // Optional Registration GCash QR Upload (sharp resolution)
-  let regGcashQrBase64 = "";
-  const regGcashQrInput = document.getElementById("reg-gcash-qr-file");
-  const regGcashQrPreview = document.getElementById("reg-gcash-qr-preview");
-  const regGcashQrPlaceholder = document.getElementById("reg-gcash-qr-placeholder");
-
-  if (regGcashQrInput) {
-    regGcashQrInput.addEventListener("change", async function () {
-      const file = this.files && this.files[0];
-      if (!file) {
-        regGcashQrBase64 = "";
-        if (regGcashQrPreview) regGcashQrPreview.classList.add("hidden");
-        if (regGcashQrPlaceholder) regGcashQrPlaceholder.classList.remove("hidden");
-        return;
-      }
-      try {
-        regGcashQrBase64 = await readQrImageAsDataUrl(file);
-        if (regGcashQrPreview) {
-          regGcashQrPreview.src = regGcashQrBase64;
-          regGcashQrPreview.classList.remove("hidden");
-        }
-        if (regGcashQrPlaceholder) regGcashQrPlaceholder.classList.add("hidden");
-      } catch (err) {
-        regGcashQrBase64 = "";
-        alert(err.message || "Could not load QR image.");
-      }
-    });
-  }
-
   // Register Handler
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
@@ -505,11 +304,7 @@
         municipality: document.getElementById("reg-mun").value,
         password: document.getElementById("reg-password").value,
         avatar_base64: currentAvatarBase64,
-        gcash_number: (document.getElementById("reg-gcash-number")?.value || "").trim(),
       };
-      if (regGcashQrBase64) {
-        payload.gcash_qr_base64 = regGcashQrBase64;
-      }
 
       const btn = document.getElementById("rider-register-btn");
       btn.disabled = true;
@@ -525,7 +320,7 @@
         if (!res.ok) throw new Error(data.error || "Registration failed");
 
         if (data.pending) {
-          alert("✅ Your Rider Application has been submitted!\n\nStatus: PENDING APPROVAL\n\nPlease visit the CCRC Club Admin in person with your:\n1. Driver's License\n2. Motorcycle OR/CR\n3. Motorcycle for physical inspection\n\nOnce approved by Admin, you can log in here.");
+          alert("✅ Malampusong napasa ang imong Rider Application!\n\nStatus: PENDING APPROVAL\n\nPalihug bisitaha ang CCRC Club Admin sa personal dala ang imong:\n1. Driver's License\n2. OR/CR sa Motor\n3. Imong Motorsiklo para sa physical inspection\n\nInig ma-aprobahan na sa Admin, pwede na ka maka-log in dinhi.");
           // Switch to login tab and pre-fill phone
           registerForm.classList.add("hidden");
           loginForm.classList.remove("hidden");
@@ -537,7 +332,7 @@
             loginErrorMsg.style.color = "#854d0e";
             loginErrorMsg.style.backgroundColor = "#fef9c3";
             loginErrorMsg.style.borderColor = "#facc15";
-            loginErrorMsg.innerHTML = "⏳ <strong>Application Submitted (PENDING APPROVAL)</strong><br>Please visit the CCRC Club Admin in person with your Driver's License, OR/CR, and motorcycle for inspection and activation.";
+            loginErrorMsg.innerHTML = "⏳ <strong>Application Submitted (PENDING APPROVAL)</strong><br>Palihug bisitaha ang CCRC Club Admin sa personal dala ang imong Driver's License, OR/CR, ug motor aron ma-inspeksyon ug ma-activate.";
             loginErrorMsg.classList.remove("hidden");
           }
           return;
@@ -555,79 +350,15 @@
     });
   }
 
-  let sessionExpiredHandled = false;
-
-  function handleExpiredRiderSession() {
-    if (sessionExpiredHandled) return;
-    sessionExpiredHandled = true;
-    if (gpsWatchId) {
-      try { navigator.geolocation.clearWatch(gpsWatchId); } catch (_) {}
-      gpsWatchId = null;
-    }
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
-    }
-    resetRiderChat(null);
-    activeJob = null;
-    currentScheduledJobs = [];
-    transferTargetJob = null;
-    transferHighlightRiderId = null;
-    cachedCoRiders = [];
-    prevActiveJobKey = null;
-    prevGcashPayStatus = null;
-    knownJobKeys.clear();
-    if (transferModal) transferModal.classList.add("hidden");
-    if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
-    if (gcashQrModal) gcashQrModal.classList.add("hidden");
-    currentRider = null;
-    syncRiderVoiceCallContext();
-    setStoredRider(null);
-    document.documentElement.classList.remove("is-rider-session");
-    document.body.classList.remove("rider-logged-in");
-    if (dashSection) dashSection.classList.add("hidden");
-    if (authSection) authSection.classList.remove("hidden");
-    const bLogout = document.getElementById("bottom-nav-rider-logout");
-    if (bLogout) bLogout.classList.add("hidden");
-    const hLogout = document.getElementById("header-rider-logout-btn");
-    if (hLogout) hLogout.classList.add("hidden");
-    if (loginErrorMsg) {
-      loginErrorMsg.style.color = "";
-      loginErrorMsg.style.backgroundColor = "";
-      loginErrorMsg.style.borderColor = "";
-      loginErrorMsg.textContent = "Your rider session has expired. Please log in again.";
-      loginErrorMsg.classList.remove("hidden");
-    }
-  }
-
   // Unified Logout Handler
   async function handleRiderLogout() {
     if (confirm("Are you sure you want to log out of your Rider Account?")) {
       setStoredRider(null);
       document.documentElement.classList.remove("is-rider-session");
       document.body.classList.remove("rider-logged-in");
-      if (gpsWatchId) {
-        try { navigator.geolocation.clearWatch(gpsWatchId); } catch (_) {}
-        gpsWatchId = null;
-      }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-      }
-      resetRiderChat(null);
-      activeJob = null;
-      currentScheduledJobs = [];
-      transferTargetJob = null;
-      transferHighlightRiderId = null;
-      cachedCoRiders = [];
-      prevActiveJobKey = null;
-      prevGcashPayStatus = null;
-      knownJobKeys.clear();
-      if (transferModal) transferModal.classList.add("hidden");
-      if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
-      if (gcashQrModal) gcashQrModal.classList.add("hidden");
-      currentRider = null;
-      syncRiderVoiceCallContext();
+      if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+      if (pollInterval) clearInterval(pollInterval);
+      releaseRiderWakeLock();
       try {
         await fetch("/api/rider/logout", { method: "POST" });
       } catch (_) {}
@@ -635,54 +366,23 @@
     }
   }
 
-  window.ccrcRiderLogout = handleRiderLogout;
-
   if (logoutBtn) {
     logoutBtn.addEventListener("click", handleRiderLogout);
+  }
+  const bottomNavLogout = document.getElementById("bottom-nav-rider-logout");
+  if (bottomNavLogout) {
+    bottomNavLogout.addEventListener("click", handleRiderLogout);
+  }
+  const headerNavLogout = document.getElementById("header-rider-logout-btn");
+  if (headerNavLogout) {
+    headerNavLogout.addEventListener("click", handleRiderLogout);
   }
   const bottomRiderRefresh = document.getElementById("bottom-rider-refresh-btn");
   if (bottomRiderRefresh) {
     bottomRiderRefresh.addEventListener("click", fetchAvailableJobs);
   }
 
-  function renderRiderGcashProfileCard() {
-    if (!currentRider) return;
-    const thumbEl = document.getElementById("dash-gcash-qr-thumb");
-    const fallbackEl = document.getElementById("dash-gcash-qr-fallback");
-    const statusEl = document.getElementById("dash-gcash-status-text");
-
-    const qrUrl = String(currentRider.gcash_qr_url || "").trim();
-    const gNum = String(currentRider.gcash_number || "").trim();
-
-    if (thumbEl && fallbackEl) {
-      if (qrUrl) {
-        if (thumbEl.getAttribute("src") !== qrUrl) {
-          thumbEl.src = qrUrl;
-        }
-        thumbEl.classList.remove("hidden");
-        fallbackEl.classList.add("hidden");
-      } else {
-        thumbEl.classList.add("hidden");
-        thumbEl.removeAttribute("src");
-        fallbackEl.classList.remove("hidden");
-      }
-    }
-
-    if (statusEl) {
-      if (qrUrl && gNum) {
-        statusEl.textContent = `${tRider("Ready ✓ GCash:")} ${gNum} • ${tRider("QR code uploaded")}`;
-      } else if (qrUrl) {
-        statusEl.textContent = tRider("QR code uploaded ✓ — Add your GCash mobile number so customers can copy it.");
-      } else if (gNum) {
-        statusEl.textContent = `${tRider("GCash Number:")} ${gNum} — ${tRider("Please upload your GCash QR code image.")}`;
-      } else {
-        statusEl.textContent = tRider("No GCash QR uploaded yet — upload your QR so customers can pay via GCash.");
-      }
-    }
-  }
-
   function initRiderSession(rider) {
-    sessionExpiredHandled = false;
     currentRider = rider;
     document.documentElement.classList.add("is-rider-session");
     document.body.classList.add("rider-logged-in");
@@ -708,10 +408,6 @@
     if (dashLicense) {
       dashLicense.textContent = rider.license_no ? `License: ${rider.license_no}` : "";
     }
-    const dashClubId = document.getElementById("dash-rider-club-id");
-    if (dashClubId && rider.id) {
-      dashClubId.textContent = `CCRC-${String(Number(rider.id) || 0).padStart(4, "0")}`;
-    }
     const dashAvatar = document.getElementById("dash-rider-avatar-img");
     if (dashAvatar) {
       if (rider.avatar_url) {
@@ -722,125 +418,51 @@
       }
     }
 
-    renderRiderGcashProfileCard();
-
     // Online switch state
     onlineToggle.checked = rider.is_online === 1;
     updateOnlineBadge(rider.is_online === 1);
+    if (rider.is_online === 1) {
+      requestRiderWakeLock();
+    }
 
     // Start background GPS transmitter
     startGpsBeacon();
-
-    // Activate voice call polling (including Rider-to-Rider incoming calls)
-    syncRiderVoiceCallContext();
 
     // Check active job and start polling available jobs
     checkActiveJob();
     fetchAvailableJobs();
     fetchCoRiders();
     loadRiderTransactions();
-    loadRiderReviews();
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
-      checkActiveJob();
-      fetchCoRiders();
       if (onlineToggle.checked) {
         fetchAvailableJobs();
+        fetchCoRiders();
+        checkActiveJob();
       }
     }, 3500);
-  }
-
-  async function loadRiderReviews() {
-    if (!currentRider || !currentRider.id) return;
-    const badgeEl = document.getElementById("dash-rider-rating-badge");
-    const summaryPill = document.getElementById("rider-reviews-summary-pill");
-    const listEl = document.getElementById("rider-reviews-list");
-    try {
-      const res = await fetch(`/api/reviews/${currentRider.id}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const avg = Number(data.rating_avg || currentRider.rating_avg || 5.0).toFixed(1);
-      const reviews = Array.isArray(data.reviews) ? data.reviews : [];
-      if (badgeEl) badgeEl.textContent = `⭐ ${avg}`;
-      if (summaryPill) summaryPill.textContent = `⭐ ${avg} (${reviews.length} review${reviews.length === 1 ? "" : "s"})`;
-      if (!listEl) return;
-
-      listEl.innerHTML = "";
-      if (reviews.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "text-muted";
-        empty.style.cssText = "font-size:0.85rem;padding:8px 0;";
-        empty.textContent = "No customer reviews yet. Complete trips to start receiving 5-star ratings!";
-        listEl.appendChild(empty);
-        return;
-      }
-
-      reviews.forEach((rv) => {
-        const item = document.createElement("div");
-        item.style.cssText = "background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;";
-        const topRow = document.createElement("div");
-        topRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;";
-        const nameEl = document.createElement("strong");
-        nameEl.style.fontSize = "0.86rem";
-        nameEl.textContent = rv.customer_name || "Island Passenger";
-        const starsEl = document.createElement("span");
-        starsEl.style.cssText = "color:#d97706;font-weight:700;font-size:0.82rem;";
-        const count = Math.max(1, Math.min(5, Number(rv.rating || 5)));
-        starsEl.textContent = "★".repeat(count) + "☆".repeat(5 - count);
-        topRow.appendChild(nameEl);
-        topRow.appendChild(starsEl);
-        item.appendChild(topRow);
-
-        if (rv.comment) {
-          const commentEl = document.createElement("div");
-          commentEl.style.cssText = "font-size:0.84rem;color:#334155;line-height:1.4;";
-          commentEl.textContent = rv.comment;
-          item.appendChild(commentEl);
-        }
-
-        if (rv.created_at) {
-          const dateEl = document.createElement("div");
-          dateEl.className = "text-muted";
-          dateEl.style.cssText = "font-size:0.74rem;margin-top:4px;";
-          dateEl.textContent = String(rv.created_at).slice(0, 16).replace("T", " ");
-          item.appendChild(dateEl);
-        }
-        listEl.appendChild(item);
-      });
-    } catch (_) {}
   }
 
   // Online / Offline Toggle
   if (onlineToggle) {
     onlineToggle.addEventListener("change", async () => {
-      if (!currentRider) return;
       const isOnline = onlineToggle.checked;
       updateOnlineBadge(isOnline);
+      if (isOnline) {
+        requestRiderWakeLock();
+      } else {
+        releaseRiderWakeLock();
+      }
       if (isOnline && "Notification" in window && Notification.permission === "default") {
         try { Notification.requestPermission(); } catch(_) {}
       }
       try {
-        const res = await fetch("/api/rider/status", {
+        await fetch("/api/rider/status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rider_id: currentRider.id, is_online: isOnline }),
         });
-        if (res.status === 401) {
-          onlineToggle.checked = !isOnline;
-          updateOnlineBadge(!isOnline);
-          handleExpiredRiderSession();
-          return;
-        }
-        if (!res.ok) {
-          onlineToggle.checked = !isOnline;
-          updateOnlineBadge(!isOnline);
-          return;
-        }
-        if (currentRider) {
-          currentRider.is_online = isOnline ? 1 : 0;
-          setStoredRider(currentRider);
-        }
         if (isOnline) {
           fetchAvailableJobs();
           checkActiveJob();
@@ -862,12 +484,126 @@
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Screen WakeLock Management (Aron dili mapalong ang screen sa motor)
+  // -------------------------------------------------------------------------
+  const wakelockBar = document.getElementById("wakelock-bar");
+  const wakelockIcon = document.getElementById("wakelock-icon");
+  const wakelockStatusLabel = document.getElementById("wakelock-status-label");
+  const wakelockToggleBtn = document.getElementById("wakelock-toggle-btn");
+
+  let riderWakeLock = null;
+  let isWakeLockEnabledByUser = true;
+
+  async function requestRiderWakeLock() {
+    if (!("wakeLock" in navigator)) {
+      updateWakeLockUI(false, "unsupported");
+      return;
+    }
+    if (!isWakeLockEnabledByUser) {
+      updateWakeLockUI(false, "disabled_by_user");
+      return;
+    }
+    const isOnline = onlineToggle ? onlineToggle.checked : false;
+    if (!isOnline && !activeJob) {
+      releaseRiderWakeLock();
+      return;
+    }
+    try {
+      if (!riderWakeLock) {
+        riderWakeLock = await navigator.wakeLock.request("screen");
+        riderWakeLock.addEventListener("release", () => {
+          riderWakeLock = null;
+          if (document.visibilityState === "visible" && (onlineToggle?.checked || activeJob) && isWakeLockEnabledByUser) {
+            // Re-acquire if still on duty and page is active
+            setTimeout(requestRiderWakeLock, 1000);
+          }
+        });
+      }
+      updateWakeLockUI(true, "active");
+    } catch (err) {
+      console.warn("Screen WakeLock failed to acquire:", err);
+      updateWakeLockUI(false, "failed");
+    }
+  }
+
+  async function releaseRiderWakeLock() {
+    if (riderWakeLock) {
+      try {
+        await riderWakeLock.release();
+      } catch (_) {}
+      riderWakeLock = null;
+    }
+    updateWakeLockUI(false, "inactive");
+  }
+
+  function updateWakeLockUI(isActive, state) {
+    if (!wakelockBar) return;
+    if (state === "unsupported") {
+      wakelockBar.style.background = "#f1f5f9";
+      wakelockBar.style.borderColor = "#cbd5e1";
+      wakelockBar.style.color = "#475569";
+      if (wakelockIcon) wakelockIcon.textContent = "ℹ️";
+      if (wakelockStatusLabel) {
+        wakelockStatusLabel.innerHTML = "<strong>Screen Timeout:</strong> Gamita ang device display settings (Never / 10 mins) aron dili mapalong samtang nagdagan.";
+      }
+      if (wakelockToggleBtn) wakelockToggleBtn.style.display = "none";
+      return;
+    }
+
+    if (isActive) {
+      wakelockBar.style.background = "#fef3c7";
+      wakelockBar.style.borderColor = "#fde68a";
+      wakelockBar.style.color = "#92400e";
+      if (wakelockIcon) wakelockIcon.textContent = "🔆";
+      if (wakelockStatusLabel) {
+        wakelockStatusLabel.innerHTML = "<strong>Screen Awake:</strong> Aktibo (Dili mapalong ang screen sa motor)";
+      }
+      if (wakelockToggleBtn) {
+        wakelockToggleBtn.textContent = "Awake: ON";
+        wakelockToggleBtn.style.background = "#fef08a";
+        wakelockToggleBtn.style.borderColor = "#eab308";
+        wakelockToggleBtn.style.color = "#854d0e";
+      }
+    } else {
+      wakelockBar.style.background = "#f8fafc";
+      wakelockBar.style.borderColor = "#e2e8f0";
+      wakelockBar.style.color = "#64748b";
+      if (wakelockIcon) wakelockIcon.textContent = "💤";
+      if (wakelockStatusLabel) {
+        wakelockStatusLabel.innerHTML = "<strong>Screen Awake:</strong> Naka-pause (Standard phone screen lock)";
+      }
+      if (wakelockToggleBtn) {
+        wakelockToggleBtn.textContent = "Awake: OFF";
+        wakelockToggleBtn.style.background = "#fff";
+        wakelockToggleBtn.style.borderColor = "#cbd5e1";
+        wakelockToggleBtn.style.color = "#64748b";
+      }
+    }
+  }
+
+  if (wakelockToggleBtn) {
+    wakelockToggleBtn.addEventListener("click", () => {
+      isWakeLockEnabledByUser = !isWakeLockEnabledByUser;
+      if (isWakeLockEnabledByUser) {
+        requestRiderWakeLock();
+      } else {
+        releaseRiderWakeLock();
+      }
+    });
+  }
+
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible" && (onlineToggle?.checked || activeJob) && isWakeLockEnabledByUser) {
+      await requestRiderWakeLock();
+    }
+  });
+
   // Background GPS Transmitter
   function startGpsBeacon() {
     if (!navigator.geolocation || !currentRider) return;
 
     function sendLocation(lat, lng, speed, heading) {
-      if (!currentRider) return;
       gpsStatusLabel.textContent = `Live GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Active)`;
       if (currentRider) {
         currentRider.last_lat = lat;
@@ -885,11 +621,7 @@
           heading: heading || 0,
           booking_id: activeJob ? activeJob.id : null,
         }),
-      })
-        .then((res) => {
-          if (res.status === 401) handleExpiredRiderSession();
-        })
-        .catch(() => {});
+      }).catch(() => {});
     }
 
     gpsWatchId = navigator.geolocation.watchPosition(
@@ -1094,7 +826,7 @@
         <div class="rider-3d-wrap">
           <div class="rider-radar-pulse"></div>
           <div class="rider-heading-cone" style="transform: rotate(${currentRiderBearing}deg);"></div>
-          <div class="rider-3d-avatar" title="${escapeHtml(currentRider?.name || 'You (Rider)')}">
+          <div class="rider-3d-avatar" title="${escapeHtml(currentRider?.name || 'Ikaw (Rider)')}">
             <span>🏍️</span>
           </div>
           ${speedDisplay ? `<span class="rider-speed-badge">${speedDisplay}</span>` : ''}
@@ -1107,25 +839,11 @@
     if (!riderJobRiderMarker) {
       riderJobRiderMarker = L.marker([lat, lng], { icon: bikeIcon, zIndexOffset: 1000 })
         .addTo(riderJobMap)
-        .bindPopup(`<strong>🛵 ${escapeHtml(currentRider?.name || 'You (Rider)')}</strong><br>Your live GPS location`);
+        .bindPopup(`<strong>🛵 ${escapeHtml(currentRider?.name || 'Ikaw (Rider)')}</strong><br>Imong live GPS lokasyon`);
     } else {
       riderJobRiderMarker.setIcon(bikeIcon);
       riderJobRiderMarker.setLatLng([lat, lng]);
     }
-  }
-
-  function calculateHaversineKm(lat1, lng1, lat2, lng2) {
-    const R = 6371.0;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
   }
 
   function renderJobOnRiderMap(job) {
@@ -1145,9 +863,8 @@
       if (riderJobMap) riderJobMap.invalidateSize();
     }, 150);
 
-    const jobMapKey = `${job.id}:${job.pickup_lat || ""},${job.pickup_lng || ""}`;
-    const hasNewJob = currentJobIdOnMap !== jobMapKey;
-    currentJobIdOnMap = jobMapKey;
+    const hasNewJob = currentJobIdOnMap !== job.id;
+    currentJobIdOnMap = job.id;
 
     // Check if coordinates need resolving
     if ((!job.pickup_lat || !job.dropoff_lat) && (job.pickup_address || job.dropoff_address)) {
@@ -1248,13 +965,12 @@
             }).addTo(riderJobMap);
             riderJobMap.fitBounds(riderJobRouteLine.getBounds(), { padding: [40, 40] });
           }
-          const rKm = data && (data.road_km ?? data.distance_km);
-          if (rKm) {
+          if (data && data.distance_km) {
             const distInfo = document.getElementById("rider-job-distance-info");
             if (distInfo) {
-              const km = Number(rKm).toFixed(1);
-              const mins = Math.max(2, Math.round((rKm / 30) * 60));
-              distInfo.textContent = `📍 ${km} km (~${mins} mins trip)`;
+              const km = Number(data.distance_km).toFixed(1);
+              const mins = Math.max(2, Math.round((data.distance_km / 30) * 60));
+              distInfo.textContent = `📍 ${km} km (~${mins} mins biyahe)`;
             }
           }
         })
@@ -1284,146 +1000,18 @@
     }
   }
 
-  function syncActiveJobGcashState(job) {
-    if (!job) {
-      if (jobGcashTopBtn) jobGcashTopBtn.classList.add("hidden");
-      if (activeJobGcashBox) activeJobGcashBox.classList.add("hidden");
-      if (riderGcashGateHint) riderGcashGateHint.classList.add("hidden");
-      if (jobCompleteBtn) {
-        jobCompleteBtn.classList.remove("btn-complete-locked");
-        if (!jobCompleteBtn.disabled) {
-          jobCompleteBtn.textContent = tRider("✓ Delivered (Mark as Completed)");
-        }
-      }
-      if (gcashQrModal && !reopenQrAfterSetup) {
-        gcashQrModal.classList.add("hidden");
-      }
-      return;
-    }
-
-    const isGcash = String(job.payment_method || "").toLowerCase() === "gcash";
-    const pStat = String(job.payment_status || "pending").toLowerCase();
-    const isPaid = pStat === "paid";
-    const isLocked = isGcash && !isPaid;
-
-    if (jobGcashTopBtn) {
-      jobGcashTopBtn.classList.toggle("hidden", !isGcash);
-    }
-    if (activeJobGcashBox) {
-      activeJobGcashBox.classList.toggle("hidden", !isGcash);
-    }
-
-    if (isGcash) {
-      if (activeJobGcashAmount) {
-        activeJobGcashAmount.textContent = `₱${Math.round(Number(job.fare_amount || 0)).toLocaleString()}`;
-      }
-      if (activeJobGcashStatusPill) {
-        if (isPaid) {
-          activeJobGcashStatusPill.className = "gcash-status-pill paid";
-          activeJobGcashStatusPill.textContent = tRider("✅ GCash Paid & Confirmed");
-        } else if (pStat === "customer_sent") {
-          activeJobGcashStatusPill.className = "gcash-status-pill sent";
-          activeJobGcashStatusPill.textContent = tRider("📲 Customer Sent — Verify Now");
-        } else {
-          activeJobGcashStatusPill.className = "gcash-status-pill pending";
-          activeJobGcashStatusPill.textContent = tRider("⏳ Waiting Customer GCash");
-        }
-      }
-      if (activeJobGcashRef) {
-        if (job.payment_ref) {
-          activeJobGcashRef.textContent = `Ref: ${job.payment_ref}`;
-          activeJobGcashRef.classList.remove("hidden");
-        } else {
-          activeJobGcashRef.textContent = "Ref: -";
-          activeJobGcashRef.classList.add("hidden");
-        }
-      }
-      if (jobShowGcashQrBtn) {
-        if (isPaid) {
-          jobShowGcashQrBtn.textContent = tRider("✓ GCash Verified (View QR)");
-        } else if (pStat === "customer_sent") {
-          jobShowGcashQrBtn.textContent = tRider("✓ Verify Customer GCash / QR");
-        } else {
-          jobShowGcashQrBtn.textContent = tRider("📱 Show My GCash QR");
-        }
-      }
-    }
-
-    if (jobCompleteBtn) {
-      jobCompleteBtn.classList.toggle("btn-complete-locked", isLocked);
-      if (!jobCompleteBtn.disabled) {
-        jobCompleteBtn.textContent = isLocked
-          ? tRider("🔒 Locked Until GCash Paid (Show QR / Confirm)")
-          : tRider("✓ Delivered (Mark as Completed)");
-      }
-    }
-    if (riderGcashGateHint) {
-      riderGcashGateHint.classList.toggle("hidden", !(isLocked && job.status === "in_progress"));
-    }
-  }
-
   // Render Active Job Card
   function renderActiveJobCard(job) {
     if (!job) {
       if (activeJobBox) activeJobBox.classList.add("hidden");
-      if (activeJobGroupBadge) activeJobGroupBadge.classList.add("hidden");
-      if (activeJobGroupBanner) {
-        activeJobGroupBanner.classList.add("hidden");
-        activeJobGroupBanner.innerHTML = "";
-      }
-      if (jobTransferTopBtn) jobTransferTopBtn.classList.add("hidden");
-      if (jobTransferBtn) jobTransferBtn.classList.add("hidden");
-      syncActiveJobGcashState(null);
-      if (transferModal && (!transferTargetJob || !transferTargetJob._fromScheduledList)) {
-        transferModal.classList.add("hidden");
-      }
       resetRiderChat(null);
       renderJobOnRiderMap(null);
-      renderCoRidersList(cachedCoRiders);
-      syncRiderVoiceCallContext();
       return;
     }
     resetRiderChat(job);
 
     if (activeJobBox) activeJobBox.classList.remove("hidden");
     if (activeJobCode) activeJobCode.textContent = job.booking_code;
-
-    const groupSize = Number(job.group_size || 1);
-    const isGroup = groupSize > 1 && Boolean(job.group_code);
-    const slotNum = Number(job.rider_slot || 1);
-    if (activeJobGroupBadge) {
-      if (isGroup) {
-        activeJobGroupBadge.textContent = `👥 Group ${job.group_code} • Rider ${slotNum}/${groupSize}`;
-        activeJobGroupBadge.classList.remove("hidden");
-      } else {
-        activeJobGroupBadge.classList.add("hidden");
-      }
-    }
-    if (activeJobGroupBanner) {
-      if (isGroup) {
-        const joinedCount = Number(job.group_assigned_count || 1);
-        const totalGroupFare = Math.round(Number(job.group_total_fare || Number(job.fare_amount || 0) * groupSize)).toLocaleString();
-        activeJobGroupBanner.innerHTML = `Group Code: <strong>${escapeHtml(job.group_code)}</strong> &bull; Rider <strong>${slotNum} of ${groupSize}</strong> &bull; Joined: <strong>${joinedCount}/${groupSize}</strong> &bull; Your Slot Fare: <strong>₱${Math.round(Number(job.fare_amount || 0)).toLocaleString()}</strong> <small>(Group Total: ₱${totalGroupFare})</small>`;
-        activeJobGroupBanner.classList.remove("hidden");
-      } else {
-        activeJobGroupBanner.classList.add("hidden");
-        activeJobGroupBanner.innerHTML = "";
-      }
-    }
-
-    const transferAlert = document.getElementById("active-job-transfer-alert");
-    const transferMeta = document.getElementById("active-job-transfer-meta");
-    if (transferAlert && transferMeta) {
-      if (Number(job.transfer_count || 0) > 0) {
-        const fromName = job.transferred_from_rider_name || "a fellow rider";
-        const reasonPart = job.transfer_reason ? ` (${job.transfer_reason})` : "";
-        transferMeta.textContent = `Handed over from ${fromName}${reasonPart}. Fare stays ₱${Math.round(job.fare_amount)}.`;
-        transferAlert.classList.remove("hidden");
-      } else {
-        transferAlert.classList.add("hidden");
-      }
-    }
-
     if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}`;
     if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}`;
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
@@ -1499,20 +1087,9 @@
         jobCompleteBtn.classList.remove("hidden");
       }
     }
-    const canTransferActive = ["accepted", "in_progress"].includes(job.status);
-    if (jobTransferBtn) {
-      jobTransferBtn.classList.toggle("hidden", !canTransferActive);
-    }
-    if (jobTransferTopBtn) {
-      jobTransferTopBtn.classList.toggle("hidden", !canTransferActive);
-    }
-
-    syncActiveJobGcashState(job);
 
     // Interactive Live GPS Route Map for Active Job
     renderJobOnRiderMap(job);
-    renderCoRidersList(cachedCoRiders);
-    syncRiderVoiceCallContext();
   }
 
   // Check Active Job
@@ -1520,81 +1097,18 @@
     if (!currentRider) return;
     try {
       const res = await fetch(`/api/rider/active-job?rider_id=${currentRider.id}`);
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
-      if (!res.ok) return;
       const data = await res.json();
-      if (data && data.authenticated === false) {
-        handleExpiredRiderSession();
-        return;
+      activeJob = data.job;
+      if (activeJob) {
+        requestRiderWakeLock();
       }
-      if (data.rider && currentRider) {
-        currentRider = Object.assign({}, currentRider, data.rider);
-        setStoredRider(currentRider);
-        renderRiderGcashProfileCard();
-      }
-      const nextJob = data.job;
-      const nextKey = nextJob ? `${nextJob.id}:${nextJob.transfer_count || 0}:${nextJob.status}` : null;
-      const isIncomingTransfer = Boolean(
-        nextJob
-        && Number(nextJob.transfer_count || 0) > 0
-        && nextKey !== prevActiveJobKey
-        && (!activeJob || activeJob.id !== nextJob.id || Number(activeJob.transfer_count || 0) !== Number(nextJob.transfer_count || 0))
-      );
-      const nextPayKey = nextJob
-        ? `${nextJob.id}:${String(nextJob.payment_status || "pending").toLowerCase()}`
-        : null;
-      const becameCustomerSent = Boolean(
-        nextJob
-        && String(nextJob.payment_method || "").toLowerCase() === "gcash"
-        && String(nextJob.payment_status || "").toLowerCase() === "customer_sent"
-        && nextPayKey !== prevGcashPayStatus
-      );
-      prevGcashPayStatus = nextPayKey;
-      prevActiveJobKey = nextKey;
-      activeJob = nextJob;
       const scheduledJobs = data.scheduled_jobs || [];
-      currentScheduledJobs = scheduledJobs;
 
       // Render Scheduled Jobs Card & Reminder
       renderScheduledJobs(scheduledJobs);
 
       renderActiveJobCard(activeJob);
-
-      if (gcashQrModal && !gcashQrModal.classList.contains("hidden")) {
-        if (activeJob && String(activeJob.payment_method || "").toLowerCase() === "gcash") {
-          renderRiderGcashQrModal();
-        } else if (!reopenQrAfterSetup) {
-          gcashQrModal.classList.add("hidden");
-        }
-      }
-
-      if (becameCustomerSent) {
-        playRiderBeep();
-      }
-
-      if (isIncomingTransfer) {
-        if (window.playDispatchChime) window.playDispatchChime();
-        if ("vibrate" in navigator) {
-          try { navigator.vibrate([120, 60, 120, 60, 180]); } catch (_) {}
-        }
-      }
     } catch (_) {}
-  }
-
-  const scheduledListEl = document.getElementById("rider-scheduled-list");
-  if (scheduledListEl) {
-    scheduledListEl.addEventListener("click", (e) => {
-      const btn = e.target.closest(".scheduled-transfer-btn");
-      if (!btn) return;
-      const bId = Number(btn.getAttribute("data-booking-id"));
-      const target = currentScheduledJobs.find((item) => Number(item.id) === bId);
-      if (target) {
-        openEmergencyTransferModal(Object.assign({ _fromScheduledList: true }, target), null);
-      }
-    });
   }
 
   function renderScheduledJobs(jobs) {
@@ -1640,15 +1154,12 @@
         }
       }
 
-      const groupSize = Number(j.group_size || 1);
-      const isGroup = groupSize > 1 && Boolean(j.group_code);
       return `
         <div style="background:white;padding:12px;border:1px solid #cbd5e1;border-radius:10px;display:grid;gap:6px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
               <strong style="font-family:monospace;font-size:0.95rem;">${escapeHtml(j.booking_code)}</strong>
-              <span class="badge badge-accent" style="font-size:0.75rem;">${escapeHtml(j.service_type.toUpperCase())}</span>
-              ${isGroup ? `<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.72rem;font-weight:700;">👥 ${escapeHtml(j.group_code)} &bull; Rider ${Number(j.rider_slot || 1)}/${groupSize}</span>` : ""}
+              <span class="badge badge-accent" style="font-size:0.75rem;margin-left:4px;">${escapeHtml(j.service_type.toUpperCase())}</span>
             </div>
             ${countdownBadge}
           </div>
@@ -1659,12 +1170,9 @@
             <div>👤 <strong>Passenger:</strong> ${escapeHtml(j.customer_name)} (${escapeHtml(j.customer_phone)})</div>
             <div style="font-weight:700;color:var(--primary);margin-top:2px;">Fare: ₱${Math.round(j.fare_amount)}</div>
           </div>
-          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center;">
+          <div style="display:flex;gap:8px;margin-top:4px;">
             <a href="tel:${escapeHtml(j.customer_phone)}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">📞 Call</a>
             <a href="sms:${escapeHtml(j.customer_phone)}" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:0.78rem;">💬 SMS</a>
-            <button type="button" class="btn btn-sm btn-transfer-emergency scheduled-transfer-btn" data-booking-id="${j.id}" style="padding:4px 10px;font-size:0.78rem;">
-              🔄 Transfer to Rider
-            </button>
             <button type="button" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.78rem;margin-left:auto;" onclick="startScheduledJobNow(${j.id})">
               🚀 Start Trip Now
             </button>
@@ -1690,7 +1198,7 @@
           try {
             new Notification(`CCRC Reminder: Advance Trip in ${dueSoonJob.minutes_left} mins!`, {
               body: `${dueSoonJob.booking_code} pickup at ${dueSoonJob.pickup_address} for ${dueSoonJob.customer_name}`,
-              icon: "/static/icons/logo.png?v=3"
+              icon: "/static/icons/logo.png"
             });
           } catch(_) {}
         }
@@ -1724,7 +1232,6 @@
   if (jobInProgressBtn) {
     jobInProgressBtn.addEventListener("click", async () => {
       if (!activeJob) return;
-      const origText = jobInProgressBtn.textContent;
       jobInProgressBtn.disabled = true;
       jobInProgressBtn.textContent = "Updating status...";
       try {
@@ -1733,35 +1240,17 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "in_progress" }),
         });
-        if (res.status === 401) {
-          handleExpiredRiderSession();
-          return;
-        }
         if (res.ok) {
           checkActiveJob();
-          fetchCoRiders();
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          alert(errData.error || "Could not update trip status.");
         }
-      } catch (_) {
-        alert("Network error updating trip status. Please try again.");
-      } finally {
-        jobInProgressBtn.textContent = origText;
-        jobInProgressBtn.disabled = false;
-      }
+      } catch (_) {}
+      jobInProgressBtn.disabled = false;
     });
   }
 
   if (jobCompleteBtn) {
     jobCompleteBtn.addEventListener("click", async () => {
       if (!activeJob) return;
-      const isGcash = String(activeJob.payment_method || "").toLowerCase() === "gcash";
-      const pStat = String(activeJob.payment_status || "pending").toLowerCase();
-      if (isGcash && pStat !== "paid") {
-        openRiderGcashQrModal();
-        return;
-      }
       if (!confirm("Are you sure this trip is completed and fare has been received?")) return;
       jobCompleteBtn.disabled = true;
       jobCompleteBtn.textContent = "Completing trip...";
@@ -1771,703 +1260,16 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "completed" }),
         });
-        if (res.status === 401) {
-          handleExpiredRiderSession();
-          return;
-        }
         if (res.ok) {
           alert("✓ Trip successfully marked as Completed! Thank you for your service.");
           activeJob = null;
-          prevActiveJobKey = null;
-          prevGcashPayStatus = null;
           activeJobBox.classList.add("hidden");
-          syncActiveJobGcashState(null);
-          resetRiderChat(null);
           renderJobOnRiderMap(null);
-          checkActiveJob();
           fetchAvailableJobs();
-          fetchCoRiders();
           loadRiderTransactions();
-          loadRiderReviews();
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          if (errData && errData.requires_gcash_payment) {
-            await checkActiveJob();
-            openRiderGcashQrModal();
-            return;
-          }
-          alert(errData.error || "Could not complete trip.");
         }
-      } catch (_) {
-        alert("Network error completing trip. Please try again.");
-      } finally {
-        const lockedNow = Boolean(
-          activeJob
-          && String(activeJob.payment_method || "").toLowerCase() === "gcash"
-          && String(activeJob.payment_status || "pending").toLowerCase() !== "paid"
-        );
-        jobCompleteBtn.classList.toggle("btn-complete-locked", lockedNow);
-        jobCompleteBtn.textContent = lockedNow
-          ? tRider("🔒 Locked Until GCash Paid (Show QR / Confirm)")
-          : tRider("✓ Delivered (Mark as Completed)");
-        jobCompleteBtn.disabled = false;
-      }
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Rider Official GCash QR Setup & Collect Payment Modal Workflows
-  // ---------------------------------------------------------------------------
-  let setupQrPendingBase64 = null;
-  let setupQrPendingClear = false;
-
-  function showGcashSetupMessage(text, isError) {
-    if (!gcashSetupMsg) return;
-    if (!text) {
-      gcashSetupMsg.classList.add("hidden");
-      gcashSetupMsg.textContent = "";
-      return;
-    }
-    gcashSetupMsg.classList.remove("hidden");
-    gcashSetupMsg.style.background = isError ? "#fee2e2" : "#dcfce7";
-    gcashSetupMsg.style.color = isError ? "#991b1b" : "#166534";
-    gcashSetupMsg.style.border = isError ? "1px solid #fca5a5" : "1px solid #86efac";
-    gcashSetupMsg.textContent = text;
-  }
-
-  function renderGcashSetupPreview(qrSrc) {
-    const cleanSrc = String(qrSrc || "").trim();
-    if (gcashSetupQrPreview && gcashSetupQrPlaceholder) {
-      if (cleanSrc) {
-        gcashSetupQrPreview.src = cleanSrc;
-        gcashSetupQrPreview.classList.remove("hidden");
-        gcashSetupQrPlaceholder.classList.add("hidden");
-      } else {
-        gcashSetupQrPreview.classList.add("hidden");
-        gcashSetupQrPreview.removeAttribute("src");
-        gcashSetupQrPlaceholder.classList.remove("hidden");
-      }
-    }
-    if (gcashSetupClearQrBtn) {
-      gcashSetupClearQrBtn.classList.toggle("hidden", !cleanSrc);
-    }
-  }
-
-  function openRiderGcashSetupModal(fromQrModal = false) {
-    if (!currentRider || !gcashSetupModal) return;
-    reopenQrAfterSetup = Boolean(fromQrModal);
-    setupQrPendingBase64 = null;
-    setupQrPendingClear = false;
-    if (gcashSetupQrFileInput) gcashSetupQrFileInput.value = "";
-    if (gcashSetupNumberInput) {
-      gcashSetupNumberInput.value = currentRider.gcash_number || currentRider.phone || "";
-    }
-    showGcashSetupMessage("", false);
-    renderGcashSetupPreview(currentRider.gcash_qr_url || "");
-    gcashSetupModal.classList.remove("hidden");
-  }
-
-  if (openGcashSetupBtn) {
-    openGcashSetupBtn.addEventListener("click", () => openRiderGcashSetupModal(false));
-  }
-  if (rGcashQuickUploadBtn) {
-    rGcashQuickUploadBtn.addEventListener("click", () => {
-      if (gcashQrModal) gcashQrModal.classList.add("hidden");
-      openRiderGcashSetupModal(true);
-    });
-  }
-  if (gcashSetupQrFileInput) {
-    gcashSetupQrFileInput.addEventListener("change", async function () {
-      const file = this.files && this.files[0];
-      if (!file) return;
-      showGcashSetupMessage("", false);
-      try {
-        setupQrPendingBase64 = await readQrImageAsDataUrl(file);
-        setupQrPendingClear = false;
-        renderGcashSetupPreview(setupQrPendingBase64);
-      } catch (err) {
-        setupQrPendingBase64 = null;
-        showGcashSetupMessage(err.message || "Could not load QR image.", true);
-      }
-    });
-  }
-  if (gcashSetupClearQrBtn) {
-    gcashSetupClearQrBtn.addEventListener("click", () => {
-      setupQrPendingBase64 = null;
-      setupQrPendingClear = true;
-      if (gcashSetupQrFileInput) gcashSetupQrFileInput.value = "";
-      renderGcashSetupPreview("");
-    });
-  }
-  if (gcashSetupForm) {
-    gcashSetupForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!currentRider || !gcashSetupSaveBtn) return;
-      const gcashNumVal = (gcashSetupNumberInput ? gcashSetupNumberInput.value : "").trim();
-      const payload = { gcash_number: gcashNumVal };
-      if (setupQrPendingClear) {
-        payload.clear_qr = true;
-      } else if (setupQrPendingBase64) {
-        payload.gcash_qr_base64 = setupQrPendingBase64;
-      }
-
-      const origText = gcashSetupSaveBtn.textContent;
-      gcashSetupSaveBtn.disabled = true;
-      gcashSetupSaveBtn.textContent = tRider("Saving...");
-      showGcashSetupMessage("", false);
-
-      try {
-        const res = await fetch("/api/rider/gcash-profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.status === 401) {
-          if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
-          reopenQrAfterSetup = false;
-          handleExpiredRiderSession();
-          return;
-        }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || "Could not save GCash details.");
-        }
-        if (data.rider) {
-          currentRider = Object.assign({}, currentRider, data.rider);
-          setStoredRider(currentRider);
-        }
-        renderRiderGcashProfileCard();
-        setupQrPendingBase64 = null;
-        setupQrPendingClear = false;
-        showGcashSetupMessage(data.message || "GCash QR & payment details saved!", false);
-
-        if (reopenQrAfterSetup && activeJob) {
-          reopenQrAfterSetup = false;
-          if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
-          openRiderGcashQrModal();
-        } else {
-          setTimeout(() => {
-            if (gcashSetupModal) gcashSetupModal.classList.add("hidden");
-          }, 800);
-        }
-      } catch (err) {
-        showGcashSetupMessage(err.message || "Could not save GCash details.", true);
-      } finally {
-        gcashSetupSaveBtn.disabled = false;
-        gcashSetupSaveBtn.textContent = origText;
-      }
-    });
-  }
-
-  function renderRiderGcashQrModal() {
-    if (!gcashQrModal || !activeJob || !currentRider) return;
-    const codeEl = document.getElementById("r-gcash-booking-code");
-    const custEl = document.getElementById("r-gcash-cust-name");
-    const amtEl = document.getElementById("r-gcash-amount");
-    const pillEl = document.getElementById("r-gcash-status-pill");
-    const refEl = document.getElementById("r-gcash-ref-display");
-    const qrBoxEl = document.getElementById("r-gcash-qr-box");
-    const qrImgEl = document.getElementById("r-gcash-qr-img");
-    const numDispEl = document.getElementById("r-gcash-number-display");
-    const missingBoxEl = document.getElementById("r-gcash-missing-box");
-    const missingNumEl = document.getElementById("r-gcash-missing-number");
-    const confirmSectionEl = document.getElementById("r-gcash-confirm-section");
-    const offlineWrapEl = document.getElementById("r-gcash-offline-wrap");
-    const paidDoneBoxEl = document.getElementById("r-gcash-paid-done-box");
-
-    if (codeEl) {
-      const gSize = Number(activeJob.group_size || 1);
-      codeEl.textContent = gSize > 1
-        ? `${activeJob.booking_code || "CCRC-0000"} (Rider ${Number(activeJob.rider_slot || 1)}/${gSize})`
-        : (activeJob.booking_code || "CCRC-0000");
-    }
-    if (custEl) custEl.textContent = activeJob.customer_name || "Passenger";
-    if (amtEl) amtEl.textContent = `₱${Math.round(Number(activeJob.fare_amount || 0)).toLocaleString()}`;
-
-    const pStat = String(activeJob.payment_status || "pending").toLowerCase();
-    const isPaid = pStat === "paid";
-
-    if (pillEl) {
-      if (isPaid) {
-        pillEl.className = "gcash-status-pill paid";
-        pillEl.textContent = tRider("✅ GCash Paid & Verified");
-      } else if (pStat === "customer_sent") {
-        pillEl.className = "gcash-status-pill sent";
-        pillEl.textContent = tRider("📲 Customer Marked Payment Sent");
-      } else {
-        pillEl.className = "gcash-status-pill pending";
-        pillEl.textContent = tRider("⏳ Waiting Customer GCash");
-      }
-    }
-
-    if (refEl) {
-      if (activeJob.payment_ref) {
-        refEl.textContent = `Ref: ${activeJob.payment_ref}`;
-        refEl.classList.remove("hidden");
-      } else {
-        refEl.textContent = "Ref: -";
-        refEl.classList.add("hidden");
-      }
-    }
-
-    const qrUrl = String(currentRider.gcash_qr_url || "").trim();
-    const gNum = String(currentRider.gcash_number || currentRider.phone || "-").trim();
-
-    if (qrUrl) {
-      if (qrBoxEl) qrBoxEl.classList.remove("hidden");
-      if (missingBoxEl) missingBoxEl.classList.add("hidden");
-      if (qrImgEl && qrImgEl.getAttribute("src") !== qrUrl) {
-        qrImgEl.src = qrUrl;
-      }
-      if (numDispEl) numDispEl.textContent = gNum;
-    } else {
-      if (qrBoxEl) qrBoxEl.classList.add("hidden");
-      if (missingBoxEl) missingBoxEl.classList.remove("hidden");
-      if (missingNumEl) missingNumEl.textContent = gNum;
-    }
-
-    if (confirmSectionEl) confirmSectionEl.classList.toggle("hidden", isPaid);
-    if (paidDoneBoxEl) paidDoneBoxEl.classList.toggle("hidden", !isPaid);
-
-    if (!isPaid) {
-      if (offlineWrapEl) {
-        offlineWrapEl.classList.toggle("hidden", pStat !== "pending");
-      }
-      if (
-        rGcashConfirmRefInput
-        && document.activeElement !== rGcashConfirmRefInput
-        && !rGcashConfirmRefInput.dataset.dirty
-      ) {
-        rGcashConfirmRefInput.value = activeJob.payment_ref ? String(activeJob.payment_ref) : "";
-      }
-    }
-  }
-
-  function openRiderGcashQrModal() {
-    if (!activeJob || !currentRider || !gcashQrModal) return;
-    if (rGcashConfirmError) {
-      rGcashConfirmError.textContent = "";
-      rGcashConfirmError.classList.add("hidden");
-    }
-    if (rGcashConfirmRefInput) {
-      delete rGcashConfirmRefInput.dataset.dirty;
-      rGcashConfirmRefInput.value = activeJob.payment_ref ? String(activeJob.payment_ref) : "";
-    }
-    if (rGcashOfflineChk) {
-      rGcashOfflineChk.checked = false;
-    }
-    renderRiderGcashQrModal();
-    gcashQrModal.classList.remove("hidden");
-  }
-
-  if (jobShowGcashQrBtn) {
-    jobShowGcashQrBtn.addEventListener("click", openRiderGcashQrModal);
-  }
-  if (jobGcashTopBtn) {
-    jobGcashTopBtn.addEventListener("click", openRiderGcashQrModal);
-  }
-  if (rGcashConfirmRefInput) {
-    rGcashConfirmRefInput.addEventListener("input", () => {
-      rGcashConfirmRefInput.dataset.dirty = "1";
-    });
-  }
-  if (rGcashConfirmBtn) {
-    rGcashConfirmBtn.addEventListener("click", async () => {
-      if (!activeJob || !currentRider) return;
-      if (rGcashConfirmError) {
-        rGcashConfirmError.textContent = "";
-        rGcashConfirmError.classList.add("hidden");
-      }
-      const pStat = String(activeJob.payment_status || "pending").toLowerCase();
-      const verifiedOffline = Boolean(rGcashOfflineChk && rGcashOfflineChk.checked);
-      if (pStat === "pending" && !verifiedOffline) {
-        if (rGcashConfirmError) {
-          rGcashConfirmError.textContent = tRider(
-            "Wait for the customer to mark payment as sent, or check 'Verified GCash receipt in person' if you saw the GCash transfer complete beside you."
-          );
-          rGcashConfirmError.classList.remove("hidden");
-        }
-        return;
-      }
-
-      const refVal = (rGcashConfirmRefInput ? rGcashConfirmRefInput.value : "").trim();
-      rGcashConfirmBtn.disabled = true;
-      rGcashConfirmBtn.textContent = tRider("Confirming...");
-
-      try {
-        const res = await fetch(`/api/bookings/${activeJob.id}/gcash/confirm`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            payment_ref: refVal,
-            verified_offline_receipt: verifiedOffline,
-          }),
-        });
-        if (res.status === 401) {
-          if (gcashQrModal) gcashQrModal.classList.add("hidden");
-          handleExpiredRiderSession();
-          return;
-        }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || "Could not confirm GCash payment.");
-        }
-        if (rGcashConfirmRefInput) delete rGcashConfirmRefInput.dataset.dirty;
-        activeJob = data.job || data.booking || activeJob;
-        prevGcashPayStatus = `${activeJob.id}:${String(activeJob.payment_status || "paid").toLowerCase()}`;
-        renderActiveJobCard(activeJob);
-        renderRiderGcashQrModal();
-        checkActiveJob();
-      } catch (err) {
-        if (rGcashConfirmError) {
-          rGcashConfirmError.textContent = err.message || "Could not confirm GCash payment.";
-          rGcashConfirmError.classList.remove("hidden");
-        }
-      } finally {
-        rGcashConfirmBtn.disabled = false;
-        rGcashConfirmBtn.textContent = tRider("✓ Confirm GCash Payment Received");
-      }
-    });
-  }
-
-  // Emergency Booking Transfer / Re-Broadcast Modal & Handlers
-  function getCurrentRiderGpsForTransfer() {
-    if (
-      lastRiderGpsPos
-      && Number.isFinite(Number(lastRiderGpsPos.lat))
-      && Number.isFinite(Number(lastRiderGpsPos.lng))
-    ) {
-      return { lat: Number(lastRiderGpsPos.lat), lng: Number(lastRiderGpsPos.lng) };
-    }
-    if (
-      currentRider
-      && Number.isFinite(Number(currentRider.last_lat))
-      && Number.isFinite(Number(currentRider.last_lng))
-      && Number(currentRider.last_lat) !== 0
-      && Number(currentRider.last_lng) !== 0
-    ) {
-      return { lat: Number(currentRider.last_lat), lng: Number(currentRider.last_lng) };
-    }
-    return null;
-  }
-
-  function isJobFutureScheduled(job) {
-    if (!job || !job.scheduled_at || job.status === "in_progress") return false;
-    try {
-      const schedMs = new Date(job.scheduled_at).getTime();
-      if (!Number.isFinite(schedMs)) return false;
-      return (schedMs - Date.now()) / 60000 > 30;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  async function loadTransferCoRiders() {
-    if (!transferCoridersList || !currentRider) return;
-    transferCoridersList.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Checking online co-riders...</div>`;
-
-    try {
-      const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
-      if (!res.ok) {
-        throw new Error("Unable to load online co-riders.");
-      }
-      const data = await res.json();
-      const rawList = Array.isArray(data.co_riders) ? data.co_riders : [];
-      const targetJob = transferTargetJob || activeJob;
-      const allowBusy = isJobFutureScheduled(targetJob);
-      const refGps = getCurrentRiderGpsForTransfer()
-        || (
-          targetJob
-          && Number.isFinite(Number(targetJob.pickup_lat))
-          && Number.isFinite(Number(targetJob.pickup_lng))
-          && Number(targetJob.pickup_lat) !== 0
-            ? { lat: Number(targetJob.pickup_lat), lng: Number(targetJob.pickup_lng) }
-            : null
-        );
-
-      const candidates = rawList
-        .filter((r) => !r.is_self && Number(r.id) !== Number(currentRider.id))
-        .map((r) => {
-          let distKm = null;
-          if (
-            refGps
-            && Number.isFinite(Number(r.last_lat))
-            && Number.isFinite(Number(r.last_lng))
-            && Number(r.last_lat) !== 0
-          ) {
-            distKm = calculateHaversineKm(refGps.lat, refGps.lng, Number(r.last_lat), Number(r.last_lng));
-          }
-          return { ...r, distKm };
-        })
-        .sort((a, b) => {
-          if (transferHighlightRiderId) {
-            const aSel = Number(a.id) === transferHighlightRiderId ? 1 : 0;
-            const bSel = Number(b.id) === transferHighlightRiderId ? 1 : 0;
-            if (aSel !== bSel) return bSel - aSel;
-          }
-          const busyDiff = Number(Boolean(a.has_active_job)) - Number(Boolean(b.has_active_job));
-          if (busyDiff !== 0) return busyDiff;
-          if (a.distKm !== null && b.distKm !== null) return a.distKm - b.distKm;
-          if (a.distKm !== null) return -1;
-          if (b.distKm !== null) return 1;
-          return Number(b.rating_avg || 5.0) - Number(a.rating_avg || 5.0);
-        });
-
-      if (candidates.length === 0) {
-        transferCoridersList.innerHTML = `<div class="empty-state" style="padding:12px;font-size:0.84rem;">No other online CCRC riders found right now. Use Option 2 below to urgently re-broadcast!</div>`;
-        return;
-      }
-
-      transferCoridersList.innerHTML = candidates.map((r) => {
-        const isBusy = Boolean(r.has_active_job);
-        const isDisabled = isBusy && !allowBusy;
-        const actStatus = r.activity_status || (isBusy ? "accepted" : "available");
-        const isHighlighted = Boolean(transferHighlightRiderId && Number(r.id) === transferHighlightRiderId);
-        const distLabel = r.distKm !== null ? `📍 ${r.distKm.toFixed(1)} km away` : `📍 ${escapeHtml(r.municipality || "Camiguin")}`;
-
-        let statusBadge = "";
-        if (actStatus === "accepted") {
-          statusBadge = `<span class="badge badge-accepting" style="font-size:0.7rem;padding:2px 6px;">🟡 ${tRider("Accepting Booking")}</span>`;
-        } else if (actStatus === "in_progress") {
-          statusBadge = `<span class="badge badge-heading" style="font-size:0.7rem;padding:2px 6px;">🟠 ${tRider("Heading Destination")}</span>`;
-        } else if (isBusy) {
-          statusBadge = `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">${tRider("Busy")}</span>`;
-        } else {
-          statusBadge = `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">🟢 ${tRider("Available")}</span>`;
-        }
-
-        const selectedBadge = isHighlighted
-          ? `<span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fb923c;font-size:0.7rem;padding:2px 6px;">⭐ Selected</span>`
-          : "";
-        const highlightStyle = isHighlighted ? "border:2px solid #f97316;background:#fff7ed;" : "";
-
-        let btnLabel = tRider("Transfer Now");
-        if (isDisabled) {
-          btnLabel = actStatus === "in_progress" ? tRider("Heading Dest") : tRider("Busy");
-        }
-
-        return `
-          <div class="transfer-corider-option ${isDisabled ? "is-busy" : ""}" style="${highlightStyle}">
-            <div style="min-width:0;flex:1;">
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <strong style="font-size:0.88rem;color:#0f172a;">${escapeHtml(r.name)}</strong>
-                ${statusBadge}
-                ${selectedBadge}
-              </div>
-              <div class="text-muted" style="font-size:0.76rem;margin-top:2px;">
-                🏍️ ${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)}) &bull; ⭐ ${Number(r.rating_avg || 5.0).toFixed(1)}
-              </div>
-              <div style="font-size:0.76rem;color:#0284c7;font-weight:600;margin-top:2px;">
-                ${distLabel}
-              </div>
-            </div>
-            <button
-              type="button"
-              class="btn btn-sm ${isDisabled ? "btn-outline" : "btn-primary"} execute-direct-transfer-btn"
-              data-rider-id="${r.id}"
-              data-can-transfer="${isDisabled ? "0" : "1"}"
-              ${isDisabled ? "disabled" : ""}
-              style="white-space:nowrap;"
-            >${btnLabel}</button>
-          </div>
-        `;
-      }).join("");
-    } catch (err) {
-      transferCoridersList.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">${escapeHtml(err.message || "Failed to load online co-riders.")}</div>`;
-    }
-  }
-
-  function openEmergencyTransferModal(targetJob = null, highlightRiderId = null) {
-    const job = (targetJob && targetJob.id) ? targetJob : activeJob;
-    if (!job || !currentRider || !transferModal) return;
-    transferTargetJob = job;
-    transferHighlightRiderId = highlightRiderId ? Number(highlightRiderId) : null;
-
-    if (transferStatusError) {
-      transferStatusError.textContent = "";
-      transferStatusError.classList.add("hidden");
-    }
-    if (transferModalSubtitle) {
-      transferModalSubtitle.textContent = `${job.booking_code} • ${job.dropoff_address} • ₱${Math.round(job.fare_amount || 0)}`;
-    }
-    if (transferNoteInput) {
-      transferNoteInput.value = "";
-    }
-    if (transferUpdateGpsChk) {
-      transferUpdateGpsChk.checked = job.status === "in_progress";
-    }
-    if (transferGoOfflineChk) {
-      transferGoOfflineChk.checked = !isJobFutureScheduled(job);
-    }
-
-    transferModal.classList.remove("hidden");
-    loadTransferCoRiders();
-
-    if (!lastRiderGpsPos && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (currentRider) {
-            currentRider.last_lat = pos.coords.latitude;
-            currentRider.last_lng = pos.coords.longitude;
-          }
-          lastRiderGpsPos = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            speed: pos.coords.speed || 0,
-            heading: pos.coords.heading || currentRiderBearing || 0,
-          };
-          if (!transferModal.classList.contains("hidden")) {
-            loadTransferCoRiders();
-          }
-        },
-        () => {},
-        { enableHighAccuracy: true, timeout: 4000, maximumAge: 10000 }
-      );
-    }
-  }
-
-  async function executeBookingTransfer(targetRiderId) {
-    const job = transferTargetJob || activeJob;
-    if (!job || !currentRider) return;
-    if (transferStatusError) {
-      transferStatusError.textContent = "";
-      transferStatusError.classList.add("hidden");
-    }
-
-    const reason = transferReasonSelect ? transferReasonSelect.value : "Flat tire / tire puncture";
-    const note = transferNoteInput ? transferNoteInput.value.trim() : "";
-    const useGps = transferUpdateGpsChk ? transferUpdateGpsChk.checked : false;
-    const goOffline = transferGoOfflineChk ? transferGoOfflineChk.checked : true;
-
-    const payload = {
-      reason,
-      note,
-      go_offline: goOffline,
-    };
-    if (targetRiderId) {
-      payload.target_rider_id = Number(targetRiderId);
-    }
-    if (useGps) {
-      const gps = getCurrentRiderGpsForTransfer();
-      if (gps) {
-        payload.new_pickup_lat = gps.lat;
-        payload.new_pickup_lng = gps.lng;
-      }
-    }
-
-    const origRebroadcastText = transferRebroadcastBtn ? transferRebroadcastBtn.textContent : "";
-    if (transferRebroadcastBtn) {
-      transferRebroadcastBtn.disabled = true;
-      if (!targetRiderId) {
-        transferRebroadcastBtn.textContent = "Re-broadcasting...";
-      }
-    }
-    const directBtns = transferCoridersList
-      ? Array.from(transferCoridersList.querySelectorAll(".execute-direct-transfer-btn[data-can-transfer='1']"))
-      : [];
-    directBtns.forEach((b) => {
-      b.disabled = true;
-      if (targetRiderId && Number(b.getAttribute("data-rider-id")) === Number(targetRiderId)) {
-        b.textContent = "Transferring...";
-      }
-    });
-
-    try {
-      const res = await fetch(`/api/bookings/${job.id}/transfer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.status === 401) {
-        if (transferModal) transferModal.classList.add("hidden");
-        handleExpiredRiderSession();
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Could not complete trip transfer.");
-      }
-
-      const wasActiveBoxJob = Boolean(activeJob && Number(activeJob.id) === Number(job.id));
-      transferTargetJob = null;
-      transferHighlightRiderId = null;
-      if (transferModal) transferModal.classList.add("hidden");
-
-      if (wasActiveBoxJob) {
-        activeJob = null;
-        prevActiveJobKey = null;
-        if (activeJobBox) activeJobBox.classList.add("hidden");
-        resetRiderChat(null);
-        renderJobOnRiderMap(null);
-      }
-
-      if (data.is_online !== null && data.is_online !== undefined) {
-        const nowOnline = Number(data.is_online) === 1;
-        if (onlineToggle) onlineToggle.checked = nowOnline;
-        updateOnlineBadge(nowOnline);
-        if (currentRider) {
-          currentRider.is_online = nowOnline ? 1 : 0;
-          setStoredRider(currentRider);
-        }
-        if (!nowOnline) {
-          if (jobsFeedList) {
-            jobsFeedList.innerHTML = `<div class="empty-state">You are currently OFFLINE. Turn the switch above ON to receive booking requests in Camiguin.</div>`;
-          }
-          if (jobsCountPill) jobsCountPill.textContent = "0";
-        } else {
-          fetchAvailableJobs();
-        }
-      } else {
-        fetchAvailableJobs();
-      }
-
-      fetchCoRiders();
-      checkActiveJob();
-      alert("✅ " + (data.message || "Booking transferred successfully!"));
-    } catch (err) {
-      if (transferStatusError) {
-        transferStatusError.textContent = err.message || "Could not complete trip transfer.";
-        transferStatusError.classList.remove("hidden");
-      } else {
-        alert(err.message || "Could not complete trip transfer.");
-      }
-      loadTransferCoRiders();
-    } finally {
-      if (transferRebroadcastBtn) {
-        transferRebroadcastBtn.disabled = false;
-        transferRebroadcastBtn.textContent = origRebroadcastText || "📡 Re-Broadcast to All Online Riders (Urgent)";
-      }
-      directBtns.forEach((b) => {
-        b.disabled = false;
-        b.textContent = "Transfer Now";
-      });
-    }
-  }
-
-  if (jobTransferBtn) {
-    jobTransferBtn.addEventListener("click", () => openEmergencyTransferModal(activeJob, null));
-  }
-  if (jobTransferTopBtn) {
-    jobTransferTopBtn.addEventListener("click", () => openEmergencyTransferModal(activeJob, null));
-  }
-  if (transferRefreshCoridersBtn) {
-    transferRefreshCoridersBtn.addEventListener("click", loadTransferCoRiders);
-  }
-  if (transferRebroadcastBtn) {
-    transferRebroadcastBtn.addEventListener("click", () => executeBookingTransfer(null));
-  }
-  if (transferCoridersList) {
-    transferCoridersList.addEventListener("click", (e) => {
-      const btn = e.target.closest(".execute-direct-transfer-btn");
-      if (!btn || btn.disabled) return;
-      const targetId = btn.getAttribute("data-rider-id");
-      if (targetId) {
-        executeBookingTransfer(targetId);
-      }
+      } catch (_) {}
+      jobCompleteBtn.disabled = false;
     });
   }
 
@@ -2511,10 +1313,6 @@
     if (!currentRider) return;
     try {
       const res = await fetch(`/api/rider/transactions?rider_id=${currentRider.id}`);
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
       if (!res.ok) return;
       const data = await res.json();
       const todayEl = document.getElementById("rider-today-earnings");
@@ -2556,75 +1354,12 @@
     } catch (_) {}
   }
 
-  function getCurrentPhtMonthString() {
-    try {
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Manila",
-        year: "numeric",
-        month: "2-digit",
-      }).formatToParts(new Date());
-      const y = parts.find((p) => p.type === "year")?.value || "";
-      const m = parts.find((p) => p.type === "month")?.value || "";
-      if (y && m) return `${y}-${m}`;
-    } catch (_) {}
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  }
-
-  function downloadRiderEarningsCsv(monthVal) {
-    if (!currentRider) return;
-    const params = new URLSearchParams();
-    if (monthVal && /^\d{4}-\d{2}$/.test(monthVal)) {
-      params.set("month", monthVal);
-    }
-    const qs = params.toString();
-    window.location.href = `/api/rider/reports/earnings.csv${qs ? `?${qs}` : ""}`;
-  }
-
-  function openRiderPrintableEarningsReport(monthVal) {
-    if (!currentRider) return;
-    const params = new URLSearchParams();
-    if (monthVal && /^\d{4}-\d{2}$/.test(monthVal)) {
-      params.set("month", monthVal);
-    }
-    const qs = params.toString();
-    window.open(`/rider/reports/earnings${qs ? `?${qs}` : ""}`, "_blank", "noopener");
-  }
-
   const openRiderTxnsBtn = document.getElementById("open-rider-txns-btn");
   const riderTxnsModal = document.getElementById("rider-transactions-modal");
-  const riderReportMonthInput = document.getElementById("rider-report-month");
-  const riderExportCsvBtn = document.getElementById("rider-export-csv-btn");
-  const riderPrintReportBtn = document.getElementById("rider-print-report-btn");
-  const riderModalExportCsvBtn = document.getElementById("rider-modal-export-csv-btn");
-  const riderModalPrintReportBtn = document.getElementById("rider-modal-print-report-btn");
-
-  if (riderReportMonthInput && !riderReportMonthInput.value) {
-    riderReportMonthInput.value = getCurrentPhtMonthString();
-  }
   if (openRiderTxnsBtn && riderTxnsModal) {
     openRiderTxnsBtn.addEventListener("click", () => {
-      if (riderReportMonthInput && !riderReportMonthInput.value) {
-        riderReportMonthInput.value = getCurrentPhtMonthString();
-      }
       loadRiderTransactions();
       riderTxnsModal.classList.remove("hidden");
-    });
-  }
-  if (riderExportCsvBtn) {
-    riderExportCsvBtn.addEventListener("click", () => downloadRiderEarningsCsv(""));
-  }
-  if (riderPrintReportBtn) {
-    riderPrintReportBtn.addEventListener("click", () => openRiderPrintableEarningsReport(""));
-  }
-  if (riderModalExportCsvBtn) {
-    riderModalExportCsvBtn.addEventListener("click", () => {
-      downloadRiderEarningsCsv((riderReportMonthInput && riderReportMonthInput.value) || "");
-    });
-  }
-  if (riderModalPrintReportBtn) {
-    riderModalPrintReportBtn.addEventListener("click", () => {
-      openRiderPrintableEarningsReport((riderReportMonthInput && riderReportMonthInput.value) || "");
     });
   }
 
@@ -2633,37 +1368,27 @@
     if (!onlineToggle.checked) return;
     try {
       const res = await fetch("/api/rider/available-jobs");
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
       if (!res.ok) return;
       const data = await res.json();
       const jobs = data.jobs || [];
 
       jobsCountPill.textContent = jobs.length;
 
-      // Check if new incoming job (or urgent re-broadcast) arrived -> Play Sound Alert!
+      // Check if new incoming job arrived -> Play Sound Alert!
       let hasNewJob = false;
-      let hasUrgentRebroadcast = false;
-      const nextKeys = new Set();
       jobs.forEach((j) => {
-        const key = `${j.id}:${j.transfer_count || 0}`;
-        nextKeys.add(key);
-        if (!knownJobKeys.has(key)) {
+        if (!knownJobIds.has(j.id)) {
           hasNewJob = true;
-          if (Number(j.transfer_count || 0) > 0) {
-            hasUrgentRebroadcast = true;
-          }
+          knownJobIds.add(j.id);
         }
       });
-      knownJobKeys = nextKeys;
 
-      if (hasNewJob && window.playDispatchChime) {
-        window.playDispatchChime();
-      }
-      if (hasUrgentRebroadcast && "vibrate" in navigator) {
-        try { navigator.vibrate([150, 70, 150, 70, 220]); } catch (_) {}
+      if (hasNewJob) {
+        if (window.playDispatchChime) {
+          window.playDispatchChime();
+        } else if ("vibrate" in navigator) {
+          try { navigator.vibrate([400, 150, 400, 150, 800]); } catch (_) {}
+        }
       }
 
       if (!jobs.length) {
@@ -2678,38 +1403,18 @@
       }
 
       jobsFeedList.innerHTML = jobs
-        .map((j) => {
-          const isTransferred = Number(j.transfer_count || 0) > 0;
-          const transferFrom = j.transferred_from_rider_name ? ` from ${escapeHtml(j.transferred_from_rider_name)}` : "";
-          const transferReason = j.transfer_reason ? `: ${escapeHtml(j.transfer_reason)}` : "";
-          const groupSize = Number(j.group_size || 1);
-          const isGroup = groupSize > 1;
-          const openSlots = Number(j.group_open_count !== undefined ? j.group_open_count : (isGroup ? groupSize : 1));
-          const joinedSlots = Number(j.group_assigned_count || 0);
-          const alreadyInGroup = Boolean(j.rider_already_in_group);
-          const groupTotalFare = Math.round(Number(j.group_total_fare || Number(j.fare_amount || 0) * groupSize)).toLocaleString();
-          return `
+        .map(
+          (j) => `
             <div class="job-card" data-job-id="${j.id}">
-              ${isTransferred ? `
-                <div class="transfer-urgency-banner" style="margin-bottom:8px;">
-                  <strong>🚨 EMERGENCY TRANSFER</strong>
-                  <div style="font-size:0.78rem;margin-top:2px;">Handed over${transferFrom}${transferReason}. Original fare ₱${Math.round(j.fare_amount)}.</div>
-                </div>
-              ` : ""}
               <div class="job-card-top">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                  <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
-                  ${isGroup ? `<span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-weight:800;">👥 GROUP RIDE • ${groupSize} Riders</span>` : ""}
-                  ${isGroup ? `<span class="badge" style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:0.72rem;font-weight:700;">${openSlots} Open &bull; ${joinedSlots} Joined</span>` : ""}
-                </div>
-                <span class="job-fare-tag">₱${Math.round(j.fare_amount)}${isGroup ? " <small style='font-size:0.72rem;font-weight:600;'>/ rider</small>" : ""}</span>
+                <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
+                <span class="job-fare-tag">₱${Math.round(j.fare_amount)}</span>
               </div>
               <div class="job-route-preview">
                 <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
                 <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
-                ${isGroup ? `<div style="font-size:0.78rem;color:#1d4ed8;font-weight:600;margin-top:3px;">👥 Group Code: <strong>${escapeHtml(j.group_code || "")}</strong> &bull; Group Total: ₱${groupTotalFare}</div>` : ""}
                 ${j.scheduled_at ? `<div style="background:#eff6ff;color:#1d4ed8;padding:4px 8px;border-radius:6px;font-size:0.8rem;font-weight:700;margin-top:6px;">📅 Scheduled Pickup: ${new Date(j.scheduled_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>` : ""}
-                ${j.payment_method ? `<div style="font-size:0.78rem;color:#475569;margin-top:2px;">💳 Payment: ${String(j.payment_method).toLowerCase() === "gcash" ? `<span class="badge" style="background:#dbeafe;color:#0047b8;border:1px solid #93c5fd;font-size:0.74rem;font-weight:800;padding:1px 7px;">💙 GCASH</span>` : `<strong style="text-transform:uppercase;">${escapeHtml(j.payment_method)}</strong>`}</div>` : ""}
+                ${j.payment_method ? `<div style="font-size:0.78rem;color:#475569;margin-top:2px;">💳 Payment: <strong style="text-transform:uppercase;">${escapeHtml(j.payment_method)}</strong></div>` : ""}
                 ${j.item_notes ? `<div style="margin-top:4px;color:#64748b;font-size:0.82rem;">🛒 <em>&ldquo;${escapeHtml(j.item_notes)}&rdquo;</em></div>` : ""}
                 ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Advance Cash: ₱${j.estimated_budget}</div>` : ""}
               </div>
@@ -2730,19 +1435,13 @@
                     </span>
                   `)}
                 </div>
-                ${alreadyInGroup ? `
-                  <button type="button" class="btn btn-sm btn-outline" disabled>
-                    ✓ Already Joined Group
-                  </button>
-                ` : `
-                  <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
-                    ${isGroup ? "Accept Group Slot 🛵" : "Accept This Booking 🛵"}
-                  </button>
-                `}
+                <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
+                  Accept This Booking 🛵
+                </button>
               </div>
             </div>
-          `;
-        })
+          `
+        )
         .join("");
     } catch (_) {}
   }
@@ -2769,13 +1468,16 @@
         }
 
         if (window.playDispatchChime) window.playDispatchChime();
+        if ("vibrate" in navigator) {
+          try { navigator.vibrate([150, 80, 150]); } catch (_) {}
+        }
         if (data.job) {
           activeJob = data.job;
           renderActiveJobCard(data.job);
+          requestRiderWakeLock();
         }
         checkActiveJob();
         fetchAvailableJobs();
-        fetchCoRiders();
       } catch (err) {
         alert(err.message);
         fetchAvailableJobs();
@@ -2833,68 +1535,22 @@
   }
 
   function appendRiderChatMessage(msg, isSelf) {
-    if (!riderChatBox) return;
-    if (msg.id && riderChatBox.querySelector(`[data-msg-id="${msg.id}"]`)) return;
     if (riderChatEmptyHint) riderChatEmptyHint.style.display = "none";
 
-    const isSystem = msg.sender_role === "system";
     const wrap = document.createElement("div");
-    wrap.className = `chat-bubble-wrap ${isSystem ? "system" : (isSelf ? "self" : "other")}`;
-    if (msg.id) wrap.dataset.msgId = String(msg.id);
+    wrap.className = `chat-bubble-wrap ${isSelf ? "self" : "other"}`;
 
-    const sender = isSystem
-      ? (msg.sender_name || "CCRC Dispatch")
-      : (isSelf ? "You (Rider)" : (msg.sender_name || "Customer"));
-    const roleIcon = isSystem ? "🚨" : (isSelf ? "🛵" : "👤");
+    const sender = isSelf ? "You (Rider)" : (msg.sender_name || "Customer");
+    const roleIcon = isSelf ? "🛵" : "👤";
     const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : "";
-
-    let bodyHtml = "";
-    const safeMediaUrl = typeof msg.media_url === "string" && msg.media_url.startsWith("/") ? msg.media_url : "";
-    if (msg.msg_type === "voice" && safeMediaUrl) {
-      const rawDur = Number(msg.media_duration || 0);
-      const durMins = Math.floor(rawDur / 60);
-      const durSecs = Math.round(rawDur % 60);
-      const durLabel = rawDur > 0 ? ` (${durMins}:${String(durSecs).padStart(2, "0")})` : "";
-      bodyHtml = `
-        <div class="chat-voice-bubble-body">
-          <span class="chat-voice-label"><span>🎤 Voice Message</span>${escapeHtml(durLabel)}</span>
-          <audio controls preload="metadata" src="${escapeHtml(safeMediaUrl)}" class="chat-voice-player"></audio>
-        </div>
-      `;
-    } else if (msg.msg_type === "image" && safeMediaUrl) {
-      const rawCaption = String(msg.message || "").trim();
-      const hasCaption = Boolean(rawCaption && rawCaption !== "📸 Photo");
-      bodyHtml = `
-        <div class="chat-photo-bubble-body">
-          <img src="${escapeHtml(safeMediaUrl)}" alt="${escapeHtml(hasCaption ? rawCaption : "Chat photo")}" class="chat-photo-thumb" loading="lazy" title="Tap photo to zoom">
-          ${hasCaption ? `<div class="chat-photo-caption">${escapeHtml(rawCaption)}</div>` : ""}
-        </div>
-      `;
-    } else {
-      bodyHtml = escapeHtml(msg.message);
-    }
 
     wrap.innerHTML = `
       <span class="chat-sender-label">${roleIcon} ${escapeHtml(sender)}</span>
       <div class="chat-bubble">
-        ${bodyHtml}
+        ${escapeHtml(msg.message)}
         <span class="chat-time">${timeStr}</span>
       </div>
     `;
-
-    if (msg.msg_type === "image" && safeMediaUrl) {
-      const thumbEl = wrap.querySelector(".chat-photo-thumb");
-      if (thumbEl) {
-        thumbEl.addEventListener("click", () => {
-          if (typeof window.openCcrcPhotoLightbox === "function") {
-            window.openCcrcPhotoLightbox(safeMediaUrl, String(msg.message || "").trim());
-          }
-        });
-        thumbEl.addEventListener("load", () => {
-          if (riderChatBox) riderChatBox.scrollTop = riderChatBox.scrollHeight;
-        }, { once: true });
-      }
-    }
 
     riderChatBox.appendChild(wrap);
     riderChatBox.scrollTop = riderChatBox.scrollHeight;
@@ -2904,10 +1560,6 @@
     if (!activeJob) return;
     try {
       const res = await fetch(`/api/chat/${activeJob.id}/messages?after=${riderLastMessageId}`);
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.messages && data.messages.length > 0) {
@@ -2917,7 +1569,7 @@
             riderLastMessageId = msg.id;
             const isSelf = (msg.sender_role === "rider");
             appendRiderChatMessage(msg, isSelf);
-            if (!isSelf && msg.sender_name !== "CCRC Call") hasIncomingFromCustomer = true;
+            if (!isSelf) hasIncomingFromCustomer = true;
           }
         }
         if (hasIncomingFromCustomer) {
@@ -2938,7 +1590,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sender_role: "rider",
-          sender_name: currentRider ? currentRider.name : "Club Rider",
+          sender_name: currentRider ? currentRider.name : "Kuya Rider",
           message: msgText,
         }),
       });
@@ -2968,143 +1620,14 @@
     });
   });
 
-  if (riderChatVoiceBtn && window.CCRCVoiceCall && typeof window.CCRCVoiceCall.bindVoiceRecorder === "function") {
-    window.CCRCVoiceCall.bindVoiceRecorder({
-      triggerBtn: riderChatVoiceBtn,
-      barEl: riderChatVoiceBar,
-      timerEl: riderChatVoiceTimer,
-      cancelBtn: riderChatVoiceCancelBtn,
-      sendBtn: riderChatVoiceSendBtn,
-      getUploadUrl: () => activeJob ? `/api/chat/${activeJob.id}/voice?after=${riderLastMessageId}` : "",
-      onUploaded: (data) => {
-        const list = (data && Array.isArray(data.messages) && data.messages.length > 0)
-          ? data.messages
-          : (data && data.message ? [data.message] : []);
-        for (const m of list) {
-          if (m && m.id > riderLastMessageId) {
-            riderLastMessageId = m.id;
-            appendRiderChatMessage(m, m.sender_role === "rider");
-          }
-        }
-      },
-    });
-  }
-
-  async function sendRiderChatPhoto() {
-    if (!pendingRiderChatPhotoDataUrl || isSendingRiderChatPhoto || !activeJob || !activeJob.id) return;
-    isSendingRiderChatPhoto = true;
-    if (riderChatPhotoSendBtn) {
-      riderChatPhotoSendBtn.disabled = true;
-      riderChatPhotoSendBtn.textContent = "Sending...";
-    }
-    try {
-      const caption = riderChatPhotoCaptionInput ? riderChatPhotoCaptionInput.value.trim() : "";
-      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-      const headers = { "Content-Type": "application/json" };
-      if (csrfMeta && csrfMeta.getAttribute("content")) {
-        headers["X-CSRF-Token"] = csrfMeta.getAttribute("content");
-      }
-      const res = await fetch(`/api/chat/${activeJob.id}/photo?after=${riderLastMessageId}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          photo_base64: pendingRiderChatPhotoDataUrl,
-          caption,
-          sender_role: "rider",
-        }),
-      });
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert((data && data.error) || "Could not send photo. Please try again.");
-        return;
-      }
-      const list = (data && Array.isArray(data.messages) && data.messages.length > 0)
-        ? data.messages
-        : (data && data.message ? [data.message] : []);
-      for (const m of list) {
-        if (m && m.id > riderLastMessageId) {
-          riderLastMessageId = m.id;
-          appendRiderChatMessage(m, m.sender_role === "rider");
-        }
-      }
-      clearRiderChatPhotoPreview();
-    } catch (_) {
-      alert("Network error while sending photo. Please try again.");
-    } finally {
-      isSendingRiderChatPhoto = false;
-      if (riderChatPhotoSendBtn) {
-        riderChatPhotoSendBtn.disabled = false;
-        riderChatPhotoSendBtn.textContent = (typeof window.ccrcT === "function") ? window.ccrcT("Send Photo ✈️") : "Send Photo ✈️";
-      }
-    }
-  }
-
-  if (riderChatPhotoBtn && riderChatPhotoInput) {
-    riderChatPhotoBtn.addEventListener("click", () => {
-      if (isSendingRiderChatPhoto) return;
-      riderChatPhotoInput.value = "";
-      riderChatPhotoInput.click();
-    });
-    riderChatPhotoInput.addEventListener("change", async () => {
-      const file = riderChatPhotoInput.files && riderChatPhotoInput.files[0];
-      if (!file) return;
-      if (typeof window.ccrcCompressChatPhoto !== "function") return;
-      riderChatPhotoBtn.disabled = true;
-      riderChatPhotoBtn.textContent = "⏳";
-      try {
-        const compressed = await window.ccrcCompressChatPhoto(file);
-        pendingRiderChatPhotoDataUrl = compressed.dataUrl;
-        if (riderChatPhotoPreviewThumb) riderChatPhotoPreviewThumb.src = pendingRiderChatPhotoDataUrl;
-        if (riderChatPhotoPreviewBar) riderChatPhotoPreviewBar.classList.remove("hidden");
-        if (riderChatPhotoCaptionInput) riderChatPhotoCaptionInput.focus();
-      } catch (err) {
-        clearRiderChatPhotoPreview();
-        alert((err && err.message) || "Could not load photo.");
-      } finally {
-        riderChatPhotoBtn.disabled = false;
-        riderChatPhotoBtn.textContent = "📷";
-      }
-    });
-  }
-  if (riderChatPhotoPreviewThumb) {
-    riderChatPhotoPreviewThumb.addEventListener("click", () => {
-      if (pendingRiderChatPhotoDataUrl && typeof window.openCcrcPhotoLightbox === "function") {
-        window.openCcrcPhotoLightbox(pendingRiderChatPhotoDataUrl, riderChatPhotoCaptionInput ? riderChatPhotoCaptionInput.value.trim() : "");
-      }
-    });
-  }
-  if (riderChatPhotoCancelBtn) {
-    riderChatPhotoCancelBtn.addEventListener("click", clearRiderChatPhotoPreview);
-  }
-  if (riderChatPhotoSendBtn) {
-    riderChatPhotoSendBtn.addEventListener("click", sendRiderChatPhoto);
-  }
-  if (riderChatPhotoCaptionInput) {
-    riderChatPhotoCaptionInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendRiderChatPhoto();
-      }
-    });
-  }
-
   function resetRiderChat(job) {
     if (!job) {
       if (riderChatPollTimer) clearInterval(riderChatPollTimer);
-      riderChatPollTimer = null;
-      currentActiveJobId = null;
-      if (riderChatVoiceBar) riderChatVoiceBar.classList.add("hidden");
-      clearRiderChatPhotoPreview();
       return;
     }
     if (currentActiveJobId !== job.id) {
       currentActiveJobId = job.id;
       riderLastMessageId = 0;
-      clearRiderChatPhotoPreview();
       if (riderChatBox) riderChatBox.innerHTML = "";
       if (riderChatEmptyHint) {
         riderChatEmptyHint.style.display = "block";
@@ -3221,177 +1744,60 @@
     });
   }
 
-  function renderCoRidersList(list) {
-    cachedCoRiders = Array.isArray(list) ? list : [];
-
-    const targetForCoRider = (activeJob && ["accepted", "in_progress"].includes(activeJob.status))
-      ? activeJob
-      : (currentScheduledJobs && currentScheduledJobs.length > 0
-          ? Object.assign({ _fromScheduledList: true }, currentScheduledJobs[0])
-          : null);
-
-    const hintEl = document.getElementById("co-riders-transfer-hint");
-    if (hintEl) {
-      hintEl.classList.toggle("hidden", Boolean(targetForCoRider));
-    }
-
-    if (!coRidersList) return;
-
-    if (cachedCoRiders.length === 0) {
-      coRidersList.innerHTML = `
-        <div class="empty-state" style="padding:1rem;">
-          <span class="text-muted">No other online riders found right now. Waiting for fellow riders!</span>
-        </div>
-      `;
-      return;
-    }
-
-    const allowBusy = isJobFutureScheduled(targetForCoRider);
-
-    coRidersList.innerHTML = cachedCoRiders.map((r) => {
-      const isSelf = r.is_self;
-      const isBusy = Boolean(r.has_active_job);
-      const isDisabled = isBusy && !allowBusy;
-      const actStatus = r.activity_status || (isBusy ? "accepted" : "available");
-
-      let avatarClass = "is-available";
-      if (actStatus === "accepted") avatarClass = "is-accepting";
-      else if (actStatus === "in_progress") avatarClass = "is-heading";
-
-      const avatarHtml = r.avatar_url
-        ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar ${avatarClass}">`
-        : `<div class="co-rider-avatar-placeholder ${avatarClass}">🛵</div>`;
-
-      const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;white-space:nowrap;">${tRider("You")}</span>` : '';
-
-      let statusBadge = "";
-      if (actStatus === "accepted") {
-        statusBadge = `<span class="badge badge-accepting" style="font-size:0.68rem;padding:2px 7px;white-space:nowrap;">🟡 ${tRider("Accepting Booking")}</span>`;
-      } else if (actStatus === "in_progress") {
-        statusBadge = `<span class="badge badge-heading" style="font-size:0.68rem;padding:2px 7px;white-space:nowrap;">🟠 ${tRider("Heading Destination")}</span>`;
-      } else if (r.recent_completed) {
-        statusBadge = `<span class="badge badge-completed" style="font-size:0.68rem;padding:2px 7px;white-space:nowrap;">🟢 ${tRider("Available (Completed ✓)")}</span>`;
-      } else if (isBusy) {
-        statusBadge = `<span class="badge badge-warning" style="font-size:0.68rem;padding:2px 6px;white-space:nowrap;">${tRider("Busy")}</span>`;
-      } else {
-        statusBadge = `<span class="badge badge-success" style="font-size:0.68rem;padding:2px 6px;white-space:nowrap;">🟢 ${tRider("Available")}</span>`;
-      }
-
-      let detailHtml = "";
-      if (actStatus === "accepted") {
-        const destPart = r.trip_destination ? ` &bull; Dest: <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
-        detailHtml = `<div class="co-rider-status-detail status-accepting">🟡 ${tRider("Accepting booking &bull; Heading to pickup")}${destPart}</div>`;
-      } else if (actStatus === "in_progress") {
-        const destPart = r.trip_destination ? `: <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
-        detailHtml = `<div class="co-rider-status-detail status-heading">🟠 ${tRider("Heading to destination")}${destPart}</div>`;
-      } else if (r.recent_completed) {
-        detailHtml = `<div class="co-rider-status-detail status-completed">✓ ${tRider("Completed trip &bull; Ready for next booking")}</div>`;
-      } else if (!isSelf) {
-        detailHtml = `<div class="co-rider-status-detail status-available">🟢 ${tRider("Ready to take bookings")}</div>`;
-      }
-
-      const town = escapeHtml(r.municipality || 'Camiguin');
-      const freeCallBtn = (!isSelf)
-        ? `<button type="button" class="btn btn-sm btn-inapp-call co-rider-inapp-call-btn" data-rider-id="${r.id}" data-rider-name="${escapeHtml(r.name)}" data-rider-phone="${escapeHtml(r.phone || '')}" data-rider-town="${town}" style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${tRider('Free In-App Voice Call')}">🎙️ ${tRider("Free Call")}</button>`
-        : '';
-      const phoneBtn = (!isSelf && r.phone)
-        ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Call</a>`
-        : '';
-
-      let transferTooltip = tRider("Transfer active trip to this rider");
-      let transferBtnLabel = tRider("🔄 Transfer to Rider");
-      if (isDisabled) {
-        if (actStatus === "in_progress") {
-          transferTooltip = tRider("Rider heading to destination");
-          transferBtnLabel = tRider("Heading Dest");
-        } else {
-          transferTooltip = tRider("Rider is accepting a booking");
-          transferBtnLabel = tRider("Busy");
-        }
-      }
-      const transferBtn = (!isSelf && targetForCoRider)
-        ? `<button type="button" class="btn btn-sm btn-transfer-emergency co-rider-transfer-btn" data-rider-id="${r.id}" ${isDisabled ? "disabled" : ""} style="font-size:0.75rem;padding:4px 9px;white-space:nowrap;" title="${transferTooltip}">${transferBtnLabel}</button>`
-        : '';
-
-      const hasActions = Boolean(transferBtn || freeCallBtn || phoneBtn);
-      const actionsHtml = hasActions
-        ? `<div class="co-rider-actions">${transferBtn}${freeCallBtn}${phoneBtn}</div>`
-        : '';
-
-      return `
-        <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
-          ${avatarHtml}
-          <div class="co-rider-info">
-            <div class="co-rider-name-row">
-              <span class="co-rider-name">${escapeHtml(r.name)}</span>
-              ${selfBadge}
-              ${statusBadge}
-            </div>
-            <div class="co-rider-sub">
-              🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
-            </div>
-            ${detailHtml}
-            <div class="co-rider-footer-row">
-              <span class="co-rider-town">📍 ${town}</span>
-              ${actionsHtml}
-            </div>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  if (coRidersList) {
-    coRidersList.addEventListener("click", (e) => {
-      const callBtn = e.target.closest(".co-rider-inapp-call-btn");
-      if (callBtn && !callBtn.disabled) {
-        const rid = Number(callBtn.getAttribute("data-rider-id"));
-        const rName = callBtn.getAttribute("data-rider-name") || "Co-Rider";
-        const rPhone = callBtn.getAttribute("data-rider-phone") || "";
-        const rTown = callBtn.getAttribute("data-rider-town") || "Camiguin";
-        if (rid && window.CCRCVoiceCall && typeof window.CCRCVoiceCall.startRiderCall === "function") {
-          window.CCRCVoiceCall.startRiderCall(rid, rName, rPhone, rTown);
-        }
-        return;
-      }
-
-      const btn = e.target.closest(".co-rider-transfer-btn");
-      if (!btn || btn.disabled) return;
-      const rid = Number(btn.getAttribute("data-rider-id"));
-      const targetJob = (activeJob && ["accepted", "in_progress"].includes(activeJob.status))
-        ? activeJob
-        : (currentScheduledJobs && currentScheduledJobs.length > 0
-            ? Object.assign({ _fromScheduledList: true }, currentScheduledJobs[0])
-            : null);
-      if (targetJob && rid) {
-        openEmergencyTransferModal(targetJob, rid);
-      }
-    });
-  }
-
   async function fetchCoRiders() {
     if (!currentRider) return;
     try {
       const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
-      if (res.status === 401) {
-        handleExpiredRiderSession();
-        return;
-      }
       if (!res.ok) return;
       const data = await res.json();
       const list = data.co_riders || [];
 
       if (coRidersCountPill) {
-        const busyCount = list.filter((x) => x.has_active_job).length;
-        const availCount = list.length - busyCount;
-        if (busyCount > 0) {
-          coRidersCountPill.textContent = `${list.length} Online (${availCount} Available, ${busyCount} Busy)`;
-        } else {
-          coRidersCountPill.textContent = `${list.length} Online`;
-        }
+        coRidersCountPill.textContent = `${list.length} Online`;
       }
 
-      renderCoRidersList(list);
+      if (!coRidersList) return;
+
+      if (list.length === 0) {
+        coRidersList.innerHTML = `
+          <div class="empty-state" style="padding:1rem;">
+            <span class="text-muted">Ikaw pa lang ang online rider karon. Paabota ang imong mga kauban!</span>
+          </div>
+        `;
+        return;
+      }
+
+      coRidersList.innerHTML = list.map((r) => {
+        const isSelf = r.is_self;
+        const avatarHtml = r.avatar_url
+          ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
+          : `<div class="co-rider-avatar-placeholder">🛵</div>`;
+
+        const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">Ikaw</span>` : '';
+        const town = escapeHtml(r.municipality || 'Camiguin');
+        const phoneBtn = (!isSelf && r.phone)
+          ? `<a href="tel:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="Call Rider">📞 Tawag</a>`
+          : '';
+
+        return `
+          <div class="co-rider-item ${isSelf ? 'is-self' : ''}">
+            ${avatarHtml}
+            <div class="co-rider-info">
+              <div class="co-rider-name-row">
+                <span class="co-rider-name">${escapeHtml(r.name)}</span>
+                ${selfBadge}
+              </div>
+              <div class="co-rider-sub">
+                🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
+              </div>
+              <span class="co-rider-town">📍 ${town}</span>
+            </div>
+            <div class="co-rider-actions">
+              ${phoneBtn}
+            </div>
+          </div>
+        `;
+      }).join("");
 
       // Update Radar Map Pins if map initialized
       if (radarMap) {
@@ -3400,29 +1806,9 @@
           if (r.last_lat && r.last_lng) {
             activeIds.add(r.id);
             const isSelf = r.is_self;
-            const actStatus = r.activity_status || (r.has_active_job ? "accepted" : "available");
-            let pinColor = "#16a34a";
-            let pinIcon = "🟢";
-            let statusText = `🟢 ${tRider("Available")}`;
-            if (actStatus === "accepted") {
-              pinColor = "#d97706";
-              pinIcon = "🟡";
-              statusText = `🟡 ${tRider("Accepting Booking")}`;
-            } else if (actStatus === "in_progress") {
-              pinColor = "#ea580c";
-              pinIcon = "🚀";
-              statusText = `🟠 ${tRider("Heading Destination")}`;
-            } else if (r.has_active_job) {
-              pinColor = "#eab308";
-              pinIcon = "🛵";
-              statusText = `🟡 ${tRider("Busy")}`;
-            }
-            if (isSelf) {
-              pinColor = "#f97316";
-              pinIcon = "🛵";
-            }
-
-            const iconHtml = `<div style="background:${pinColor};color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">${pinIcon}</div>`;
+            const iconHtml = isSelf
+              ? `<div style="background:#f97316;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🛵</div>`
+              : `<div style="background:#16a34a;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🟢</div>`;
 
             const customIcon = L.divIcon({
               className: "co-rider-radar-pin",
@@ -3431,23 +1817,12 @@
               iconAnchor: [17, 17],
             });
 
-            const destInfo = r.trip_destination ? `<br>🎯 <strong>${escapeHtml(r.trip_destination)}</strong>` : "";
-            const safeNameJs = escapeHtml(String(r.name || "Co-Rider").replace(/'/g, "\\'"));
-            const safePhoneJs = escapeHtml(String(r.phone || "").replace(/'/g, "\\'"));
-            const safeTownJs = escapeHtml(String(r.municipality || "Camiguin").replace(/'/g, "\\'"));
-            const popupCallBtn = (!isSelf)
-              ? `<div style="margin-top:6px;"><button type="button" class="btn btn-sm btn-inapp-call" onclick="window.startCoRiderInAppCall(${r.id}, '${safeNameJs}', '${safePhoneJs}', '${safeTownJs}')" style="font-size:0.74rem;padding:4px 10px;width:100%;">🎙️ ${tRider("Free Call")}</button></div>`
-              : "";
-            const popupContent = `<strong>${escapeHtml(r.name)}</strong> ${isSelf ? `(${tRider("You")})` : ""}<br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality || "Camiguin")}<br><strong>Status:</strong> ${statusText}${destInfo}${popupCallBtn}`;
-
             if (!radarMarkers[r.id]) {
               radarMarkers[r.id] = L.marker([r.last_lat, r.last_lng], { icon: customIcon })
                 .addTo(radarMap)
-                .bindPopup(popupContent);
+                .bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality)}`);
             } else {
-              radarMarkers[r.id].setIcon(customIcon);
               radarMarkers[r.id].setLatLng([r.last_lat, r.last_lng]);
-              radarMarkers[r.id].setPopupContent(popupContent);
             }
           }
         });
@@ -3461,293 +1836,6 @@
         });
       }
     } catch (_) {}
-  }
-
-  // ---------------------------------------------------------------------------
-  // Digital Official CCRC Club ID Card (Fullscreen Modal + Live Clock + QR)
-  // ---------------------------------------------------------------------------
-  const openRiderIdCardBtn = document.getElementById("open-rider-id-card-btn");
-  const riderOfficialIdModal = document.getElementById("rider-official-id-modal");
-  const oidCloseTopBtn = document.getElementById("oid-close-top-btn");
-  const oidCloseBtn = document.getElementById("oid-close-btn");
-  const oidPrintBtn = document.getElementById("oid-print-btn");
-  const oidCopyLinkBtn = document.getElementById("oid-copy-link-btn");
-  const oidClubName = document.getElementById("oid-club-name");
-  const oidClubId = document.getElementById("oid-club-id");
-  const oidStatusStrip = document.getElementById("oid-status-strip");
-  const oidStatusLabel = document.getElementById("oid-status-label");
-  const oidLiveClock = document.getElementById("oid-live-clock");
-  const oidAvatarImg = document.getElementById("oid-avatar-img");
-  const oidAvatarFallback = document.getElementById("oid-avatar-fallback");
-  const oidVerifiedCheck = document.getElementById("oid-verified-check");
-  const oidName = document.getElementById("oid-name");
-  const oidMunicipality = document.getElementById("oid-municipality");
-  const oidRatingPill = document.getElementById("oid-rating-pill");
-  const oidTripsPill = document.getElementById("oid-trips-pill");
-  const oidOnlinePill = document.getElementById("oid-online-pill");
-  const oidBike = document.getElementById("oid-bike");
-  const oidPlate = document.getElementById("oid-plate");
-  const oidLicense = document.getElementById("oid-license");
-  const oidMemberSince = document.getElementById("oid-member-since");
-  const oidQrImg = document.getElementById("oid-qr-img");
-  const oidHotline = document.getElementById("oid-hotline");
-
-  let oidClockTimer = null;
-  let currentOfficialVerifyUrl = "";
-
-  function formatOfficialPhtClock() {
-    try {
-      return new Intl.DateTimeFormat("en-PH", {
-        timeZone: "Asia/Manila",
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      }).format(new Date()) + " PHT";
-    } catch (_) {
-      return new Date().toLocaleString();
-    }
-  }
-
-  function startOfficialIdLiveClock() {
-    stopOfficialIdLiveClock();
-    if (oidLiveClock) oidLiveClock.textContent = formatOfficialPhtClock();
-    oidClockTimer = setInterval(() => {
-      if (oidLiveClock) oidLiveClock.textContent = formatOfficialPhtClock();
-    }, 1000);
-  }
-
-  function stopOfficialIdLiveClock() {
-    if (oidClockTimer) {
-      clearInterval(oidClockTimer);
-      oidClockTimer = null;
-    }
-  }
-
-  function populateOfficialIdCard(card) {
-    if (!card) return;
-    const clubIdText = card.club_id || `CCRC-${String(Number(card.id) || 0).padStart(4, "0")}`;
-    if (oidClubName && card.club_name) oidClubName.textContent = card.club_name;
-    if (oidClubId) oidClubId.textContent = clubIdText;
-
-    const status = String(card.status || "active").toLowerCase();
-    const isVerified = card.is_verified !== undefined ? Boolean(card.is_verified) : (status === "active");
-    if (oidStatusStrip && oidStatusLabel) {
-      oidStatusStrip.classList.remove("is-verified", "is-pending", "is-suspended");
-      if (isVerified) {
-        oidStatusStrip.classList.add("is-verified");
-        oidStatusLabel.textContent = tRider("✅ VERIFIED ACTIVE MEMBER");
-      } else if (status === "pending") {
-        oidStatusStrip.classList.add("is-pending");
-        oidStatusLabel.textContent = tRider("⏳ PENDING ADMIN VERIFICATION");
-      } else {
-        oidStatusStrip.classList.add("is-suspended");
-        oidStatusLabel.textContent = tRider("🚫 SUSPENDED / INACTIVE RIDER");
-      }
-    }
-    if (oidVerifiedCheck) {
-      oidVerifiedCheck.classList.toggle("hidden", !isVerified);
-    }
-
-    const rName = card.name || "Club Rider";
-    if (oidName) oidName.textContent = rName;
-    if (oidAvatarImg && oidAvatarFallback) {
-      if (card.avatar_url) {
-        oidAvatarImg.src = card.avatar_url;
-        oidAvatarImg.classList.remove("hidden");
-        oidAvatarFallback.classList.add("hidden");
-      } else {
-        oidAvatarImg.classList.add("hidden");
-        oidAvatarFallback.textContent = String(rName).trim().slice(0, 1).toUpperCase() || "R";
-        oidAvatarFallback.classList.remove("hidden");
-      }
-    }
-
-    const muni = card.municipality || "Mambajao";
-    if (oidMunicipality) oidMunicipality.textContent = `📍 ${muni}, Camiguin Island`;
-
-    const ratingVal = Number(card.rating_avg || 5.0).toFixed(1);
-    const revSuffix = typeof card.review_count === "number" ? ` (${card.review_count})` : "";
-    if (oidRatingPill) oidRatingPill.textContent = `⭐ ${ratingVal}${revSuffix}`;
-
-    const trips = Number(card.total_trips || 0);
-    if (oidTripsPill) oidTripsPill.textContent = `🛵 ${trips} ${trips === 1 ? "Trip" : "Trips"}`;
-
-    const isOnline = card.is_online !== undefined ? Boolean(card.is_online) : Boolean(onlineToggle && onlineToggle.checked);
-    if (oidOnlinePill) oidOnlinePill.classList.toggle("hidden", !isOnline);
-
-    if (oidBike) oidBike.textContent = card.bike_model || "Motorcycle";
-    if (oidPlate) oidPlate.textContent = String(card.plate_number || "N/A").toUpperCase();
-    if (oidLicense) oidLicense.textContent = card.license_no ? String(card.license_no).toUpperCase() : "Verified on File";
-    if (oidMemberSince) {
-      if (card.member_since) {
-        oidMemberSince.textContent = card.member_since;
-      } else if (card.created_at) {
-        oidMemberSince.textContent = String(card.created_at).slice(0, 10);
-      } else {
-        oidMemberSince.textContent = "Verified Member";
-      }
-    }
-
-    if (oidHotline && card.club_hotline) oidHotline.textContent = card.club_hotline;
-
-    const rid = card.id;
-    currentOfficialVerifyUrl = card.verify_url || (rid ? `${window.location.origin}/verify/rider/${rid}` : "");
-    if (oidQrImg && rid) {
-      const qrSrc = card.qr_svg_url || `/api/rider/${rid}/id-qr.svg`;
-      if (oidQrImg.getAttribute("data-qr-src") !== qrSrc) {
-        oidQrImg.setAttribute("data-qr-src", qrSrc);
-        oidQrImg.src = qrSrc;
-      }
-    }
-  }
-
-  function closeOfficialRiderIdCard() {
-    if (!riderOfficialIdModal) return;
-    riderOfficialIdModal.classList.add("hidden");
-    stopOfficialIdLiveClock();
-  }
-
-  async function openOfficialRiderIdCard() {
-    if (!riderOfficialIdModal || !currentRider) return;
-    // Instant hydrate from current session data
-    populateOfficialIdCard(currentRider);
-    riderOfficialIdModal.classList.remove("hidden");
-    startOfficialIdLiveClock();
-
-    // Refresh live verified stats & club hotline from DB
-    try {
-      const res = await fetch("/api/rider/id-card");
-      if (res.status === 401) {
-        closeOfficialRiderIdCard();
-        handleExpiredRiderSession();
-        return;
-      }
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.id_card) {
-          populateOfficialIdCard(data.id_card);
-        }
-      }
-    } catch (_) {}
-  }
-
-  if (openRiderIdCardBtn) {
-    openRiderIdCardBtn.addEventListener("click", openOfficialRiderIdCard);
-  }
-  if (oidCloseTopBtn) {
-    oidCloseTopBtn.addEventListener("click", closeOfficialRiderIdCard);
-  }
-  if (oidCloseBtn) {
-    oidCloseBtn.addEventListener("click", closeOfficialRiderIdCard);
-  }
-  if (riderOfficialIdModal) {
-    riderOfficialIdModal.addEventListener("click", (e) => {
-      if (e.target === riderOfficialIdModal) closeOfficialRiderIdCard();
-    });
-  }
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && riderOfficialIdModal && !riderOfficialIdModal.classList.contains("hidden")) {
-      closeOfficialRiderIdCard();
-    }
-  });
-  if (oidPrintBtn) {
-    oidPrintBtn.addEventListener("click", () => {
-      window.print();
-    });
-  }
-  if (oidCopyLinkBtn) {
-    oidCopyLinkBtn.addEventListener("click", async () => {
-      if (!currentOfficialVerifyUrl) return;
-      const origLabel = oidCopyLinkBtn.textContent;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(currentOfficialVerifyUrl);
-          oidCopyLinkBtn.textContent = "✅ Link Copied!";
-          setTimeout(() => {
-            if (oidCopyLinkBtn) oidCopyLinkBtn.textContent = origLabel;
-          }, 2000);
-          return;
-        }
-      } catch (_) {}
-      prompt("Copy your Official Rider Verification link:", currentOfficialVerifyUrl);
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Admin Live Club Advisory Banner for Riders (Auto-Refresh + Dismiss)
-  // ---------------------------------------------------------------------------
-  const riderAdvBanner = document.getElementById("rider-live-advisory-banner");
-  if (riderAdvBanner) {
-    const RIDER_ADV_DISMISS_KEY = "ccrc_dismissed_advisory_rider";
-    const rAdvIconEl = document.getElementById("rider-advisory-icon");
-    const rAdvCatEl = document.getElementById("rider-advisory-cat-label");
-    const rAdvMetaEl = document.getElementById("rider-advisory-meta");
-    const rAdvTitleEl = document.getElementById("rider-advisory-title");
-    const rAdvMsgEl = document.getElementById("rider-advisory-message");
-    const rAdvDismissBtn = document.getElementById("rider-advisory-dismiss-btn");
-
-    function getRiderDismissedRev() {
-      try { return sessionStorage.getItem(RIDER_ADV_DISMISS_KEY) || ""; } catch (_) { return ""; }
-    }
-
-    function applyRiderAdvisory(advisory, visible) {
-      if (!advisory || !visible) {
-        riderAdvBanner.classList.add("hidden");
-        return;
-      }
-      const rev = String(advisory.revision || "");
-      riderAdvBanner.setAttribute("data-revision", rev);
-      if (rev && getRiderDismissedRev() === rev) {
-        riderAdvBanner.classList.add("hidden");
-        return;
-      }
-      const cat = String(advisory.category || "info");
-      riderAdvBanner.className = `ccrc-advisory-banner is-${cat}`;
-      if (rAdvIconEl) rAdvIconEl.textContent = advisory.category_icon || "📢";
-      if (rAdvCatEl) rAdvCatEl.textContent = advisory.category_label || "Club Advisory";
-      if (rAdvMetaEl) rAdvMetaEl.textContent = advisory.updated_label ? `Updated ${advisory.updated_label}` : "";
-      if (rAdvTitleEl) rAdvTitleEl.textContent = advisory.title || "";
-      if (rAdvMsgEl) {
-        const m = String(advisory.message || "").trim();
-        rAdvMsgEl.textContent = m;
-        rAdvMsgEl.classList.toggle("hidden", !m);
-      }
-      riderAdvBanner.classList.remove("hidden");
-    }
-
-    const initRiderAdvRev = riderAdvBanner.getAttribute("data-revision") || "";
-    if (initRiderAdvRev && getRiderDismissedRev() === initRiderAdvRev) {
-      riderAdvBanner.classList.add("hidden");
-    }
-
-    if (rAdvDismissBtn) {
-      rAdvDismissBtn.addEventListener("click", () => {
-        const rev = riderAdvBanner.getAttribute("data-revision") || "";
-        try { if (rev) sessionStorage.setItem(RIDER_ADV_DISMISS_KEY, rev); } catch (_) {}
-        riderAdvBanner.classList.add("hidden");
-      });
-    }
-
-    async function refreshRiderLiveAdvisory() {
-      if (document.hidden) return;
-      try {
-        const res = await fetch("/api/advisory?audience=riders", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data && data.success) {
-          applyRiderAdvisory(data.advisory, Boolean(data.visible));
-        }
-      } catch (_) {}
-    }
-
-    setInterval(refreshRiderLiveAdvisory, 45000);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshRiderLiveAdvisory();
-    });
   }
 
   // On Load: Check stored session
