@@ -354,11 +354,25 @@
   async function handleRiderLogout() {
     if (confirm("Are you sure you want to log out of your Rider Account?")) {
       setStoredRider(null);
+      try {
+        localStorage.removeItem("ccrc_rider");
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (_) {}
       document.documentElement.classList.remove("is-rider-session");
       document.body.classList.remove("rider-logged-in");
       if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
       if (pollInterval) clearInterval(pollInterval);
       releaseRiderWakeLock();
+
+      document.querySelectorAll(".rider-logged-only").forEach((el) => {
+        el.classList.add("hidden");
+        el.style.display = "none";
+      });
+      document.querySelectorAll(".rider-unlogged-only").forEach((el) => {
+        el.classList.remove("hidden");
+        el.style.display = "";
+      });
+
       try {
         await fetch("/api/rider/logout", { method: "POST" });
       } catch (_) {}
@@ -393,10 +407,15 @@
       el.classList.add("hidden");
     });
 
-    const bLogout = document.getElementById("bottom-nav-rider-logout");
-    if (bLogout) bLogout.classList.remove("hidden");
-    const hLogout = document.getElementById("header-rider-logout-btn");
-    if (hLogout) hLogout.classList.remove("hidden");
+    // Show rider logged-in controls, hide unlogged controls
+    document.querySelectorAll(".rider-logged-only").forEach((el) => {
+      el.classList.remove("hidden");
+      el.style.display = "";
+    });
+    document.querySelectorAll(".rider-unlogged-only").forEach((el) => {
+      el.classList.add("hidden");
+      el.style.display = "none";
+    });
 
     authSection.classList.add("hidden");
     dashSection.classList.remove("hidden");
@@ -1966,6 +1985,15 @@
     const saved = getStoredRider();
     if (saved) {
       initRiderSession(saved);
+    } else {
+      document.querySelectorAll(".rider-logged-only").forEach((el) => {
+        el.classList.add("hidden");
+        el.style.display = "none";
+      });
+      document.querySelectorAll(".rider-unlogged-only").forEach((el) => {
+        el.classList.remove("hidden");
+        el.style.display = "";
+      });
     }
   });
 })();
