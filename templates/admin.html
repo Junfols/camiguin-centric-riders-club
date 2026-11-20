@@ -615,7 +615,7 @@
             <tr class="txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }}" style="border-bottom:1px solid var(--border);">
               <td style="padding:8px;font-family:monospace;font-weight:700;color:#0284c7;">{{ t.transaction_code }}</td>
               <td style="padding:8px;font-size:0.8rem;white-space:nowrap;color:#64748b;">
-                {{ t.created_at[:16].replace('T', ' ') if t.created_at else 'N/A' }}
+                {{ (t.created_at|string)[:16].replace('T', ' ') if t.created_at else 'N/A' }}
               </td>
               <td style="padding:8px;">
                 <div style="display:flex;align-items:center;gap:4px;">
@@ -679,7 +679,7 @@
           <div class="mobile-record-row-top">
             <div>
               <span style="font-family:monospace;font-weight:700;color:#0284c7;font-size:0.88rem;">{{ t.transaction_code }}</span>
-              <div style="font-size:0.72rem;color:#64748b;">{{ t.created_at[:16].replace('T', ' ') if t.created_at else '' }}</div>
+              <div style="font-size:0.72rem;color:#64748b;">{{ (t.created_at|string)[:16].replace('T', ' ') if t.created_at else '' }}</div>
             </div>
             <div>
               {% if t.status == 'completed' %}
@@ -787,7 +787,7 @@
                 ₱{{ "%.2f"|format(c.total_spent|float if c.total_spent else 0.0) }}
               </td>
               <td style="padding:8px;font-size:0.8rem;color:#64748b;white-space:nowrap;">
-                {{ c.last_active_at[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
+                {{ (c.last_active_at|string)[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
               </td>
               <td style="padding:8px;white-space:nowrap;">
                 {% if c.is_verified %}
