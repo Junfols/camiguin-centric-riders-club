@@ -393,7 +393,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
 
     # -------------------------------------------------------------------------
-    # Official CCRC Member ID View Route (Bulletproof Fallback)
+    # Official CCRC PVC ID Card & Public Verification Routes
     # -------------------------------------------------------------------------
     @app.get("/rider/<int:rider_id>/id-card")
     def rider_id_card_view(rider_id: int):
@@ -405,7 +405,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         qr_code_svg = ""
         try:
             from qr_svg import render_qr_svg
-            verify_url = f"{request.host_url.rstrip('/')}/rider"
+            verify_url = f"{request.host_url.rstrip('/')}/verify/rider/{rider['id']}"
             qr_code_svg = render_qr_svg(verify_url, border=1)
         except Exception as e:
             print("QR render notice:", e)
@@ -414,14 +414,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         try:
             return render_template("id_card.html", rider=rider, qr_svg=qr_code_svg)
         except Exception:
-            # Automatic fallback layout kung wala pa makit-an ang templates/id_card.html
+            # Inline fallback kon wala pa na-create ang templates/id_card.html
             name = rider.get("name") or "CCRC Rider"
             plate = rider.get("plate_number") or "N/A"
             bike = rider.get("bike_model") or "Motorcycle"
             mun = rider.get("municipality") or "Mambajao"
             lic = rider.get("license_no") or "N/A"
             avatar = rider.get("avatar_url") or ""
-            photo_html = f'<img src="{avatar}" style="width:100%;height:100%;object-fit:cover;">' if avatar else '<span style="font-size:28pt;">👤</span>'
+            photo_html = f'<img src="{avatar}" style="width:100%;height:100%;object-fit:cover;">' if avatar else '<span style="font-size:26pt;">👤</span>'
 
             return f"""<!DOCTYPE html>
 <html lang="ceb">
@@ -430,29 +430,30 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CCRC ID - {name}</title>
   <style>
-    body {{ background: #0b1120; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; }}
-    .btn {{ background: #f97316; color: #fff; border: none; padding: 10px 20px; border-radius: 999px; font-weight: bold; cursor: pointer; margin-bottom: 20px; font-size: 14px; box-shadow: 0 4px 12px rgba(249,115,22,0.35); }}
+    body {{ background: #0b1120; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; }}
+    .btn {{ background: #f97316; color: #fff; border: none; padding: 10px 20px; border-radius: 999px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }}
     .cards-wrap {{ display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }}
-    .pvc-card {{ width: 85.6mm; height: 53.98mm; background: #ffffff; border-radius: 3.2mm; overflow: hidden; box-shadow: 0 15px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; position: relative; box-sizing: border-box; }}
-    .front-head {{ background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; padding: 5px 8px; display: flex; align-items: center; gap: 6px; border-bottom: 2.5px solid #f97316; }}
-    .front-head img {{ width: 26px; height: 26px; object-fit: contain; }}
-    .front-head h1 {{ margin: 0; font-size: 8pt; font-weight: 900; color: #fff; }}
-    .front-head p {{ margin: 0; font-size: 5pt; color: #f97316; font-weight: 700; text-transform: uppercase; }}
+    .pvc-card {{ width: 85.6mm; height: 53.98mm; background: #fff; border-radius: 3.2mm; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; flex-direction: column; }}
+    .front-head {{ background: #0f172a; color: #fff; padding: 5px 8px; display: flex; align-items: center; gap: 6px; border-bottom: 2.5px solid #f97316; }}
+    .front-head img {{ width: 26px; height: 26px; border-radius: 50%; }}
+    .front-head h1 {{ margin: 0; font-size: 7.8pt; font-weight: 900; color: #fff; }}
+    .front-head p {{ margin: 0; font-size: 5pt; color: #f97316; font-weight: 700; }}
     .front-body {{ flex: 1; display: flex; padding: 6px 8px; gap: 8px; align-items: center; }}
     .photo-box {{ width: 24mm; height: 30mm; border: 1.5px solid #0f172a; border-radius: 2mm; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f5f9; flex-shrink: 0; }}
     .info-box {{ flex: 1; line-height: 1.25; }}
-    .r-name {{ font-size: 9.5pt; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 3px; }}
+    .r-name {{ font-size: 9pt; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 3px; }}
     .row {{ font-size: 5.2pt; color: #64748b; margin-bottom: 1.5px; text-transform: uppercase; }}
     .row strong {{ color: #0f172a; font-size: 6.2pt; }}
-    .tag {{ display: inline-block; background: #dcfce7; color: #15803d; padding: 1px 4px; border-radius: 3px; font-weight: 900; font-size: 4.8pt; margin-top: 2px; }}
-    .front-foot {{ background: #0f172a; color: #94a3b8; font-size: 4.5pt; padding: 3px 8px; display: flex; justify-content: space-between; }}
-    .front-foot strong {{ color: #f8fafc; }}
+    .front-foot {{ background: #0f172a; color: #94a3b8; font-size: 4.8pt; padding: 3px 8px; display: flex; justify-content: space-between; }}
+    .qr-box {{ width: 26mm; height: 26mm; background: #fff; border: 1px solid #cbd5e1; border-radius: 2mm; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }}
+    .qr-box svg {{ width: 100%; height: 100%; }}
     @media print {{ body {{ background: transparent; padding: 0; }} .btn {{ display: none; }} .pvc-card {{ box-shadow: none; border: 0.1mm solid #cbd5e1; }} }}
   </style>
 </head>
 <body>
-  <button class="btn" onclick="window.print()">🖨️ Print PVC ID (CR80)</button>
+  <button class="btn" onclick="window.print()">🖨️ Print PVC ID (Front &amp; Back)</button>
   <div class="cards-wrap">
+    <!-- FRONT -->
     <div class="pvc-card">
       <div class="front-head">
         <img src="/static/icons/logo.png" onerror="this.src='/static/icons/icon-192.png'">
@@ -465,22 +466,95 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         <div class="photo-box">{photo_html}</div>
         <div class="info-box">
           <div class="r-name">{name}</div>
-          <div class="row">Control No: <strong style="color:#ea580c;font-family:monospace;">CCRC-{rider['id']:04d}-R</strong></div>
+          <div class="row">ID No: <strong style="color:#ea580c;font-family:monospace;">CCRC-{rider['id']:04d}-R</strong></div>
           <div class="row">Motorcycle: <strong>{bike}</strong></div>
-          <div class="row">Plate Number: <strong style="font-family:monospace;">{plate}</strong></div>
+          <div class="row">Plate: <strong style="font-family:monospace;">{plate}</strong></div>
           <div class="row">License: <strong style="font-family:monospace;">{lic}</strong></div>
-          <div class="row">Municipality: <strong>{mun}, Camiguin</strong></div>
-          <div><span class="tag">✓ OFFICIAL MEMBER</span></div>
+          <div class="row">Station: <strong>{mun}, Camiguin</strong></div>
         </div>
       </div>
       <div class="front-foot">
-        <span>Hotline: <strong>0917 555 0199</strong></span>
-        <span>JRG IT SOLUTIONS 2026</span>
+        <span>Hotline: 0917 555 0199</span>
+        <span>ISSUED: 2026</span>
+      </div>
+    </div>
+    <!-- BACK WITH QR -->
+    <div class="pvc-card" style="padding: 10px; justify-content: space-between;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div class="qr-box">{qr_code_svg}</div>
+        <div>
+          <h3 style="margin:0 0 4px; font-size:7pt; font-weight:900; color:#0f172a;">SCAN TO VERIFY</h3>
+          <p style="margin:0; font-size:4.8pt; color:#475569; line-height:1.3;">Gamita ang camera sa selpon aron masubay ang official active verification status niining rider sa Camiguin.</p>
+        </div>
+      </div>
+      <div style="border-top:1px dashed #cbd5e1; padding-top:4px; font-size:4.2pt; color:#64748b;">
+        Kini nga kard gipanag-iya sa Camiguin Centric Riders Club. Non-transferable.
       </div>
     </div>
   </div>
 </body>
 </html>"""
+
+    @app.get("/api/rider/<int:rider_id>/id-qr.svg")
+    def api_rider_qr_svg(rider_id: int):
+        conn = get_db()
+        rider = get_rider_by_id(conn, rider_id)
+        if not rider:
+            return "Rider not found", 404
+
+        verify_url = f"{request.host_url.rstrip('/')}/verify/rider/{rider['id']}"
+        svg_content = render_qr_svg(verify_url, border=1)
+        return Response(svg_content, mimetype="image/svg+xml")
+
+    @app.get("/verify/rider/<int:rider_id>")
+    def verify_rider_public_page(rider_id: int):
+        conn = get_db()
+        rider = get_rider_by_id(conn, rider_id)
+        if not rider:
+            return render_template("verify_rider.html", rider=None, error="Wala makit-i ang rider account."), 404
+
+        raw_license = rider.get("license_no") or ""
+        if len(raw_license) >= 6:
+            masked_license = f"{raw_license[:3]}-••-•••{raw_license[-3:]}"
+        else:
+            masked_license = "VERIFIED-LIC"
+
+        return render_template(
+            "verify_rider.html",
+            rider=rider,
+            masked_license=masked_license,
+            verify_time=get_now_pht().strftime("%B %d, %Y - %I:%M %p PHT"),
+        )
+
+    @app.get("/api/rider/id-card")
+    def api_rider_id_card():
+        rider_id = session.get("rider_id")
+        if not rider_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        conn = get_db()
+        rider = get_rider_by_id(conn, int(rider_id))
+        if not rider:
+            return jsonify({"error": "Rider not found"}), 404
+
+        return jsonify({
+            "success": True,
+            "rider": {
+                "id": rider["id"],
+                "club_id_no": f"CCRC-{rider['id']:04d}",
+                "name": rider["name"],
+                "phone": rider["phone"],
+                "bike_model": rider["bike_model"],
+                "plate_number": rider["plate_number"],
+                "license_no": rider.get("license_no", ""),
+                "municipality": rider.get("municipality", "Mambajao"),
+                "avatar_url": rider.get("avatar_url", ""),
+                "status": rider.get("status", "active"),
+                "rating_avg": rider.get("rating_avg", 5.0),
+                "total_trips": rider.get("total_trips", 0),
+                "created_at": rider.get("created_at", ""),
+            }
+        })
 
     # -------------------------------------------------------------------------
     # Extended APIs: Tours, Promos, Customer, Reviews, Online Riders
