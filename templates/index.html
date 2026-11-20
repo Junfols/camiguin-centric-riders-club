@@ -295,10 +295,10 @@
           </div>
         </div>
 
-        <!-- Optional Conditions & Surcharges (Clean Collapsible Accordion) -->
+        <!-- Errand Stops & Queuing Accordion (For Pabili / Pasugo / Pabayad) -->
         <details class="fare-options-accordion hidden" id="fare-options-accordion">
           <summary class="fare-options-summary">
-            <span>⚙️ Special Route Options &amp; Additional Stops <small class="text-muted">(Optional)</small></span>
+            <span>🏪 Store Queuing &amp; Extra Stops <small class="text-muted">(Optional)</small></span>
             <span class="chevron-icon">&darr;</span>
           </summary>
           <div class="fare-options-content">
@@ -319,16 +319,26 @@
                 <option value="3">+3 Extra Stores (+₱60)</option>
               </select>
             </div>
-
-            <label class="custom-check-row">
-              <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
-              <div>
-                <strong>Hinterland / Mountain Route (+₱30)</strong>
-                <small class="text-muted">Soro-soro, Highland, Utopia, Binunsaran, Granelandia</small>
-              </div>
-            </label>
           </div>
         </details>
+
+        <!-- Dedicated Hinterland / Mountain Route Toggle (Active for ALL services) -->
+        <div class="hinterland-toggle-card" id="hinterland-toggle-container">
+          <label class="hinterland-label" for="opt-hinterland">
+            <div class="hinterland-left">
+              <div class="hinterland-title-row">
+                <span class="hinterland-icon">🏔️</span>
+                <span class="hinterland-title">Hinterland / Bukid Route (+₱30)</span>
+                <span id="hinterland-badge" class="hinterland-active-badge hidden">✓ +₱30 Added</span>
+              </div>
+              <small class="hinterland-desc">Soro-soro, Highland, Katibawasan Falls, Utopia, Binunsaran, Granelandia, Itum, Tuasan Falls</small>
+            </div>
+            <div class="hinterland-switch">
+              <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
+              <span class="hinterland-switch-slider"></span>
+            </div>
+          </label>
+        </div>
 
         <!-- Customer Contact Details (Clean Modern Grid) -->
         <div class="customer-info-card">
@@ -464,6 +474,9 @@
               <small class="text-muted">🛣️ Kalsada / Road Route</small>
             </div>
           </div>
+
+          <!-- Live Fare Breakdown Chips (Hinterland, Errand Fee, Queuing) -->
+          <div id="fare-breakdown-badges" class="fare-breakdown-badges"></div>
 
           <div id="promo-discount-row" class="hidden" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;color:#16a34a;font-weight:600;font-size:0.9rem;">
             <span>🎟️ Voucher Discount:</span>
@@ -682,5 +695,5 @@
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
 </script>
-<script src="/static/js/app.js?v=27"></script>
+<script src="/static/js/app.js?v=28"></script>
 {% endblock %}
