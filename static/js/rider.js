@@ -362,7 +362,7 @@
       try {
         await fetch("/api/rider/logout", { method: "POST" });
       } catch (_) {}
-      window.location.href = "/";
+      window.location.href = "/rider";
     }
   }
 
