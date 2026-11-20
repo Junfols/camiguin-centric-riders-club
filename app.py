@@ -275,7 +275,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         is_large_store = bool(data.get("is_large_store", False))
         extra_stores_count = int(data.get("extra_stores_count") or 0)
         is_bulky = bool(data.get("is_bulky_or_high_value", False))
-        is_hinterland = bool(data.get("is_hinterland", False))
+
+        # Auto-detect hinterland route from addresses or explicit flag
+        full_addr = f"{p_addr} {d_addr}".lower()
+        hinterland_keywords = [
+            "sorosoro", "soro'soro", "soro-soro", "soro soro",
+            "highland", "utopia", "binunsaran", "granelandia",
+            "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
+            "vulcan", "bukid", "mountain", "hinterland"
+        ]
+        is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
 
         # Auto-geocode text addresses if coordinates are missing
         if (not p_lat or not p_lng) and p_addr:
@@ -752,8 +761,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         # Auto-detect hinterland route
         full_addr = f"{pickup_address} {dropoff_address} {item_notes}".lower()
-        hinterland_keywords = ["sorosoro", "soro'soro", "soro-soro", "highland", "utopia", "binunsaran", "granelandia", "itum", "hinterland"]
+        hinterland_keywords = [
+            "sorosoro", "soro'soro", "soro-soro", "soro soro",
+            "highland", "utopia", "binunsaran", "granelandia",
+            "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
+            "vulcan", "bukid", "mountain", "hinterland"
+        ]
         is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
+
+        # Prepend note tag if hinterland route is active and not yet mentioned
+        if is_hinterland and "hinterland" not in item_notes.lower() and "bukid" not in item_notes.lower():
+            tag = "[🏔️ Hinterland / Bukid Route +₱30]"
+            item_notes = f"{tag} {item_notes}".strip()
 
         fare_amount, estimated_km, breakdown = calculate_fare(
             km=km,
