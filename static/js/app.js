@@ -34,7 +34,6 @@
   const notesLabel = document.getElementById("notes-label");
   const fareDisplay = document.getElementById("fare-display");
   const fareKmDisplay = document.getElementById("fare-km-display");
-  const fareBreakdownBadges = document.getElementById("fare-breakdown-badges");
   const fareHintText = document.getElementById("fare-hint-text");
   const bookingForm = document.getElementById("booking-request-form");
   const submitBtn = document.getElementById("submit-booking-btn");
@@ -56,7 +55,6 @@
   const optExtraStores = document.getElementById("opt-extra-stores");
   const optHinterland = document.getElementById("opt-hinterland");
   const estimatedBudgetInput = document.getElementById("estimated-budget");
-  const itemNotesField = document.getElementById("item-notes");
   const openMatrixBtn = document.getElementById("open-matrix-btn");
   const closeMatrixBtn = document.getElementById("close-matrix-btn");
   const fareMatrixModal = document.getElementById("fare-matrix-modal");
@@ -72,2601 +70,10 @@
       .replace(/'/g, "&#039;");
   }
 
-  let toastTimer = null;
-  function showMapToast(msg) {
-    if (!mapToastPill) return;
-    mapToastPill.textContent = msg;
-    mapToastPill.classList.remove("hidden");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      mapToastPill.classList.add("hidden");
-    }, 3500);
-  }
-
-  // Camiguin Master Places Directory (Synced with db.py Verified OSM Coordinates)
+  // Camiguin Master Places Directory (126+ Locations)
   let CAMIGUIN_PLACES = [
   {
-    "name": "Poblacion, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "mambajao",
-      "poblacion mambajao",
-      "poblacion",
-      "centro mambajao",
-      "mambajao proper",
-      "mambajao town"
-    ],
-    "lat": 9.25405,
-    "lng": 124.71636,
-    "mun": "Mambajao",
-    "full_address": "Poblacion, Mambajao, Camiguin"
-  },
-  {
-    "name": "Agoho, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "agoho",
-      "brgy agoho",
-      "barangay agoho",
-      "agoho sandy beach",
-      "agoho beach"
-    ],
-    "lat": 9.24479,
-    "lng": 124.66854,
-    "mun": "Mambajao",
-    "full_address": "Agoho, Mambajao, Camiguin"
-  },
-  {
-    "name": "Anito, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "anito",
-      "brgy anito",
-      "barangay anito"
-    ],
-    "lat": 9.22961,
-    "lng": 124.7444,
-    "mun": "Mambajao",
-    "full_address": "Anito, Mambajao, Camiguin"
-  },
-  {
-    "name": "Balbagon, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "balbagon",
-      "brgy balbagon",
-      "barangay balbagon"
-    ],
-    "lat": 9.23802,
-    "lng": 124.7395,
-    "mun": "Mambajao",
-    "full_address": "Balbagon, Mambajao, Camiguin"
-  },
-  {
-    "name": "Baylao, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "baylao",
-      "bailao",
-      "brgy baylao",
-      "barangay baylao"
-    ],
-    "lat": 9.24674,
-    "lng": 124.69862,
-    "mun": "Mambajao",
-    "full_address": "Baylao, Mambajao, Camiguin"
-  },
-  {
-    "name": "Benhaan, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "benhaan",
-      "brgy benhaan",
-      "barangay benhaan"
-    ],
-    "lat": 9.20322,
-    "lng": 124.76773,
-    "mun": "Mambajao",
-    "full_address": "Benhaan, Mambajao, Camiguin"
-  },
-  {
-    "name": "Bug-ong, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "bug-ong",
-      "bugong",
-      "brgy bug-ong",
-      "barangay bugong",
-      "barangay bug-ong"
-    ],
-    "lat": 9.25117,
-    "lng": 124.67809,
-    "mun": "Mambajao",
-    "full_address": "Bug-ong, Mambajao, Camiguin"
-  },
-  {
-    "name": "Kuguita, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "kuguita",
-      "cuguita",
-      "brgy kuguita",
-      "barangay kuguita"
-    ],
-    "lat": 9.24839,
-    "lng": 124.68679,
-    "mun": "Mambajao",
-    "full_address": "Kuguita, Mambajao, Camiguin"
-  },
-  {
-    "name": "Magting, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "magting",
-      "brgy magting",
-      "barangay magting",
-      "magting mambajao"
-    ],
-    "lat": 9.21895,
-    "lng": 124.75603,
-    "mun": "Mambajao",
-    "full_address": "Magting, Mambajao, Camiguin"
-  },
-  {
-    "name": "Naasag, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "naasag",
-      "brgy naasag",
-      "barangay naasag"
-    ],
-    "lat": 9.23512,
-    "lng": 124.64924,
-    "mun": "Mambajao",
-    "full_address": "Naasag, Mambajao, Camiguin"
-  },
-  {
-    "name": "Pandan, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "pandan",
-      "pandan mambajao",
-      "brgy pandan",
-      "barangay pandan"
-    ],
-    "lat": 9.23818,
-    "lng": 124.72698,
-    "mun": "Mambajao",
-    "full_address": "Pandan, Mambajao, Camiguin"
-  },
-  {
-    "name": "Soro-soro, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "soro-soro",
-      "sorosoro",
-      "soro soro",
-      "soro'soro",
-      "brgy sorosoro",
-      "brgy soro-soro",
-      "hinterland"
-    ],
-    "lat": 9.22961,
-    "lng": 124.72617,
-    "mun": "Mambajao",
-    "full_address": "Soro-soro, Mambajao, Camiguin"
-  },
-  {
-    "name": "Tagdo, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "tagdo",
-      "brgy tagdo",
-      "barangay tagdo",
-      "upper tagdo",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2384,
-    "lng": 124.6885,
-    "mun": "Mambajao",
-    "full_address": "Tagdo, Mambajao, Camiguin"
-  },
-  {
-    "name": "Tupsan, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "tupsan",
-      "tupsan mambajao",
-      "brgy tupsan",
-      "barangay tupsan"
-    ],
-    "lat": 9.20186,
-    "lng": 124.77742,
-    "mun": "Mambajao",
-    "full_address": "Tupsan, Mambajao, Camiguin"
-  },
-  {
-    "name": "Yumbing, Mambajao",
-    "cat": "barangay",
-    "keywords": [
-      "yumbing",
-      "brgy yumbing",
-      "barangay yumbing"
-    ],
-    "lat": 9.24346,
-    "lng": 124.66295,
-    "mun": "Mambajao",
-    "full_address": "Yumbing, Mambajao, Camiguin"
-  },
-  {
-    "name": "Poblacion, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "mahinog",
-      "poblacion mahinog",
-      "mahinog centro",
-      "centro mahinog",
-      "mahinog proper"
-    ],
-    "lat": 9.15434,
-    "lng": 124.78761,
-    "mun": "Mahinog",
-    "full_address": "Poblacion, Mahinog, Camiguin"
-  },
-  {
-    "name": "Benoni, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "benoni",
-      "brgy benoni",
-      "barangay benoni",
-      "benoni mahinog"
-    ],
-    "lat": 9.13912,
-    "lng": 124.79328,
-    "mun": "Mahinog",
-    "full_address": "Benoni, Mahinog, Camiguin"
-  },
-  {
-    "name": "Binaliwan, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "binaliwan",
-      "brgy binaliwan",
-      "barangay binaliwan",
-      "binitinan",
-      "brgy binitinan",
-      "barangay binitinan"
-    ],
-    "lat": 9.16189,
-    "lng": 124.78917,
-    "mun": "Mahinog",
-    "full_address": "Binaliwan, Mahinog, Camiguin"
-  },
-  {
-    "name": "Catohogan, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "catohogan",
-      "katohogan",
-      "brgy catohogan",
-      "barangay catohogan"
-    ],
-    "lat": 9.18562,
-    "lng": 124.78183,
-    "mun": "Mahinog",
-    "full_address": "Catohogan, Mahinog, Camiguin"
-  },
-  {
-    "name": "Hubangon, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "hubangon",
-      "brgy hubangon",
-      "barangay hubangon"
-    ],
-    "lat": 9.17296,
-    "lng": 124.78517,
-    "mun": "Mahinog",
-    "full_address": "Hubangon, Mahinog, Camiguin"
-  },
-  {
-    "name": "Owakan, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "owakan",
-      "brgy owakan",
-      "barangay owakan"
-    ],
-    "lat": 9.15373,
-    "lng": 124.76255,
-    "mun": "Mahinog",
-    "full_address": "Owakan, Mahinog, Camiguin"
-  },
-  {
-    "name": "Puntod, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "puntod",
-      "brgy puntod",
-      "barangay puntod"
-    ],
-    "lat": 9.15603,
-    "lng": 124.77313,
-    "mun": "Mahinog",
-    "full_address": "Puntod, Mahinog, Camiguin"
-  },
-  {
-    "name": "San Isidro, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san isidro",
-      "san isidro mahinog",
-      "brgy san isidro",
-      "barangay san isidro"
-    ],
-    "lat": 9.18171,
-    "lng": 124.76971,
-    "mun": "Mahinog",
-    "full_address": "San Isidro, Mahinog, Camiguin"
-  },
-  {
-    "name": "San Jose, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san jose",
-      "san jose mahinog",
-      "brgy san jose",
-      "barangay san jose"
-    ],
-    "lat": 9.16774,
-    "lng": 124.78382,
-    "mun": "Mahinog",
-    "full_address": "San Jose, Mahinog, Camiguin"
-  },
-  {
-    "name": "San Miguel, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san miguel",
-      "san miguel mahinog",
-      "brgy san miguel",
-      "barangay san miguel"
-    ],
-    "lat": 9.13051,
-    "lng": 124.78384,
-    "mun": "Mahinog",
-    "full_address": "San Miguel, Mahinog, Camiguin"
-  },
-  {
-    "name": "San Roque, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "san roque",
-      "san roque mahinog",
-      "brgy san roque",
-      "barangay san roque"
-    ],
-    "lat": 9.15279,
-    "lng": 124.79187,
-    "mun": "Mahinog",
-    "full_address": "San Roque, Mahinog, Camiguin"
-  },
-  {
-    "name": "Tubod, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "tubod",
-      "tubod mahinog",
-      "brgy tubod",
-      "barangay tubod"
-    ],
-    "lat": 9.1609,
-    "lng": 124.78326,
-    "mun": "Mahinog",
-    "full_address": "Tubod, Mahinog, Camiguin"
-  },
-  {
-    "name": "Tupsan Pequeño, Mahinog",
-    "cat": "barangay",
-    "keywords": [
-      "tupsan pequeno",
-      "tupsan pequeño",
-      "tupsan mahinog",
-      "brgy tupsan pequeno"
-    ],
-    "lat": 9.19518,
-    "lng": 124.77836,
-    "mun": "Mahinog",
-    "full_address": "Tupsan Pequeño, Mahinog, Camiguin"
-  },
-  {
-    "name": "Poblacion, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "catarman",
-      "poblacion catarman",
-      "catarman centro",
-      "centro catarman",
-      "catarman proper"
-    ],
-    "lat": 9.12523,
-    "lng": 124.67453,
-    "mun": "Catarman",
-    "full_address": "Poblacion, Catarman, Camiguin"
-  },
-  {
-    "name": "Alga, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "alga",
-      "algga",
-      "brgy alga",
-      "barangay alga",
-      "alangilan catarman",
-      "biga"
-    ],
-    "lat": 9.11799,
-    "lng": 124.6819,
-    "mun": "Catarman",
-    "full_address": "Alga, Catarman, Camiguin"
-  },
-  {
-    "name": "Bonbon, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "bonbon",
-      "bonbon catarman",
-      "brgy bonbon",
-      "barangay bonbon"
-    ],
-    "lat": 9.19867,
-    "lng": 124.63629,
-    "mun": "Catarman",
-    "full_address": "Bonbon, Catarman, Camiguin"
-  },
-  {
-    "name": "Bura, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "bura",
-      "bura catarman",
-      "brgy bura",
-      "barangay bura"
-    ],
-    "lat": 9.1762,
-    "lng": 124.65194,
-    "mun": "Catarman",
-    "full_address": "Bura, Catarman, Camiguin"
-  },
-  {
-    "name": "Catibac, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "catibac",
-      "brgy catibac",
-      "barangay catibac"
-    ],
-    "lat": 9.17761,
-    "lng": 124.6352,
-    "mun": "Catarman",
-    "full_address": "Catibac, Catarman, Camiguin"
-  },
-  {
-    "name": "Compol, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "compol",
-      "brgy compol",
-      "barangay compol"
-    ],
-    "lat": 9.14206,
-    "lng": 124.65601,
-    "mun": "Catarman",
-    "full_address": "Compol, Catarman, Camiguin"
-  },
-  {
-    "name": "Lawigan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "lawigan",
-      "brgy lawigan",
-      "barangay lawigan"
-    ],
-    "lat": 9.16665,
-    "lng": 124.63975,
-    "mun": "Catarman",
-    "full_address": "Lawigan, Catarman, Camiguin"
-  },
-  {
-    "name": "Liloan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "liloan",
-      "licoan",
-      "brgy liloan",
-      "barangay liloan",
-      "liloan catarman"
-    ],
-    "lat": 9.14331,
-    "lng": 124.67926,
-    "mun": "Catarman",
-    "full_address": "Liloan, Catarman, Camiguin"
-  },
-  {
-    "name": "Looc, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "looc",
-      "looc catarman",
-      "brgy looc",
-      "barangay looc"
-    ],
-    "lat": 9.13131,
-    "lng": 124.67012,
-    "mun": "Catarman",
-    "full_address": "Looc, Catarman, Camiguin"
-  },
-  {
-    "name": "Mainit, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "mainit",
-      "mainit catarman",
-      "brgy mainit",
-      "barangay mainit"
-    ],
-    "lat": 9.15517,
-    "lng": 124.65775,
-    "mun": "Catarman",
-    "full_address": "Mainit, Catarman, Camiguin"
-  },
-  {
-    "name": "Manduao, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "manduao",
-      "mandawa",
-      "brgy manduao",
-      "barangay manduao"
-    ],
-    "lat": 9.13813,
-    "lng": 124.67337,
-    "mun": "Catarman",
-    "full_address": "Manduao, Catarman, Camiguin"
-  },
-  {
-    "name": "Panghiawan, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "panghiawan",
-      "pangihawan",
-      "brgy panghiawan",
-      "barangay panghiawan"
-    ],
-    "lat": 9.15186,
-    "lng": 124.64599,
-    "mun": "Catarman",
-    "full_address": "Panghiawan, Catarman, Camiguin"
-  },
-  {
-    "name": "Santo Niño, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "santo nino",
-      "santo niño",
-      "sto nino catarman",
-      "brgy sto nino",
-      "barangay santo nino"
-    ],
-    "lat": 9.14845,
-    "lng": 124.67332,
-    "mun": "Catarman",
-    "full_address": "Santo Niño, Catarman, Camiguin"
-  },
-  {
-    "name": "Tangaro, Catarman",
-    "cat": "barangay",
-    "keywords": [
-      "tangaro",
-      "brgy tangaro",
-      "barangay tangaro"
-    ],
-    "lat": 9.11241,
-    "lng": 124.69434,
-    "mun": "Catarman",
-    "full_address": "Tangaro, Catarman, Camiguin"
-  },
-  {
-    "name": "Poblacion, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "sagay",
-      "poblacion sagay",
-      "sagay centro",
-      "centro sagay",
-      "sagay proper"
-    ],
-    "lat": 9.10511,
-    "lng": 124.72349,
-    "mun": "Sagay",
-    "full_address": "Poblacion, Sagay, Camiguin"
-  },
-  {
-    "name": "Alangilan, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "alangilan",
-      "alangilan sagay",
-      "brgy alangilan",
-      "brgy alangilan sagay"
-    ],
-    "lat": 9.10209,
-    "lng": 124.74535,
-    "mun": "Sagay",
-    "full_address": "Alangilan, Sagay, Camiguin"
-  },
-  {
-    "name": "Bacnit, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "bacnit",
-      "brgy bacnit",
-      "barangay bacnit"
-    ],
-    "lat": 9.12643,
-    "lng": 124.70861,
-    "mun": "Sagay",
-    "full_address": "Bacnit, Sagay, Camiguin"
-  },
-  {
-    "name": "Balite, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "balite",
-      "balite sagay",
-      "brgy balite",
-      "barangay balite"
-    ],
-    "lat": 9.08187,
-    "lng": 124.76099,
-    "mun": "Sagay",
-    "full_address": "Balite, Sagay, Camiguin"
-  },
-  {
-    "name": "Bonbon, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "bonbon sagay",
-      "brgy bonbon sagay",
-      "barangay bonbon sagay"
-    ],
-    "lat": 9.10377,
-    "lng": 124.73214,
-    "mun": "Sagay",
-    "full_address": "Bonbon, Sagay, Camiguin"
-  },
-  {
-    "name": "Bugang, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "bugang",
-      "bug-ang",
-      "brgy bugang",
-      "barangay bugang"
-    ],
-    "lat": 9.10841,
-    "lng": 124.70507,
-    "mun": "Sagay",
-    "full_address": "Bugang, Sagay, Camiguin"
-  },
-  {
-    "name": "Cuna, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "cuna",
-      "cuña",
-      "brgy cuna",
-      "barangay cuna"
-    ],
-    "lat": 9.12148,
-    "lng": 124.74358,
-    "mun": "Sagay",
-    "full_address": "Cuña, Sagay, Camiguin"
-  },
-  {
-    "name": "Manuyog, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "manuyog",
-      "brgy manuyog",
-      "barangay manuyog"
-    ],
-    "lat": 9.094,
-    "lng": 124.75344,
-    "mun": "Sagay",
-    "full_address": "Manuyog, Sagay, Camiguin"
-  },
-  {
-    "name": "Mayana, Sagay",
-    "cat": "barangay",
-    "keywords": [
-      "mayana",
-      "brgy mayana",
-      "barangay mayana"
-    ],
-    "lat": 9.10524,
-    "lng": 124.71876,
-    "mun": "Sagay",
-    "full_address": "Mayana, Sagay, Camiguin"
-  },
-  {
-    "name": "North Poblacion, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "guinsiliban",
-      "north poblacion",
-      "north poblacion guinsiliban",
-      "poblacion guinsiliban"
-    ],
-    "lat": 9.09874,
-    "lng": 124.78589,
-    "mun": "Guinsiliban",
-    "full_address": "North Poblacion, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "South Poblacion, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "south poblacion",
-      "south poblacion guinsiliban"
-    ],
-    "lat": 9.09569,
-    "lng": 124.78495,
-    "mun": "Guinsiliban",
-    "full_address": "South Poblacion, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Butay, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "butay",
-      "brgy butay",
-      "barangay butay"
-    ],
-    "lat": 9.10476,
-    "lng": 124.76919,
-    "mun": "Guinsiliban",
-    "full_address": "Butay, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Cabuan, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "cabuan",
-      "brgy cabuan",
-      "barangay cabuan"
-    ],
-    "lat": 9.11881,
-    "lng": 124.7981,
-    "mun": "Guinsiliban",
-    "full_address": "Cabuan, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Cantaan, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "cantaan",
-      "brgy cantaan",
-      "barangay cantaan"
-    ],
-    "lat": 9.10898,
-    "lng": 124.79682,
-    "mun": "Guinsiliban",
-    "full_address": "Cantaan, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Liong, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "liong",
-      "liongs",
-      "brgy liong",
-      "barangay liong"
-    ],
-    "lat": 9.0841,
-    "lng": 124.77734,
-    "mun": "Guinsiliban",
-    "full_address": "Liong, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Maac, Guinsiliban",
-    "cat": "barangay",
-    "keywords": [
-      "maac",
-      "brgy maac",
-      "barangay maac"
-    ],
-    "lat": 9.12702,
-    "lng": 124.79588,
-    "mun": "Guinsiliban",
-    "full_address": "Maac, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Boloc-boloc, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "boloc boloc",
-      "boloc-boloc",
-      "bolocboloc",
-      "bolok bolok",
-      "bolok-bolok",
-      "bolokboloc",
-      "boloc",
-      "bolok",
-      "sitio boloc-boloc",
-      "sitio boloc boloc",
-      "boloc boloc mambajao",
-      "bolocboloc mambajao"
-    ],
-    "lat": 9.25725,
-    "lng": 124.70658,
-    "mun": "Mambajao",
-    "full_address": "Sitio Boloc-boloc, Poblacion, Mambajao"
-  },
-  {
-    "name": "Sitio Esperanza, Tagdo, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "esperanza",
-      "sitio esperanza",
-      "esperanza tagdo",
-      "esperanza mambajao"
-    ],
-    "lat": 9.22762,
-    "lng": 124.68826,
-    "mun": "Mambajao",
-    "full_address": "Sitio Esperanza, Tagdo, Mambajao"
-  },
-  {
-    "name": "Binunsaran, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "binunsaran",
-      "sitio binunsaran",
-      "itum",
-      "itum road",
-      "hinterland"
-    ],
-    "lat": 9.20987,
-    "lng": 124.7058,
-    "mun": "Mambajao",
-    "full_address": "Binunsaran, Mambajao, Camiguin"
-  },
-  {
-    "name": "Lakas, Poblacion, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "lakas",
-      "sitio lakas",
-      "lakas mambajao"
-    ],
-    "lat": 9.24794,
-    "lng": 124.72204,
-    "mun": "Mambajao",
-    "full_address": "Sitio Lakas, Poblacion, Mambajao"
-  },
-  {
-    "name": "Quiboro, Poblacion, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "quiboro",
-      "sitio quiboro",
-      "quipasa",
-      "quiboro mambajao"
-    ],
-    "lat": 9.23345,
-    "lng": 124.71291,
-    "mun": "Mambajao",
-    "full_address": "Sitio Quiboro, Poblacion, Mambajao"
-  },
-  {
-    "name": "Balintawak, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "balintawak",
-      "balintawak street",
-      "balintawak mambajao"
-    ],
-    "lat": 9.25067,
-    "lng": 124.72091,
-    "mun": "Mambajao",
-    "full_address": "Sitio Balintawak, Poblacion, Mambajao"
-  },
-  {
-    "name": "Timogsay, Bug-ong, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "timogsay",
-      "timugsay",
-      "timogsai",
-      "timugsai",
-      "sitio timogsay",
-      "sitio timugsay",
-      "timogsay bug-ong",
-      "timugsay bug-ong",
-      "upper bug-ong",
-      "upper bug ong",
-      "bug-ong upland",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2375,
-    "lng": 124.6795,
-    "mun": "Mambajao",
-    "full_address": "Sitio Timogsay (Timugsay), Upper Bug-ong, Mambajao"
-  },
-  {
-    "name": "Upper Cogon, Agoho, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "upper cogon",
-      "cogon",
-      "cogon agoho",
-      "sitio cogon",
-      "upper cogon agoho",
-      "lower cogon",
-      "upper agoho",
-      "sibato",
-      "sibato road",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2358,
-    "lng": 124.6738,
-    "mun": "Mambajao",
-    "full_address": "Sitio Upper Cogon, Agoho, Mambajao"
-  },
-  {
-    "name": "Upper Pandan (Kanangkaan / Maubog), Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "upper pandan",
-      "kanangkaan",
-      "maubog",
-      "pandayan",
-      "brgy pandayan",
-      "barangay pandayan",
-      "pandan upland",
-      "sitio kanangkaan",
-      "sitio maubog",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2285,
-    "lng": 124.7215,
-    "mun": "Mambajao",
-    "full_address": "Upper Pandan (Sitio Kanangkaan / Maubog), Mambajao"
-  },
-  {
-    "name": "Litican, Upper Balbagon, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "litican",
-      "sitio litican",
-      "upper balbagon",
-      "tinago",
-      "sitio tinago",
-      "tinago balbagon",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2275,
-    "lng": 124.733,
-    "mun": "Mambajao",
-    "full_address": "Sitio Litican / Tinago, Upper Balbagon, Mambajao"
-  },
-  {
-    "name": "Upper Lakas, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "upper lakas",
-      "sitio upper lakas",
-      "lakas upland",
-      "upper anito",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2355,
-    "lng": 124.732,
-    "mun": "Mambajao",
-    "full_address": "Upper Lakas, Poblacion, Mambajao"
-  },
-  {
-    "name": "Upper Magting, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "upper magting",
-      "sitio magting",
-      "magting bukid",
-      "magting upland",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.211,
-    "lng": 124.7485,
-    "mun": "Mambajao",
-    "full_address": "Upper Magting, Mambajao, Camiguin"
-  },
-  {
-    "name": "Sitio Bas-iao, Yumbing, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "bas-iao",
-      "basiao",
-      "sitio bas-iao",
-      "sitio basiao",
-      "upper yumbing",
-      "upper naasag",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2315,
-    "lng": 124.661,
-    "mun": "Mambajao",
-    "full_address": "Sitio Bas-iao, Upper Yumbing / Naasag, Mambajao"
-  },
-  {
-    "name": "Katobli / Sibato Reservoir, Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "katobli",
-      "kaolyong",
-      "sibato reservoir",
-      "sitio katobli",
-      "sitio kaolyong",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2295,
-    "lng": 124.6765,
-    "mun": "Mambajao",
-    "full_address": "Sitio Katobli / Sibato Reservoir, Agoho, Mambajao"
-  },
-  {
-    "name": "Volcano House (Km 11 Itum), Mambajao",
-    "cat": "neighborhood",
-    "keywords": [
-      "volcano house",
-      "km 11",
-      "km 11 itum",
-      "itum volcano house",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2055,
-    "lng": 124.6975,
-    "mun": "Mambajao",
-    "full_address": "Volcano House, Km 11 Itum, Baylao, Mambajao"
-  },
-  {
-    "name": "Piyakong / Tres Marias Slopes, Catarman",
-    "cat": "neighborhood",
-    "keywords": [
-      "piyakong",
-      "tres marias",
-      "mount vulcan slopes",
-      "mt vulcan slopes",
-      "old volcano slopes",
-      "sitio piyakong",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.2085,
-    "lng": 124.648,
-    "mun": "Catarman",
-    "full_address": "Sitio Piyakong / Tres Marias Slopes, Bonbon, Catarman"
-  },
-  {
-    "name": "Sitio Kital-is, Cuna, Sagay",
-    "cat": "neighborhood",
-    "keywords": [
-      "kital-is",
-      "kitalis",
-      "sitio kital-is",
-      "sitio kitalis",
-      "upper cuna",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.131,
-    "lng": 124.742,
-    "mun": "Sagay",
-    "full_address": "Sitio Kital-is, Cuna, Sagay, Camiguin"
-  },
-  {
-    "name": "Upper Cantaan, Guinsiliban",
-    "cat": "neighborhood",
-    "keywords": [
-      "upper cantaan",
-      "cantaan upland",
-      "sitio upper cantaan",
-      "ibabaw cantaan",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.1135,
-    "lng": 124.782,
-    "mun": "Guinsiliban",
-    "full_address": "Upper Cantaan, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Ardent Hot Spring, Esperanza",
-    "cat": "tourist",
-    "keywords": [
-      "ardent hot spring",
-      "ardent hot springs",
-      "ardent spring",
-      "ardent",
-      "ardent hibok-hibok",
-      "ardent resort",
-      "hot spring",
-      "esperanza hot spring"
-    ],
-    "lat": 9.22702,
-    "lng": 124.68798,
-    "mun": "Mambajao",
-    "full_address": "Sitio Esperanza, Tagdo, Mambajao, Camiguin"
-  },
-  {
-    "name": "White Island Boat Jump-off, Yumbing",
-    "cat": "tourist",
-    "keywords": [
-      "white island",
-      "white island boat station",
-      "white island jump-off",
-      "white island boat",
-      "yumbing dock",
-      "jump-off",
-      "medano",
-      "island"
-    ],
-    "lat": 9.24368,
-    "lng": 124.6609,
-    "mun": "Mambajao",
-    "full_address": "Yumbing Boat Dock, Yumbing, Mambajao"
-  },
-  {
-    "name": "Mantigue Island Boat Station, San Roque",
-    "cat": "tourist",
-    "keywords": [
-      "mantigue island",
-      "mantigue",
-      "mantigue boat station",
-      "san roque mantigue",
-      "mantigue ferry"
-    ],
-    "lat": 9.15164,
-    "lng": 124.79513,
-    "mun": "Mahinog",
-    "full_address": "San Roque Boat Terminal, Mahinog, Camiguin"
-  },
-  {
-    "name": "Katibawasan Falls",
-    "cat": "tourist",
-    "keywords": [
-      "katibawasan falls",
-      "katibawasan",
-      "busay",
-      "waterfall",
-      "hinterland"
-    ],
-    "lat": 9.21358,
-    "lng": 124.71793,
-    "mun": "Mambajao",
-    "full_address": "Soro-soro / Pandan, Mambajao, Camiguin"
-  },
-  {
-    "name": "Tuasan Falls, Mainit, Catarman",
-    "cat": "tourist",
-    "keywords": [
-      "tuasan falls",
-      "tuasan",
-      "busay catarman",
-      "waterfall"
-    ],
-    "lat": 9.17683,
-    "lng": 124.68097,
-    "mun": "Catarman",
-    "full_address": "Barangay Mainit, Catarman, Camiguin"
-  },
-  {
-    "name": "Sto. Niño Cold Spring, Catarman",
-    "cat": "tourist",
-    "keywords": [
-      "sto. nino cold spring",
-      "sto. niño cold spring",
-      "sto nino cold spring",
-      "santo nino cold spring",
-      "sto. niño spring sagay",
-      "cold spring",
-      "sto nino",
-      "sto. nino",
-      "sto niño",
-      "bugnaw spring"
-    ],
-    "lat": 9.15019,
-    "lng": 124.67424,
-    "mun": "Catarman",
-    "full_address": "Barangay Santo Niño, Catarman, Camiguin"
-  },
-  {
-    "name": "Bura Soda Water Park, Catarman",
-    "cat": "tourist",
-    "keywords": [
-      "bura soda water",
-      "bura soda water park",
-      "soda water",
-      "soda water pool",
-      "bura soda",
-      "soda swimming",
-      "bura"
-    ],
-    "lat": 9.17107,
-    "lng": 124.65697,
-    "mun": "Catarman",
-    "full_address": "Barangay Bura, Catarman, Camiguin"
-  },
-  {
-    "name": "Sunken Cemetery & Giant Cross, Bonbon",
-    "cat": "tourist",
-    "keywords": [
-      "sunken cemetery",
-      "sunken cemetery cross",
-      "sunken cemetery catarman",
-      "sunken",
-      "giant cross",
-      "lubnganan",
-      "krus"
-    ],
-    "lat": 9.2068,
-    "lng": 124.63277,
-    "mun": "Catarman",
-    "full_address": "Barangay Bonbon, Catarman, Camiguin"
-  },
-  {
-    "name": "Old Church Ruins (Gui-ob Church), Bonbon",
-    "cat": "tourist",
-    "keywords": [
-      "old church ruins",
-      "guiob church ruins",
-      "gui-ob church ruins",
-      "church ruins",
-      "guiob",
-      "gui-ob",
-      "old church",
-      "simbahan"
-    ],
-    "lat": 9.20184,
-    "lng": 124.63457,
-    "mun": "Catarman",
-    "full_address": "Barangay Bonbon, Catarman, Camiguin"
-  },
-  {
-    "name": "Mount Vulcan Daan / Walkway to Old Volcano",
-    "cat": "tourist",
-    "keywords": [
-      "walkway to old volcano",
-      "stations of the cross / volcano walkway",
-      "stations of the cross",
-      "volcano walkway",
-      "vulcan daan",
-      "old volcano",
-      "mount vulcan",
-      "walkway",
-      "via crucis"
-    ],
-    "lat": 9.21068,
-    "lng": 124.64015,
-    "mun": "Catarman",
-    "full_address": "Walkway Trailhead, Bonbon, Catarman, Camiguin"
-  },
-  {
-    "name": "Mount Hibok-Hibok Jump-off (DENR Visitors Center)",
-    "cat": "tourist",
-    "keywords": [
-      "hibok-hibok",
-      "hibok hibok",
-      "mount hibok-hibok",
-      "volcano hike",
-      "denr visitors center"
-    ],
-    "lat": 9.19684,
-    "lng": 124.69221,
-    "mun": "Mambajao",
-    "full_address": "Mambajao-Itum Road, Mount Hibok-Hibok, Mambajao"
-  },
-  {
-    "name": "Giant Clam Sanctuary, Cantaan",
-    "cat": "tourist",
-    "keywords": [
-      "giant clam sanctuary",
-      "giant clam sanctuary guinsiliban",
-      "kibila giant clam",
-      "giant clam",
-      "clam sanctuary",
-      "kibila",
-      "cantaan",
-      "taklobo"
-    ],
-    "lat": 9.10614,
-    "lng": 124.80301,
-    "mun": "Guinsiliban",
-    "full_address": "Sitio Kibila, Barangay Cantaan, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "Taguines Lagoon & Zipline, Benoni",
-    "cat": "tourist",
-    "keywords": [
-      "taguines lagoon",
-      "taguines",
-      "zipline",
-      "lagoon bistro",
-      "kamayan"
-    ],
-    "lat": 9.13287,
-    "lng": 124.79156,
-    "mun": "Mahinog",
-    "full_address": "Benoni Highway, Mahinog, Camiguin"
-  },
-  {
-    "name": "Katunggan Mangrove Park, Mahinog",
-    "cat": "tourist",
-    "keywords": [
-      "katunggan",
-      "katunggan park",
-      "mangrove park",
-      "bakawan",
-      "boardwalk"
-    ],
-    "lat": 9.13159,
-    "lng": 124.79736,
-    "mun": "Mahinog",
-    "full_address": "Benoni Coast, Mahinog, Camiguin"
-  },
-  {
-    "name": "Sa-ay Cold Spring, Mambajao",
-    "cat": "tourist",
-    "keywords": [
-      "sa-ay",
-      "saay",
-      "sa ay",
-      "sa-ay cold spring",
-      "saay cold spring",
-      "quipasa",
-      "cold spring"
-    ],
-    "lat": 9.2211,
-    "lng": 124.7034,
-    "mun": "Mambajao",
-    "full_address": "Sitio Quipasa, Poblacion, Mambajao"
-  },
-  {
-    "name": "Binangawan Falls, Sagay",
-    "cat": "tourist",
-    "keywords": [
-      "binangawan falls",
-      "binangawan",
-      "waterfall sagay",
-      "busay sagay"
-    ],
-    "lat": 9.15596,
-    "lng": 124.73317,
-    "mun": "Sagay",
-    "full_address": "Sagay Uplands, Camiguin"
-  },
-  {
-    "name": "Macao Cold Spring, Tupsan",
-    "cat": "tourist",
-    "keywords": [
-      "macao cold spring",
-      "macao",
-      "tupsan spring",
-      "cold spring"
-    ],
-    "lat": 9.19586,
-    "lng": 124.77407,
-    "mun": "Mambajao",
-    "full_address": "Tupsan, Mambajao, Camiguin"
-  },
-  {
-    "name": "Mantalaga Falls, Sagay",
-    "cat": "tourist",
-    "keywords": [
-      "mantalaga",
-      "mantalaga falls",
-      "busay mantalaga",
-      "upper sagay",
-      "hinterland",
-      "tungason"
-    ],
-    "lat": 9.1425,
-    "lng": 124.7265,
-    "mun": "Sagay",
-    "full_address": "Mantalaga Falls, Sagay Uplands, Camiguin"
-  },
-  {
-    "name": "Hibok-Hibok Volcano Observatory (PHIVOLCS)",
-    "cat": "tourist",
-    "keywords": [
-      "phivolcs",
-      "volcano observatory",
-      "hibok-hibok observatory",
-      "observatory",
-      "quiboro"
-    ],
-    "lat": 9.22719,
-    "lng": 124.70799,
-    "mun": "Mambajao",
-    "full_address": "Quiboro / Itum, Mambajao, Camiguin"
-  },
-  {
-    "name": "Old Parola Park, Mambajao",
-    "cat": "tourist",
-    "keywords": [
-      "old parola park",
-      "parola",
-      "lighthouse",
-      "parola park"
-    ],
-    "lat": 9.25551,
-    "lng": 124.71656,
-    "mun": "Mambajao",
-    "full_address": "Parola Road, Poblacion, Mambajao"
-  },
-  {
-    "name": "Balbagon Port (FastCat & Ferry Wharf)",
-    "cat": "transport",
-    "keywords": [
-      "balbagon port",
-      "mambajao port",
-      "fastcat",
-      "super shuttle",
-      "ferry",
-      "barko",
-      "pantalan",
-      "pantalan balbagon",
-      "balbagon wharf"
-    ],
-    "lat": 9.2439,
-    "lng": 124.73794,
-    "mun": "Mambajao",
-    "full_address": "Balbagon Port Road, Balbagon, Mambajao"
-  },
-  {
-    "name": "Benoni Port / Ferry Wharf, Mahinog",
-    "cat": "transport",
-    "keywords": [
-      "benoni port",
-      "benoni port / taguines lagoon",
-      "benoni wharf",
-      "pantalan benoni",
-      "ferry mahinog",
-      "barko benoni",
-      "wharf",
-      "port",
-      "pantalan"
-    ],
-    "lat": 9.13904,
-    "lng": 124.7942,
-    "mun": "Mahinog",
-    "full_address": "Benoni Ferry Wharf, Benoni, Mahinog"
-  },
-  {
-    "name": "Benoni Passenger Terminal, Mahinog",
-    "cat": "transport",
-    "keywords": [
-      "benoni passenger terminal",
-      "benoni terminal",
-      "passenger terminal",
-      "passenger terminal benoni",
-      "benoni port passenger terminal",
-      "ppa passenger terminal",
-      "ppa benoni",
-      "pantalan passenger terminal",
-      "ferry terminal"
-    ],
-    "lat": 9.13931,
-    "lng": 124.79342,
-    "mun": "Mahinog",
-    "full_address": "PPA Passenger Terminal, Benoni, Mahinog"
-  },
-  {
-    "name": "Guinsiliban Port / Ferry Terminal",
-    "cat": "transport",
-    "keywords": [
-      "guinsiliban port",
-      "pantalan guinsiliban",
-      "ferry guinsiliban",
-      "guinsiliban wharf"
-    ],
-    "lat": 9.09873,
-    "lng": 124.78824,
-    "mun": "Guinsiliban",
-    "full_address": "Guinsiliban Ferry Wharf, Guinsiliban"
-  },
-  {
-    "name": "Camiguin Airport",
-    "cat": "transport",
-    "keywords": [
-      "airport",
-      "camiguin airport",
-      "tugpahanan",
-      "eroplano",
-      "flight",
-      "arrivals",
-      "departures"
-    ],
-    "lat": 9.25111,
-    "lng": 124.70459,
-    "mun": "Mambajao",
-    "full_address": "Baylao / Lumban, Mambajao, Camiguin"
-  },
-  {
-    "name": "Mambajao Transport Terminal",
-    "cat": "transport",
-    "keywords": [
-      "mambajao terminal",
-      "transport terminal",
-      "bus terminal",
-      "van terminal",
-      "jeep terminal",
-      "multicab terminal"
-    ],
-    "lat": 9.25383,
-    "lng": 124.71595,
-    "mun": "Mambajao",
-    "full_address": "Plaridel / Market District, Poblacion, Mambajao"
-  },
-  {
-    "name": "Paras Beach Resort, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "paras beach",
-      "paras beach resort",
-      "paras resort",
-      "paras",
-      "hotel"
-    ],
-    "lat": 9.24379,
-    "lng": 124.66164,
-    "mun": "Mambajao",
-    "full_address": "Pearl Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Balai sa Baibai Dive Resort, Agoho",
-    "cat": "resort",
-    "keywords": [
-      "balai sa baibai",
-      "balai sa babibai",
-      "balyali",
-      "balyali resort",
-      "balyali beach resort",
-      "balyali resort yumbing",
-      "balyali yumbing",
-      "dive resort"
-    ],
-    "lat": 9.25025,
-    "lng": 124.6705,
-    "mun": "Mambajao",
-    "full_address": "Agoho Coastline, Mambajao"
-  },
-  {
-    "name": "Tongatok Cliff Resort, Naasag",
-    "cat": "resort",
-    "keywords": [
-      "tongatok cliff",
-      "tongatok cliff viewpoint",
-      "tongatok",
-      "cliff resort"
-    ],
-    "lat": 9.23035,
-    "lng": 124.6432,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Naasag, Mambajao"
-  },
-  {
-    "name": "Camiguin Lanzones Resort, Balbagon",
-    "cat": "resort",
-    "keywords": [
-      "camiguin lanzones resort",
-      "lanzones resort",
-      "lanzones balbagon",
-      "resort balbagon"
-    ],
-    "lat": 9.2408,
-    "lng": 124.7356,
-    "mun": "Mambajao",
-    "full_address": "Bliss Road, Balbagon, Mambajao"
-  },
-  {
-    "name": "Lanzones Cabana, Agoho",
-    "cat": "resort",
-    "keywords": [
-      "lanzones cabana",
-      "lanzones agoho",
-      "dal-as",
-      "resort agoho"
-    ],
-    "lat": 9.24185,
-    "lng": 124.66742,
-    "mun": "Mambajao",
-    "full_address": "Dal-as, Agoho, Mambajao"
-  },
-  {
-    "name": "Camiguin Highland Resort, Soro-soro",
-    "cat": "resort",
-    "keywords": [
-      "highland resort",
-      "camiguin highland",
-      "highland",
-      "sorosoro",
-      "soro-soro",
-      "soro'soro",
-      "hinterland"
-    ],
-    "lat": 9.21816,
-    "lng": 124.72839,
-    "mun": "Mambajao",
-    "full_address": "Soro-soro, Mambajao, Camiguin"
-  },
-  {
-    "name": "Somewhere Else Boutique Resort, Agoho",
-    "cat": "resort",
-    "keywords": [
-      "somewhere else",
-      "somewhere else resort",
-      "boutique resort"
-    ],
-    "lat": 9.25025,
-    "lng": 124.67126,
-    "mun": "Mambajao",
-    "full_address": "Agoho Coast, Mambajao"
-  },
-  {
-    "name": "Cabua-an Beach Resort, Mambajao",
-    "cat": "resort",
-    "keywords": [
-      "cabua-an",
-      "cabuaan",
-      "cabua-an beach resort",
-      "balerin",
-      "balerin resort"
-    ],
-    "lat": 9.25104,
-    "lng": 124.72308,
-    "mun": "Mambajao",
-    "full_address": "Cabua-an Beach, Lakas, Mambajao"
-  },
-  {
-    "name": "Pabua's Cottages, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "pabuas",
-      "pabua",
-      "pabua's cottages",
-      "paguia cottages",
-      "cottages"
-    ],
-    "lat": 9.24367,
-    "lng": 124.66242,
-    "mun": "Mambajao",
-    "full_address": "Pearl Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Medano Island Resort, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "medano",
-      "medano island resort",
-      "medano resort"
-    ],
-    "lat": 9.24482,
-    "lng": 124.66288,
-    "mun": "Mambajao",
-    "full_address": "Pearl Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Bahay Bakasyunan sa Camiguin, Balbagon",
-    "cat": "resort",
-    "keywords": [
-      "bahay bakasyunan",
-      "bbc",
-      "bakasyunan",
-      "balbagon resort"
-    ],
-    "lat": 9.24066,
-    "lng": 124.73718,
-    "mun": "Mambajao",
-    "full_address": "Balbagon, Mambajao, Camiguin"
-  },
-  {
-    "name": "Bintana sa Paraiso Binunsaran, Mambajao",
-    "cat": "resort",
-    "keywords": [
-      "bintana sa paraiso",
-      "bintana",
-      "binunsaran",
-      "hinterland"
-    ],
-    "lat": 9.2119,
-    "lng": 124.70596,
-    "mun": "Mambajao",
-    "full_address": "Binunsaran, Mambajao, Camiguin"
-  },
-  {
-    "name": "Villa Paraiso Resort & Apartelle, Mambajao",
-    "cat": "resort",
-    "keywords": [
-      "villa paraiso",
-      "apartelle",
-      "rizal resort"
-    ],
-    "lat": 9.24406,
-    "lng": 124.7158,
-    "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "GV Hotel Camiguin, Mambajao",
-    "cat": "resort",
-    "keywords": [
-      "gv hotel",
-      "gv camiguin",
-      "hotel mambajao"
-    ],
-    "lat": 9.25009,
-    "lng": 124.71679,
-    "mun": "Mambajao",
-    "full_address": "Burgos Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Camiguin Volcan Beach Eco Retreat, Naasag",
-    "cat": "resort",
-    "keywords": [
-      "volcan beach",
-      "eco retreat",
-      "zum kuckuck",
-      "naasag resort"
-    ],
-    "lat": 9.23288,
-    "lng": 124.64393,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Naasag, Mambajao"
-  },
-  {
-    "name": "Dreamland Resort & Hotel, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "dreamland",
-      "dreamland resort",
-      "yumbing hotel"
-    ],
-    "lat": 9.23887,
-    "lng": 124.65745,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Nype Stile Resort, Bug-ong",
-    "cat": "resort",
-    "keywords": [
-      "nype stile",
-      "nype stile resort",
-      "bug-ong resort"
-    ],
-    "lat": 9.24384,
-    "lng": 124.67919,
-    "mun": "Mambajao",
-    "full_address": "Bug-ong, Mambajao, Camiguin"
-  },
-  {
-    "name": "Golden Sunset Beach Club, Yumbing",
-    "cat": "resort",
-    "keywords": [
-      "golden sunset",
-      "sunset beach club",
-      "yumbing"
-    ],
-    "lat": 9.2382,
-    "lng": 124.65398,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Seaside Traveler's Inn, Tangaro, Catarman",
-    "cat": "resort",
-    "keywords": [
-      "seaside travelers inn",
-      "seaside inn",
-      "tangaro inn",
-      "catarman hotel"
-    ],
-    "lat": 9.11482,
-    "lng": 124.68757,
-    "mun": "Catarman",
-    "full_address": "Tangaro, Catarman, Camiguin"
-  },
-  {
-    "name": "Mambajao Town Plaza",
-    "cat": "building",
-    "keywords": [
-      "mambajao plaza",
-      "mambajao town plaza",
-      "mambajao central plaza",
-      "plaza",
-      "town center"
-    ],
-    "lat": 9.24933,
-    "lng": 124.7165,
-    "mun": "Mambajao",
-    "full_address": "Poblacion Town Center, Mambajao"
-  },
-  {
-    "name": "Mambajao Municipal Hall, Sitio Lakas",
-    "cat": "building",
-    "keywords": [
-      "mambajao municipal hall",
-      "municipal hall",
-      "munisipyo mambajao",
-      "munisipyo",
-      "mayor"
-    ],
-    "lat": 9.24475,
-    "lng": 124.72664,
-    "mun": "Mambajao",
-    "full_address": "Sitio Lakas, Poblacion, Mambajao"
-  },
-  {
-    "name": "Provincial Capitol Compound, Mambajao",
-    "cat": "building",
-    "keywords": [
-      "capitol",
-      "kapitolyo",
-      "provincial capitol",
-      "governor"
-    ],
-    "lat": 9.24417,
-    "lng": 124.72725,
-    "mun": "Mambajao",
-    "full_address": "Capitol Hills, Lakas, Mambajao"
-  },
-  {
-    "name": "Camiguin General Hospital (CGH)",
-    "cat": "hospital",
-    "keywords": [
-      "hospital",
-      "cgh",
-      "camiguin general hospital",
-      "clinic",
-      "doktor",
-      "emergency",
-      "pagamutan"
-    ],
-    "lat": 9.24847,
-    "lng": 124.72159,
-    "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
-  },
-  {
-    "name": "Mambajao Municipal Police Station (PNP)",
-    "cat": "building",
-    "keywords": [
-      "police",
-      "pnp",
-      "pulis",
-      "police station",
-      "mambajao police",
-      "istasyon"
-    ],
-    "lat": 9.24608,
-    "lng": 124.72639,
-    "mun": "Mambajao",
-    "full_address": "Sitio Lakas, Poblacion, Mambajao"
-  },
-  {
-    "name": "Camiguin Sports Complex & Convention Center",
-    "cat": "building",
-    "keywords": [
-      "sports complex",
-      "convention center",
-      "grandstand",
-      "gymnasium",
-      "new camiguin gymnasium"
-    ],
-    "lat": 9.24374,
-    "lng": 124.7291,
-    "mun": "Mambajao",
-    "full_address": "Balbagon, Mambajao, Camiguin"
-  },
-  {
-    "name": "Mahinog Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "mahinog municipal hall",
-      "munisipyo mahinog",
-      "mahinog hall",
-      "mayor mahinog"
-    ],
-    "lat": 9.15614,
-    "lng": 124.78736,
-    "mun": "Mahinog",
-    "full_address": "Poblacion, Mahinog, Camiguin"
-  },
-  {
-    "name": "Catarman Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "catarman municipal hall",
-      "munisipyo catarman",
-      "catarman hall",
-      "mayor catarman"
-    ],
-    "lat": 9.12419,
-    "lng": 124.67579,
-    "mun": "Catarman",
-    "full_address": "Poblacion, Catarman, Camiguin"
-  },
-  {
-    "name": "Sagay Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "sagay municipal hall",
-      "munisipyo sagay",
-      "sagay hall",
-      "mayor sagay"
-    ],
-    "lat": 9.10494,
-    "lng": 124.72449,
-    "mun": "Sagay",
-    "full_address": "Iglesia Street, Poblacion, Sagay"
-  },
-  {
-    "name": "Guinsiliban Municipal Hall",
-    "cat": "building",
-    "keywords": [
-      "guinsiliban municipal hall",
-      "munisipyo guinsiliban",
-      "guinsiliban hall"
-    ],
-    "lat": 9.09629,
-    "lng": 124.78503,
-    "mun": "Guinsiliban",
-    "full_address": "Circumferential Road, Poblacion, Guinsiliban"
-  },
-  {
-    "name": "Gaisano Capital Camiguin (Placido Reyes St)",
-    "cat": "supermarket",
-    "keywords": [
-      "gaisano",
-      "gaisano capital",
-      "gaisano camiguin",
-      "placido reyes",
-      "mall",
-      "supermarket",
-      "grocery"
-    ],
-    "lat": 9.25281,
-    "lng": 124.71617,
-    "mun": "Mambajao",
-    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Davilett Store & Supermarket, Guinsiliban",
-    "cat": "supermarket",
-    "keywords": [
-      "davilett",
-      "davilet",
-      "davilett corp",
-      "davilett store",
-      "davi",
-      "supermarket guinsiliban",
-      "grocery"
-    ],
-    "lat": 9.09781,
-    "lng": 124.78542,
-    "mun": "Guinsiliban",
-    "full_address": "North Poblacion, Guinsiliban, Camiguin"
-  },
-  {
-    "name": "W & M Superstore, Mambajao",
-    "cat": "supermarket",
-    "keywords": [
-      "w&m",
-      "w & m",
-      "wm superstore",
-      "superstore",
-      "supermarket",
-      "grocery"
-    ],
-    "lat": 9.24929,
-    "lng": 124.71776,
-    "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
-  },
-  {
-    "name": "Nene Uy Store / Wholesaler, Mambajao",
-    "cat": "store",
-    "keywords": [
-      "nene uy",
-      "nene",
-      "wholesaler",
-      "grocery",
-      "supply"
-    ],
-    "lat": 9.25172,
-    "lng": 124.71575,
-    "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Mr. DIY Camiguin (Mambajao)",
-    "cat": "store",
-    "keywords": [
-      "mr diy",
-      "mr. diy",
-      "diy",
-      "hardware",
-      "department store"
-    ],
-    "lat": 9.25394,
-    "lng": 124.71608,
-    "mun": "Mambajao",
-    "full_address": "Parola Road, Poblacion, Mambajao"
-  },
-  {
-    "name": "DJ Bonita Merchandising, Mambajao",
-    "cat": "store",
-    "keywords": [
-      "dj bonita",
-      "bonita",
-      "department store",
-      "dry goods"
-    ],
-    "lat": 9.25351,
-    "lng": 124.71648,
-    "mun": "Mambajao",
-    "full_address": "Poblacion, Mambajao, Camiguin"
-  },
-  {
-    "name": "Tee Enterprises, Mambajao",
-    "cat": "store",
-    "keywords": [
-      "tee enterprises",
-      "tee",
-      "department store",
-      "hardware"
-    ],
-    "lat": 9.25364,
-    "lng": 124.71614,
-    "mun": "Mambajao",
-    "full_address": "Poblacion, Mambajao, Camiguin"
-  },
-  {
-    "name": "Mercury Drug Camiguin, Mambajao",
-    "cat": "pharmacy",
-    "keywords": [
-      "mercury drug",
-      "mercury",
-      "pharmacy",
-      "botika",
-      "tambal",
-      "drugstore"
-    ],
-    "lat": 9.25249,
-    "lng": 124.71641,
-    "mun": "Mambajao",
-    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "The Generics Pharmacy (TGP), Mambajao",
-    "cat": "pharmacy",
-    "keywords": [
-      "tgp",
-      "the generics pharmacy",
-      "generics pharmacy",
-      "botika",
-      "pharmacy",
-      "tambal"
-    ],
-    "lat": 9.25121,
-    "lng": 124.71581,
-    "mun": "Mambajao",
-    "full_address": "J. Rizal / Burgos, Poblacion, Mambajao"
-  },
-  {
-    "name": "Landbank Camiguin, Mambajao",
-    "cat": "building",
-    "keywords": [
-      "landbank",
-      "lbp",
-      "atm",
-      "bank"
-    ],
-    "lat": 9.25247,
-    "lng": 124.71612,
-    "mun": "Mambajao",
-    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "PNB Mambajao",
-    "cat": "building",
-    "keywords": [
-      "pnb",
-      "philippine national bank",
-      "atm",
-      "bank"
-    ],
-    "lat": 9.24932,
-    "lng": 124.71694,
-    "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
-  },
-  {
-    "name": "EastWest Rural Bank, Mambajao",
-    "cat": "building",
-    "keywords": [
-      "eastwest",
-      "eastwest bank",
-      "atm",
-      "bank"
-    ],
-    "lat": 9.25338,
-    "lng": 124.71671,
-    "mun": "Mambajao",
-    "full_address": "Plaridel Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Palawan Pawnshop, Mambajao",
-    "cat": "store",
-    "keywords": [
-      "palawan",
-      "palawan pawnshop",
-      "palawan express",
-      "remittance"
-    ],
-    "lat": 9.24808,
-    "lng": 124.72096,
-    "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
-  },
-  {
-    "name": "Cebuana Lhuillier (Plaridel St), Mambajao",
-    "cat": "store",
-    "keywords": [
-      "cebuana",
-      "cebuana lhuillier",
-      "pawnshop",
-      "remittance"
-    ],
-    "lat": 9.25348,
-    "lng": 124.71666,
-    "mun": "Mambajao",
-    "full_address": "Plaridel Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Mambajao Public Market",
-    "cat": "market",
-    "keywords": [
-      "mambajao market",
-      "public market",
-      "merkado",
-      "palengke",
-      "bagsakan",
-      "wet market",
-      "isda",
-      "karne",
-      "utanon"
-    ],
-    "lat": 9.2531,
-    "lng": 124.7166,
-    "mun": "Mambajao",
-    "full_address": "J. Ebarle / Plaridel Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Mahinog Public Market",
-    "cat": "market",
-    "keywords": [
-      "mahinog market",
-      "merkado mahinog",
-      "palengke mahinog"
-    ],
-    "lat": 9.15467,
-    "lng": 124.7879,
-    "mun": "Mahinog",
-    "full_address": "Circumferential Road, Poblacion, Mahinog"
-  },
-  {
-    "name": "Catarman Public Market",
-    "cat": "market",
-    "keywords": [
-      "catarman market",
-      "merkado catarman",
-      "palengke catarman"
-    ],
-    "lat": 9.12564,
-    "lng": 124.67387,
-    "mun": "Catarman",
-    "full_address": "Circumferential Road, Poblacion, Catarman"
-  },
-  {
-    "name": "Sagay Public Market",
-    "cat": "market",
-    "keywords": [
-      "sagay market",
-      "merkado sagay",
-      "palengke sagay"
-    ],
-    "lat": 9.10374,
-    "lng": 124.72696,
-    "mun": "Sagay",
-    "full_address": "Circumferential Road, Poblacion, Sagay"
-  },
-  {
-    "name": "Guinsiliban Public Market",
-    "cat": "market",
-    "keywords": [
-      "guinsiliban market",
-      "merkado guinsiliban",
-      "palengke guinsiliban"
-    ],
-    "lat": 9.10045,
-    "lng": 124.788,
-    "mun": "Guinsiliban",
-    "full_address": "North Poblacion, Guinsiliban"
-  },
-  {
-    "name": "Tupsan Public Market, Mambajao",
-    "cat": "market",
-    "keywords": [
-      "tupsan market",
-      "merkado tupsan",
-      "palengke tupsan"
-    ],
-    "lat": 9.20137,
-    "lng": 124.77786,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Tupsan, Mambajao"
-  },
-  {
-    "name": "Yumbing Public Market, Mambajao",
-    "cat": "market",
-    "keywords": [
-      "yumbing market",
-      "merkado yumbing",
-      "palengke yumbing"
-    ],
-    "lat": 9.23931,
-    "lng": 124.65973,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Jollibee Camiguin, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "jollibee",
-      "jolibee",
-      "joli",
-      "jolli",
-      "fastfood",
-      "chickenjoy",
-      "burger"
-    ],
-    "lat": 9.24971,
-    "lng": 124.71667,
-    "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Moonflower Garden and Restaurant, Baylao",
-    "cat": "food",
-    "keywords": [
-      "moonflower",
-      "moonflower garden",
-      "moonflower restaurant",
-      "moonflower garden and restaurant",
-      "moonflower baylao",
-      "moonflower garden baylao",
-      "baylao moonflower",
-      "ice cream",
-      "restaurant"
-    ],
-    "lat": 9.25057,
-    "lng": 124.7011,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Baylao, Mambajao"
-  },
-  {
-    "name": "Samuel Restaurant, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "samuel",
-      "samuel restaurant",
-      "resto",
-      "restaurant",
-      "food"
-    ],
-    "lat": 9.2528,
-    "lng": 124.71574,
-    "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Kurma Eco Restaurant & Cafe, Yumbing",
-    "cat": "food",
-    "keywords": [
-      "kurma",
-      "kurma cafe",
-      "kurma restaurant",
-      "cafe",
-      "freedive",
-      "food"
-    ],
-    "lat": 9.24123,
-    "lng": 124.66003,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "CheckPoint Food Park, Yumbing",
-    "cat": "food",
-    "keywords": [
-      "checkpoint",
-      "checkpoint food park",
-      "food park",
-      "resto bar",
-      "kaonan",
-      "food"
-    ],
-    "lat": 9.24227,
-    "lng": 124.6634,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "Julie's Bakeshop, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "julies",
-      "julie's",
-      "julies bakeshop",
-      "tinapay",
-      "panaderia",
-      "bakery",
-      "bakeshop"
-    ],
-    "lat": 9.25188,
-    "lng": 124.71615,
-    "mun": "Mambajao",
-    "full_address": "Balintawak / Placido Reyes, Poblacion, Mambajao"
-  },
-  {
-    "name": "Vjandep Bakeshop, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "vjandep",
-      "pastel",
-      "pasalubong",
-      "bakery",
-      "bakeshop"
-    ],
-    "lat": 9.25328,
-    "lng": 124.71629,
-    "mun": "Mambajao",
-    "full_address": "Poblacion, Mambajao, Camiguin"
-  },
-  {
-    "name": "Chooks to Go, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "chooks",
-      "chooks to go",
-      "manok",
-      "lechon manok"
-    ],
-    "lat": 9.25185,
-    "lng": 124.7161,
-    "mun": "Mambajao",
-    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Angel's Burger, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "angels burger",
-      "angel's burger",
-      "burger",
-      "fastfood"
-    ],
-    "lat": 9.25379,
-    "lng": 124.7156,
-    "mun": "Mambajao",
-    "full_address": "Plaridel / Rizal Corner, Poblacion, Mambajao"
-  },
-  {
-    "name": "Potato Corner, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "potato corner",
-      "fries",
-      "fastfood"
-    ],
-    "lat": 9.25374,
-    "lng": 124.71592,
-    "mun": "Mambajao",
-    "full_address": "Poblacion, Mambajao, Camiguin"
-  },
-  {
-    "name": "Hayahay Cafe & Restaurant, Bug-ong",
-    "cat": "food",
-    "keywords": [
-      "hayahay cafe",
-      "hayahay",
-      "cafe",
-      "restaurant"
-    ],
-    "lat": 9.25081,
-    "lng": 124.67799,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Bug-ong, Mambajao"
-  },
-  {
-    "name": "Guerrera Restaurant, Yumbing",
-    "cat": "food",
-    "keywords": [
-      "guerrera",
-      "casa roces",
-      "asian food",
-      "rice paddy",
-      "restaurant"
-    ],
-    "lat": 9.24564,
-    "lng": 124.66463,
-    "mun": "Mambajao",
-    "full_address": "Yumbing / Agoho, Mambajao"
-  },
-  {
-    "name": "Northern Lights Cafe, Agoho",
-    "cat": "food",
-    "keywords": [
-      "northern lights",
-      "northern lights agoho",
-      "cafe",
-      "kape"
-    ],
-    "lat": 9.24422,
-    "lng": 124.66614,
-    "mun": "Mambajao",
-    "full_address": "Agoho, Mambajao, Camiguin"
-  },
-  {
-    "name": "Northern Lights Downtown, Balbagon",
-    "cat": "food",
-    "keywords": [
-      "northern lights downtown",
-      "northern lights balbagon",
-      "pizza",
-      "grill"
-    ],
-    "lat": 9.24478,
-    "lng": 124.73137,
-    "mun": "Mambajao",
-    "full_address": "Balbagon Highway, Mambajao"
-  },
-  {
-    "name": "La Dolce Vita, Baylao",
-    "cat": "food",
-    "keywords": [
-      "la dolce vita",
-      "pizza",
-      "italian",
-      "pasta"
-    ],
-    "lat": 9.25036,
-    "lng": 124.70507,
-    "mun": "Mambajao",
-    "full_address": "Baylao Highway, Mambajao"
-  },
-  {
-    "name": "Utopia Café, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "utopia",
-      "utopia cafe",
-      "utopia café",
-      "cafe",
-      "hinterland"
-    ],
-    "lat": 9.22741,
-    "lng": 124.70748,
-    "mun": "Mambajao",
-    "full_address": "Quiboro / Itum Road, Mambajao"
-  },
-  {
-    "name": "Paradiso Restaurant, Agoho",
-    "cat": "food",
-    "keywords": [
-      "paradiso",
-      "paradiso hillside",
-      "la isla cocina",
-      "pizza",
-      "restaurant"
-    ],
-    "lat": 9.24896,
-    "lng": 124.67246,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Agoho, Mambajao"
-  },
-  {
-    "name": "Daos Plant-Based Kitchen, Boloc-boloc",
-    "cat": "food",
-    "keywords": [
-      "daos",
-      "plant based",
-      "vegan",
-      "boloc-boloc restaurant"
-    ],
-    "lat": 9.25742,
-    "lng": 124.70395,
-    "mun": "Mambajao",
-    "full_address": "Boloc-boloc, Poblacion, Mambajao"
-  },
-  {
-    "name": "Nanaw Café, Binunsaran, Mambajao",
-    "cat": "food",
-    "keywords": [
-      "nanaw",
-      "nanaw cafe",
-      "cafe",
-      "hinterland"
-    ],
-    "lat": 9.21037,
-    "lng": 124.70209,
-    "mun": "Mambajao",
-    "full_address": "Binunsaran, Mambajao, Camiguin"
-  },
-  {
-    "name": "Sapore Ristorante, Bug-ong",
-    "cat": "food",
-    "keywords": [
-      "sapore",
-      "italian",
-      "pasta",
-      "restaurant"
-    ],
-    "lat": 9.24393,
-    "lng": 124.67928,
-    "mun": "Mambajao",
-    "full_address": "Bug-ong, Mambajao, Camiguin"
-  },
-  {
-    "name": "The Beehive Restaurant, Bura",
-    "cat": "food",
-    "keywords": [
-      "beehive",
-      "the beehive",
-      "driftwood cafe",
-      "catarman restaurant"
-    ],
-    "lat": 9.17448,
-    "lng": 124.6359,
-    "mun": "Catarman",
-    "full_address": "Bura / Catibac Coast, Catarman"
-  },
-  {
-    "name": "Petron Gas Station Balbagon, Mambajao",
+    "name": "Petron Gas Station Mambajao (Balbagon)",
     "cat": "fuel",
     "keywords": [
       "petron",
@@ -2681,99 +88,32 @@
     "lat": 9.24535,
     "lng": 124.72986,
     "mun": "Mambajao",
-    "full_address": "Circumferential Road, Balbagon, Mambajao"
+    "full_address": "Balbagon Highway, Mambajao"
   },
   {
-    "name": "Shell Gas Station Poblacion, Mambajao",
+    "name": "Petron Gas Station Poblacion Mambajao",
     "cat": "fuel",
     "keywords": [
-      "shell",
-      "shell poblacion",
-      "shell mambajao",
+      "petron",
+      "petron poblacion",
       "gasolinahan",
       "gas station",
       "fuel",
       "gasolina",
       "tubil"
     ],
-    "lat": 9.25203,
-    "lng": 124.71567,
+    "lat": 9.2485,
+    "lng": 124.7185,
     "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+    "full_address": "Poblacion Mambajao"
   },
   {
-    "name": "Caltex Gas Station Gen. B. Aranas, Mambajao",
+    "name": "Shell Gas Station Mambajao (Tupsan)",
     "cat": "fuel",
     "keywords": [
-      "caltex",
-      "caltex mambajao",
-      "caltex aranas",
-      "gasolinahan",
-      "gas station",
-      "fuel",
-      "tubil"
-    ],
-    "lat": 9.24841,
-    "lng": 124.71949,
-    "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
-  },
-  {
-    "name": "Caltex Gas Station J. Rizal, Mambajao",
-    "cat": "fuel",
-    "keywords": [
-      "caltex rizal",
-      "caltex poblacion",
-      "caltex",
-      "gasolinahan",
-      "fuel",
-      "tubil"
-    ],
-    "lat": 9.25343,
-    "lng": 124.71566,
-    "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
-  },
-  {
-    "name": "Jetti Gas Station Lakas, Mambajao",
-    "cat": "fuel",
-    "keywords": [
-      "jetti",
-      "jetti mambajao",
-      "jetti lakas",
-      "gasolinahan",
-      "gas station",
-      "fuel",
-      "tubil"
-    ],
-    "lat": 9.24712,
-    "lng": 124.72357,
-    "mun": "Mambajao",
-    "full_address": "Sitio Lakas, Poblacion, Mambajao"
-  },
-  {
-    "name": "Petron Gas Station Agoho, Mambajao",
-    "cat": "fuel",
-    "keywords": [
-      "petron agoho",
-      "gasolinahan agoho",
-      "gas station agoho",
-      "petron",
-      "gasolinahan",
-      "fuel",
-      "tubil"
-    ],
-    "lat": 9.2461,
-    "lng": 124.66922,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Agoho, Mambajao"
-  },
-  {
-    "name": "Shell Gas Station Tupsan, Mambajao",
-    "cat": "fuel",
-    "keywords": [
-      "shell tupsan",
       "shell",
+      "shell mambajao",
+      "shell tupsan",
       "gasolinahan",
       "gas station",
       "fuel",
@@ -2783,7 +123,24 @@
     "lat": 9.20656,
     "lng": 124.77516,
     "mun": "Mambajao",
-    "full_address": "Circumferential Road, Tupsan, Mambajao"
+    "full_address": "Tupsan Highway, Mambajao"
+  },
+  {
+    "name": "Phoenix Gas Station Mambajao (Lakas)",
+    "cat": "fuel",
+    "keywords": [
+      "phoenix",
+      "phoenix mambajao",
+      "phoenix lakas",
+      "gasolinahan",
+      "gas station",
+      "fuel",
+      "tubil"
+    ],
+    "lat": 9.249,
+    "lng": 124.723,
+    "mun": "Mambajao",
+    "full_address": "Lakas, Poblacion, Mambajao"
   },
   {
     "name": "Petron Gas Station Catarman",
@@ -2799,89 +156,38 @@
     "lat": 9.12577,
     "lng": 124.67342,
     "mun": "Catarman",
-    "full_address": "Circumferential Road, Poblacion, Catarman"
+    "full_address": "Poblacion Catarman"
   },
   {
-    "name": "Petron Gas Station Sagay",
+    "name": "Petron Gas Station Mahinog (Benoni)",
     "cat": "fuel",
     "keywords": [
-      "petron sagay",
-      "petron",
-      "gasolinahan sagay",
+      "petron mahinog",
+      "petron benoni",
+      "gasolinahan",
       "gas station",
       "fuel",
       "tubil"
     ],
-    "lat": 9.10422,
-    "lng": 124.72567,
-    "mun": "Sagay",
-    "full_address": "Circumferential Road, Poblacion, Sagay"
-  },
-  {
-    "name": "Shell Gas Station Benoni, Mahinog",
-    "cat": "fuel",
-    "keywords": [
-      "shell mahinog",
-      "shell benoni",
-      "gasolinahan mahinog",
-      "gas station",
-      "fuel",
-      "tubil"
-    ],
-    "lat": 9.14758,
-    "lng": 124.79691,
+    "lat": 9.132,
+    "lng": 124.793,
     "mun": "Mahinog",
-    "full_address": "Circumferential Road, Benoni, Mahinog"
+    "full_address": "Benoni Highway, Mahinog"
   },
   {
-    "name": "Jetti Gas Station Benoni, Mahinog",
+    "name": "Highway Fuel Station Agoho",
     "cat": "fuel",
     "keywords": [
-      "jetti mahinog",
-      "jetti benoni",
-      "gasolinahan benoni",
-      "gas station",
+      "gasolinahan agoho",
+      "gas station agoho",
+      "gasolinahan",
       "fuel",
       "tubil"
     ],
-    "lat": 9.147,
-    "lng": 124.79749,
-    "mun": "Mahinog",
-    "full_address": "Circumferential Road, Benoni, Mahinog"
-  },
-  {
-    "name": "Camiguin Polytechnic State College (CPSC Mambajao)",
-    "cat": "school",
-    "keywords": [
-      "cpsc",
-      "csu",
-      "camiguin state university",
-      "camiguin polytechnic",
-      "polytechnic",
-      "state college",
-      "college",
-      "school"
-    ],
-    "lat": 9.24318,
-    "lng": 124.731,
+    "lat": 9.244,
+    "lng": 124.685,
     "mun": "Mambajao",
-    "full_address": "Circumferential Road, Balbagon, Mambajao"
-  },
-  {
-    "name": "Fatima College of Camiguin (FCC)",
-    "cat": "school",
-    "keywords": [
-      "fatima college",
-      "fcc",
-      "fatima",
-      "fatima college of camiguin",
-      "college",
-      "school"
-    ],
-    "lat": 9.25044,
-    "lng": 124.71421,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Poblacion, Mambajao"
+    "full_address": "Agoho Highway, Mambajao"
   },
   {
     "name": "Mambajao Central School",
@@ -2896,21 +202,39 @@
     "lat": 9.24931,
     "lng": 124.71982,
     "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
+    "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
   },
   {
-    "name": "Mambajao National High School",
+    "name": "Fatima College of Camiguin (FCC)",
     "cat": "school",
     "keywords": [
-      "mambajao high school",
-      "mnhs",
-      "high school",
+      "fatima college",
+      "fcc",
+      "fatima",
+      "fatima college of camiguin",
+      "college",
       "school"
     ],
-    "lat": 9.25217,
-    "lng": 124.71943,
+    "lat": 9.25083,
+    "lng": 124.71408,
     "mun": "Mambajao",
-    "full_address": "Balintawak Street, Poblacion, Mambajao"
+    "full_address": "Poblacion Mambajao"
+  },
+  {
+    "name": "Camiguin Polytechnic State College (CPSC / CSU Mambajao)",
+    "cat": "school",
+    "keywords": [
+      "cpsc",
+      "csu",
+      "camiguin state university",
+      "camiguin polytechnic",
+      "college",
+      "school"
+    ],
+    "lat": 9.2472,
+    "lng": 124.7291,
+    "mun": "Mambajao",
+    "full_address": "Balbagon, Mambajao"
   },
   {
     "name": "Camiguin Polytechnic State College (Catarman Campus)",
@@ -2921,10 +245,10 @@
       "college catarman",
       "school"
     ],
-    "lat": 9.11663,
-    "lng": 124.68761,
+    "lat": 9.11666,
+    "lng": 124.68764,
     "mun": "Catarman",
-    "full_address": "Circumferential Road, Tangaro, Catarman"
+    "full_address": "Catarman"
   },
   {
     "name": "Camiguin National High School (CNHS)",
@@ -2936,10 +260,10 @@
       "high school",
       "school"
     ],
-    "lat": 9.1294,
-    "lng": 124.67219,
+    "lat": 9.1295,
+    "lng": 124.67217,
     "mun": "Catarman",
-    "full_address": "Circumferential Road, Looc, Catarman"
+    "full_address": "Catarman"
   },
   {
     "name": "Yumbing National High School",
@@ -2950,10 +274,10 @@
       "high school",
       "school"
     ],
-    "lat": 9.24386,
-    "lng": 124.66381,
+    "lat": 9.24378,
+    "lng": 124.66394,
     "mun": "Mambajao",
-    "full_address": "Pearl Road, Yumbing, Mambajao"
+    "full_address": "Yumbing, Mambajao"
   },
   {
     "name": "Magting Elementary School",
@@ -2961,14 +285,13 @@
     "keywords": [
       "magting elementary",
       "magting school",
-      "es magting",
       "school",
       "elementary"
     ],
-    "lat": 9.22428,
-    "lng": 124.75147,
+    "lat": 9.222,
+    "lng": 124.762,
     "mun": "Mambajao",
-    "full_address": "Circumferential Road, Magting, Mambajao"
+    "full_address": "Magting, Mambajao"
   },
   {
     "name": "Agoho Elementary School",
@@ -2979,10 +302,10 @@
       "school",
       "elementary"
     ],
-    "lat": 9.24625,
-    "lng": 124.67004,
+    "lat": 9.245,
+    "lng": 124.662,
     "mun": "Mambajao",
-    "full_address": "Circumferential Road, Agoho, Mambajao"
+    "full_address": "Agoho, Mambajao"
   },
   {
     "name": "Balbagon Elementary School",
@@ -2993,10 +316,10 @@
       "school",
       "elementary"
     ],
-    "lat": 9.23625,
-    "lng": 124.73903,
+    "lat": 9.243,
+    "lng": 124.738,
     "mun": "Mambajao",
-    "full_address": "Circumferential Road, Balbagon, Mambajao"
+    "full_address": "Balbagon, Mambajao"
   },
   {
     "name": "Catarman Central School",
@@ -3006,10 +329,10 @@
       "catarman elementary",
       "school"
     ],
-    "lat": 9.12842,
-    "lng": 124.67281,
+    "lat": 9.128,
+    "lng": 124.645,
     "mun": "Catarman",
-    "full_address": "Circumferential Road, Poblacion, Catarman"
+    "full_address": "Poblacion Catarman"
   },
   {
     "name": "Mahinog Central School",
@@ -3019,10 +342,10 @@
       "mahinog school",
       "school"
     ],
-    "lat": 9.15408,
-    "lng": 124.78856,
+    "lat": 9.153,
+    "lng": 124.785,
     "mun": "Mahinog",
-    "full_address": "Circumferential Road, Poblacion, Mahinog"
+    "full_address": "Poblacion Mahinog"
   },
   {
     "name": "Sagay Central School",
@@ -3032,10 +355,10 @@
       "sagay school",
       "school"
     ],
-    "lat": 9.10436,
-    "lng": 124.72937,
+    "lat": 9.102,
+    "lng": 124.721,
     "mun": "Sagay",
-    "full_address": "Circumferential Road, Poblacion, Sagay"
+    "full_address": "Poblacion Sagay"
   },
   {
     "name": "Guinsiliban Central School",
@@ -3045,10 +368,10 @@
       "guinsiliban school",
       "school"
     ],
-    "lat": 9.09811,
-    "lng": 124.78585,
+    "lat": 9.094,
+    "lng": 124.778,
     "mun": "Guinsiliban",
-    "full_address": "North Poblacion, Guinsiliban"
+    "full_address": "Poblacion Guinsiliban"
   },
   {
     "name": "San Nicolas de Tolentino Parish Church, Mambajao",
@@ -3061,10 +384,10 @@
       "catholic church",
       "church"
     ],
-    "lat": 9.24964,
-    "lng": 124.71504,
+    "lat": 9.2514,
+    "lng": 124.717,
     "mun": "Mambajao",
-    "full_address": "Poblacion, Mambajao, Camiguin"
+    "full_address": "Poblacion Mambajao"
   },
   {
     "name": "IFI Parish of the Good Shepherd, Mambajao",
@@ -3080,50 +403,36 @@
     "lat": 9.25145,
     "lng": 124.71702,
     "mun": "Mambajao",
-    "full_address": "Burgos Street, Poblacion, Mambajao"
+    "full_address": "Poblacion Mambajao"
   },
   {
-    "name": "Iglesia Ni Cristo (INC), Poblacion, Mambajao",
+    "name": "Iglesia Ni Cristo (INC), Mambajao",
     "cat": "church",
     "keywords": [
       "inc",
-      "inc mambajao",
       "iglesia ni cristo",
       "iglesia",
       "church"
     ],
-    "lat": 9.24823,
-    "lng": 124.7163,
+    "lat": 9.23866,
+    "lng": 124.65569,
     "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+    "full_address": "Mambajao"
   },
   {
-    "name": "Iglesia Ni Cristo (INC), Yumbing",
+    "name": "San Roque Parish Church, Mahinog",
     "cat": "church",
     "keywords": [
-      "inc yumbing",
-      "iglesia ni cristo yumbing",
-      "church"
-    ],
-    "lat": 9.23865,
-    "lng": 124.65567,
-    "mun": "Mambajao",
-    "full_address": "Circumferential Road, Yumbing, Mambajao"
-  },
-  {
-    "name": "St. Michael (San Roque) Parish Church, Mahinog",
-    "cat": "church",
-    "keywords": [
-      "st michael church",
       "san roque parish",
       "mahinog church",
       "simbahan sa mahinog",
+      "catholic church",
       "church"
     ],
-    "lat": 9.15355,
-    "lng": 124.78791,
+    "lat": 9.1532,
+    "lng": 124.785,
     "mun": "Mahinog",
-    "full_address": "Poblacion / San Roque, Mahinog, Camiguin"
+    "full_address": "Poblacion Mahinog"
   },
   {
     "name": "San Antonio de Padua Parish Church, Bonbon",
@@ -3131,12 +440,13 @@
     "keywords": [
       "san antonio parish",
       "bonbon church",
+      "catarman church",
       "church"
     ],
-    "lat": 9.19867,
-    "lng": 124.63629,
+    "lat": 9.207,
+    "lng": 124.632,
     "mun": "Catarman",
-    "full_address": "Bonbon, Catarman, Camiguin"
+    "full_address": "Bonbon, Catarman"
   },
   {
     "name": "Our Lady of Mount Carmel Parish Church, Catarman",
@@ -3144,17 +454,16 @@
     "keywords": [
       "catarman parish",
       "mount carmel church",
-      "catarman church",
       "simbahan sa catarman",
       "church"
     ],
-    "lat": 9.12455,
-    "lng": 124.6762,
+    "lat": 9.1282,
+    "lng": 124.6448,
     "mun": "Catarman",
-    "full_address": "Poblacion, Catarman, Camiguin"
+    "full_address": "Poblacion Catarman"
   },
   {
-    "name": "Our Lady of the Holy Rosary Parish Church, Sagay",
+    "name": "Holy Rosary Parish Church, Sagay",
     "cat": "church",
     "keywords": [
       "sagay parish",
@@ -3162,10 +471,10 @@
       "simbahan sa sagay",
       "church"
     ],
-    "lat": 9.10476,
-    "lng": 124.72537,
+    "lat": 9.1022,
+    "lng": 124.7212,
     "mun": "Sagay",
-    "full_address": "Rosario Street, Poblacion, Sagay"
+    "full_address": "Poblacion Sagay"
   },
   {
     "name": "Our Lady of Consolation Parish Church, Guinsiliban",
@@ -3176,10 +485,10 @@
       "simbahan sa guinsiliban",
       "church"
     ],
-    "lat": 9.09865,
-    "lng": 124.78533,
+    "lat": 9.0942,
+    "lng": 124.7782,
     "mun": "Guinsiliban",
-    "full_address": "North Poblacion, Guinsiliban, Camiguin"
+    "full_address": "Poblacion Guinsiliban"
   },
   {
     "name": "San Pedro Calungsod Chapel, Baylao",
@@ -3190,10 +499,131 @@
       "kapilya sa baylao",
       "church"
     ],
-    "lat": 9.2495,
-    "lng": 124.6949,
+    "lat": 9.2415,
+    "lng": 124.691,
+    "mun": "Mambajao",
+    "full_address": "Baylao, Mambajao"
+  },
+  {
+    "name": "Moonflower Garden and Restaurant, Baylao",
+    "cat": "food",
+    "keywords": [
+      "moonflower",
+      "moonflower garden",
+      "moonflower restaurant",
+      "moonflower garden and restaurant",
+      "moonflower gardern and restaurant",
+      "moonflower gardern",
+      "moonflower baylao",
+      "moonflower garden baylao",
+      "baylao moonflower",
+      "baylao restaurant",
+      "ice cream",
+      "restaurant baylao",
+      "food",
+      "resto",
+      "restaurant"
+    ],
+    "lat": 9.25057,
+    "lng": 124.7011,
     "mun": "Mambajao",
     "full_address": "Baylao, Mambajao, Camiguin"
+  },
+  {
+    "name": "Samuel Restaurant, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "samuel",
+      "samuel restaurant",
+      "placido reyes",
+      "resto",
+      "restaurant",
+      "food"
+    ],
+    "lat": 9.2528,
+    "lng": 124.71574,
+    "mun": "Mambajao",
+    "full_address": "Placido Reyes Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Kurma Eco Restaurant & Cafe, Yumbing",
+    "cat": "food",
+    "keywords": [
+      "kurma",
+      "kurma cafe",
+      "kurma restaurant",
+      "yumbing",
+      "cafe",
+      "food"
+    ],
+    "lat": 9.24144,
+    "lng": 124.65996,
+    "mun": "Mambajao",
+    "full_address": "Yumbing, Mambajao"
+  },
+  {
+    "name": "Julie's Bakeshop, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "julies",
+      "julies bakeshop",
+      "tinapay",
+      "bakery",
+      "bakeshop"
+    ],
+    "lat": 9.25188,
+    "lng": 124.71615,
+    "mun": "Mambajao",
+    "full_address": "Poblacion Mambajao"
+  },
+  {
+    "name": "Goldilocks Bakeshop, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "goldilocks",
+      "goldilocks mambajao",
+      "cake",
+      "bakeshop",
+      "bakery"
+    ],
+    "lat": 9.2518,
+    "lng": 124.7167,
+    "mun": "Mambajao",
+    "full_address": "Poblacion Mambajao"
+  },
+  {
+    "name": "CheckPoint Food Park, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "checkpoint",
+      "checkpoint food park",
+      "food park",
+      "restaurant",
+      "food"
+    ],
+    "lat": 9.24227,
+    "lng": 124.6634,
+    "mun": "Mambajao",
+    "full_address": "Agoho / Yumbing Highway, Mambajao"
+  },
+  {
+    "name": "Gaisano Capital Camiguin (Placido Reyes St)",
+    "cat": "supermarket",
+    "keywords": [
+      "gaisano",
+      "gaisano capital",
+      "placido reyes",
+      "p. reyes",
+      "placido reyes street",
+      "gaisano camiguin",
+      "mall",
+      "supermarket",
+      "grocery"
+    ],
+    "lat": 9.25290,
+    "lng": 124.71613,
+    "mun": "Mambajao",
+    "full_address": "Placido Reyes Street, Mabini, Poblacion, Mambajao"
   },
   {
     "name": "Placido Reyes Street, Mambajao",
@@ -3201,7 +631,6 @@
     "keywords": [
       "placido reyes",
       "placido reyes street",
-      "placido reyes / town center",
       "p. reyes",
       "p. reyes street",
       "gaisano street",
@@ -3218,11 +647,11 @@
     "keywords": [
       "burgos",
       "burgos street",
-      "burgos st",
-      "ifi street"
+      "jollibee street",
+      "burgos st"
     ],
-    "lat": 9.2514,
-    "lng": 124.71705,
+    "lat": 9.25058,
+    "lng": 124.71712,
     "mun": "Mambajao",
     "full_address": "Burgos Street, Poblacion, Mambajao"
   },
@@ -3234,13 +663,12 @@
       "gen aranas",
       "aranas street",
       "hospital street",
-      "jollibee street",
       "aranas"
     ],
-    "lat": 9.24825,
-    "lng": 124.72056,
+    "lat": 9.24931,
+    "lng": 124.71982,
     "mun": "Mambajao",
-    "full_address": "General Bonifacio Aranas Street, Mambajao"
+    "full_address": "General Bonifacio Aranas Street, Poblacion, Mambajao"
   },
   {
     "name": "Plaridel Street, Mambajao",
@@ -3251,10 +679,10 @@
       "market street",
       "plaridel st"
     ],
-    "lat": 9.25351,
-    "lng": 124.71605,
+    "lat": 9.25411,
+    "lng": 124.71813,
     "mun": "Mambajao",
-    "full_address": "Plaridel Street, Poblacion, Mambajao"
+    "full_address": "Plaridel Street, Lagundi, Poblacion, Mambajao"
   },
   {
     "name": "Rizal Street, Mambajao",
@@ -3263,13 +691,12 @@
       "rizal",
       "rizal street",
       "j.p. rizal",
-      "j. rizal",
       "rizal st"
     ],
-    "lat": 9.25049,
-    "lng": 124.71607,
+    "lat": 9.24673,
+    "lng": 124.71578,
     "mun": "Mambajao",
-    "full_address": "J. Rizal Street, Poblacion, Mambajao"
+    "full_address": "Rizal Street, Poblacion, Mambajao"
   },
   {
     "name": "Mabini Street, Mambajao",
@@ -3279,79 +706,1631 @@
       "mabini street",
       "mabini st"
     ],
-    "lat": 9.24951,
-    "lng": 124.71535,
+    "lat": 9.24477,
+    "lng": 124.71328,
     "mun": "Mambajao",
     "full_address": "Mabini Street, Poblacion, Mambajao"
+  },
+  {
+    "name": "Davilett Store & Supermarket, Mambajao",
+    "cat": "supermarket",
+    "keywords": [
+      "davilett",
+      "davilet",
+      "davi",
+      "supermarket",
+      "grocery"
+    ],
+    "lat": 9.2518,
+    "lng": 124.7167,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Nene Uy Store / Wholesaler, Mambajao",
+    "cat": "store",
+    "keywords": [
+      "nene uy",
+      "nene",
+      "wholesaler",
+      "grocery",
+      "supply"
+    ],
+    "lat": 9.2516,
+    "lng": 124.7166,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Prince Hypermart Camiguin",
+    "cat": "supermarket",
+    "keywords": [
+      "prince hypermart",
+      "prince",
+      "hypermart"
+    ],
+    "lat": 9.2495,
+    "lng": 124.718,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "7-Eleven Mambajao Town Center",
+    "cat": "store",
+    "keywords": [
+      "7-eleven",
+      "7-11",
+      "711",
+      "seven eleven",
+      "convenience store"
+    ],
+    "lat": 9.2505,
+    "lng": 124.7165,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "7-Eleven Balbagon Port Branch",
+    "cat": "store",
+    "keywords": [
+      "7-eleven balbagon",
+      "711 balbagon",
+      "7 eleven port"
+    ],
+    "lat": 9.2558,
+    "lng": 124.7169,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Mercury Drug Camiguin, Mambajao",
+    "cat": "pharmacy",
+    "keywords": [
+      "mercury drug",
+      "mercury",
+      "pharmacy",
+      "botika",
+      "tambal",
+      "drugstore"
+    ],
+    "lat": 9.25249,
+    "lng": 124.71641,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Rose Pharmacy Mambajao",
+    "cat": "pharmacy",
+    "keywords": [
+      "rose pharmacy",
+      "rose",
+      "pharmacy",
+      "botika",
+      "tambal"
+    ],
+    "lat": 9.252,
+    "lng": 124.7165,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Julies Bakeshop Mambajao",
+    "cat": "store",
+    "keywords": [
+      "julies",
+      "julies bakeshop",
+      "bakeshop",
+      "panaderia",
+      "tinapay"
+    ],
+    "lat": 9.251,
+    "lng": 124.7166,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Chooks to Go Mambajao",
+    "cat": "food",
+    "keywords": [
+      "chooks",
+      "chooks to go",
+      "manok",
+      "lechon manok"
+    ],
+    "lat": 9.2508,
+    "lng": 124.7167,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Andoks Litson Mambajao",
+    "cat": "food",
+    "keywords": [
+      "andoks",
+      "andok",
+      "litson manok"
+    ],
+    "lat": 9.2506,
+    "lng": 124.7168,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Dunkin Donuts Camiguin",
+    "cat": "food",
+    "keywords": [
+      "dunkin",
+      "donuts",
+      "dunkin donuts"
+    ],
+    "lat": 9.2502,
+    "lng": 124.7166,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Mambajao Public Market",
+    "cat": "market",
+    "keywords": [
+      "mambajao market",
+      "public market",
+      "merkado",
+      "palengke",
+      "wet market",
+      "isda",
+      "karne",
+      "utanon"
+    ],
+    "lat": 9.25319,
+    "lng": 124.7166,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Mahinog Public Market",
+    "cat": "market",
+    "keywords": [
+      "mahinog market",
+      "merkado mahinog",
+      "palengke mahinog"
+    ],
+    "lat": 9.1535,
+    "lng": 124.7852,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Catarman Public Market",
+    "cat": "market",
+    "keywords": [
+      "catarman market",
+      "merkado catarman",
+      "palengke catarman"
+    ],
+    "lat": 9.1275,
+    "lng": 124.6455,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Sagay Public Market",
+    "cat": "market",
+    "keywords": [
+      "sagay market",
+      "merkado sagay",
+      "palengke sagay"
+    ],
+    "lat": 9.1025,
+    "lng": 124.7205,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Guinsiliban Public Market",
+    "cat": "market",
+    "keywords": [
+      "guinsiliban market",
+      "merkado guinsiliban",
+      "palengke guinsiliban"
+    ],
+    "lat": 9.0938,
+    "lng": 124.7778,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Jollibee Camiguin, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "jollibee",
+      "jolibee",
+      "joli",
+      "jolli",
+      "fastfood",
+      "chickenjoy",
+      "burger"
+    ],
+    "lat": 9.24971,
+    "lng": 124.71667,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Checkpoint Food Park, Mambajao",
+    "cat": "food",
+    "keywords": [
+      "checkpoint",
+      "food park",
+      "resto bar",
+      "kaonan"
+    ],
+    "lat": 9.2499,
+    "lng": 124.7182,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Hayahay Cafe & Restaurant",
+    "cat": "food",
+    "keywords": [
+      "hayahay cafe",
+      "hayahay",
+      "cafe"
+    ],
+    "lat": 9.2512,
+    "lng": 124.672,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Casa Roces / Guerrera Restaurant, Yumbing",
+    "cat": "food",
+    "keywords": [
+      "guerrera",
+      "casa roces",
+      "asian food",
+      "rice paddy"
+    ],
+    "lat": 9.2548,
+    "lng": 124.6475,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Northern Lights Cafe, Agoho",
+    "cat": "food",
+    "keywords": [
+      "northern lights",
+      "cafe",
+      "kape"
+    ],
+    "lat": 9.246,
+    "lng": 124.661,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "La Dolce Vita Italian Pizza, Agoho",
+    "cat": "food",
+    "keywords": [
+      "la dolce vita",
+      "pizza",
+      "italian",
+      "pasta"
+    ],
+    "lat": 9.2455,
+    "lng": 124.6615,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Penongs Barbeque Mambajao",
+    "cat": "food",
+    "keywords": [
+      "penongs",
+      "penong",
+      "bbq",
+      "chicken bbq",
+      "inasal"
+    ],
+    "lat": 9.2496,
+    "lng": 124.7172,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Provincial Capitol Compound, Mambajao",
+    "cat": "building",
+    "keywords": [
+      "capitol",
+      "kapitolyo",
+      "provincial capitol",
+      "governor"
+    ],
+    "lat": 9.24417,
+    "lng": 124.72725,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Mambajao Town Plaza / Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "mambajao plaza",
+      "plaza",
+      "municipal hall",
+      "munisipyo",
+      "mayor"
+    ],
+    "lat": 9.2515,
+    "lng": 124.7168,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Camiguin General Hospital (CGH)",
+    "cat": "hospital",
+    "keywords": [
+      "hospital",
+      "cgh",
+      "clinic",
+      "doktor",
+      "emergency",
+      "pagamutan"
+    ],
+    "lat": 9.24847,
+    "lng": 124.72159,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Mahinog Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "munisipyo mahinog",
+      "mahinog hall",
+      "mayor mahinog"
+    ],
+    "lat": 9.1532,
+    "lng": 124.785,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Catarman Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "munisipyo catarman",
+      "catarman hall",
+      "mayor catarman"
+    ],
+    "lat": 9.1282,
+    "lng": 124.6448,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Sagay Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "munisipyo sagay",
+      "sagay hall",
+      "mayor sagay"
+    ],
+    "lat": 9.1022,
+    "lng": 124.7212,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Guinsiliban Municipal Hall",
+    "cat": "building",
+    "keywords": [
+      "munisipyo guinsiliban",
+      "guinsiliban hall"
+    ],
+    "lat": 9.0942,
+    "lng": 124.7782,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Camiguin Polytechnic State College (CPSC)",
+    "cat": "school",
+    "keywords": [
+      "cpsc",
+      "polytechnic",
+      "college",
+      "state college",
+      "eskwela"
+    ],
+    "lat": 9.252,
+    "lng": 124.711,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Fatima College of Camiguin",
+    "cat": "school",
+    "keywords": [
+      "fatima college",
+      "fcc",
+      "fatima"
+    ],
+    "lat": 9.2522,
+    "lng": 124.7145,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Camiguin Provincial Police Office",
+    "cat": "building",
+    "keywords": [
+      "police",
+      "pnp",
+      "pulis",
+      "police station",
+      "istasyon"
+    ],
+    "lat": 9.2489,
+    "lng": 124.7225,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Balbagon Port (FastCat & Ferry Wharf)",
+    "cat": "transport",
+    "keywords": [
+      "balbagon port",
+      "balbagon",
+      "fastcat",
+      "super shuttle",
+      "ferry",
+      "barko",
+      "pantalan",
+      "pantalan balbagon"
+    ],
+    "lat": 9.2561,
+    "lng": 124.7175,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Benoni Passenger Terminal, Mahinog",
+    "cat": "transport",
+    "keywords": [
+      "benoni passenger terminal",
+      "benoni terminal",
+      "passenger terminal",
+      "passenger terminal benoni",
+      "benoni port passenger terminal",
+      "ppa passenger terminal",
+      "ppa benoni",
+      "pantalan passenger terminal",
+      "terminal",
+      "passenger",
+      "benoni port",
+      "pantalan benoni",
+      "ferry terminal",
+      "wharf",
+      "port",
+      "pantalan",
+      "transport"
+    ],
+    "lat": 9.1306,
+    "lng": 124.7937,
+    "mun": "Mahinog",
+    "full_address": "Benoni Port, Mahinog, Camiguin"
+  },
+  {
+    "name": "Benoni Port / Ferry Wharf, Mahinog",
+    "cat": "transport",
+    "keywords": [
+      "benoni port",
+      "benoni passenger terminal",
+      "benoni terminal",
+      "passenger terminal",
+      "benoni",
+      "wharf",
+      "port",
+      "pantalan",
+      "ferry mahinog",
+      "barko benoni",
+      "pantalan benoni"
+    ],
+    "lat": 9.1306,
+    "lng": 124.7937,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Guinsiliban Port / Ferry Terminal",
+    "cat": "transport",
+    "keywords": [
+      "guinsiliban port",
+      "pantalan guinsiliban",
+      "ferry guinsiliban"
+    ],
+    "lat": 9.0925,
+    "lng": 124.7815,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Camiguin Airport",
+    "cat": "transport",
+    "keywords": [
+      "airport",
+      "camiguin airport",
+      "tugpahanan",
+      "eroplano",
+      "flight"
+    ],
+    "lat": 9.253,
+    "lng": 124.7061,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "White Island Boat Jump-off, Yumbing",
+    "cat": "tourist",
+    "keywords": [
+      "white island",
+      "white island boat",
+      "jump-off",
+      "medano",
+      "island"
+    ],
+    "lat": 9.2538,
+    "lng": 124.6532,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Mantigue Island Boat Station, San Roque",
+    "cat": "tourist",
+    "keywords": [
+      "mantigue island",
+      "mantigue",
+      "boat station",
+      "san roque mantigue"
+    ],
+    "lat": 9.172,
+    "lng": 124.785,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Katibawasan Falls",
+    "cat": "tourist",
+    "keywords": [
+      "katibawasan falls",
+      "katibawasan",
+      "busay",
+      "waterfall"
+    ],
+    "lat": 9.2152,
+    "lng": 124.7188,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Tuasan Falls, Mainit, Catarman",
+    "cat": "tourist",
+    "keywords": [
+      "tuasan falls",
+      "tuasan",
+      "busay catarman"
+    ],
+    "lat": 9.17,
+    "lng": 124.675,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Ardent Hot Spring, Esperanza",
+    "cat": "tourist",
+    "keywords": [
+      "ardent hot spring",
+      "ardent",
+      "hot spring",
+      "esperanza hot spring"
+    ],
+    "lat": 9.238,
+    "lng": 124.661,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Sto. Ni\u00f1o Cold Spring, Catarman",
+    "cat": "tourist",
+    "keywords": [
+      "cold spring",
+      "sto nino",
+      "sto. nino",
+      "sto ni\u00f1o",
+      "bugnaw spring"
+    ],
+    "lat": 9.155,
+    "lng": 124.655,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Bura Soda Water Park, Catarman",
+    "cat": "tourist",
+    "keywords": [
+      "soda water",
+      "bura soda",
+      "soda swimming",
+      "bura"
+    ],
+    "lat": 9.182,
+    "lng": 124.638,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Sunken Cemetery & Giant Cross, Bonbon",
+    "cat": "tourist",
+    "keywords": [
+      "sunken cemetery",
+      "sunken",
+      "giant cross",
+      "lubnganan",
+      "krus"
+    ],
+    "lat": 9.201,
+    "lng": 124.63,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Old Church Ruins (Gui-ob Church), Bonbon",
+    "cat": "tourist",
+    "keywords": [
+      "church ruins",
+      "guiob",
+      "gui-ob",
+      "old church",
+      "simbahan"
+    ],
+    "lat": 9.205,
+    "lng": 124.632,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Mount Vulcan Daan / Walkway to Old Volcano",
+    "cat": "tourist",
+    "keywords": [
+      "vulcan daan",
+      "old volcano",
+      "walkway",
+      "via crucis"
+    ],
+    "lat": 9.2085,
+    "lng": 124.635,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Mount Hibok-Hibok Base Jump-off",
+    "cat": "tourist",
+    "keywords": [
+      "hibok-hibok",
+      "hibok hibok",
+      "volcano hike"
+    ],
+    "lat": 9.203,
+    "lng": 124.671,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Giant Clam Sanctuary, Cantaan",
+    "cat": "tourist",
+    "keywords": [
+      "giant clam",
+      "clam sanctuary",
+      "cantaan",
+      "taklobo"
+    ],
+    "lat": 9.081,
+    "lng": 124.786,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Taguines Lagoon & Zipline, Benoni",
+    "cat": "tourist",
+    "keywords": [
+      "taguines lagoon",
+      "taguines",
+      "zipline"
+    ],
+    "lat": 9.129,
+    "lng": 124.791,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Katunggan Mangrove Park, Mahinog",
+    "cat": "tourist",
+    "keywords": [
+      "katunggan",
+      "mangrove park",
+      "bakawan"
+    ],
+    "lat": 9.135,
+    "lng": 124.792,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Paras Beach Resort, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "paras beach",
+      "paras resort",
+      "paras",
+      "hotel"
+    ],
+    "lat": 9.2553,
+    "lng": 124.6468,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Balyali Beach Resort, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "balyali resort",
+      "balyali",
+      "beach resort"
+    ],
+    "lat": 9.2588,
+    "lng": 124.6432,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Tongatok Cliff Resort, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "tongatok cliff",
+      "tongatok",
+      "cliff resort"
+    ],
+    "lat": 9.2505,
+    "lng": 124.6341,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Lanzones Resort, Baylao, Mambajao",
+    "cat": "resort",
+    "keywords": [
+      "lanzones resort",
+      "lanzones",
+      "resort baylao"
+    ],
+    "lat": 9.239,
+    "lng": 124.697,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Camiguin Highland Resort, Soro-soro",
+    "cat": "resort",
+    "keywords": [
+      "highland resort",
+      "highland",
+      "sorosoro",
+      "soro-soro",
+      "soro'soro"
+    ],
+    "lat": 9.231,
+    "lng": 124.689,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Somewhere Else Boutique Resort, Agoho",
+    "cat": "resort",
+    "keywords": [
+      "somewhere else",
+      "boutique resort"
+    ],
+    "lat": 9.2458,
+    "lng": 124.6625,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Balerin Beach Resort, Agoho",
+    "cat": "resort",
+    "keywords": [
+      "balerin",
+      "balerin resort"
+    ],
+    "lat": 9.2445,
+    "lng": 124.663,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Pabua's Cottages, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "pabuas",
+      "pabua",
+      "cottages"
+    ],
+    "lat": 9.254,
+    "lng": 124.646,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Medano Island Resort, Yumbing",
+    "cat": "resort",
+    "keywords": [
+      "medano",
+      "medano resort"
+    ],
+    "lat": 9.2565,
+    "lng": 124.645,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Agoho, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "agoho",
+      "brgy agoho",
+      "barangay agoho"
+    ],
+    "lat": 9.245,
+    "lng": 124.662,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Anito, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "anito",
+      "brgy anito",
+      "barangay anito"
+    ],
+    "lat": 9.2296,
+    "lng": 124.7444,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Balbagon, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "balbagon",
+      "brgy balbagon",
+      "barangay balbagon"
+    ],
+    "lat": 9.254,
+    "lng": 124.714,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Baylao, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "baylao",
+      "bailao",
+      "brgy baylao",
+      "barangay baylao"
+    ],
+    "lat": 9.2415,
+    "lng": 124.691,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Benhaan, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "benhaan",
+      "brgy benhaan",
+      "barangay benhaan"
+    ],
+    "lat": 9.2032,
+    "lng": 124.7677,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Bug-ong, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "bug-ong",
+      "bugong",
+      "brgy bug-ong",
+      "barangay bugong"
+    ],
+    "lat": 9.253,
+    "lng": 124.639,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Kuguita, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "kuguita",
+      "cuguita",
+      "brgy kuguita",
+      "barangay kuguita"
+    ],
+    "lat": 9.249,
+    "lng": 124.685,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Magting, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "magting",
+      "brgy magting",
+      "barangay magting",
+      "magting mambajao"
+    ],
+    "lat": 9.2189,
+    "lng": 124.756,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Magting Elementary School, Mambajao",
+    "cat": "school",
+    "keywords": [
+      "magting elementary",
+      "magting school",
+      "es magting"
+    ],
+    "lat": 9.2242,
+    "lng": 124.7514,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Naasag, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "naasag",
+      "brgy naasag",
+      "barangay naasag"
+    ],
+    "lat": 9.251,
+    "lng": 124.628,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Pandayan, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "pandayan",
+      "brgy pandayan",
+      "barangay pandayan",
+      "pandayan mambajao"
+    ],
+    "lat": 9.247,
+    "lng": 124.708,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Boloc-boloc, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "boloc boloc",
+      "boloc-boloc",
+      "bolocboloc",
+      "bolok bolok",
+      "bolok-bolok",
+      "bolokbolok",
+      "boloc",
+      "bolok",
+      "sitio boloc-boloc",
+      "sitio boloc boloc",
+      "boloc boloc mambajao",
+      "bolocboloc mambajao",
+      "poblacion boloc boloc"
+    ],
+    "lat": 9.25725,
+    "lng": 124.70658,
+    "mun": "Mambajao",
+    "full_address": "Sitio Boloc-boloc, Poblacion, Mambajao, Camiguin"
+  },
+  {
+    "name": "Sa-ay Cold Spring, Mambajao",
+    "cat": "tourist",
+    "keywords": [
+      "sa-ay",
+      "saay",
+      "sa ay",
+      "sa-ay cold spring",
+      "saay cold spring",
+      "quipasa",
+      "spring"
+    ],
+    "lat": 9.2211,
+    "lng": 124.7034,
+    "mun": "Mambajao",
+    "full_address": "Quipasa, Mambajao, Camiguin"
+  },
+  {
+    "name": "Poblacion, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "poblacion mambajao",
+      "poblacion",
+      "centro mambajao",
+      "mambajao proper"
+    ],
+    "lat": 9.25405,
+    "lng": 124.71636,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Soro-soro, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "soro-soro",
+      "sorosoro",
+      "soro soro",
+      "brgy sorosoro"
+    ],
+    "lat": 9.231,
+    "lng": 124.689,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Tagdo, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "tagdo",
+      "brgy tagdo",
+      "barangay tagdo"
+    ],
+    "lat": 9.238,
+    "lng": 124.682,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Tupsan, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "tupsan",
+      "tupsan mambajao",
+      "brgy tupsan"
+    ],
+    "lat": 9.2019,
+    "lng": 124.7774,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Yumbing, Mambajao",
+    "cat": "barangay",
+    "keywords": [
+      "yumbing",
+      "brgy yumbing",
+      "barangay yumbing"
+    ],
+    "lat": 9.2553,
+    "lng": 124.6468,
+    "mun": "Mambajao"
+  },
+  {
+    "name": "Benoni, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "benoni",
+      "brgy benoni",
+      "barangay benoni",
+      "benoni mahinog"
+    ],
+    "lat": 9.1306,
+    "lng": 124.7937,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Binitinan, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "binitinan",
+      "brgy binitinan",
+      "barangay binitinan",
+      "binitinan mahinog"
+    ],
+    "lat": 9.16,
+    "lng": 124.765,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Catohogan, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "catohogan",
+      "katohogan",
+      "brgy catohogan",
+      "barangay catohogan"
+    ],
+    "lat": 9.162,
+    "lng": 124.778,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Hubangon, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "hubangon",
+      "brgy hubangon",
+      "barangay hubangon"
+    ],
+    "lat": 9.168,
+    "lng": 124.776,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Owakan, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "owakan",
+      "brgy owakan",
+      "barangay owakan"
+    ],
+    "lat": 9.151,
+    "lng": 124.774,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Poblacion, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "poblacion mahinog",
+      "mahinog centro",
+      "centro mahinog",
+      "mahinog proper"
+    ],
+    "lat": 9.153,
+    "lng": 124.785,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Puntod, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "puntod",
+      "brgy puntod",
+      "barangay puntod"
+    ],
+    "lat": 9.146,
+    "lng": 124.781,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "San Isidro, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san isidro",
+      "san isidro mahinog",
+      "brgy san isidro"
+    ],
+    "lat": 9.165,
+    "lng": 124.768,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "San Jose, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san jose",
+      "san jose mahinog",
+      "brgy san jose"
+    ],
+    "lat": 9.158,
+    "lng": 124.771,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "San Miguel, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san miguel",
+      "san miguel mahinog",
+      "brgy san miguel"
+    ],
+    "lat": 9.17,
+    "lng": 124.779,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "San Roque, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "san roque",
+      "san roque mahinog",
+      "brgy san roque"
+    ],
+    "lat": 9.172,
+    "lng": 124.785,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Tubod, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "tubod",
+      "tubod mahinog",
+      "brgy tubod"
+    ],
+    "lat": 9.16,
+    "lng": 124.775,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Tupsan Peque\u00f1o, Mahinog",
+    "cat": "barangay",
+    "keywords": [
+      "tupsan pequeno",
+      "tupsan pequeo",
+      "tupsan mahinog"
+    ],
+    "lat": 9.185,
+    "lng": 124.75,
+    "mun": "Mahinog"
+  },
+  {
+    "name": "Alangilan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "alangilan catarman",
+      "brgy alangilan catarman"
+    ],
+    "lat": 9.158,
+    "lng": 124.638,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Biga, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "biga",
+      "brgy biga",
+      "barangay biga",
+      "biga catarman"
+    ],
+    "lat": 9.138,
+    "lng": 124.642,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Bonbon, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "bonbon",
+      "bonbon catarman",
+      "brgy bonbon"
+    ],
+    "lat": 9.201,
+    "lng": 124.63,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Bura, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "bura",
+      "bura catarman",
+      "brgy bura"
+    ],
+    "lat": 9.182,
+    "lng": 124.638,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Catibac, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "catibac",
+      "brgy catibac",
+      "barangay catibac"
+    ],
+    "lat": 9.165,
+    "lng": 124.642,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Compol, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "compol",
+      "brgy compol",
+      "barangay compol"
+    ],
+    "lat": 9.145,
+    "lng": 124.643,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Lawigan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "lawigan",
+      "brgy lawigan",
+      "barangay lawigan"
+    ],
+    "lat": 9.135,
+    "lng": 124.641,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Licoan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "licoan",
+      "brgy licoan",
+      "barangay licoan",
+      "licoan catarman"
+    ],
+    "lat": 9.142,
+    "lng": 124.644,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Mainit, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "mainit",
+      "mainit catarman",
+      "brgy mainit"
+    ],
+    "lat": 9.168,
+    "lng": 124.665,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Mandawa, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "mandawa",
+      "brgy mandawa",
+      "barangay mandawa"
+    ],
+    "lat": 9.15,
+    "lng": 124.643,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Panghiawan, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "panghiawan",
+      "brgy panghiawan",
+      "barangay panghiawan"
+    ],
+    "lat": 9.115,
+    "lng": 124.652,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Poblacion, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "poblacion catarman",
+      "catarman centro",
+      "centro catarman",
+      "catarman proper"
+    ],
+    "lat": 9.128,
+    "lng": 124.645,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Santo Ni\u00f1o, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "santo nino",
+      "santo nio",
+      "sto nino catarman",
+      "brgy sto nino"
+    ],
+    "lat": 9.155,
+    "lng": 124.655,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Tangaro, Catarman",
+    "cat": "barangay",
+    "keywords": [
+      "tangaro",
+      "brgy tangaro",
+      "barangay tangaro"
+    ],
+    "lat": 9.122,
+    "lng": 124.648,
+    "mun": "Catarman"
+  },
+  {
+    "name": "Alangilan, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "alangilan sagay",
+      "brgy alangilan sagay"
+    ],
+    "lat": 9.095,
+    "lng": 124.708,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Bacnit, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "bacnit",
+      "brgy bacnit",
+      "barangay bacnit"
+    ],
+    "lat": 9.112,
+    "lng": 124.735,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Balite, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "balite",
+      "balite sagay",
+      "brgy balite"
+    ],
+    "lat": 9.098,
+    "lng": 124.715,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Bonbon, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "bonbon sagay",
+      "brgy bonbon sagay"
+    ],
+    "lat": 9.108,
+    "lng": 124.718,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Bugang, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "bugang",
+      "brgy bugang",
+      "barangay bugang"
+    ],
+    "lat": 9.108,
+    "lng": 124.728,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Cuna, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "cuna",
+      "brgy cuna",
+      "barangay cuna"
+    ],
+    "lat": 9.105,
+    "lng": 124.719,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Manuyog, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "manuyog",
+      "brgy manuyog",
+      "barangay manuyog"
+    ],
+    "lat": 9.088,
+    "lng": 124.691,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Mayana, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "mayana",
+      "brgy mayana",
+      "barangay mayana"
+    ],
+    "lat": 9.115,
+    "lng": 124.712,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Poblacion, Sagay",
+    "cat": "barangay",
+    "keywords": [
+      "poblacion sagay",
+      "sagay centro",
+      "centro sagay",
+      "sagay proper"
+    ],
+    "lat": 9.102,
+    "lng": 124.721,
+    "mun": "Sagay"
+  },
+  {
+    "name": "Butay, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "butay",
+      "brgy butay",
+      "barangay butay"
+    ],
+    "lat": 9.099,
+    "lng": 124.775,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Cabuan, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "cabuan",
+      "brgy cabuan",
+      "barangay cabuan"
+    ],
+    "lat": 9.105,
+    "lng": 124.782,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Cantaan, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "cantaan",
+      "brgy cantaan",
+      "barangay cantaan"
+    ],
+    "lat": 9.081,
+    "lng": 124.786,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Liong, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "liong",
+      "liongs",
+      "brgy liong",
+      "barangay liong"
+    ],
+    "lat": 9.091,
+    "lng": 124.772,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "Maac, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "maac",
+      "brgy maac",
+      "barangay maac"
+    ],
+    "lat": 9.112,
+    "lng": 124.785,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "North Poblacion, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "north poblacion",
+      "north poblacion guinsiliban",
+      "poblacion guinsiliban"
+    ],
+    "lat": 9.096,
+    "lng": 124.779,
+    "mun": "Guinsiliban"
+  },
+  {
+    "name": "South Poblacion, Guinsiliban",
+    "cat": "barangay",
+    "keywords": [
+      "south poblacion",
+      "south poblacion guinsiliban"
+    ],
+    "lat": 9.092,
+    "lng": 124.777,
+    "mun": "Guinsiliban"
   }
 ];
 
-  function normalizePlaceTokens(text) {
-    return (text || "")
-      .toLowerCase()
-      .replace(/[,()\-/&.]+/g, " ")
-      .split(/\s+/)
-      .filter(Boolean);
-  }
-
-  function searchCamiguinPlacesLocal(str, limit = 10) {
-    if (!str) return [];
+    function matchCamiguinPlace(str) {
+    if (!str) return null;
     const s = str.trim().toLowerCase();
-    if (!s) return [];
-    const qWords = normalizePlaceTokens(s);
-    const scored = [];
+    const qWords = s.replace(/,/g, " ").replace(/-/g, " ").split(/\s+/).filter(Boolean);
 
-    for (let idx = 0; idx < CAMIGUIN_PLACES.length; idx++) {
-      const p = CAMIGUIN_PLACES[idx];
-      const nameLower = p.name.toLowerCase();
-      const kws = (p.keywords || []).map((k) => k.toLowerCase());
-      const munLower = (p.mun || "").toLowerCase();
-      const catLower = (p.cat || "").toLowerCase();
-      let score = 0;
-
-      if (s === nameLower) {
-        score = 1000;
-      } else if (kws.some((k) => s === k)) {
-        score = 900;
-      } else if (nameLower.startsWith(s)) {
-        score = 750;
-      } else if (kws.some((k) => k.startsWith(s))) {
-        score = 650;
-      } else if (qWords.length > 0) {
-        const nameWords = new Set(normalizePlaceTokens(nameLower));
-        const munWords = new Set(normalizePlaceTokens(munLower));
-        const kwWords = new Set();
-        kws.forEach((k) => normalizePlaceTokens(k).forEach((w) => kwWords.add(w)));
-        const nameAndKw = new Set([...nameWords, ...kwWords]);
-        const allWords = new Set([...nameAndKw, ...munWords]);
-
-        if (qWords.every((qw) => [...allWords].some((nw) => nw === qw || nw.startsWith(qw)))) {
-          if (qWords.every((qw) => [...nameAndKw].some((nw) => nw === qw || nw.startsWith(qw)))) {
-            score = 520;
-          } else {
-            score = 480;
-          }
-        } else if (s.length >= 3 && (nameLower.includes(s) || kws.some((k) => k.includes(s)))) {
-          score = 300;
-        }
-      } else if (s.length >= 3 && (nameLower.includes(s) || kws.some((k) => k.includes(s)))) {
-        score = 300;
-      }
-
-      if (score > 0) {
-        if (catLower === "barangay" || catLower === "neighborhood") score += 40;
-        else if (catLower === "transport" || catLower === "tourist" || catLower === "building" || catLower === "hospital") score += 15;
-        scored.push({ place: p, score, idx });
+    // 1. Exact match on name or keywords
+    for (const p of CAMIGUIN_PLACES) {
+      if (s === p.name.toLowerCase()) return p;
+      for (const k of p.keywords) {
+        if (s === k.toLowerCase()) return p;
       }
     }
 
-    scored.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - b.idx));
-    return scored.slice(0, limit).map((item) => item.place);
-  }
+    // 2. Starts with query
+    for (const p of CAMIGUIN_PLACES) {
+      if (p.name.toLowerCase().startsWith(s)) return p;
+      for (const k of p.keywords) {
+        if (k.toLowerCase().startsWith(s)) return p;
+      }
+    }
 
-  function matchCamiguinPlace(str) {
-    const matches = searchCamiguinPlacesLocal(str, 1);
-    return matches.length > 0 ? matches[0] : null;
+    // 3. Word token matching
+    for (const p of CAMIGUIN_PLACES) {
+      const nameWords = new Set(p.name.toLowerCase().replace(/,/g, " ").replace(/-/g, " ").split(/\s+/).filter(Boolean));
+      const kwWords = new Set();
+      p.keywords.forEach(k => k.toLowerCase().replace(/-/g, " ").split(/\s+/).forEach(w => kwWords.add(w)));
+
+      const allWords = new Set([...nameWords, ...kwWords]);
+      if (qWords.every(qw => [...allWords].some(nw => nw === qw || nw.startsWith(qw)))) {
+        return p;
+      }
+    }
+
+    // 4. Substring fallback (if input length >= 3)
+    if (s.length >= 3) {
+      for (const p of CAMIGUIN_PLACES) {
+        if (p.name.toLowerCase().includes(s)) return p;
+        for (const k of p.keywords) {
+          if (k.toLowerCase().includes(s)) return p;
+        }
+      }
+    }
+
+    return null;
   }
 
   function getNearestCamiguinPlace(lat, lng) {
@@ -3381,8 +2360,8 @@
       return nearestLandmark.name;
     }
 
-    // 2. If in Poblacion Mambajao core (9.2435-9.2565, 124.7120-124.7240), prioritize town center / landmarks
-    if (lat >= 9.2435 && lat <= 9.2565 && lng >= 124.7120 && lng <= 124.7240 && nearestLandmark && minLandmarkDist < 0.005) {
+    // 2. If in Poblacion Mambajao core (around 9.246-9.252, 124.694-124.704), prioritize town center / landmarks
+    if (lat >= 9.2460 && lng >= 124.6940 && nearestLandmark && minLandmarkDist < 0.005) {
       return nearestLandmark.name;
     }
 
@@ -3469,126 +2448,156 @@
     });
   });
 
-  // Re-calculate when options change
-  [optLargeStore, optExtraStores, estimatedBudgetInput].forEach((el) => {
-    if (el) {
-      el.addEventListener("change", () => recalculateFare());
-      el.addEventListener("input", () => recalculateFare());
+  // Hinterland / Mountain Route Keywords for Automatic Detection
+  const HINTERLAND_KEYWORDS = [
+    "sorosoro", "soro-soro", "soro'soro", "soro soro",
+    "highland", "utopia", "binunsaran", "granelandia",
+    "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
+    "vulcan", "bukid", "mountain", "hinterland"
+  ];
+
+  function detectHinterlandFromAddress() {
+    const pText = (pickupInput ? pickupInput.value : "").toLowerCase();
+    const dText = (dropoffInput ? dropoffInput.value : "").toLowerCase();
+    const notesText = (document.getElementById("item-notes") ? document.getElementById("item-notes").value : "").toLowerCase();
+    const combined = `${pText} ${dText} ${notesText}`;
+
+    return HINTERLAND_KEYWORDS.some((k) => combined.includes(k));
+  }
+
+  let userExplicitlyToggledHinterland = false;
+
+  function syncHinterlandUI(isAuto) {
+    if (!optHinterland) return;
+    const hinterlandCard = document.getElementById("hinterland-toggle-container");
+    const badge = document.getElementById("hinterland-badge");
+
+    if (isAuto && !userExplicitlyToggledHinterland) {
+      optHinterland.checked = true;
     }
-  });
+
+    const isChecked = optHinterland.checked;
+    if (hinterlandCard) {
+      hinterlandCard.classList.toggle("active", isChecked);
+    }
+    if (badge) {
+      if (isChecked) {
+        badge.classList.remove("hidden");
+        badge.textContent = isAuto ? "✓ Auto-Detected (+₱30)" : "✓ +₱30 Added";
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+  }
+
   if (optHinterland) {
     optHinterland.addEventListener("change", () => {
-      optHinterland.dataset.manual = optHinterland.checked ? "1" : "";
-      optHinterland.dataset.autoApplied = "";
+      userExplicitlyToggledHinterland = true;
+      syncHinterlandUI(false);
       recalculateFare();
     });
   }
-  if (itemNotesField) {
-    itemNotesField.addEventListener("change", () => recalculateFare());
+
+  function renderFareBreakdownBadges(b) {
+    const container = document.getElementById("fare-breakdown-badges");
+    if (!container) return;
+    let html = "";
+    if (b.isHinterland || (b.hinterland_fee && b.hinterland_fee > 0)) {
+      const fee = b.hinterland_fee ? Math.round(b.hinterland_fee) : 30;
+      html += `<span class="fare-tag hinterland-tag">🏔️ +₱${fee} Hinterland / Bukid Route</span>`;
+    }
+    if ((b.service_fee && b.service_fee > 0) || (["pabili", "pasugo", "pabayad"].includes(b.service) && !b.hinterland_fee)) {
+      const sFee = b.service_fee ? Math.round(b.service_fee) : 20;
+      html += `<span class="fare-tag service-tag">🛍️ +₱${sFee} Errand Fee</span>`;
+    }
+    if ((b.queuing_fee && b.queuing_fee > 0) || (b.isLarge && !b.hinterland_fee)) {
+      const qFee = b.queuing_fee ? Math.round(b.queuing_fee) : 30;
+      html += `<span class="fare-tag queue-tag">🛒 +₱${qFee} Queuing Fee</span>`;
+    }
+    if ((b.extra_stores_fee && b.extra_stores_fee > 0) || (b.extraStores > 0 && !b.hinterland_fee)) {
+      const eFee = b.extra_stores_fee ? Math.round(b.extra_stores_fee) : (b.extraStores * 20);
+      html += `<span class="fare-tag store-tag">🏪 +₱${eFee} Extra Store</span>`;
+    }
+    if ((b.bulky_fee && b.bulky_fee > 0) || (b.isBulky && !b.hinterland_fee)) {
+      html += `<span class="fare-tag store-tag">📦 +₱20 Bulky Order</span>`;
+    }
+    container.innerHTML = html;
   }
 
-  // Resolve coordinates on explicit commit (Enter / blur after typing) WITHOUT overwriting user text
-  function handleTypedAddress(isPickup, shouldFlyMap) {
+  // Re-calculate when options change
+  [optLargeStore, optExtraStores, estimatedBudgetInput].forEach((el) => {
+    if (el) {
+      el.addEventListener("change", recalculateFare);
+      el.addEventListener("input", recalculateFare);
+    }
+  });
+
+  // Handle typing inside Pickup and Dropoff inputs with immediate map center & flyTo!
+  function handleTypedAddress(isPickup) {
     const input = isPickup ? pickupInput : dropoffInput;
-    const latInput = isPickup ? pickupLatInput : dropoffLatInput;
-    const lngInput = isPickup ? pickupLngInput : dropoffLngInput;
-    const text = input ? input.value.trim() : "";
+    const text = input.value.trim();
 
-    if (!text) {
-      if (latInput) latInput.value = "";
-      if (lngInput) lngInput.value = "";
-      recalculateFare();
-      return;
+    if (detectHinterlandFromAddress()) {
+      syncHinterlandUI(true);
+    } else if (!userExplicitlyToggledHinterland) {
+      if (optHinterland) optHinterland.checked = false;
+      syncHinterlandUI(false);
     }
 
-    // If coordinates were already set via dropdown click/map pin/chip, just recalculate
-    if (latInput && lngInput && latInput.value && lngInput.value) {
-      recalculateFare();
-      return;
-    }
-
-    if (text.length >= 3) {
+    if (text.length >= 2) {
       const found = matchCamiguinPlace(text);
       if (found) {
         if (isPickup) {
           pickupLatInput.value = found.lat;
           pickupLngInput.value = found.lng;
-          // Pass null as label so the user's typed text is NEVER auto-replaced
-          setPickupPoint(found.lat, found.lng, null);
-          if (pickupMarker) {
-            pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(text)}`);
-            if (shouldFlyMap) pickupMarker.openPopup();
-          }
-          if (shouldFlyMap && map) {
+          setPickupPoint(found.lat, found.lng, found.name);
+          if (map) {
             map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-            showMapToast(`🟢 Pickup pinned near: ${found.name}`);
           }
+          if (pickupMarker) {
+            pickupMarker.bindPopup(`<strong>🟢 Pickup:</strong><br>${escapeHtml(found.name)}`).openPopup();
+          }
+          showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
         } else {
           dropoffLatInput.value = found.lat;
           dropoffLngInput.value = found.lng;
-          // Pass null as label so the user's typed text is NEVER auto-replaced
-          setDropoffPoint(found.lat, found.lng, null);
-          if (dropoffMarker) {
-            dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(text)}`);
-            if (shouldFlyMap) dropoffMarker.openPopup();
-          }
-          if (shouldFlyMap && map) {
+          setDropoffPoint(found.lat, found.lng, found.name);
+          if (map) {
             map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-            showMapToast(`🏁 Drop-off pinned near: ${found.name}`);
           }
+          if (dropoffMarker) {
+            dropoffMarker.bindPopup(`<strong>🏁 Drop-off:</strong><br>${escapeHtml(found.name)}`).openPopup();
+          }
+          showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
         }
         updateRouteLine();
-        return;
       }
     }
-
     recalculateFare();
   }
 
+  let typeTimer = null;
   if (pickupInput) {
     pickupInput.addEventListener("input", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      // Clear stale coordinates whenever user edits the address text, without auto-inserting
-      if (pickupLatInput) pickupLatInput.value = "";
-      if (pickupLngInput) pickupLngInput.value = "";
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(() => handleTypedAddress(true), 250);
     });
     pickupInput.addEventListener("change", () => {
       updateClearBtn(pickupInput, clearPickupBtn);
-      const recentPick = Date.now() - Number(pickupInput.dataset.lastSelectedAt || 0) < 600;
-      if (!recentPick) {
-        handleTypedAddress(true, false);
-      }
-    });
-    pickupInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (pickupSuggestions) pickupSuggestions.classList.add("hidden");
-        handleTypedAddress(true, true);
-      }
+      handleTypedAddress(true);
     });
   }
 
   if (dropoffInput) {
     dropoffInput.addEventListener("input", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      // Clear stale coordinates & active chip whenever user edits the address text, without auto-inserting
-      if (dropoffLatInput) dropoffLatInput.value = "";
-      if (dropoffLngInput) dropoffLngInput.value = "";
-      document.querySelectorAll(".chip-pill").forEach((p) => p.classList.remove("active"));
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(() => handleTypedAddress(false), 250);
     });
     dropoffInput.addEventListener("change", () => {
       updateClearBtn(dropoffInput, clearDropoffBtn);
-      const recentPick = Date.now() - Number(dropoffInput.dataset.lastSelectedAt || 0) < 600;
-      if (!recentPick) {
-        handleTypedAddress(false, false);
-      }
-    });
-    dropoffInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (dropoffSuggestions) dropoffSuggestions.classList.add("hidden");
-        handleTypedAddress(false, true);
-      }
+      handleTypedAddress(false);
     });
   }
   // Clear 'X' Button Handlers for Pickup and Drop-off
@@ -3618,9 +2627,15 @@
       currentRoadKm = null;
       updateClearBtn(pickupInput, clearPickupBtn);
       if (pickupInput) pickupInput.focus();
+      if (detectHinterlandFromAddress()) {
+        syncHinterlandUI(true);
+      } else if (!userExplicitlyToggledHinterland) {
+        if (optHinterland) optHinterland.checked = false;
+        syncHinterlandUI(false);
+      }
       updateRouteLine();
       recalculateFare();
-      showMapToast("Pickup cleared.");
+      showMapToast("Pickup na-erase na.");
     });
   }
 
@@ -3651,9 +2666,15 @@
       currentRoadKm = null;
       updateClearBtn(dropoffInput, clearDropoffBtn);
       if (dropoffInput) dropoffInput.focus();
+      if (detectHinterlandFromAddress()) {
+        syncHinterlandUI(true);
+      } else if (!userExplicitlyToggledHinterland) {
+        if (optHinterland) optHinterland.checked = false;
+        syncHinterlandUI(false);
+      }
       updateRouteLine();
       recalculateFare();
-      showMapToast("Drop-off cleared.");
+      showMapToast("Drop-off na-erase na.");
     });
   }
 
@@ -3697,7 +2718,26 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      // Case A: If existing valid pinned/selected coordinates exist, center directly on them
+      // Case A: If user already typed or selected a known place name
+      if (found) {
+        setDropoffPoint(found.lat, found.lng, found.name);
+        if (dropoffMarker) {
+          dropoffMarker.setLatLng([found.lat, found.lng]);
+          dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(found.name)}`).openPopup();
+        }
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+          }, 60);
+        }
+        showMapToast(`🏁 Drop-off Na-pin sa: ${found.name}`);
+        updateRouteLine();
+        recalculateFare();
+        return;
+      }
+
+      // Case B: If existing valid pinned coordinates exist
       if (dropoffLatInput && dropoffLngInput && dropoffLatInput.value && dropoffLngInput.value && parseFloat(dropoffLatInput.value) !== 0) {
         const tLat = parseFloat(dropoffLatInput.value);
         const tLng = parseFloat(dropoffLngInput.value);
@@ -3708,26 +2748,7 @@
             if (dropoffMarker) dropoffMarker.openPopup();
           }, 60);
         }
-        showMapToast("🏁 Current Drop-off Pin on map");
-        return;
-      }
-
-      // Case B: If user typed a place name without picking from dropdown, center near match without overwriting text
-      if (found) {
-        setDropoffPoint(found.lat, found.lng, null);
-        if (dropoffMarker) {
-          dropoffMarker.setLatLng([found.lat, found.lng]);
-          dropoffMarker.bindPopup(`<strong>🏁 Drop-off Destination:</strong><br>${escapeHtml(currentVal || found.name)}`).openPopup();
-        }
-        if (map) {
-          setTimeout(() => {
-            map.invalidateSize();
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }, 60);
-        }
-        showMapToast(`🏁 Drop-off pinned at: ${found.name}`);
-        updateRouteLine();
-        recalculateFare();
+        showMapToast(`🏁 Kasamtangang Drop-off Pin sa mapa`);
         return;
       }
 
@@ -3739,7 +2760,7 @@
           map.setView([9.24971, 124.71667], 14);
         }, 60);
       }
-      showMapToast("👇 Please tap or click the map to choose your Drop-off!");
+      showMapToast("👇 Palihug i-tap o i-click ang mapa aron mapili ang Drop-off!");
     };
 
     locateDropoffGpsBtn.addEventListener("click", handleLocateDropoffClick);
@@ -3767,7 +2788,26 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      // Case A: If existing valid pinned/selected coordinates exist, center directly on them
+      // Case A: If user already typed or selected a known place
+      if (found) {
+        setPickupPoint(found.lat, found.lng, found.name);
+        if (pickupMarker) {
+          pickupMarker.setLatLng([found.lat, found.lng]);
+          pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(found.name)}`).openPopup();
+        }
+        if (map) {
+          setTimeout(() => {
+            map.invalidateSize();
+            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
+          }, 60);
+        }
+        showMapToast(`🟢 Pickup Na-pin sa: ${found.name}`);
+        updateRouteLine();
+        recalculateFare();
+        return;
+      }
+
+      // Case B: If existing valid pinned coordinates exist
       if (pickupLatInput && pickupLngInput && pickupLatInput.value && pickupLngInput.value && parseFloat(pickupLatInput.value) !== 0) {
         const tLat = parseFloat(pickupLatInput.value);
         const tLng = parseFloat(pickupLngInput.value);
@@ -3778,26 +2818,7 @@
             if (pickupMarker) pickupMarker.openPopup();
           }, 60);
         }
-        showMapToast("🟢 Current Pickup Pin on map");
-        return;
-      }
-
-      // Case B: If user typed a place name without picking from dropdown, center near match without overwriting text
-      if (found) {
-        setPickupPoint(found.lat, found.lng, null);
-        if (pickupMarker) {
-          pickupMarker.setLatLng([found.lat, found.lng]);
-          pickupMarker.bindPopup(`<strong>🟢 Pickup Meeting Point:</strong><br>${escapeHtml(currentVal || found.name)}`).openPopup();
-        }
-        if (map) {
-          setTimeout(() => {
-            map.invalidateSize();
-            map.flyTo([found.lat, found.lng], 16, { duration: 0.8 });
-          }, 60);
-        }
-        showMapToast(`🟢 Pickup pinned at: ${found.name}`);
-        updateRouteLine();
-        recalculateFare();
+        showMapToast(`🟢 Kasamtangang Pickup Pin sa mapa`);
         return;
       }
 
@@ -3808,57 +2829,17 @@
           map.setView([9.24971, 124.71667], 14);
         }, 60);
       }
-      showMapToast("👇 Please tap or click the map to choose your Pickup!");
+      showMapToast("👇 Palihug i-tap o i-click ang mapa aron mapili ang Pickup!");
     };
 
     pinPickupMapBtn.addEventListener("click", handlePinPickupClick);
     pinPickupMapBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   }
 
-  // Autocomplete Dropdown Search & Explicit-Click Pinning
+  // Autocomplete Dropdown Search & Instant Pinning
   function setupPlacesAutocomplete(inputEl, dropdownEl, isPickup) {
     if (!inputEl || !dropdownEl) return;
     let debounceTimer = null;
-    let blurHideTimer = null;
-    let isTouchingDropdown = false;
-    let touchMovedInDropdown = false;
-    let touchStartX = 0;
-    let touchStartY = 0;
-
-    dropdownEl.addEventListener("mousedown", (e) => {
-      // Keep focus in input on desktop mouse click so blur/change don't race before click
-      e.preventDefault();
-    });
-
-    dropdownEl.addEventListener("touchstart", (e) => {
-      isTouchingDropdown = true;
-      touchMovedInDropdown = false;
-      const t = e.touches && e.touches[0];
-      if (t) {
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-      }
-      clearTimeout(blurHideTimer);
-    }, { passive: true });
-
-    dropdownEl.addEventListener("touchmove", (e) => {
-      const t = e.touches && e.touches[0];
-      if (t && (Math.abs(t.clientX - touchStartX) > 10 || Math.abs(t.clientY - touchStartY) > 10)) {
-        touchMovedInDropdown = true;
-      }
-    }, { passive: true });
-
-    dropdownEl.addEventListener("touchend", () => {
-      setTimeout(() => {
-        isTouchingDropdown = false;
-      }, 350);
-    }, { passive: true });
-
-    document.addEventListener("click", (e) => {
-      if (e.target !== inputEl && !dropdownEl.contains(e.target)) {
-        dropdownEl.classList.add("hidden");
-      }
-    });
 
     async function searchAndRender() {
       const q = inputEl.value.trim();
@@ -3868,7 +2849,15 @@
         return;
       }
 
-      const localMatches = searchCamiguinPlacesLocal(q, 8);
+      const qLower = q.toLowerCase();
+      const localMatches = [];
+      for (const p of CAMIGUIN_PLACES) {
+        const nLower = p.name.toLowerCase();
+        if (nLower.includes(qLower) || p.keywords.some((k) => k.includes(qLower) || qLower.includes(k))) {
+          localMatches.push(p);
+          if (localMatches.length >= 8) break;
+        }
+      }
 
       renderResults(localMatches);
 
@@ -3877,8 +2866,7 @@
           const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
           if (res.ok) {
             const data = await res.json();
-            const justSelected = Date.now() - Number(inputEl.dataset.lastSelectedAt || 0) < 600;
-            if (data && data.places && data.places.length > 0 && inputEl.value.trim() === q && !justSelected) {
+            if (data && data.places && data.places.length > 0) {
               const seen = new Set(localMatches.map((m) => m.name.toLowerCase()));
               for (const item of data.places) {
                 if (!seen.has(item.name.toLowerCase())) {
@@ -3907,7 +2895,6 @@
         food: "🍽️",
         market: "🏬",
         barangay: "🏘️",
-        neighborhood: "🏘️",
         resort: "🏖️",
         tourist: "🏝️",
         building: "🏛️",
@@ -3942,11 +2929,7 @@
       dropdownEl.classList.remove("hidden");
 
       dropdownEl.querySelectorAll(".places-item").forEach((el, idx) => {
-        el.addEventListener("click", (e) => {
-          if (touchMovedInDropdown) {
-            touchMovedInDropdown = false;
-            return;
-          }
+        const handleSelect = (e) => {
           if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -3954,11 +2937,10 @@
           const item = items[idx];
           if (!item) return;
 
-          inputEl.dataset.lastSelectedAt = String(Date.now());
           inputEl.value = item.name;
           dropdownEl.classList.add("hidden");
 
-          // Pin exact selected place on map ONLY after explicit click
+          // MUDIRITSO DAYUN PAG PIN ANG MAP SA EXACT PLACE!
           if (isPickup) {
             pickupLatInput.value = item.lat;
             pickupLngInput.value = item.lng;
@@ -3979,10 +2961,14 @@
             map.flyTo([item.lat, item.lng], 16, { duration: 0.8 });
           }
 
-          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} pinned at: ${item.name}`);
+          showMapToast(`${isPickup ? "🟢 Pickup" : "🏁 Drop-off"} Na-pin sa: ${item.name}`);
           updateRouteLine();
           recalculateFare();
-        });
+        };
+
+        el.addEventListener("pointerdown", handleSelect);
+        el.addEventListener("mousedown", handleSelect);
+        el.addEventListener("click", handleSelect);
       });
     }
 
@@ -3996,12 +2982,7 @@
     });
 
     inputEl.addEventListener("blur", () => {
-      clearTimeout(blurHideTimer);
-      blurHideTimer = setTimeout(() => {
-        if (!isTouchingDropdown) {
-          dropdownEl.classList.add("hidden");
-        }
-      }, 320);
+      setTimeout(() => dropdownEl.classList.add("hidden"), 350);
     });
   }
 
@@ -4116,9 +3097,9 @@
       const lat = parseFloat(e.latlng.lat.toFixed(5));
       const lng = parseFloat(e.latlng.lng.toFixed(5));
 
-      // Only allow pinning within Camiguin Island
+      // Sulod ra gyud sa Isla sa Camiguin ang pwede ma-pin
       if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
-        showMapToast("⚠️ Pinning is only allowed within Camiguin Island.");
+        showMapToast("⚠️ Sulod lamang sa Isla sa Camiguin ang pag-pin sa mapa.");
         return;
       }
 
@@ -4129,7 +3110,7 @@
         if (d < minDist) minDist = d;
       }
       if (minDist > 0.035) { // ~3.8km out at sea
-        showMapToast("⚠️ You clicked in the water. Please tap on land or a road in Camiguin!");
+        showMapToast("⚠️ Naa sa dagat ang imong na-click. Palihug i-tap sa yuta o kalsada sa Camiguin!");
         return;
       }
 
@@ -4163,22 +3144,22 @@
     document.querySelectorAll("[data-layer-target]").forEach((b) => {
       b.classList.toggle("active", b.getAttribute("data-layer-target") === layerType);
     });
-    showMapToast(layerType === "satellite" ? "🛰️ Satellite Aerial View enabled" : "🗺️ Standard Street Map enabled");
+    showMapToast(layerType === "satellite" ? "🛰️ Naka-on ang Satellite Aerial View" : "🗺️ Naka-on ang Standard Kalsada Map");
   }
 
   function handleLocateMe() {
     if (!navigator.geolocation) {
-      showMapToast("Geolocation is not supported on your device.");
+      showMapToast("Dili suportado ang Geolocation sa imong device.");
       return;
     }
-    showMapToast("🔍 Detecting your GPS location...");
+    showMapToast("🔍 Gina-detect ang imong GPS location...");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = parseFloat(pos.coords.latitude.toFixed(5));
         const lng = parseFloat(pos.coords.longitude.toFixed(5));
 
         if (lat < 9.05 || lat > 9.29 || lng < 124.58 || lng > 124.83) {
-          showMapToast("⚠️ Your GPS location is outside Camiguin Island.");
+          showMapToast("⚠️ Ang imong GPS naa sa gawas sa Isla sa Camiguin.");
           return;
         }
 
@@ -4194,11 +3175,11 @@
         }).addTo(map);
 
         map.flyTo([lat, lng], 15, { duration: 1.2 });
-        setPickupPoint(lat, lng, `📍 My Location (${lat}, ${lng})`);
-        showMapToast("✅ Your GPS location is pinned as Pickup!");
+        setPickupPoint(lat, lng, `📍 Akong Lokasyon (${lat}, ${lng})`);
+        showMapToast("✅ Na-pin ang imong GPS location isip Pickup!");
       },
       (err) => {
-        showMapToast("⚠️ Unable to access GPS. Please allow Location access in your browser.");
+        showMapToast("⚠️ Dili ma-access ang GPS. Palihug i-allow ang Location sa browser.");
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
@@ -4210,7 +3191,7 @@
     const isFs = container.classList.toggle("is-fullscreen");
     document.body.style.overflow = isFs ? "hidden" : "";
     document.querySelectorAll(".btn-fullscreen-toggle").forEach((b) => {
-      b.innerHTML = isFs ? "<span>✕</span> Close" : "<span>⛶</span> Expand";
+      b.innerHTML = isFs ? "<span>✕</span> I-close" : "<span>⛶</span> Padak-a";
     });
     setTimeout(() => {
       if (map) map.invalidateSize();
@@ -4407,178 +3388,7 @@
     recalculateFare();
   }
 
-  let lastBaseFare = 40;
-  let appliedPromo = null;
-
-  const ridersCountInput = document.getElementById("riders-count-input");
-  const ridersCountVal = document.getElementById("riders-count-val");
-  const ridersCountUnit = document.getElementById("riders-count-unit");
-  const ridersCountBadge = document.getElementById("riders-count-badge");
-  const ridersCountDec = document.getElementById("riders-count-dec");
-  const ridersCountInc = document.getElementById("riders-count-inc");
-  const ridersPresetBtns = document.querySelectorAll("[data-riders-preset]");
-
-  function getRidersCount() {
-    const raw = ridersCountInput ? parseInt(ridersCountInput.value || "1", 10) : 1;
-    if (!Number.isFinite(raw) || raw < 1) return 1;
-    if (raw > 10) return 10;
-    return raw;
-  }
-
-  function updateRidersCountUI(nextCount) {
-    let count = parseInt(nextCount, 10);
-    if (!Number.isFinite(count) || count < 1) count = 1;
-    if (count > 10) count = 10;
-
-    if (ridersCountInput) ridersCountInput.value = String(count);
-    if (ridersCountVal) ridersCountVal.textContent = String(count);
-    if (ridersCountUnit) ridersCountUnit.textContent = count === 1 ? "rider" : "riders";
-    if (ridersCountBadge) {
-      ridersCountBadge.textContent = count === 1 ? "1 Rider (Solo)" : `${count} Riders Simultaneous`;
-    }
-    if (ridersCountDec) ridersCountDec.disabled = count <= 1;
-    if (ridersCountInc) ridersCountInc.disabled = count >= 10;
-
-    ridersPresetBtns.forEach((btn) => {
-      const pVal = parseInt(btn.getAttribute("data-riders-preset") || "0", 10);
-      btn.classList.toggle("active", pVal === count);
-    });
-
-    if (submitBtn && !submitBtn.disabled) {
-      const spanEl = submitBtn.querySelector("span:first-child");
-      const label = count === 1
-        ? "Broadcast Request to Active Riders 🛵"
-        : `Broadcast Request to ${count} Riders 🛵`;
-      if (spanEl) {
-        spanEl.textContent = label;
-      } else {
-        submitBtn.textContent = `${label} →`;
-      }
-    }
-
-    applyPromoPreviewToFare();
-  }
-
-  if (ridersCountDec) {
-    ridersCountDec.addEventListener("click", () => updateRidersCountUI(getRidersCount() - 1));
-  }
-  if (ridersCountInc) {
-    ridersCountInc.addEventListener("click", () => updateRidersCountUI(getRidersCount() + 1));
-  }
-  ridersPresetBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const pVal = parseInt(btn.getAttribute("data-riders-preset") || "1", 10);
-      updateRidersCountUI(pVal);
-    });
-  });
-
-  function applyPromoPreviewToFare() {
-    const discountRow = document.getElementById("promo-discount-row");
-    const discountVal = document.getElementById("promo-discount-val");
-    const promoFeedback = document.getElementById("promo-feedback");
-    const groupSummaryRow = document.getElementById("fare-group-summary-row");
-    const groupSummaryVal = document.getElementById("fare-group-summary-val");
-    const fareEstLabel = document.getElementById("fare-estimate-label");
-
-    const perRiderBase = Math.max(0, Math.round(Number(lastBaseFare || 40)));
-    const ridersCount = getRidersCount();
-    const baseFare = perRiderBase * ridersCount;
-
-    if (fareEstLabel) {
-      fareEstLabel.textContent = ridersCount > 1 ? "Estimated Group Total" : "Estimated Fare";
-    }
-    if (groupSummaryRow) {
-      groupSummaryRow.classList.toggle("hidden", ridersCount <= 1);
-    }
-    if (groupSummaryVal && ridersCount > 1) {
-      groupSummaryVal.textContent = `₱${perRiderBase.toLocaleString()} per rider × ${ridersCount} riders = ₱${baseFare.toLocaleString()}`;
-    }
-
-    if (!appliedPromo) {
-      if (discountRow) discountRow.classList.add("hidden");
-      if (discountVal) discountVal.textContent = "-₱0";
-      if (fareDisplay) fareDisplay.textContent = String(baseFare);
-      return;
-    }
-
-    const minFare = Number(appliedPromo.min_fare || 0);
-    if (minFare > 0 && baseFare < minFare) {
-      if (discountRow) discountRow.classList.add("hidden");
-      if (discountVal) discountVal.textContent = "-₱0";
-      if (fareDisplay) fareDisplay.textContent = String(baseFare);
-      if (promoFeedback) {
-        promoFeedback.textContent = `✕ Minimum fare of ₱${Math.round(minFare)} required for ${appliedPromo.code}.`;
-        promoFeedback.style.color = "#dc2626";
-        promoFeedback.classList.remove("hidden");
-      }
-      return;
-    }
-
-    const rawDiscount = Math.max(0, Number(appliedPromo.discount_amount || 0));
-    const effectiveDiscount = Math.min(rawDiscount, baseFare);
-    const discountedFare = Math.max(0, Math.round(baseFare - effectiveDiscount));
-
-    if (fareDisplay) fareDisplay.textContent = String(discountedFare);
-    if (discountVal) discountVal.textContent = `-₱${Math.round(effectiveDiscount)}`;
-    if (discountRow) discountRow.classList.remove("hidden");
-    if (promoFeedback) {
-      promoFeedback.textContent = `✓ ₱${Math.round(effectiveDiscount)} discount voucher applied!`;
-      promoFeedback.style.color = "#16a34a";
-      promoFeedback.classList.remove("hidden");
-    }
-  }
-
-  let fareReqSeq = 0;
-
-  function renderFareBreakdownBadges(breakdown, autoHinterland) {
-    if (!fareBreakdownBadges) return;
-    if (!breakdown) {
-      fareBreakdownBadges.innerHTML = "";
-      fareBreakdownBadges.classList.add("hidden");
-      return;
-    }
-    const serviceFee = Number(breakdown.service_fee || 0);
-    const queuingFee = Number(breakdown.queuing_fee || 0);
-    const extraStoresFee = Number(breakdown.extra_stores_fee || 0);
-    const bulkyFee = Number(breakdown.bulky_fee || 0);
-    const hinterlandFee = Number(breakdown.hinterland_fee || 0);
-    const hasExtras = serviceFee > 0 || queuingFee > 0 || extraStoresFee > 0 || bulkyFee > 0 || hinterlandFee > 0;
-
-    if (!hasExtras) {
-      fareBreakdownBadges.innerHTML = "";
-      fareBreakdownBadges.classList.add("hidden");
-      return;
-    }
-
-    const pills = [];
-    pills.push(
-      `<span class="fare-pill-item"><span>Meter Fare:</span> ₱${Math.round(Number(breakdown.meter_fare || 0))}</span>`
-    );
-    if (serviceFee > 0) {
-      pills.push(`<span class="fare-pill-item"><span>Service Fee:</span> +₱${Math.round(serviceFee)}</span>`);
-    }
-    if (queuingFee > 0) {
-      pills.push(`<span class="fare-pill-item"><span>Supermarket Queue:</span> +₱${Math.round(queuingFee)}</span>`);
-    }
-    if (extraStoresFee > 0) {
-      pills.push(`<span class="fare-pill-item"><span>Extra Stops:</span> +₱${Math.round(extraStoresFee)}</span>`);
-    }
-    if (bulkyFee > 0) {
-      pills.push(`<span class="fare-pill-item"><span>Bulky Order:</span> +₱${Math.round(bulkyFee)}</span>`);
-    }
-    if (hinterlandFee > 0) {
-      const uplandLabel = autoHinterland ? "Steep / Upland Route (Auto-Added)" : "Mountain / Steep Route";
-      pills.push(
-        `<span class="fare-pill-item fare-pill-upland">⛰️ +₱${Math.round(hinterlandFee)} <span>${uplandLabel}</span></span>`
-      );
-    }
-
-    fareBreakdownBadges.innerHTML = pills.join("");
-    fareBreakdownBadges.classList.remove("hidden");
-  }
-
   async function recalculateFare(overrideRoadKm) {
-    const reqId = ++fareReqSeq;
     const pLat = parseFloat(pickupLatInput.value);
     const pLng = parseFloat(pickupLngInput.value);
     const dLat = parseFloat(dropoffLatInput.value);
@@ -4586,7 +3396,7 @@
     const service = serviceTypeInput.value;
     const isLarge = optLargeStore ? optLargeStore.checked : false;
     const extraStores = optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0;
-    const isHinterland = optHinterland ? (optHinterland.checked && optHinterland.dataset.manual === "1") : false;
+    const isHinterland = (optHinterland ? optHinterland.checked : false) || detectHinterlandFromAddress();
     const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
     const isBulky = budgetVal >= 2000;
     const roadKmToSend = typeof overrideRoadKm === "number" ? overrideRoadKm : currentRoadKm;
@@ -4601,14 +3411,23 @@
         routeLine = null;
       }
       currentRoadKm = null;
-      lastBaseFare = 40;
-      applyPromoPreviewToFare();
-      if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Select Location)";
-      renderFareBreakdownBadges(null, false);
-      if (optHinterland && optHinterland.dataset.autoApplied === "1" && !optHinterland.dataset.manual) {
-        optHinterland.checked = false;
-        optHinterland.dataset.autoApplied = "";
-      }
+
+      let basePreview = 40;
+      if (isHinterland) basePreview += 30;
+      if (["pabili", "pasugo", "pabayad"].includes(service)) basePreview += 20;
+      if (isLarge) basePreview += 30;
+      if (extraStores > 0) basePreview += (extraStores * 20);
+
+      if (fareDisplay) fareDisplay.textContent = Math.round(basePreview);
+      if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Pilia ang Lokasyon)";
+
+      renderFareBreakdownBadges({
+        isHinterland: isHinterland,
+        service: service,
+        isLarge: isLarge,
+        extraStores: extraStores,
+        isBulky: isBulky,
+      });
       return;
     }
 
@@ -4624,7 +3443,6 @@
           road_km: roadKmToSend,
           pickup_address: pickupInput ? pickupInput.value.trim() : "",
           dropoff_address: dropoffInput ? dropoffInput.value.trim() : "",
-          item_notes: itemNotesField ? itemNotesField.value.trim() : "",
           service_type: service,
           is_large_store: isLarge,
           extra_stores_count: extraStores,
@@ -4633,20 +3451,22 @@
         }),
       });
       const data = await res.json();
-      if (reqId !== fareReqSeq) return;
       if (data && data.fare_amount) {
-        lastBaseFare = Math.round(Number(data.fare_amount));
-        applyPromoPreviewToFare();
-        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Road Distance)`;
+        if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
+        if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Kalsada / Road Distance)`;
 
-        renderFareBreakdownBadges(data.breakdown, Boolean(data.auto_hinterland));
-        if (optHinterland) {
-          if (data.auto_hinterland) {
-            optHinterland.checked = true;
-            optHinterland.dataset.autoApplied = "1";
-          } else if (optHinterland.dataset.autoApplied === "1" && !optHinterland.dataset.manual) {
-            optHinterland.checked = false;
-            optHinterland.dataset.autoApplied = "";
+        if (data.breakdown) {
+          renderFareBreakdownBadges({
+            ...data.breakdown,
+            isHinterland: (data.breakdown.hinterland_fee && data.breakdown.hinterland_fee > 0) || isHinterland,
+            service: service,
+            isLarge: data.breakdown.queuing_fee > 0,
+            extraStores: extraStores,
+            isBulky: data.breakdown.bulky_fee > 0,
+          });
+
+          if (data.breakdown.hinterland_fee > 0 && optHinterland && !optHinterland.checked) {
+            syncHinterlandUI(true);
           }
         }
 
@@ -4746,7 +3566,13 @@
         mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
-      showMapToast(`🏁 Drop-off set: ${name}`);
+      showMapToast(`🏁 Drop-off Na-set: ${name}`);
+      if (detectHinterlandFromAddress()) {
+        syncHinterlandUI(true);
+      } else if (!userExplicitlyToggledHinterland) {
+        if (optHinterland) optHinterland.checked = false;
+        syncHinterlandUI(false);
+      }
       updateRouteLine();
       recalculateFare();
     });
@@ -4777,7 +3603,7 @@
     });
   }
 
-  // Clean Map Boot - Inputs start 100% BLANK unless prefilled by URL query params!
+  // Clean Map Boot - Inputs start 100% BLANK as requested!
   function bootBookingMap() {
     initMap();
     if (pickupInput) pickupInput.value = "";
@@ -4786,50 +3612,9 @@
     if (pickupLngInput) pickupLngInput.value = "";
     if (dropoffLatInput) dropoffLatInput.value = "";
     if (dropoffLngInput) dropoffLngInput.value = "";
-    if (optHinterland) {
-      optHinterland.checked = false;
-      optHinterland.dataset.manual = "";
-      optHinterland.dataset.autoApplied = "";
-    }
     updateClearBtn(pickupInput, clearPickupBtn);
     updateClearBtn(dropoffInput, clearDropoffBtn);
-
-    // Prefill from URL query params (e.g. from Island Tours) AFTER clearing
-    let hasPrefill = false;
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const prefillDrop = (urlParams.get("dropoff") || "").trim();
-      const prefillPick = (urlParams.get("pickup") || "").trim();
-      const prefillNotes = (urlParams.get("notes") || "").trim();
-      if (prefillPick && pickupInput) {
-        const matchedPick = matchCamiguinPlace(prefillPick);
-        if (matchedPick) {
-          setPickupPoint(matchedPick.lat, matchedPick.lng, prefillPick);
-          hasPrefill = true;
-        } else {
-          pickupInput.value = prefillPick;
-          updateClearBtn(pickupInput, clearPickupBtn);
-        }
-      }
-      if (prefillDrop && dropoffInput) {
-        const matchedDrop = matchCamiguinPlace(prefillDrop);
-        if (matchedDrop) {
-          setDropoffPoint(matchedDrop.lat, matchedDrop.lng, prefillDrop);
-          hasPrefill = true;
-        } else {
-          dropoffInput.value = prefillDrop;
-          updateClearBtn(dropoffInput, clearDropoffBtn);
-        }
-      }
-      const itemNotesInput = document.getElementById("item-notes");
-      if (prefillNotes && itemNotesInput) {
-        itemNotesInput.value = prefillNotes;
-      }
-    } catch (_) {}
-
-    if (!hasPrefill) {
-      recalculateFare();
-    }
+    recalculateFare();
   }
 
   if (document.readyState === "loading") {
@@ -4839,21 +3624,6 @@
   }
 
   // Booking Form Submission
-  function restoreSubmitBtnLabel() {
-    if (!submitBtn) return;
-    submitBtn.disabled = false;
-    const count = getRidersCount();
-    const label = count === 1
-      ? "Broadcast Request to Active Riders 🛵"
-      : `Broadcast Request to ${count} Riders 🛵`;
-    const spanEl = submitBtn.querySelector("span:first-child");
-    if (spanEl) {
-      spanEl.textContent = label;
-    } else {
-      submitBtn.textContent = `${label} →`;
-    }
-  }
-
   if (bookingForm) {
     bookingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -4862,23 +3632,12 @@
         errorMsg.textContent = "";
       }
 
-      const ridersCount = getRidersCount();
       submitBtn.disabled = true;
-      const submitSpan = submitBtn.querySelector("span:first-child");
-      if (submitSpan) {
-        submitSpan.textContent = ridersCount > 1
-          ? `Broadcasting to ${ridersCount} riders...`
-          : "Broadcasting booking to riders...";
-      } else {
-        submitBtn.textContent = ridersCount > 1
-          ? `Broadcasting to ${ridersCount} riders...`
-          : "Broadcasting booking to riders...";
-      }
+      submitBtn.textContent = "Broadcasting booking to riders...";
 
       const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
       const payload = {
         service_type: serviceTypeInput.value,
-        riders_count: ridersCount,
         pickup_address: pickupInput.value.trim(),
         pickup_lat: pickupLatInput.value ? parseFloat(pickupLatInput.value) : null,
         pickup_lng: pickupLngInput.value ? parseFloat(pickupLngInput.value) : null,
@@ -4892,7 +3651,7 @@
         estimated_budget: budgetVal,
         is_large_store: optLargeStore ? optLargeStore.checked : false,
         extra_stores_count: optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0,
-        is_hinterland: optHinterland ? (optHinterland.checked && optHinterland.dataset.manual === "1") : false,
+        is_hinterland: (optHinterland ? optHinterland.checked : false) || detectHinterlandFromAddress(),
         is_bulky_or_high_value: budgetVal >= 2000,
         payment_method: document.querySelector('input[name="payment_method"]:checked')?.value || "cash",
         scheduled_at: (document.querySelector('input[name="ride_timing"]:checked')?.value === "later") ? (document.getElementById("scheduled-at")?.value || "") : "",
@@ -4912,9 +3671,10 @@
       const isRegisteringNow = regToggle && regToggle.checked && regPwd && regPwd.value.trim().length >= 6;
 
       if (!currentCust && !isRegisteringNow) {
-        restoreSubmitBtnLabel();
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Broadcast Request to Active Riders 🛵 →";
         if (errorMsg) {
-          errorMsg.innerHTML = "⚠️ <strong>Please Sign In or Register first!</strong><br>To verify your account for our riders, please sign in or register in the popup below.";
+          errorMsg.innerHTML = "⚠️ <strong>Kinahanglan mo-Sign In o mag-Register una!</strong><br>Aron lehitimo ug ma-verify ang imong account sa mga riders, palihug pag-sign in o pag-register sa popup sa ubos.";
           errorMsg.classList.remove("hidden");
           errorMsg.scrollIntoView({ behavior: "smooth", block: "center" });
         }
@@ -4928,12 +3688,8 @@
         if (cRegName && payload.customer_name) cRegName.value = payload.customer_name;
 
         // Open modal
-        if (window.CCRCAuth && typeof window.CCRCAuth.openModal === "function") {
-          window.CCRCAuth.openModal("login");
-        } else {
-          const custModal = document.getElementById("customer-auth-modal");
-          if (custModal) custModal.classList.remove("hidden");
-        }
+        const custModal = document.getElementById("customer-auth-modal");
+        if (custModal) custModal.classList.remove("hidden");
         return;
       }
 
@@ -4949,34 +3705,24 @@
         }
 
         const b = data.booking;
-        const activeRef = (data.group_code && Number(data.riders_count || 1) > 1) ? data.group_code : b.booking_code;
         try {
-          localStorage.setItem("ccrc_active_booking", activeRef);
+          localStorage.setItem("ccrc_active_booking", b.booking_code);
           if (payload.customer_phone) localStorage.setItem("ccrc_customer_phone", payload.customer_phone);
           if (payload.customer_name) localStorage.setItem("ccrc_customer_name", payload.customer_name);
+          if (payload.customer_password) {
+            localStorage.setItem("ccrc_customer_session", JSON.stringify({
+              name: payload.customer_name,
+              phone: payload.customer_phone,
+              barangay: payload.customer_barangay,
+              is_verified: 1,
+            }));
+          }
         } catch (_) {}
-        if (payload.customer_password) {
-          setStoredCustomer({
-            name: payload.customer_name,
-            phone: payload.customer_phone,
-            barangay: payload.customer_barangay,
-            is_verified: 1,
-          });
-        }
 
-        updateActiveTripNavLinks(activeRef);
+        updateActiveTripNavLinks(b.booking_code);
         if (typeof window.playDispatchChime === "function") window.playDispatchChime();
 
-        if (modalBookingCode) modalBookingCode.textContent = activeRef;
-        const modalGroupNote = document.getElementById("modal-group-note");
-        if (modalGroupNote) {
-          if (data.group_code && Number(data.riders_count || 1) > 1) {
-            modalGroupNote.textContent = `👥 Dispatched ${data.riders_count} linked rider slots (₱${Math.round(Number(data.per_rider_fare || b.fare_amount || 0)).toLocaleString()} per rider • Total ₱${Math.round(Number(data.total_fare || 0)).toLocaleString()}).`;
-            modalGroupNote.classList.remove("hidden");
-          } else {
-            modalGroupNote.classList.add("hidden");
-          }
-        }
+        if (modalBookingCode) modalBookingCode.textContent = b.booking_code;
         if (modalTrackLink) modalTrackLink.href = data.tracking_url;
         if (successModal) successModal.classList.remove("hidden");
 
@@ -4989,7 +3735,9 @@
           errorMsg.textContent = err.message;
           errorMsg.classList.remove("hidden");
         }
-        restoreSubmitBtnLabel();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Broadcast Booking to Active Riders 🛵 →";
       }
     });
 
@@ -5039,28 +3787,15 @@
     const applyPromoBtn = document.getElementById("apply-promo-btn");
     const promoInput = document.getElementById("promo-code-input");
     const promoFeedback = document.getElementById("promo-feedback");
-
-    if (promoInput) {
-      promoInput.addEventListener("input", () => {
-        const curCode = promoInput.value.trim().toUpperCase();
-        if (!curCode || (appliedPromo && curCode !== appliedPromo.code)) {
-          appliedPromo = null;
-          if (promoFeedback) promoFeedback.classList.add("hidden");
-          applyPromoPreviewToFare();
-        }
-      });
-    }
+    const promoDiscountRow = document.getElementById("promo-discount-row");
+    const promoDiscountVal = document.getElementById("promo-discount-val");
 
     if (applyPromoBtn && promoInput) {
       applyPromoBtn.addEventListener("click", async () => {
         const code = promoInput.value.trim().toUpperCase();
-        if (!code) {
-          appliedPromo = null;
-          if (promoFeedback) promoFeedback.classList.add("hidden");
-          applyPromoPreviewToFare();
-          return;
-        }
-        const currentFare = Math.max(0, Math.round(Number(lastBaseFare || 40))) * getRidersCount();
+        if (!code) return;
+        const currentFareText = document.getElementById("fare-display")?.textContent || "40";
+        const currentFare = parseFloat(currentFareText) || 40.0;
 
         try {
           applyPromoBtn.disabled = true;
@@ -5072,29 +3807,25 @@
           });
           const data = await res.json();
           if (data.success && data.promo) {
-            appliedPromo = {
-              code: data.promo.code || code,
-              discount_amount: Number(data.promo.raw_discount ?? data.promo.discount_amount ?? 0),
-              min_fare: Number(data.promo.min_fare ?? 0),
-            };
-            applyPromoPreviewToFare();
-          } else {
-            appliedPromo = null;
-            applyPromoPreviewToFare();
-            if (promoFeedback) {
-              promoFeedback.textContent = `✕ ${data.error || "Invalid promo code."}`;
-              promoFeedback.style.color = "#dc2626";
-              promoFeedback.classList.remove("hidden");
+            promoFeedback.textContent = `✓ ${data.promo.message}`;
+            promoFeedback.style.color = "#16a34a";
+            promoFeedback.classList.remove("hidden");
+            if (promoDiscountRow && promoDiscountVal) {
+              promoDiscountVal.textContent = `-₱${data.promo.discount_amount}`;
+              promoDiscountRow.classList.remove("hidden");
             }
-          }
-        } catch (err) {
-          appliedPromo = null;
-          applyPromoPreviewToFare();
-          if (promoFeedback) {
-            promoFeedback.textContent = "Could not validate code.";
+            if (document.getElementById("fare-display")) {
+              document.getElementById("fare-display").textContent = data.promo.new_fare;
+            }
+          } else {
+            promoFeedback.textContent = `✕ ${data.error || "Invalid promo code."}`;
             promoFeedback.style.color = "#dc2626";
             promoFeedback.classList.remove("hidden");
           }
+        } catch (err) {
+          promoFeedback.textContent = "Could not validate code.";
+          promoFeedback.style.color = "#dc2626";
+          promoFeedback.classList.remove("hidden");
         } finally {
           applyPromoBtn.disabled = false;
           applyPromoBtn.textContent = "Apply";
@@ -5102,6 +3833,26 @@
       });
     }
 
+    // Prefill from URL query params (e.g. from Island Tours)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const prefillDrop = urlParams.get("dropoff");
+      const prefillPick = urlParams.get("pickup");
+      const prefillNotes = urlParams.get("notes");
+      const dropInput = document.getElementById("dropoff-address");
+      const pickInput = document.getElementById("pickup-address");
+      if (prefillDrop && dropInput) {
+        dropInput.value = prefillDrop;
+        dropInput.dispatchEvent(new Event("input"));
+      }
+      if (prefillPick && pickInput) {
+        pickInput.value = prefillPick;
+        pickInput.dispatchEvent(new Event("input"));
+      }
+      if (prefillNotes && document.getElementById("item-notes")) {
+        document.getElementById("item-notes").value = prefillNotes;
+      }
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------------
@@ -5126,57 +3877,11 @@
     }
   }
 
-  function renderExtraActiveTrips(trips) {
-    const extraWrap = document.getElementById("customer-active-trips-extra");
-    if (!extraWrap) return;
-    if (!Array.isArray(trips) || trips.length <= 1) {
-      extraWrap.innerHTML = "";
-      extraWrap.classList.add("hidden");
-      return;
-    }
-    extraWrap.innerHTML = trips.slice(1).map((trip) => {
-      const b = trip.booking || {};
-      const summary = trip.group_summary || null;
-      const codeLabel = trip.is_group && trip.group_code ? trip.group_code : (b.booking_code || "");
-      const trackUrl = trip.tracking_url || `/track/${encodeURIComponent(codeLabel)}`;
-      const fareTotal = summary
-        ? (Number(summary.cancelled_count || 0) > 0 && summary.active_total_fare !== undefined
-          ? Number(summary.active_total_fare || 0)
-          : Number(summary.total_fare || 0))
-        : Number(b.fare_amount || 0);
-      const statusText = summary
-        ? `👥 ${summary.assigned_count}/${summary.total_riders} Riders Assigned`
-        : escapeHtml(b.status || "active");
-      return `
-        <div class="active-extra-trip-card">
-          <div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <strong style="font-family:monospace;color:#9a3412;">${escapeHtml(codeLabel)}</strong>
-              <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:0.72rem;font-weight:700;">${statusText}</span>
-            </div>
-            <small class="text-muted" style="display:block;margin-top:2px;">
-              ${escapeHtml(b.pickup_address || "")} &rarr; ${escapeHtml(b.dropoff_address || "")} &bull; <strong>₱${Math.round(fareTotal).toLocaleString()}</strong>
-            </small>
-          </div>
-          <a href="${escapeHtml(trackUrl)}" class="btn btn-sm btn-primary" style="white-space:nowrap;">Track &rarr;</a>
-        </div>
-      `;
-    }).join("");
-    extraWrap.classList.remove("hidden");
-  }
-
-  function renderCustomerActiveCard(b, tripMeta) {
+  function renderCustomerActiveCard(b) {
     const card = document.getElementById("customer-active-ride-card");
-    if (!card || !b) return;
-
-    const summary = tripMeta && tripMeta.group_summary ? tripMeta.group_summary : null;
-    const isGroup = Boolean(summary && summary.total_riders > 1);
-    const activeCode = (isGroup && tripMeta.group_code) ? tripMeta.group_code : b.booking_code;
-    const trackingUrl = (tripMeta && tripMeta.tracking_url) ? tripMeta.tracking_url : `/track/${encodeURIComponent(activeCode)}`;
+    if (!card) return;
 
     const codeEl = document.getElementById("active-card-code");
-    const groupBadgeEl = document.getElementById("active-card-group-badge");
-    const groupProgressEl = document.getElementById("active-card-group-progress");
     const badgeEl = document.getElementById("active-card-status-badge");
     const riderInfoEl = document.getElementById("active-card-rider-info");
     const riderAvatarEl = document.getElementById("active-card-rider-avatar");
@@ -5188,48 +3893,14 @@
     const fareEl = document.getElementById("active-card-fare");
     const trackBtnEl = document.getElementById("active-card-track-btn");
 
-    if (codeEl) codeEl.textContent = activeCode;
-    if (groupBadgeEl) {
-      if (isGroup) {
-        groupBadgeEl.textContent = `👥 Group Ride (${summary.total_riders} Riders) • ${summary.assigned_count}/${summary.total_riders} Assigned`;
-        groupBadgeEl.classList.remove("hidden");
-      } else {
-        groupBadgeEl.classList.add("hidden");
-      }
-    }
-    if (groupProgressEl) {
-      if (isGroup) {
-        groupProgressEl.textContent = `(${summary.open_count} open, ${summary.completed_count} completed)`;
-        groupProgressEl.classList.remove("hidden");
-      } else {
-        groupProgressEl.classList.add("hidden");
-      }
-    }
+    if (codeEl) codeEl.textContent = b.booking_code;
     if (pickupEl) pickupEl.textContent = b.pickup_address;
     if (dropoffEl) dropoffEl.textContent = b.dropoff_address;
-    if (fareEl) {
-      const displayFare = isGroup
-        ? (Number(summary.cancelled_count || 0) > 0 && summary.active_total_fare !== undefined
-          ? summary.active_total_fare
-          : summary.total_fare)
-        : b.fare_amount;
-      fareEl.textContent = `₱${Math.round(displayFare || 0).toLocaleString()}`;
-    }
-    if (trackBtnEl) trackBtnEl.href = trackingUrl;
+    if (fareEl) fareEl.textContent = `₱${Math.round(b.fare_amount || 0).toLocaleString()}`;
+    if (trackBtnEl) trackBtnEl.href = `/track/${encodeURIComponent(b.booking_code)}`;
 
     if (badgeEl) {
-      if (isGroup) {
-        if (summary.assigned_count >= summary.total_riders) {
-          badgeEl.textContent = `🛵 All ${summary.total_riders} Riders Assigned!`;
-          badgeEl.style.background = summary.in_progress_count > 0 ? "#16a34a" : "#ea580c";
-        } else if (summary.assigned_count > 0) {
-          badgeEl.textContent = `🛵 ${summary.assigned_count}/${summary.total_riders} Riders Assigned`;
-          badgeEl.style.background = "#ea580c";
-        } else {
-          badgeEl.textContent = `⏳ Waiting for ${summary.total_riders} Riders...`;
-          badgeEl.style.background = "#0284c7";
-        }
-      } else if (b.status === "accepted") {
+      if (b.status === "accepted") {
         badgeEl.textContent = "🛵 Rider Accepted & Heading to Pickup!";
         badgeEl.style.background = "#ea580c";
       } else if (b.status === "in_progress") {
@@ -5245,13 +3916,7 @@
       if (riderInfoEl) riderInfoEl.classList.remove("hidden");
       if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
       if (riderBikeEl) {
-        riderBikeEl.textContent = b.rider_bike || "Island Express Bike";
-        if (b.rider_plate) {
-          riderBikeEl.appendChild(document.createTextNode(" • Plate: "));
-          const strongPlate = document.createElement("strong");
-          strongPlate.textContent = b.rider_plate;
-          riderBikeEl.appendChild(strongPlate);
-        }
+        riderBikeEl.innerHTML = `${b.rider_bike || "Island Express Bike"}${b.rider_plate ? ` &bull; Plate: <strong>${b.rider_plate}</strong>` : ""}`;
       }
       if (callBtnEl) {
         if (b.rider_phone) {
@@ -5262,13 +3927,8 @@
         }
       }
       if (riderAvatarEl) {
-        riderAvatarEl.innerHTML = "";
-        if (b.rider_avatar && (/^https?:\/\//i.test(b.rider_avatar) || b.rider_avatar.startsWith("/"))) {
-          const img = document.createElement("img");
-          img.src = b.rider_avatar;
-          img.alt = "Rider";
-          img.style.cssText = "width:100%;height:100%;object-fit:cover;";
-          riderAvatarEl.appendChild(img);
+        if (b.rider_avatar) {
+          riderAvatarEl.innerHTML = `<img src="${b.rider_avatar}" alt="Rider" style="width:100%;height:100%;object-fit:cover;">`;
         } else {
           riderAvatarEl.textContent = (b.rider_name || "R")[0].toUpperCase();
         }
@@ -5278,7 +3938,7 @@
     }
 
     card.classList.remove("hidden");
-    updateActiveTripNavLinks(activeCode);
+    updateActiveTripNavLinks(b.booking_code);
   }
 
   async function checkCustomerActiveBooking() {
@@ -5286,22 +3946,13 @@
     try {
       activeCode = localStorage.getItem("ccrc_active_booking");
     } catch (_) {}
-    if (!activeCode && Array.isArray(window.SERVER_ACTIVE_TRIPS) && window.SERVER_ACTIVE_TRIPS.length > 0) {
-      const firstTrip = window.SERVER_ACTIVE_TRIPS[0];
-      activeCode = (firstTrip.is_group && firstTrip.group_code) ? firstTrip.group_code : (firstTrip.booking ? firstTrip.booking.booking_code : null);
-    } else if (!activeCode && window.SERVER_ACTIVE_BOOKING) {
-      activeCode = window.SERVER_ACTIVE_BOOKING.group_code && Number(window.SERVER_ACTIVE_BOOKING.group_size || 1) > 1
-        ? window.SERVER_ACTIVE_BOOKING.group_code
-        : window.SERVER_ACTIVE_BOOKING.booking_code;
+    if (!activeCode && window.SERVER_ACTIVE_BOOKING) {
+      activeCode = window.SERVER_ACTIVE_BOOKING.booking_code;
     }
     let phone = null;
     try {
       phone = localStorage.getItem("ccrc_customer_phone");
     } catch (_) {}
-
-    if (Array.isArray(window.SERVER_ACTIVE_TRIPS) && window.SERVER_ACTIVE_TRIPS.length > 0) {
-      renderExtraActiveTrips(window.SERVER_ACTIVE_TRIPS);
-    }
 
     if (!activeCode && !phone) return;
 
@@ -5313,26 +3964,18 @@
       const res = await fetch(`/api/customer/active-booking?${query}`);
       const data = await res.json();
       if (data.active && data.booking) {
-        const activeRef = (data.is_group && data.group_code) ? data.group_code : data.booking.booking_code;
         try {
-          localStorage.setItem("ccrc_active_booking", activeRef);
+          localStorage.setItem("ccrc_active_booking", data.booking.booking_code);
         } catch (_) {}
-        renderCustomerActiveCard(data.booking, data);
-        renderExtraActiveTrips(data.active_trips || []);
+        renderCustomerActiveCard(data.booking);
       } else {
-        if (data.booking && (!data.active_trips || data.active_trips.length === 0)) {
-          const allDone = data.group_summary
-            ? Number(data.group_summary.active_count || 0) === 0
-            : (data.booking.status === "completed" || data.booking.status === "cancelled");
-          if (allDone) {
-            try {
-              localStorage.removeItem("ccrc_active_booking");
-            } catch (_) {}
-            const card = document.getElementById("customer-active-ride-card");
-            if (card) card.classList.add("hidden");
-            renderExtraActiveTrips([]);
-            updateActiveTripNavLinks(null);
-          }
+        if (data.booking && (data.booking.status === "completed" || data.booking.status === "cancelled")) {
+          try {
+            localStorage.removeItem("ccrc_active_booking");
+          } catch (_) {}
+          const card = document.getElementById("customer-active-ride-card");
+          if (card) card.classList.add("hidden");
+          updateActiveTripNavLinks(null);
         }
       }
     } catch (_) {}
@@ -5343,8 +3986,17 @@
   setInterval(checkCustomerActiveBooking, 6000);
 
   // ---------------------------------------------------------------------------
-  // Customer Authentication & Legit Verification Controller (Delegated to CCRCAuth)
+  // Customer Authentication & Legit Verification Controller
   // ---------------------------------------------------------------------------
+  const customerAuthBtn = document.getElementById("customer-auth-btn");
+  const customerAuthBtnText = document.getElementById("customer-auth-btn-text");
+  const customerAuthModal = document.getElementById("customer-auth-modal");
+  const unauthedView = document.getElementById("cust-auth-unauthed-view");
+  const authedView = document.getElementById("cust-auth-authed-view");
+  const tabLogin = document.getElementById("cust-tab-login");
+  const tabRegister = document.getElementById("cust-tab-register");
+  const loginForm = document.getElementById("cust-login-form");
+  const registerForm = document.getElementById("cust-register-form");
   const regDuringToggle = document.getElementById("reg-during-booking-toggle");
   const regDuringFields = document.getElementById("reg-during-booking-fields");
 
@@ -5359,32 +4011,23 @@
   }
 
   function getStoredCustomer() {
-    if (window.CCRCAuth && typeof window.CCRCAuth.getStoredCustomer === "function") {
-      return window.CCRCAuth.getStoredCustomer();
-    }
     try {
-      const raw = localStorage.getItem("ccrc_customer_session") || localStorage.getItem("ccrc_customer_user");
-      const parsed = raw ? JSON.parse(raw) : null;
-      return parsed && parsed.phone ? parsed : null;
+      const raw = localStorage.getItem("ccrc_customer_session");
+      return raw ? JSON.parse(raw) : null;
     } catch (_) {
       return null;
     }
   }
 
   function setStoredCustomer(cust) {
-    if (window.CCRCAuth && typeof window.CCRCAuth.setStoredCustomer === "function") {
-      window.CCRCAuth.setStoredCustomer(cust);
-      return;
-    }
     try {
-      if (cust && cust.phone) {
+      if (cust) {
         localStorage.setItem("ccrc_customer_session", JSON.stringify(cust));
-        localStorage.setItem("ccrc_customer_phone", cust.phone);
+        if (cust.phone) localStorage.setItem("ccrc_customer_phone", cust.phone);
         if (cust.name) localStorage.setItem("ccrc_customer_name", cust.name);
         if (cust.avatar_url) localStorage.setItem("ccrc_customer_avatar", cust.avatar_url);
       } else {
         localStorage.removeItem("ccrc_customer_session");
-        localStorage.removeItem("ccrc_customer_user");
         localStorage.removeItem("ccrc_customer_phone");
         localStorage.removeItem("ccrc_customer_name");
         localStorage.removeItem("ccrc_customer_avatar");
@@ -5399,18 +4042,68 @@
     const regOption = document.getElementById("booking-register-option");
     const nameInput = document.getElementById("customer-name");
     const phoneInput = document.getElementById("customer-phone");
+    const signInBtn = document.getElementById("customer-signin-btn") || document.getElementById("customer-auth-btn");
+    const loggedPill = document.getElementById("customer-logged-pill");
+    const pillName = document.getElementById("customer-pill-name");
 
     if (cust && cust.phone) {
-      let avatarUrl = cust.avatar_url || "";
-      try {
-        if (!avatarUrl) avatarUrl = localStorage.getItem("ccrc_customer_avatar") || "";
-      } catch (_) {}
+      const avatarUrl = cust.avatar_url || localStorage.getItem("ccrc_customer_avatar");
 
+      // Hide Sign In button completely!
+      if (signInBtn) {
+        signInBtn.style.setProperty("display", "none", "important");
+        signInBtn.classList.add("hidden");
+      }
+      if (loggedPill) {
+        loggedPill.style.setProperty("display", "inline-flex", "important");
+        loggedPill.classList.remove("hidden");
+      }
+      if (pillName) pillName.textContent = (cust.name ? cust.name.split(" ")[0] : "Account") + " ✓";
+      if (customerAuthBtnText) customerAuthBtnText.textContent = cust.name ? cust.name.split(" ")[0] + " ✓" : "Account ✓";
       if (custBadge) custBadge.classList.remove("hidden");
       if (regOption) regOption.classList.add("hidden");
 
+      // Header avatar sync
+      const headerAvatarImg = document.getElementById("header-cust-avatar-img");
+      const headerPlaceholder = document.getElementById("header-cust-placeholder");
+      if (headerAvatarImg && avatarUrl) {
+        headerAvatarImg.src = avatarUrl;
+        headerAvatarImg.classList.remove("hidden");
+        if (headerPlaceholder) headerPlaceholder.classList.add("hidden");
+      } else if (headerPlaceholder) {
+        headerPlaceholder.classList.remove("hidden");
+        if (headerAvatarImg) headerAvatarImg.classList.add("hidden");
+      }
+
       if (nameInput && !nameInput.value) nameInput.value = cust.name || "";
       if (phoneInput && !phoneInput.value) phoneInput.value = cust.phone || "";
+
+      if (unauthedView) unauthedView.classList.add("hidden");
+      if (authedView) {
+        authedView.classList.remove("hidden");
+        const pName = document.getElementById("c-profile-name");
+        const pPhone = document.getElementById("c-profile-phone");
+        const pEmail = document.getElementById("c-profile-email");
+        const pRides = document.getElementById("c-profile-rides");
+        const pSpent = document.getElementById("c-profile-spent");
+        if (pName) pName.textContent = cust.name || "Customer";
+        if (pPhone) pPhone.textContent = cust.phone || "";
+        if (pEmail && cust.email) pEmail.textContent = cust.email;
+        if (pRides) pRides.textContent = cust.total_rides || 0;
+        if (pSpent) pSpent.textContent = `₱${Number(cust.total_spent || 0).toFixed(2)}`;
+
+        // Customer Avatar in Profile Modal
+        const profImg = document.getElementById("c-profile-avatar-img");
+        const profPlaceholder = document.getElementById("c-profile-avatar-placeholder");
+        if (profImg && avatarUrl) {
+          profImg.src = avatarUrl;
+          profImg.classList.remove("hidden");
+          if (profPlaceholder) profPlaceholder.classList.add("hidden");
+        } else if (profPlaceholder) {
+          profPlaceholder.classList.remove("hidden");
+          if (profImg) profImg.classList.add("hidden");
+        }
+      }
 
       // Customer Avatar in Home Card
       const homeImg = document.getElementById("cust-home-avatar-img");
@@ -5424,16 +4117,38 @@
         if (homeImg) homeImg.classList.add("hidden");
       }
 
+      // Hide bottom-right rider icon when customer is logged in
+      const bottomRiderNav = document.getElementById("bottom-nav-rider");
+      if (bottomRiderNav) {
+        bottomRiderNav.style.setProperty("display", "none", "important");
+        bottomRiderNav.classList.add("hidden");
+      }
+
       loadCustomerHomeHistory();
     } else {
+      // Show Sign In button!
+      if (signInBtn) {
+        signInBtn.style.setProperty("display", "inline-flex", "important");
+        signInBtn.classList.remove("hidden");
+      }
+      if (loggedPill) {
+        loggedPill.style.setProperty("display", "none", "important");
+        loggedPill.classList.add("hidden");
+      }
+      if (customerAuthBtnText) customerAuthBtnText.textContent = "Sign In";
       if (custBadge) custBadge.classList.add("hidden");
       if (regOption) regOption.classList.remove("hidden");
+      if (unauthedView) unauthedView.classList.remove("hidden");
+      if (authedView) authedView.classList.add("hidden");
       const historyCard = document.getElementById("customer-home-history-card");
       if (historyCard) historyCard.classList.add("hidden");
-    }
 
-    if (window.CCRCAuth && typeof window.CCRCAuth.syncUI === "function") {
-      window.CCRCAuth.syncUI();
+      // Show bottom-right rider icon when customer is NOT logged in
+      const bottomRiderNav = document.getElementById("bottom-nav-rider");
+      if (bottomRiderNav) {
+        bottomRiderNav.style.removeProperty("display");
+        bottomRiderNav.classList.remove("hidden");
+      }
     }
   }
 
@@ -5462,7 +4177,7 @@
       const totalTrips = (data.customer && data.customer.total_rides !== undefined && data.customer.total_rides !== null) ? data.customer.total_rides : (data.total_rides !== undefined ? data.total_rides : (data.history ? data.history.length : 0));
       const totalSpent = (data.customer && data.customer.total_spent) ? Number(data.customer.total_spent) : 0;
 
-      if (tripsCountEl) tripsCountEl.textContent = `${totalTrips} trip${totalTrips === 1 ? "" : "s"}`;
+      if (tripsCountEl) tripsCountEl.textContent = `${totalTrips} ka biyahe`;
       if (spentEl) spentEl.textContent = `₱${totalSpent.toFixed(2)}`;
       if (nameEl) nameEl.textContent = (data.customer && data.customer.name) || cust.name || "Passenger";
 
@@ -5483,24 +4198,18 @@
         if (!list || list.length === 0) {
           feedEl.innerHTML = `
             <div style="padding:12px;text-align:center;color:#94a3b8;font-size:0.82rem;">
-              You haven't completed any trips yet. Book a ride now to start your travel record!
+              Wala pa kay nahuman nga biyahe. Pag-book karon aron makasugod sa imong travel record!
             </div>
           `;
         } else {
           feedEl.innerHTML = list.slice(0, 3).map(b => {
             const isCompleted = b.status === 'completed';
-            const groupSize = Number(b.group_size || 1);
-            const isGroup = Boolean(groupSize > 1 && b.group_code);
-            const trackHref = isGroup
-              ? `/track/${encodeURIComponent(b.group_code)}?slot=${encodeURIComponent(b.booking_code)}`
-              : `/track/${encodeURIComponent(b.booking_code)}`;
             return `
               <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                 <div>
-                  <div style="font-weight:700;font-size:0.88rem;color:#f8fafc;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <div style="font-weight:700;font-size:0.88rem;color:#f8fafc;display:flex;align-items:center;gap:6px;">
                     <span style="font-family:monospace;color:#38bdf8;">${escapeHtml(b.booking_code)}</span>
                     <span class="badge badge-accent" style="font-size:0.7rem;text-transform:uppercase;">${escapeHtml(b.service_type)}</span>
-                    ${isGroup ? `<span class="badge" style="background:#1e3a8a;color:#93c5fd;font-size:0.68rem;">👥 ${escapeHtml(b.group_code)} • Slot ${Number(b.rider_slot || 1)}/${groupSize}</span>` : ''}
                   </div>
                   <div style="color:#94a3b8;font-size:0.78rem;margin-top:2px;">
                     🟢 ${escapeHtml(b.pickup_address)} &rarr; 🏁 ${escapeHtml(b.dropoff_address)}
@@ -5515,7 +4224,7 @@
                     ${escapeHtml(b.status)}
                   </span>
                   <div style="margin-top:4px;">
-                    <a href="${trackHref}" class="btn btn-sm" style="font-size:0.72rem;padding:2px 8px;background:#1e293b;color:white;border:1px solid #475569;text-decoration:none;">
+                    <a href="/track/${encodeURIComponent(b.booking_code)}" class="btn btn-sm" style="font-size:0.72rem;padding:2px 8px;background:#1e293b;color:white;border:1px solid #475569;text-decoration:none;">
                       Receipt 🧾
                     </a>
                   </div>
@@ -5528,928 +4237,373 @@
     } catch (_) {}
   }
 
-  window.addEventListener("ccrc:customer-auth-changed", updateCustomerAuthUI);
+  // Open Customer Modal
+  const signInBtnElem = document.getElementById("customer-signin-btn") || document.getElementById("customer-auth-btn");
+  if (signInBtnElem && customerAuthModal) {
+    signInBtnElem.addEventListener("click", () => {
+      updateCustomerAuthUI();
+      customerAuthModal.classList.remove("hidden");
+    });
+  }
+
+  const custProfileBtn = document.getElementById("customer-profile-btn");
+  if (custProfileBtn && customerAuthModal) {
+    custProfileBtn.addEventListener("click", () => {
+      updateCustomerAuthUI();
+      customerAuthModal.classList.remove("hidden");
+    });
+  }
+
+  const headerCustLogoutBtn = document.getElementById("header-cust-logout-btn");
+  if (headerCustLogoutBtn) {
+    headerCustLogoutBtn.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to log out of your customer account?")) {
+        try {
+          await fetch("/api/customer/logout", { method: "POST" });
+        } catch (_) {}
+        setStoredCustomer(null);
+        window.location.reload();
+      }
+    });
+  }
+
+  // Tab switching
+  if (tabLogin && tabRegister && loginForm && registerForm) {
+    tabLogin.addEventListener("click", () => {
+      tabLogin.style.borderBottom = "3px solid var(--primary)";
+      tabLogin.style.color = "var(--primary)";
+      tabLogin.style.fontWeight = "700";
+      tabRegister.style.borderBottom = "3px solid transparent";
+      tabRegister.style.color = "#64748b";
+      tabRegister.style.fontWeight = "600";
+      loginForm.classList.remove("hidden");
+      registerForm.classList.add("hidden");
+      if (custForgotForm) custForgotForm.classList.add("hidden");
+    });
+
+    tabRegister.addEventListener("click", () => {
+      tabRegister.style.borderBottom = "3px solid var(--primary)";
+      tabRegister.style.color = "var(--primary)";
+      tabRegister.style.fontWeight = "700";
+      tabLogin.style.borderBottom = "3px solid transparent";
+      tabLogin.style.color = "#64748b";
+      tabLogin.style.fontWeight = "600";
+      registerForm.classList.remove("hidden");
+      loginForm.classList.add("hidden");
+      if (custForgotForm) custForgotForm.classList.add("hidden");
+    });
+  }
+
+  // Customer Forgot Password UI & Form Handling
+  const custForgotForm = document.getElementById("cust-forgot-form");
+  const custSwitchForgotBtn = document.getElementById("c-switch-forgot-btn");
+  const custForgotBackBtn = document.getElementById("c-forgot-back-btn");
+  const custTabBar = document.getElementById("cust-auth-tab-bar");
+  const custForgotMsg = document.getElementById("c-forgot-msg");
+
+  if (custSwitchForgotBtn && custForgotForm) {
+    custSwitchForgotBtn.addEventListener("click", () => {
+      if (loginForm) loginForm.classList.add("hidden");
+      if (registerForm) registerForm.classList.add("hidden");
+      if (custTabBar) custTabBar.classList.add("hidden");
+      custForgotForm.classList.remove("hidden");
+
+      const enteredPhone = document.getElementById("c-login-phone")?.value.trim();
+      const forgotPhone = document.getElementById("c-forgot-phone");
+      if (enteredPhone && forgotPhone && !forgotPhone.value) {
+        forgotPhone.value = enteredPhone;
+      }
+    });
+  }
+
+  if (custForgotBackBtn && custForgotForm) {
+    custForgotBackBtn.addEventListener("click", () => {
+      custForgotForm.classList.add("hidden");
+      if (custTabBar) custTabBar.classList.remove("hidden");
+      if (loginForm) loginForm.classList.remove("hidden");
+    });
+  }
+
+  if (custForgotForm) {
+    custForgotForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!custForgotMsg) return;
+      custForgotMsg.classList.add("hidden");
+      custForgotMsg.textContent = "";
+
+      const phone = document.getElementById("c-forgot-phone")?.value.trim() || "";
+      const email = document.getElementById("c-forgot-email")?.value.trim() || "";
+      const newPwd = document.getElementById("c-forgot-new-pwd")?.value || "";
+      const confirmPwd = document.getElementById("c-forgot-confirm-pwd")?.value || "";
+      const resetBtn = document.getElementById("c-forgot-btn");
+
+      if (newPwd !== confirmPwd) {
+        custForgotMsg.style.background = "#fee2e2";
+        custForgotMsg.style.color = "#991b1b";
+        custForgotMsg.style.border = "1px solid #fca5a5";
+        custForgotMsg.textContent = "Dili pareho ang bag-ong password ug ang confirmation password.";
+        custForgotMsg.classList.remove("hidden");
+        return;
+      }
+
+      resetBtn.disabled = true;
+      resetBtn.textContent = "Ginasusi ug gina-save...";
+
+      try {
+        const res = await fetch("/api/customer/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: phone,
+            email: email,
+            new_password: newPwd,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to reset password.");
+
+        custForgotMsg.style.background = "#dcfce7";
+        custForgotMsg.style.color = "#166534";
+        custForgotMsg.style.border = "1px solid #86efac";
+        custForgotMsg.innerHTML = "✅ <strong>Malampuson!</strong> " + (data.message || "Na-reset na ang imong password.") + "<br><small>Ibalik na tika sa Log In...</small>";
+        custForgotMsg.classList.remove("hidden");
+
+        const loginPhoneInput = document.getElementById("c-login-phone");
+        if (loginPhoneInput) loginPhoneInput.value = phone;
+
+        setTimeout(() => {
+          custForgotForm.classList.add("hidden");
+          if (custTabBar) custTabBar.classList.remove("hidden");
+          if (loginForm) loginForm.classList.remove("hidden");
+          custForgotMsg.classList.add("hidden");
+          const loginPwd = document.getElementById("c-login-pwd");
+          if (loginPwd) loginPwd.focus();
+        }, 1800);
+      } catch (err) {
+        custForgotMsg.style.background = "#fee2e2";
+        custForgotMsg.style.color = "#991b1b";
+        custForgotMsg.style.border = "1px solid #fca5a5";
+        custForgotMsg.textContent = err.message;
+        custForgotMsg.classList.remove("hidden");
+      } finally {
+        resetBtn.disabled = false;
+        resetBtn.textContent = "I-save ang Bag-ong Password →";
+      }
+    });
+  }
+
+  // Handle Customer Login
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById("c-login-err");
+      if (errEl) errEl.classList.add("hidden");
+      const phone = document.getElementById("c-login-phone")?.value.trim();
+      const password = document.getElementById("c-login-pwd")?.value;
+      const btn = document.getElementById("c-login-btn");
+      btn.disabled = true;
+      btn.textContent = "Logging in...";
+
+      try {
+        const res = await fetch("/api/customer/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+
+        setStoredCustomer(data.customer);
+        if (customerAuthModal) customerAuthModal.classList.add("hidden");
+        alert(`Welcome back, ${data.customer.name}! Your account is verified.`);
+      } catch (err) {
+        if (errEl) {
+          errEl.textContent = err.message;
+          errEl.classList.remove("hidden");
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Log In to CCRC →";
+      }
+    });
+  }
+
+  // Customer Registration Photo Handler (Camera & Gallery)
+  let currentCustAvatarBase64 = "";
+  const cCamBtn = document.getElementById("c-photo-camera-btn");
+  const cGalBtn = document.getElementById("c-photo-gallery-btn");
+  const cCamInput = document.getElementById("c-reg-file-camera");
+  const cGalInput = document.getElementById("c-reg-file-gallery");
+  const cPhotoImg = document.getElementById("c-reg-photo-img");
+  const cPhotoPlaceholder = document.getElementById("c-reg-photo-placeholder");
+  const cPhotoStatus = document.getElementById("c-photo-status");
+
+  if (cCamBtn && cCamInput) {
+    cCamBtn.addEventListener("click", () => cCamInput.click());
+  }
+  if (cGalBtn && cGalInput) {
+    cGalBtn.addEventListener("click", () => cGalInput.click());
+  }
+
+  function handleCustPhotoFile(file) {
+    if (!file) return;
+    if (cPhotoStatus) {
+      cPhotoStatus.textContent = "⏳ Gi-proseso ang litrato...";
+      cPhotoStatus.style.color = "#0284c7";
+    }
+    const reader = new FileReader();
+    reader.onerror = function() {
+      if (cPhotoStatus) {
+        cPhotoStatus.textContent = "⚠️ Dili mabasa ang file.";
+        cPhotoStatus.style.color = "#dc2626";
+      }
+    };
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onerror = function() {
+        if (cPhotoStatus) {
+          cPhotoStatus.textContent = "⚠️ Dili mabasa ang litrato. Palihug pagpili og JPG o PNG.";
+          cPhotoStatus.style.color = "#dc2626";
+        }
+      };
+      img.onload = function() {
+        const maxDim = 480;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        currentCustAvatarBase64 = canvas.toDataURL("image/jpeg", 0.82);
+
+        if (cPhotoImg) {
+          cPhotoImg.src = currentCustAvatarBase64;
+          cPhotoImg.classList.remove("hidden");
+        }
+        if (cPhotoPlaceholder) {
+          cPhotoPlaceholder.classList.add("hidden");
+        }
+        if (cPhotoStatus) {
+          cPhotoStatus.textContent = "✓ Litrato andam na (" + Math.round(currentCustAvatarBase64.length / 1024) + " KB)";
+          cPhotoStatus.style.color = "#16a34a";
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (cCamInput) {
+    cCamInput.addEventListener("change", function() {
+      if (this.files && this.files[0]) handleCustPhotoFile(this.files[0]);
+    });
+  }
+  if (cGalInput) {
+    cGalInput.addEventListener("change", function() {
+      if (this.files && this.files[0]) handleCustPhotoFile(this.files[0]);
+    });
+  }
+
+  // Handle Customer Register
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById("c-reg-err");
+      if (errEl) errEl.classList.add("hidden");
+      const name = document.getElementById("c-reg-name")?.value.trim();
+      const phone = document.getElementById("c-reg-phone")?.value.trim();
+      const email = document.getElementById("c-reg-email")?.value.trim();
+      const barangay = document.getElementById("c-reg-barangay")?.value;
+      const password = document.getElementById("c-reg-pwd")?.value;
+
+      if (!email || !email.includes("@") || !email.includes(".")) {
+        if (errEl) {
+          errEl.textContent = "Palihug ibutang ang imong saktong Email Address (e.g. maria@gmail.com).";
+          errEl.classList.remove("hidden");
+        }
+        return;
+      }
+      if (!currentCustAvatarBase64) {
+        if (errEl) {
+          errEl.textContent = "Palihug pagkuha o pagpili og litrato (Camera o Gallery) para sa imong customer verification.";
+          errEl.classList.remove("hidden");
+        }
+        return;
+      }
+
+      const btn = document.getElementById("c-reg-btn");
+      btn.disabled = true;
+      btn.textContent = "Registering...";
+
+      try {
+        const res = await fetch("/api/customer/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            phone,
+            email,
+            barangay,
+            password,
+            avatar_base64: currentCustAvatarBase64,
+          }),
+        });
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (_) {
+          throw new Error(
+            res.status === 502 || res.status === 503
+              ? "Ang server nag-restart pa sa Render. Palihug sulayi pag-usab human sa pipila ka segundo."
+              : `Server error (${res.status}). Palihug sulayi pag-usab.`
+          );
+        }
+        if (!res.ok) throw new Error(data.error || "Registration failed. Palihug sulayi pag-usab.");
+
+        setStoredCustomer(data.customer);
+        if (customerAuthModal) customerAuthModal.classList.add("hidden");
+        alert(`Congratulations ${data.customer.name}! You are now a Verified CCRC Passenger (🛡️ Verified Badge).`);
+      } catch (err) {
+        if (errEl) {
+          let msg = err.message || "";
+          if (msg.toLowerCase().includes("fetch")) {
+            msg = "Dili ma-konekta sa server (Failed to fetch). Posible nga nag-deploy o nag-restart pa ang server sa Render. Palihug hulata og pipila ka segundo unya i-click pag-usab.";
+          }
+          errEl.textContent = msg;
+          errEl.classList.remove("hidden");
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Register & Get Verified Badge 🛡️";
+      }
+    });
+  }
+
+  // Customer Logout
+  const custLogoutBtn = document.getElementById("c-profile-logout-btn");
+  if (custLogoutBtn) {
+    custLogoutBtn.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to log out of your customer account?")) {
+        try {
+          await fetch("/api/customer/logout", { method: "POST" });
+        } catch (_) {}
+        setStoredCustomer(null);
+        if (customerAuthModal) customerAuthModal.classList.add("hidden");
+        window.location.reload();
+      }
+    });
+  }
 
   // Initialize customer session check on load
   updateCustomerAuthUI();
-
-  // ---------------------------------------------------------------------------
-  // Admin Live Club Advisory Banner (Auto-Refresh + Revision-Aware Dismiss)
-  // ---------------------------------------------------------------------------
-  const liveAdvisoryBanner = document.getElementById("ccrc-live-advisory-banner");
-  if (liveAdvisoryBanner) {
-    const ADV_DISMISS_KEY = "ccrc_dismissed_advisory_customer";
-    const advIconEl = document.getElementById("live-advisory-icon");
-    const advCatEl = document.getElementById("live-advisory-cat-label");
-    const advMetaEl = document.getElementById("live-advisory-meta");
-    const advTitleEl = document.getElementById("live-advisory-title");
-    const advMsgEl = document.getElementById("live-advisory-message");
-    const advDismissBtn = document.getElementById("live-advisory-dismiss-btn");
-
-    function getDismissedAdvRev() {
-      try { return sessionStorage.getItem(ADV_DISMISS_KEY) || ""; } catch (_) { return ""; }
-    }
-
-    function applyCustomerAdvisory(advisory, visible) {
-      if (!advisory || !visible) {
-        liveAdvisoryBanner.classList.add("hidden");
-        return;
-      }
-      const rev = String(advisory.revision || "");
-      liveAdvisoryBanner.setAttribute("data-revision", rev);
-      if (rev && getDismissedAdvRev() === rev) {
-        liveAdvisoryBanner.classList.add("hidden");
-        return;
-      }
-      const cat = String(advisory.category || "info");
-      liveAdvisoryBanner.className = `ccrc-advisory-banner is-${cat}`;
-      if (advIconEl) advIconEl.textContent = advisory.category_icon || "📢";
-      if (advCatEl) advCatEl.textContent = advisory.category_label || "Club Advisory";
-      if (advMetaEl) advMetaEl.textContent = advisory.updated_label ? `Updated ${advisory.updated_label}` : "";
-      if (advTitleEl) advTitleEl.textContent = advisory.title || "";
-      if (advMsgEl) {
-        const m = String(advisory.message || "").trim();
-        advMsgEl.textContent = m;
-        advMsgEl.classList.toggle("hidden", !m);
-      }
-      liveAdvisoryBanner.classList.remove("hidden");
-    }
-
-    // Honor sessionStorage dismiss on initial SSR load
-    const initialRev = liveAdvisoryBanner.getAttribute("data-revision") || "";
-    if (initialRev && getDismissedAdvRev() === initialRev) {
-      liveAdvisoryBanner.classList.add("hidden");
-    }
-
-    if (advDismissBtn) {
-      advDismissBtn.addEventListener("click", () => {
-        const rev = liveAdvisoryBanner.getAttribute("data-revision") || "";
-        try { if (rev) sessionStorage.setItem(ADV_DISMISS_KEY, rev); } catch (_) {}
-        liveAdvisoryBanner.classList.add("hidden");
-      });
-    }
-
-    async function refreshCustomerLiveAdvisory() {
-      if (document.hidden) return;
-      try {
-        const res = await fetch("/api/advisory?audience=customers", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data && data.success) {
-          applyCustomerAdvisory(data.advisory, Boolean(data.visible));
-        }
-      } catch (_) {}
-    }
-
-    setInterval(refreshCustomerLiveAdvisory, 45000);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshCustomerLiveAdvisory();
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Saved Addresses (🏠 Home / 🏢 Work / ⭐ Favorite) — Fast Booking + Fair Broadcast
-  // ---------------------------------------------------------------------------
-  const savedAddressesBar = document.getElementById("saved-addresses-bar");
-  if (savedAddressesBar) {
-    const SAVED_ADDR_STORAGE_KEY = "ccrc_saved_addresses_v1";
-    const SAVED_SLOTS = [
-      { key: "home", icon: "🏠", defaultLabel: "Home" },
-      { key: "work", icon: "🏢", defaultLabel: "Work" },
-      { key: "favorite", icon: "⭐", defaultLabel: "Favorite" },
-    ];
-    const SAVED_SLOT_META = Object.fromEntries(SAVED_SLOTS.map((s) => [s.key, s]));
-
-    const savedAddrChipsWrap = document.getElementById("saved-address-chips");
-    const savedTargetPickupBtn = document.getElementById("saved-addr-target-pickup");
-    const savedTargetDropoffBtn = document.getElementById("saved-addr-target-dropoff");
-    const manageSavedAddrBtn = document.getElementById("manage-saved-addresses-btn");
-
-    const savedAddrModal = document.getElementById("saved-address-modal");
-    const closeSavedAddrModalBtn = document.getElementById("close-saved-address-modal-btn");
-    const savedAddrSyncNote = document.getElementById("saved-addr-sync-note");
-    const savedSlotTabs = Array.from(document.querySelectorAll(".saved-slot-tab"));
-    const savedCopyPickupBtn = document.getElementById("saved-copy-pickup-btn");
-    const savedCopyDropoffBtn = document.getElementById("saved-copy-dropoff-btn");
-    const savedDetectGpsBtn = document.getElementById("saved-detect-gps-btn");
-    const savedAddrForm = document.getElementById("saved-address-form");
-    const savedSlotInput = document.getElementById("saved-addr-slot-input");
-    const savedLatInput = document.getElementById("saved-addr-lat-input");
-    const savedLngInput = document.getElementById("saved-addr-lng-input");
-    const savedAddressInput = document.getElementById("saved-addr-address-input");
-    const savedSuggestionsEl = document.getElementById("saved-addr-suggestions");
-    const savedPinStatusEl = document.getElementById("saved-addr-pin-status");
-    const savedLabelInput = document.getElementById("saved-addr-label-input");
-    const savedNoteInput = document.getElementById("saved-addr-note-input");
-    const savedFeedbackEl = document.getElementById("saved-addr-feedback");
-    const savedSaveBtn = document.getElementById("saved-addr-save-btn");
-    const savedDeleteBtn = document.getElementById("saved-addr-delete-btn");
-    const savedModalListEl = document.getElementById("saved-addr-modal-list");
-
-    let savedAddresses = {};
-    let savedApplyTarget = "pickup";
-    let activeEditSlot = "home";
-    let isServerSynced = false;
-    let lastSyncedPhone = "";
-
-    function isCamiguinCoord(lat, lng) {
-      const nLat = parseFloat(lat);
-      const nLng = parseFloat(lng);
-      return (
-        Number.isFinite(nLat) &&
-        Number.isFinite(nLng) &&
-        nLat >= 8.95 &&
-        nLat <= 9.40 &&
-        nLng >= 124.45 &&
-        nLng <= 124.95
-      );
-    }
-
-    function normalizeSavedMap(raw) {
-      const clean = {};
-      if (!raw || typeof raw !== "object") return clean;
-      for (const meta of SAVED_SLOTS) {
-        const item = raw[meta.key];
-        if (!item || typeof item !== "object") continue;
-        const address = String(item.address || "").trim().slice(0, 180);
-        if (!address) continue;
-        const validCoord = isCamiguinCoord(item.lat, item.lng);
-        const label = String(item.label || meta.defaultLabel).trim().slice(0, 40) || meta.defaultLabel;
-        const landmarkNote = String(item.landmark_note || "").trim().slice(0, 140);
-        clean[meta.key] = {
-          slot: meta.key,
-          icon: meta.icon,
-          label,
-          address,
-          lat: validCoord ? parseFloat(Number(item.lat).toFixed(6)) : null,
-          lng: validCoord ? parseFloat(Number(item.lng).toFixed(6)) : null,
-          landmark_note: landmarkNote,
-          updated_at: String(item.updated_at || "").trim(),
-          _guestLocal: Boolean(item._guestLocal),
-        };
-      }
-      return clean;
-    }
-
-    function readLocalSavedMap() {
-      try {
-        const raw = localStorage.getItem(SAVED_ADDR_STORAGE_KEY);
-        if (!raw) return {};
-        return normalizeSavedMap(JSON.parse(raw));
-      } catch (_) {
-        return {};
-      }
-    }
-
-    function writeLocalSavedMap(mapObj) {
-      try {
-        localStorage.setItem(SAVED_ADDR_STORAGE_KEY, JSON.stringify(mapObj || {}));
-      } catch (_) {}
-    }
-
-    function setSavedApplyTarget(target) {
-      savedApplyTarget = target === "dropoff" ? "dropoff" : "pickup";
-      if (savedTargetPickupBtn) {
-        savedTargetPickupBtn.classList.toggle("active", savedApplyTarget === "pickup");
-        savedTargetPickupBtn.setAttribute("aria-pressed", savedApplyTarget === "pickup" ? "true" : "false");
-      }
-      if (savedTargetDropoffBtn) {
-        savedTargetDropoffBtn.classList.toggle("active", savedApplyTarget === "dropoff");
-        savedTargetDropoffBtn.setAttribute("aria-pressed", savedApplyTarget === "dropoff" ? "true" : "false");
-      }
-    }
-
-    function updateSavedSyncNote() {
-      if (!savedAddrSyncNote) return;
-      const cust = getStoredCustomer();
-      if (cust && cust.phone && isServerSynced) {
-        savedAddrSyncNote.textContent = "☁️ Synced with your CCRC passenger account";
-        savedAddrSyncNote.classList.add("is-synced");
-      } else if (cust && cust.phone) {
-        savedAddrSyncNote.textContent = "☁️ Connected to your passenger account";
-        savedAddrSyncNote.classList.add("is-synced");
-      } else {
-        savedAddrSyncNote.textContent = "📱 Saved on this device (Sign in to sync across devices)";
-        savedAddrSyncNote.classList.remove("is-synced");
-      }
-    }
-
-    function showSavedFeedback(msg, isError) {
-      if (!savedFeedbackEl) return;
-      if (!msg) {
-        savedFeedbackEl.textContent = "";
-        savedFeedbackEl.classList.add("hidden");
-        savedFeedbackEl.classList.remove("is-error", "is-success");
-        return;
-      }
-      savedFeedbackEl.textContent = msg;
-      savedFeedbackEl.classList.remove("hidden", "is-error", "is-success");
-      savedFeedbackEl.classList.add(isError ? "is-error" : "is-success");
-    }
-
-    function updateSavedPinStatus(lat, lng, noteText) {
-      if (!savedPinStatusEl) return;
-      if (isCamiguinCoord(lat, lng)) {
-        const latStr = Number(lat).toFixed(5);
-        const lngStr = Number(lng).toFixed(5);
-        savedPinStatusEl.textContent = noteText
-          ? `✅ ${noteText} (${latStr}, ${lngStr})`
-          : `✅ Exact Camiguin map pin locked (${latStr}, ${lngStr})`;
-        savedPinStatusEl.classList.add("is-pinned");
-      } else {
-        savedPinStatusEl.textContent = noteText || "📍 Tip: Pick a suggestion, use GPS, or copy from the map for exact pin.";
-        savedPinStatusEl.classList.remove("is-pinned");
-      }
-    }
-
-    function renderSavedChips() {
-      if (!savedAddrChipsWrap) return;
-      savedAddrChipsWrap.innerHTML = SAVED_SLOTS.map((meta) => {
-        const entry = savedAddresses[meta.key];
-        if (entry) {
-          const preview = entry.address.length > 28 ? `${entry.address.slice(0, 27)}…` : entry.address;
-          const titleText = entry.landmark_note
-            ? `${entry.label}: ${entry.address} (${entry.landmark_note})`
-            : `${entry.label}: ${entry.address}`;
-          return `
-            <button type="button" class="saved-addr-chip is-saved" data-slot="${meta.key}" title="${escapeHtml(titleText)}">
-              <span class="saved-addr-chip-icon">${meta.icon}</span>
-              <span class="saved-addr-chip-copy">
-                <strong class="saved-addr-chip-label">${escapeHtml(entry.label)}</strong>
-                <small class="saved-addr-chip-sub">${escapeHtml(preview)}</small>
-              </span>
-            </button>
-          `;
-        }
-        return `
-          <button type="button" class="saved-addr-chip is-empty" data-slot="${meta.key}">
-            <span class="saved-addr-chip-icon">${meta.icon}</span>
-            <span class="saved-addr-chip-copy">
-              <strong class="saved-addr-chip-label">${escapeHtml(meta.defaultLabel)}</strong>
-              <small class="saved-addr-chip-sub">+ Tap to save</small>
-            </span>
-          </button>
-        `;
-      }).join("");
-    }
-
-    function renderSavedModalList() {
-      if (!savedModalListEl) return;
-      const entries = SAVED_SLOTS.map((m) => savedAddresses[m.key]).filter(Boolean);
-      if (entries.length === 0) {
-        savedModalListEl.innerHTML = "";
-        savedModalListEl.classList.add("hidden");
-        return;
-      }
-      savedModalListEl.classList.remove("hidden");
-      savedModalListEl.innerHTML = `
-        <div class="saved-modal-list-title">Quick Apply Saved Places</div>
-        ${entries.map((entry) => `
-          <div class="saved-modal-list-row">
-            <div class="saved-modal-list-info">
-              <div class="saved-modal-list-name">${entry.icon} ${escapeHtml(entry.label)}</div>
-              <div class="saved-modal-list-addr">${escapeHtml(entry.address)}</div>
-              ${entry.landmark_note ? `<div class="saved-modal-list-note">📌 ${escapeHtml(entry.landmark_note)}</div>` : ""}
-            </div>
-            <div class="saved-modal-list-actions">
-              <button type="button" class="saved-row-btn is-pickup" data-quick-apply="${entry.slot}" data-quick-target="pickup">🟢 Pickup</button>
-              <button type="button" class="saved-row-btn is-dropoff" data-quick-apply="${entry.slot}" data-quick-target="dropoff">🏁 Drop-off</button>
-              <button type="button" class="saved-row-btn is-edit" data-quick-edit="${entry.slot}">✏️</button>
-            </div>
-          </div>
-        `).join("")}
-      `;
-    }
-
-    function selectEditSlot(slot) {
-      const cleanSlot = SAVED_SLOT_META[slot] ? slot : "home";
-      activeEditSlot = cleanSlot;
-      const meta = SAVED_SLOT_META[cleanSlot];
-      const existing = savedAddresses[cleanSlot] || null;
-
-      if (savedSlotInput) savedSlotInput.value = cleanSlot;
-      savedSlotTabs.forEach((tab) => {
-        const isActive = tab.getAttribute("data-saved-slot") === cleanSlot;
-        tab.classList.toggle("active", isActive);
-        tab.setAttribute("aria-selected", isActive ? "true" : "false");
-      });
-
-      if (savedAddressInput) savedAddressInput.value = existing ? existing.address : "";
-      if (savedLabelInput) {
-        savedLabelInput.value = existing ? existing.label : "";
-        savedLabelInput.placeholder = `${meta.defaultLabel}, Office, School, Market...`;
-      }
-      if (savedNoteInput) savedNoteInput.value = existing ? existing.landmark_note : "";
-      if (savedLatInput) savedLatInput.value = existing && existing.lat !== null ? String(existing.lat) : "";
-      if (savedLngInput) savedLngInput.value = existing && existing.lng !== null ? String(existing.lng) : "";
-
-      if (savedDeleteBtn) {
-        savedDeleteBtn.classList.toggle("hidden", !existing);
-      }
-      if (savedSuggestionsEl) {
-        savedSuggestionsEl.classList.add("hidden");
-        savedSuggestionsEl.innerHTML = "";
-      }
-      if (existing && isCamiguinCoord(existing.lat, existing.lng)) {
-        updateSavedPinStatus(existing.lat, existing.lng, "Saved Camiguin map pin");
-      } else {
-        updateSavedPinStatus(null, null);
-      }
-      showSavedFeedback("", false);
-    }
-
-    function openSavedAddressModal(slot) {
-      if (!savedAddrModal) return;
-      updateSavedSyncNote();
-      selectEditSlot(slot || activeEditSlot || "home");
-      renderSavedModalList();
-      savedAddrModal.classList.remove("hidden");
-      if (savedAddressInput && !savedAddressInput.value) {
-        setTimeout(() => {
-          try { savedAddressInput.focus(); } catch (_) {}
-        }, 60);
-      }
-    }
-
-    function closeSavedAddressModal() {
-      if (!savedAddrModal) return;
-      savedAddrModal.classList.add("hidden");
-      if (savedSuggestionsEl) savedSuggestionsEl.classList.add("hidden");
-    }
-
-    async function applySavedAddress(slot, explicitTarget) {
-      const entry = savedAddresses[slot];
-      if (!entry) {
-        openSavedAddressModal(slot);
-        return;
-      }
-
-      const target = explicitTarget || savedApplyTarget || "pickup";
-      const hasNoteInAddr =
-        entry.landmark_note &&
-        entry.address.toLowerCase().includes(entry.landmark_note.toLowerCase());
-      const displayLabel =
-        entry.landmark_note && !hasNoteInAddr
-          ? `${entry.address} (${entry.landmark_note})`
-          : entry.address;
-
-      let lat = isCamiguinCoord(entry.lat, entry.lng) ? Number(entry.lat) : null;
-      let lng = isCamiguinCoord(entry.lat, entry.lng) ? Number(entry.lng) : null;
-
-      if (lat === null || lng === null) {
-        const localMatch = matchCamiguinPlace(entry.address);
-        if (localMatch && isCamiguinCoord(localMatch.lat, localMatch.lng)) {
-          lat = Number(localMatch.lat);
-          lng = Number(localMatch.lng);
-        }
-      }
-
-      if (lat === null || lng === null) {
-        try {
-          const res = await fetch(`/api/places/search?q=${encodeURIComponent(entry.address)}`);
-          if (res.ok) {
-            const data = await res.json();
-            const first = data && Array.isArray(data.places) ? data.places[0] : null;
-            if (first && isCamiguinCoord(first.lat, first.lng)) {
-              lat = Number(first.lat);
-              lng = Number(first.lng);
-            }
-          }
-        } catch (_) {}
-      }
-
-      const isPickupTarget = target === "pickup";
-      if (lat !== null && lng !== null) {
-        if (isPickupTarget) {
-          setPickupPoint(lat, lng, displayLabel);
-          if (pickupMarker) {
-            pickupMarker.bindPopup(`<strong>🟢 Pickup (${escapeHtml(entry.label)}):</strong><br>${escapeHtml(displayLabel)}`).openPopup();
-          }
-        } else {
-          setDropoffPoint(lat, lng, displayLabel);
-          if (dropoffMarker) {
-            dropoffMarker.bindPopup(`<strong>🏁 Drop-off (${escapeHtml(entry.label)}):</strong><br>${escapeHtml(displayLabel)}`).openPopup();
-          }
-        }
-
-        targetModeButtons.forEach((b) =>
-          b.classList.toggle("active", b.getAttribute("data-target-mode") === target)
-        );
-        currentTargetMode = target;
-
-        const bothPinned = Boolean(
-          pickupLatInput && pickupLatInput.value && dropoffLatInput && dropoffLatInput.value
-        );
-        if (map && !bothPinned) {
-          map.flyTo([lat, lng], 15, { duration: 0.7 });
-        }
-        updateRouteLine();
-        recalculateFare();
-      } else {
-        if (isPickupTarget && pickupInput) {
-          pickupInput.value = displayLabel;
-          if (pickupLatInput) pickupLatInput.value = "";
-          if (pickupLngInput) pickupLngInput.value = "";
-          updateClearBtn(pickupInput, clearPickupBtn);
-        } else if (!isPickupTarget && dropoffInput) {
-          dropoffInput.value = displayLabel;
-          if (dropoffLatInput) dropoffLatInput.value = "";
-          if (dropoffLngInput) dropoffLngInput.value = "";
-          updateClearBtn(dropoffInput, clearDropoffBtn);
-        }
-        recalculateFare();
-      }
-
-      showMapToast(
-        `${entry.icon} ${isPickupTarget ? "Pickup" : "Drop-off"} set to ${entry.label}: ${entry.address}`
-      );
-
-      // Flash applied chip cleanly
-      const chipEl = savedAddrChipsWrap && savedAddrChipsWrap.querySelector(`.saved-addr-chip[data-slot="${slot}"]`);
-      if (chipEl) {
-        chipEl.classList.add("is-just-applied");
-        setTimeout(() => chipEl.classList.remove("is-just-applied"), 700);
-      }
-
-      // Smart 2-tap flip: if Pickup was just set and Drop-off is still empty, flip toggle to Drop-off (and vice versa)
-      if (isPickupTarget && dropoffInput && !dropoffInput.value.trim()) {
-        setSavedApplyTarget("dropoff");
-      } else if (!isPickupTarget && pickupInput && !pickupInput.value.trim()) {
-        setSavedApplyTarget("pickup");
-      }
-    }
-
-    async function syncSavedAddressesFromServer() {
-      const cust = getStoredCustomer();
-      if (!cust || !cust.phone) {
-        isServerSynced = false;
-        if (lastSyncedPhone) {
-          // User logged out — keep only local guest entries so account addresses don't linger on shared devices
-          const localOnly = {};
-          for (const [k, v] of Object.entries(readLocalSavedMap())) {
-            if (v && v._guestLocal) localOnly[k] = v;
-          }
-          savedAddresses = localOnly;
-          writeLocalSavedMap(savedAddresses);
-          lastSyncedPhone = "";
-        } else {
-          savedAddresses = readLocalSavedMap();
-        }
-        renderSavedChips();
-        renderSavedModalList();
-        updateSavedSyncNote();
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/customer/saved-addresses", { cache: "no-store" });
-        if (!res.ok) {
-          isServerSynced = false;
-          updateSavedSyncNote();
-          return;
-        }
-        const data = await res.json();
-        if (!data || !data.success) return;
-
-        let merged = normalizeSavedMap(data.saved_addresses || {});
-        const localBefore = readLocalSavedMap();
-        for (const meta of SAVED_SLOTS) {
-          const guestEntry = localBefore[meta.key];
-          if (guestEntry && guestEntry._guestLocal && !merged[meta.key]) {
-            try {
-              const upRes = await fetch("/api/customer/saved-addresses", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  slot: meta.key,
-                  address: guestEntry.address,
-                  lat: guestEntry.lat,
-                  lng: guestEntry.lng,
-                  label: guestEntry.label,
-                  landmark_note: guestEntry.landmark_note,
-                }),
-              });
-              if (upRes.ok) {
-                const upData = await upRes.json();
-                if (upData && upData.saved_addresses) {
-                  merged = normalizeSavedMap(upData.saved_addresses);
-                }
-              }
-            } catch (_) {}
-          }
-        }
-
-        savedAddresses = merged;
-        isServerSynced = true;
-        lastSyncedPhone = cust.phone;
-        writeLocalSavedMap(savedAddresses);
-        renderSavedChips();
-        renderSavedModalList();
-        updateSavedSyncNote();
-      } catch (_) {}
-    }
-
-    // Target toggle buttons
-    if (savedTargetPickupBtn) {
-      savedTargetPickupBtn.addEventListener("click", () => setSavedApplyTarget("pickup"));
-    }
-    if (savedTargetDropoffBtn) {
-      savedTargetDropoffBtn.addEventListener("click", () => setSavedApplyTarget("dropoff"));
-    }
-    // Sync target toggle naturally when user focuses Pickup or Drop-off inputs
-    if (pickupInput) {
-      pickupInput.addEventListener("focus", () => setSavedApplyTarget("pickup"));
-    }
-    if (dropoffInput) {
-      dropoffInput.addEventListener("focus", () => setSavedApplyTarget("dropoff"));
-    }
-
-    // Chip bar click delegation
-    if (savedAddrChipsWrap) {
-      savedAddrChipsWrap.addEventListener("click", (e) => {
-        const chip = e.target.closest(".saved-addr-chip[data-slot]");
-        if (!chip) return;
-        const slot = chip.getAttribute("data-slot");
-        if (!slot) return;
-        applySavedAddress(slot);
-      });
-    }
-
-    if (manageSavedAddrBtn) {
-      manageSavedAddrBtn.addEventListener("click", () => openSavedAddressModal("home"));
-    }
-    if (closeSavedAddrModalBtn) {
-      closeSavedAddrModalBtn.addEventListener("click", closeSavedAddressModal);
-    }
-    if (savedAddrModal) {
-      savedAddrModal.addEventListener("click", (e) => {
-        if (e.target === savedAddrModal) closeSavedAddressModal();
-      });
-    }
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && savedAddrModal && !savedAddrModal.classList.contains("hidden")) {
-        closeSavedAddressModal();
-      }
-    });
-
-    // Slot tabs inside modal
-    savedSlotTabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const slot = tab.getAttribute("data-saved-slot");
-        if (slot) selectEditSlot(slot);
-      });
-    });
-
-    // Quick copy from current Pickup / Drop-off
-    if (savedCopyPickupBtn) {
-      savedCopyPickupBtn.addEventListener("click", () => {
-        const addr = pickupInput ? pickupInput.value.trim() : "";
-        const lat = pickupLatInput ? pickupLatInput.value.trim() : "";
-        const lng = pickupLngInput ? pickupLngInput.value.trim() : "";
-        if (!addr) {
-          showSavedFeedback("Enter or pin a Pickup location first before copying.", true);
-          return;
-        }
-        if (savedAddressInput) savedAddressInput.value = addr.slice(0, 180);
-        if (isCamiguinCoord(lat, lng)) {
-          if (savedLatInput) savedLatInput.value = lat;
-          if (savedLngInput) savedLngInput.value = lng;
-          updateSavedPinStatus(lat, lng, "Copied exact Pickup map pin");
-        } else {
-          if (savedLatInput) savedLatInput.value = "";
-          if (savedLngInput) savedLngInput.value = "";
-          updateSavedPinStatus(null, null, "📍 Copied Pickup text — will auto-pin on save.");
-        }
-        showSavedFeedback("Copied current Pickup address. Tap Save Place to confirm.", false);
-      });
-    }
-
-    if (savedCopyDropoffBtn) {
-      savedCopyDropoffBtn.addEventListener("click", () => {
-        const addr = dropoffInput ? dropoffInput.value.trim() : "";
-        const lat = dropoffLatInput ? dropoffLatInput.value.trim() : "";
-        const lng = dropoffLngInput ? dropoffLngInput.value.trim() : "";
-        if (!addr) {
-          showSavedFeedback("Enter or pin a Drop-off destination first before copying.", true);
-          return;
-        }
-        if (savedAddressInput) savedAddressInput.value = addr.slice(0, 180);
-        if (isCamiguinCoord(lat, lng)) {
-          if (savedLatInput) savedLatInput.value = lat;
-          if (savedLngInput) savedLngInput.value = lng;
-          updateSavedPinStatus(lat, lng, "Copied exact Drop-off map pin");
-        } else {
-          if (savedLatInput) savedLatInput.value = "";
-          if (savedLngInput) savedLngInput.value = "";
-          updateSavedPinStatus(null, null, "📍 Copied Drop-off text — will auto-pin on save.");
-        }
-        showSavedFeedback("Copied current Drop-off address. Tap Save Place to confirm.", false);
-      });
-    }
-
-    // Detect GPS for Saved Address
-    if (savedDetectGpsBtn) {
-      savedDetectGpsBtn.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-          showSavedFeedback("GPS is not supported on this device.", true);
-          return;
-        }
-        const origText = savedDetectGpsBtn.textContent;
-        savedDetectGpsBtn.disabled = true;
-        savedDetectGpsBtn.textContent = "🛰️ Locating...";
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            savedDetectGpsBtn.disabled = false;
-            savedDetectGpsBtn.textContent = origText;
-            const lat = parseFloat(pos.coords.latitude.toFixed(6));
-            const lng = parseFloat(pos.coords.longitude.toFixed(6));
-            if (!isCamiguinCoord(lat, lng)) {
-              showSavedFeedback("Your GPS appears outside Camiguin Island. Please type a Camiguin barangay or landmark.", true);
-              return;
-            }
-            const nearest = getNearestCamiguinPlace(lat, lng);
-            const gpsLabel = nearest ? `${nearest} (GPS Pin)` : `Camiguin GPS Pin (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-            if (savedAddressInput) savedAddressInput.value = gpsLabel;
-            if (savedLatInput) savedLatInput.value = String(lat);
-            if (savedLngInput) savedLngInput.value = String(lng);
-            updateSavedPinStatus(lat, lng, "GPS location locked");
-            showSavedFeedback("GPS location captured! Add a gate/landmark note if helpful, then Save.", false);
-          },
-          () => {
-            savedDetectGpsBtn.disabled = false;
-            savedDetectGpsBtn.textContent = origText;
-            showSavedFeedback("Unable to access GPS. Please allow Location permission.", true);
-          },
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
-      });
-    }
-
-    // Modal autocomplete search using local Camiguin places + /api/places/search
-    if (savedAddressInput && savedSuggestionsEl) {
-      let savedAcTimer = null;
-      let savedBlurTimer = null;
-      let savedTouching = false;
-      let savedTouchMoved = false;
-
-      savedSuggestionsEl.addEventListener("touchstart", () => {
-        savedTouching = true;
-        savedTouchMoved = false;
-        clearTimeout(savedBlurTimer);
-      }, { passive: true });
-      savedSuggestionsEl.addEventListener("touchmove", () => {
-        savedTouchMoved = true;
-      }, { passive: true });
-      savedSuggestionsEl.addEventListener("touchend", () => {
-        setTimeout(() => { savedTouching = false; }, 220);
-      }, { passive: true });
-
-      function renderSavedSuggestions(items) {
-        if (!items || items.length === 0) {
-          savedSuggestionsEl.classList.add("hidden");
-          savedSuggestionsEl.innerHTML = "";
-          return;
-        }
-        savedSuggestionsEl.innerHTML = items.slice(0, 8).map((item, idx) => {
-          const subtitle = item.full_address || (item.mun ? `(${item.mun})` : "Camiguin Island");
-          return `
-            <div class="places-item" data-saved-ac-idx="${idx}">
-              <div class="places-item-info">
-                <div class="places-item-name">📍 ${escapeHtml(item.name)}</div>
-                <div class="places-item-sub">${escapeHtml(subtitle)}</div>
-              </div>
-            </div>
-          `;
-        }).join("");
-        savedSuggestionsEl.classList.remove("hidden");
-
-        savedSuggestionsEl.querySelectorAll(".places-item").forEach((el, idx) => {
-          el.addEventListener("click", (e) => {
-            if (savedTouchMoved) {
-              savedTouchMoved = false;
-              return;
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            const item = items[idx];
-            if (!item) return;
-            savedAddressInput.dataset.lastSelectedAt = String(Date.now());
-            savedAddressInput.value = item.name;
-            if (isCamiguinCoord(item.lat, item.lng)) {
-              if (savedLatInput) savedLatInput.value = String(item.lat);
-              if (savedLngInput) savedLngInput.value = String(item.lng);
-              updateSavedPinStatus(item.lat, item.lng, `Pinned at ${item.name}`);
-            }
-            savedSuggestionsEl.classList.add("hidden");
-          });
-        });
-      }
-
-      async function runSavedAutocomplete() {
-        const q = savedAddressInput.value.trim();
-        if (q.length < 1) {
-          savedSuggestionsEl.classList.add("hidden");
-          return;
-        }
-        const matches = searchCamiguinPlacesLocal(q, 6);
-        renderSavedSuggestions(matches);
-
-        if (q.length >= 2) {
-          try {
-            const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
-            if (res.ok) {
-              const data = await res.json();
-              const justSelected = Date.now() - Number(savedAddressInput.dataset.lastSelectedAt || 0) < 600;
-              if (data && Array.isArray(data.places) && data.places.length > 0 && savedAddressInput.value.trim() === q && !justSelected) {
-                const seen = new Set(matches.map((m) => m.name.toLowerCase()));
-                for (const item of data.places) {
-                  if (!seen.has(item.name.toLowerCase())) {
-                    matches.push(item);
-                    seen.add(item.name.toLowerCase());
-                  }
-                }
-                renderSavedSuggestions(matches);
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      savedAddressInput.addEventListener("input", () => {
-        // Clear old coordinates when typing a new custom address so stale pins don't stick
-        if (savedLatInput) savedLatInput.value = "";
-        if (savedLngInput) savedLngInput.value = "";
-        updateSavedPinStatus(null, null);
-        clearTimeout(savedAcTimer);
-        savedAcTimer = setTimeout(runSavedAutocomplete, 160);
-      });
-
-      savedAddressInput.addEventListener("focus", () => {
-        if (savedAddressInput.value.trim().length >= 1) runSavedAutocomplete();
-      });
-
-      savedAddressInput.addEventListener("blur", () => {
-        clearTimeout(savedBlurTimer);
-        savedBlurTimer = setTimeout(() => {
-          if (!savedTouching) savedSuggestionsEl.classList.add("hidden");
-        }, 280);
-      });
-    }
-
-    // Modal quick-apply / edit list buttons
-    if (savedModalListEl) {
-      savedModalListEl.addEventListener("click", (e) => {
-        const applyBtn = e.target.closest("[data-quick-apply]");
-        if (applyBtn) {
-          const slot = applyBtn.getAttribute("data-quick-apply");
-          const target = applyBtn.getAttribute("data-quick-target") || "pickup";
-          closeSavedAddressModal();
-          applySavedAddress(slot, target);
-          return;
-        }
-        const editBtn = e.target.closest("[data-quick-edit]");
-        if (editBtn) {
-          const slot = editBtn.getAttribute("data-quick-edit");
-          if (slot) selectEditSlot(slot);
-        }
-      });
-    }
-
-    // Save form submission
-    if (savedAddrForm) {
-      savedAddrForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const slot = (savedSlotInput ? savedSlotInput.value : activeEditSlot) || "home";
-        const meta = SAVED_SLOT_META[slot] || SAVED_SLOT_META.home;
-        const address = savedAddressInput ? savedAddressInput.value.trim().slice(0, 180) : "";
-        const label = (savedLabelInput ? savedLabelInput.value.trim().slice(0, 40) : "") || meta.defaultLabel;
-        const landmarkNote = savedNoteInput ? savedNoteInput.value.trim().slice(0, 140) : "";
-
-        if (!address) {
-          showSavedFeedback("Please enter an address, barangay, or landmark.", true);
-          return;
-        }
-
-        let lat = savedLatInput && savedLatInput.value ? parseFloat(savedLatInput.value) : null;
-        let lng = savedLngInput && savedLngInput.value ? parseFloat(savedLngInput.value) : null;
-        if (!isCamiguinCoord(lat, lng)) {
-          const matched = matchCamiguinPlace(address);
-          if (matched && isCamiguinCoord(matched.lat, matched.lng)) {
-            lat = Number(matched.lat);
-            lng = Number(matched.lng);
-          } else {
-            lat = null;
-            lng = null;
-          }
-        }
-
-        if (savedSaveBtn) savedSaveBtn.disabled = true;
-        const cust = getStoredCustomer();
-        let persistedToServer = false;
-
-        if (cust && cust.phone) {
-          try {
-            const res = await fetch("/api/customer/saved-addresses", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                slot: meta.key,
-                address,
-                lat,
-                lng,
-                label,
-                landmark_note: landmarkNote,
-              }),
-            });
-            const data = await res.json();
-            if (res.ok && data && data.success) {
-              savedAddresses = normalizeSavedMap(data.saved_addresses || {});
-              isServerSynced = true;
-              lastSyncedPhone = cust.phone;
-              persistedToServer = true;
-            } else if (res.status === 400) {
-              showSavedFeedback(data.error || "Could not save place.", true);
-              if (savedSaveBtn) savedSaveBtn.disabled = false;
-              return;
-            }
-          } catch (_) {}
-        }
-
-        if (!persistedToServer) {
-          savedAddresses[meta.key] = {
-            slot: meta.key,
-            icon: meta.icon,
-            label,
-            address,
-            lat,
-            lng,
-            landmark_note: landmarkNote,
-            updated_at: new Date().toISOString(),
-            _guestLocal: true,
-          };
-        }
-
-        writeLocalSavedMap(savedAddresses);
-        renderSavedChips();
-        renderSavedModalList();
-        updateSavedSyncNote();
-        if (savedDeleteBtn) savedDeleteBtn.classList.remove("hidden");
-        const savedEntry = savedAddresses[meta.key];
-        if (savedEntry && isCamiguinCoord(savedEntry.lat, savedEntry.lng)) {
-          if (savedLatInput) savedLatInput.value = String(savedEntry.lat);
-          if (savedLngInput) savedLngInput.value = String(savedEntry.lng);
-          updateSavedPinStatus(savedEntry.lat, savedEntry.lng, "Saved Camiguin map pin");
-        }
-        showSavedFeedback(
-          persistedToServer
-            ? `✅ ${meta.icon} ${label} saved and synced to your account!`
-            : `✅ ${meta.icon} ${label} saved on this device!`,
-          false
-        );
-        showMapToast(`${meta.icon} Saved ${label}: ${address}`);
-        if (savedSaveBtn) savedSaveBtn.disabled = false;
-      });
-    }
-
-    // Delete saved slot
-    if (savedDeleteBtn) {
-      savedDeleteBtn.addEventListener("click", async () => {
-        const slot = (savedSlotInput ? savedSlotInput.value : activeEditSlot) || "home";
-        const meta = SAVED_SLOT_META[slot];
-        if (!meta || !savedAddresses[meta.key]) return;
-
-        savedDeleteBtn.disabled = true;
-        const cust = getStoredCustomer();
-        if (cust && cust.phone) {
-          try {
-            const res = await fetch(`/api/customer/saved-addresses/${encodeURIComponent(meta.key)}`, {
-              method: "DELETE",
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (data && data.success) {
-                savedAddresses = normalizeSavedMap(data.saved_addresses || {});
-                isServerSynced = true;
-                lastSyncedPhone = cust.phone;
-              }
-            }
-          } catch (_) {}
-        }
-        delete savedAddresses[meta.key];
-        writeLocalSavedMap(savedAddresses);
-        renderSavedChips();
-        renderSavedModalList();
-        selectEditSlot(meta.key);
-        showSavedFeedback(`🗑️ Removed saved ${meta.defaultLabel} place.`, false);
-        savedDeleteBtn.disabled = false;
-      });
-    }
-
-    // Initial boot: render local immediately, then sync with server if logged in
-    savedAddresses = readLocalSavedMap();
-    renderSavedChips();
-    updateSavedSyncNote();
-    syncSavedAddressesFromServer();
-    window.addEventListener("ccrc:customer-auth-changed", syncSavedAddressesFromServer);
-  }
 })();
