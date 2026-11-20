@@ -2448,84 +2448,8 @@
     });
   });
 
-  // Hinterland / Mountain Route Keywords for Automatic Detection
-  const HINTERLAND_KEYWORDS = [
-    "sorosoro", "soro-soro", "soro'soro", "soro soro",
-    "highland", "utopia", "binunsaran", "granelandia",
-    "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
-    "vulcan", "bukid", "mountain", "hinterland"
-  ];
-
-  function detectHinterlandFromAddress() {
-    const pText = (pickupInput ? pickupInput.value : "").toLowerCase();
-    const dText = (dropoffInput ? dropoffInput.value : "").toLowerCase();
-    const notesText = (document.getElementById("item-notes") ? document.getElementById("item-notes").value : "").toLowerCase();
-    const combined = `${pText} ${dText} ${notesText}`;
-
-    return HINTERLAND_KEYWORDS.some((k) => combined.includes(k));
-  }
-
-  let userExplicitlyToggledHinterland = false;
-
-  function syncHinterlandUI(isAuto) {
-    if (!optHinterland) return;
-    const hinterlandCard = document.getElementById("hinterland-toggle-container");
-    const badge = document.getElementById("hinterland-badge");
-
-    if (isAuto && !userExplicitlyToggledHinterland) {
-      optHinterland.checked = true;
-    }
-
-    const isChecked = optHinterland.checked;
-    if (hinterlandCard) {
-      hinterlandCard.classList.toggle("active", isChecked);
-    }
-    if (badge) {
-      if (isChecked) {
-        badge.classList.remove("hidden");
-        badge.textContent = isAuto ? "✓ Auto-Detected (+₱30)" : "✓ +₱30 Added";
-      } else {
-        badge.classList.add("hidden");
-      }
-    }
-  }
-
-  if (optHinterland) {
-    optHinterland.addEventListener("change", () => {
-      userExplicitlyToggledHinterland = true;
-      syncHinterlandUI(false);
-      recalculateFare();
-    });
-  }
-
-  function renderFareBreakdownBadges(b) {
-    const container = document.getElementById("fare-breakdown-badges");
-    if (!container) return;
-    let html = "";
-    if (b.isHinterland || (b.hinterland_fee && b.hinterland_fee > 0)) {
-      const fee = b.hinterland_fee ? Math.round(b.hinterland_fee) : 30;
-      html += `<span class="fare-tag hinterland-tag">🏔️ +₱${fee} Hinterland / Bukid Route</span>`;
-    }
-    if ((b.service_fee && b.service_fee > 0) || (["pabili", "pasugo", "pabayad"].includes(b.service) && !b.hinterland_fee)) {
-      const sFee = b.service_fee ? Math.round(b.service_fee) : 20;
-      html += `<span class="fare-tag service-tag">🛍️ +₱${sFee} Errand Fee</span>`;
-    }
-    if ((b.queuing_fee && b.queuing_fee > 0) || (b.isLarge && !b.hinterland_fee)) {
-      const qFee = b.queuing_fee ? Math.round(b.queuing_fee) : 30;
-      html += `<span class="fare-tag queue-tag">🛒 +₱${qFee} Queuing Fee</span>`;
-    }
-    if ((b.extra_stores_fee && b.extra_stores_fee > 0) || (b.extraStores > 0 && !b.hinterland_fee)) {
-      const eFee = b.extra_stores_fee ? Math.round(b.extra_stores_fee) : (b.extraStores * 20);
-      html += `<span class="fare-tag store-tag">🏪 +₱${eFee} Extra Store</span>`;
-    }
-    if ((b.bulky_fee && b.bulky_fee > 0) || (b.isBulky && !b.hinterland_fee)) {
-      html += `<span class="fare-tag store-tag">📦 +₱20 Bulky Order</span>`;
-    }
-    container.innerHTML = html;
-  }
-
   // Re-calculate when options change
-  [optLargeStore, optExtraStores, estimatedBudgetInput].forEach((el) => {
+  [optLargeStore, optExtraStores, optHinterland, estimatedBudgetInput].forEach((el) => {
     if (el) {
       el.addEventListener("change", recalculateFare);
       el.addEventListener("input", recalculateFare);
@@ -2536,13 +2460,6 @@
   function handleTypedAddress(isPickup) {
     const input = isPickup ? pickupInput : dropoffInput;
     const text = input.value.trim();
-
-    if (detectHinterlandFromAddress()) {
-      syncHinterlandUI(true);
-    } else if (!userExplicitlyToggledHinterland) {
-      if (optHinterland) optHinterland.checked = false;
-      syncHinterlandUI(false);
-    }
 
     if (text.length >= 2) {
       const found = matchCamiguinPlace(text);
@@ -2627,12 +2544,6 @@
       currentRoadKm = null;
       updateClearBtn(pickupInput, clearPickupBtn);
       if (pickupInput) pickupInput.focus();
-      if (detectHinterlandFromAddress()) {
-        syncHinterlandUI(true);
-      } else if (!userExplicitlyToggledHinterland) {
-        if (optHinterland) optHinterland.checked = false;
-        syncHinterlandUI(false);
-      }
       updateRouteLine();
       recalculateFare();
       showMapToast("Pickup na-erase na.");
@@ -2666,12 +2577,6 @@
       currentRoadKm = null;
       updateClearBtn(dropoffInput, clearDropoffBtn);
       if (dropoffInput) dropoffInput.focus();
-      if (detectHinterlandFromAddress()) {
-        syncHinterlandUI(true);
-      } else if (!userExplicitlyToggledHinterland) {
-        if (optHinterland) optHinterland.checked = false;
-        syncHinterlandUI(false);
-      }
       updateRouteLine();
       recalculateFare();
       showMapToast("Drop-off na-erase na.");
@@ -3396,7 +3301,7 @@
     const service = serviceTypeInput.value;
     const isLarge = optLargeStore ? optLargeStore.checked : false;
     const extraStores = optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0;
-    const isHinterland = (optHinterland ? optHinterland.checked : false) || detectHinterlandFromAddress();
+    const isHinterland = optHinterland ? optHinterland.checked : false;
     const budgetVal = estimatedBudgetInput ? parseFloat(estimatedBudgetInput.value || 0) : 0;
     const isBulky = budgetVal >= 2000;
     const roadKmToSend = typeof overrideRoadKm === "number" ? overrideRoadKm : currentRoadKm;
@@ -3412,22 +3317,8 @@
       }
       currentRoadKm = null;
 
-      let basePreview = 40;
-      if (isHinterland) basePreview += 30;
-      if (["pabili", "pasugo", "pabayad"].includes(service)) basePreview += 20;
-      if (isLarge) basePreview += 30;
-      if (extraStores > 0) basePreview += (extraStores * 20);
-
-      if (fareDisplay) fareDisplay.textContent = Math.round(basePreview);
+      if (fareDisplay) fareDisplay.textContent = "40";
       if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Pilia ang Lokasyon)";
-
-      renderFareBreakdownBadges({
-        isHinterland: isHinterland,
-        service: service,
-        isLarge: isLarge,
-        extraStores: extraStores,
-        isBulky: isBulky,
-      });
       return;
     }
 
@@ -3454,21 +3345,6 @@
       if (data && data.fare_amount) {
         if (fareDisplay) fareDisplay.textContent = Math.round(data.fare_amount);
         if (fareKmDisplay) fareKmDisplay.textContent = `~${data.estimated_km} km (Kalsada / Road Distance)`;
-
-        if (data.breakdown) {
-          renderFareBreakdownBadges({
-            ...data.breakdown,
-            isHinterland: (data.breakdown.hinterland_fee && data.breakdown.hinterland_fee > 0) || isHinterland,
-            service: service,
-            isLarge: data.breakdown.queuing_fee > 0,
-            extraStores: extraStores,
-            isBulky: data.breakdown.bulky_fee > 0,
-          });
-
-          if (data.breakdown.hinterland_fee > 0 && optHinterland && !optHinterland.checked) {
-            syncHinterlandUI(true);
-          }
-        }
 
         // If backend resolved coordinates that were missing, update markers & inputs
         let hasNewCoords = false;
@@ -3567,12 +3443,6 @@
       }
 
       showMapToast(`🏁 Drop-off Na-set: ${name}`);
-      if (detectHinterlandFromAddress()) {
-        syncHinterlandUI(true);
-      } else if (!userExplicitlyToggledHinterland) {
-        if (optHinterland) optHinterland.checked = false;
-        syncHinterlandUI(false);
-      }
       updateRouteLine();
       recalculateFare();
     });
@@ -3651,7 +3521,7 @@
         estimated_budget: budgetVal,
         is_large_store: optLargeStore ? optLargeStore.checked : false,
         extra_stores_count: optExtraStores ? parseInt(optExtraStores.value || "0", 10) : 0,
-        is_hinterland: (optHinterland ? optHinterland.checked : false) || detectHinterlandFromAddress(),
+        is_hinterland: optHinterland ? optHinterland.checked : false,
         is_bulky_or_high_value: budgetVal >= 2000,
         payment_method: document.querySelector('input[name="payment_method"]:checked')?.value || "cash",
         scheduled_at: (document.querySelector('input[name="ride_timing"]:checked')?.value === "later") ? (document.getElementById("scheduled-at")?.value || "") : "",

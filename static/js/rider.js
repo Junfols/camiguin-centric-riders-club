@@ -1031,9 +1031,8 @@
 
     if (activeJobBox) activeJobBox.classList.remove("hidden");
     if (activeJobCode) activeJobCode.textContent = job.booking_code;
-    const isJobHinterland = (job.item_notes && (job.item_notes.includes("Hinterland") || job.item_notes.includes("Bukid"))) || (job.dropoff_address && /soro|highland|katibawasan|utopia|binunsaran|granelandia|itum|tuasan/i.test(job.dropoff_address));
-    if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}${isJobHinterland ? ' [🏔️ Hinterland]' : ''}`;
-    if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}${isJobHinterland ? ' (Includes ₱30 Mountain Surcharge)' : ''}`;
+    if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}`;
+    if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}`;
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
     if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
     if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
@@ -1550,12 +1549,7 @@
           (j) => `
             <div class="job-card" data-job-id="${j.id}">
               <div class="job-card-top">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                  <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
-                  ${(j.item_notes && (j.item_notes.includes("Hinterland") || j.item_notes.includes("Bukid"))) || (j.dropoff_address && /soro|highland|katibawasan|utopia|binunsaran|granelandia|itum|tuasan/i.test(j.dropoff_address)) ? `
-                    <span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:0.75rem;font-weight:700;padding:2px 7px;border-radius:6px;">🏔️ Hinterland (+₱30)</span>
-                  ` : ''}
-                </div>
+                <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
                 <span class="job-fare-tag">₱${Math.round(j.fare_amount)}</span>
               </div>
               <div class="job-route-preview">
