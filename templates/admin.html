@@ -3,19 +3,186 @@
 {% block title %}Club Admin &amp; Dispatch — {{ club.name }}{% endblock %}
 
 {% block content %}
-<div class="container page-admin-wrap" style="padding-top:1.5rem;padding-bottom:3rem;">
+<style>
+  /* Mobile-first Admin Layout & Tabbed Navigation Styles */
+  .admin-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+  .admin-kpi-chip {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .admin-kpi-chip .kpi-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  .admin-kpi-chip .kpi-val {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 2px 0 0;
+    line-height: 1.2;
+  }
+  .admin-kpi-chip small {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Segmented Sticky Tab Navigation Bar */
+  .admin-tab-nav-wrap {
+    position: sticky;
+    top: 56px;
+    z-index: 30;
+    background: var(--bg);
+    padding: 6px 0 10px;
+    margin-bottom: 0.8rem;
+  }
+  .admin-tab-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .admin-tab-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-tab-btn {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .admin-tab-btn:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+  .admin-tab-btn.active {
+    background: var(--primary, #ea580c);
+    color: #ffffff;
+    border-color: var(--primary, #ea580c);
+    box-shadow: 0 2px 8px rgba(234,88,12,0.3);
+  }
+  .admin-tab-btn .tab-count-badge {
+    background: rgba(0,0,0,0.08);
+    color: inherit;
+    font-size: 0.72rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .admin-tab-btn.active .tab-count-badge {
+    background: rgba(255,255,255,0.25);
+    color: #ffffff;
+  }
+
+  /* Mobile Record Cards vs Desktop Table */
+  .mobile-record-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mobile-record-card:hover {
+    border-color: #cbd5e1;
+  }
+  .mobile-record-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .mobile-actions-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+    margin-top: 4px;
+  }
+  .mobile-actions-wrap .btn {
+    flex: 1;
+    min-width: 75px;
+    text-align: center;
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Responsive Display Rules */
+  @media (max-width: 640px) {
+    .admin-desktop-view {
+      display: none !important;
+    }
+    .admin-mobile-view {
+      display: flex !important;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .page-admin-wrap {
+      padding-top: 0.75rem !important;
+      padding-bottom: 4rem !important;
+    }
+    .admin-head-title {
+      font-size: 1.25rem !important;
+    }
+  }
+  @media (min-width: 641px) {
+    .admin-desktop-view {
+      display: block !important;
+    }
+    .admin-mobile-view {
+      display: none !important;
+    }
+  }
+</style>
+
+<div class="container page-admin-wrap" style="padding-top:1.2rem;padding-bottom:3rem;">
   {% if not is_admin %}
   <!-- Admin Login Screen (Unauthorized riders or customers cannot view admin data) -->
-  <div class="card" style="max-width:440px;margin:3rem auto;padding:2.2rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);">
+  <div class="card" style="max-width:440px;margin:2.5rem auto;padding:2rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);">
     <div style="text-align:center;margin-bottom:1.5rem;">
       <span style="font-size:3rem;line-height:1;">🔒</span>
-      <h2 style="margin:8px 0 4px;font-size:1.4rem;">Club Admin Verification</h2>
-      <p class="text-muted" style="font-size:0.88rem;">Authorized officers only. Please enter the club admin password to access dispatches and tariff settings.</p>
+      <h2 style="margin:8px 0 4px;font-size:1.35rem;">Club Admin Verification</h2>
+      <p class="text-muted" style="font-size:0.86rem;">Authorized officers only. Please enter the club admin password to access dispatches and tariff settings.</p>
     </div>
     <form id="admin-login-form">
       <div class="form-group">
         <label for="admin-pwd">Admin Password *</label>
-        <input type="password" id="admin-pwd" required placeholder="Enter admin password" autofocus>
+        <input type="password" id="admin-pwd" required placeholder="Enter password (default: admin1234)" autofocus>
       </div>
       <div id="admin-login-err" class="alert-error hidden" style="margin-bottom:12px;"></div>
       <button type="submit" class="btn btn-primary btn-block btn-lg">Unlock Admin Dashboard &rarr;</button>
@@ -23,278 +190,133 @@
   </div>
   {% else %}
   <!-- Authenticated Admin Control Panel -->
-  <div class="page-head" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+  <div class="page-head" style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <div>
-      <h1 style="margin:0;">Club Dispatch &amp; Admin Panel ⚙️</h1>
-      <p class="text-muted" style="margin:4px 0 0;">Manage active club riders, live dispatches, and island fare matrix configuration.</p>
+      <h1 class="admin-head-title" style="margin:0;font-size:1.5rem;">Club Dispatch &amp; Admin Panel ⚙️</h1>
+      <p class="text-muted" style="margin:2px 0 0;font-size:0.82rem;">Camiguin Island express riders, dispatches, &amp; tariff matrix.</p>
       {% if db_backend == 'postgresql' %}
-        <div style="margin-top:6px;">
-          <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.8rem;padding:3px 10px;border-radius:12px;font-weight:700;">
+        <div style="margin-top:4px;">
+          <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.75rem;padding:2px 8px;border-radius:12px;font-weight:700;">
             🗄️ Database: PostgreSQL (Permanent Cloud Storage 🟢)
           </span>
         </div>
       {% else %}
-        <div style="margin-top:6px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 12px;font-size:0.78rem;color:#b45309;display:inline-block;">
-          ⚠️ <strong>Database: SQLite (Temporary Disk)</strong> &bull; To keep all riders and customers permanently across Render redeployments, connect a Render PostgreSQL Database (set <code>DATABASE_URL</code> in Render Environment).
+        <div style="margin-top:4px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 8px;font-size:0.75rem;color:#b45309;display:inline-block;">
+          ⚠️ <strong>Database: SQLite</strong> &bull; I-connect ang PostgreSQL aron ma-permanente ang tanang records.
         </div>
       {% endif %}
     </div>
-    <button type="button" id="admin-logout-btn" class="btn btn-outline" style="border-color:#ef4444;color:#ef4444;font-weight:600;">
+    <button type="button" id="admin-logout-btn" class="btn btn-outline btn-sm" style="border-color:#ef4444;color:#ef4444;font-weight:600;padding:5px 12px;border-radius:16px;">
       🚪 Log Out Admin
     </button>
   </div>
 
-  <!-- KPI Metrics Grid -->
-  <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;">
-    <div class="kpi-card" style="{% if stats.pending_riders > 0 %}border:1.5px solid #f59e0b;background:#fffbeb;{% endif %}">
-      <span class="kpi-label">Pending Rider Approvals</span>
-      <div class="kpi-val" style="color:#d97706;">{{ stats.pending_riders or 0 }}</div>
-      <small class="text-muted">Need in-person check</small>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Riders Online Now</span>
-      <div class="kpi-val" style="color:#16a34a;">{{ stats.online_riders }}</div>
-      <small class="text-muted">of {{ stats.total_riders }} registered members</small>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Active Ongoing Trips</span>
-      <div class="kpi-val" style="color:var(--primary);">{{ stats.active_now }}</div>
-      <small class="text-muted">Broadcast or in transit</small>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Completed Trips</span>
-      <div class="kpi-val" style="color:#0284c7;">{{ stats.completed }}</div>
-      <small class="text-muted">Successfully delivered</small>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Total Island Revenue</span>
-      <div class="kpi-val" style="color:#059669;">₱{{ "%.2f"|format(stats.total_revenue or 0) }}</div>
-      <small class="text-muted">Cash: ₱{{ "%.0f"|format(fin_summary.cash_revenue or 0) }} | Digital: ₱{{ "%.0f"|format(fin_summary.digital_revenue or 0) }}</small>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Total Transactions</span>
-      <div class="kpi-val" style="color:#6366f1;">{{ stats.total_transactions or 0 }}</div>
-      <small class="text-muted">Database ledger records</small>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Verified Customers</span>
-      <div class="kpi-val" style="color:#0d9488;">{{ stats.verified_customers or 0 }}</div>
-      <small class="text-muted">of {{ stats.total_customers or 0 }} registered passengers</small>
-    </div>
-  </div>
-
-  <!-- Admin Live Club Advisory Banner Control Card -->
-  <div class="card ccrc-admin-advisory-card" style="margin-top:1.5rem;">
-    <div class="ccrc-admin-advisory-head">
+  <!-- Attention Pill if Riders Pending Approval -->
+  {% set pending_riders = riders | selectattr('status', 'equalto', 'pending') | list %}
+  {% if pending_riders | length > 0 %}
+    <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;color:#78350f;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;" onclick="switchAdminTab('riders')">
       <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span>📢</span> Live Club Advisory Banner
-          <span id="admin-advisory-live-badge" class="badge {% if club_advisory.is_active %}ccrc-adv-status-live{% elif club_advisory.is_expired %}ccrc-adv-status-expired{% else %}ccrc-adv-status-off{% endif %}">
-            {% if club_advisory.is_active %}
-              🟢 LIVE ON SITE
-            {% elif club_advisory.is_expired %}
-              ⏱️ EXPIRED
-            {% else %}
-              ⚪ OFF / HIDDEN
-            {% endif %}
-          </span>
-        </h3>
-        <p class="text-muted" style="margin:4px 0 0;font-size:0.84rem;">
-          Broadcast instant port ferry arrivals (Benoni / Balbagon), weather alerts, or night-fare advisories to passengers and riders.
-        </p>
+        <strong>⚠️ Mahinungdanong Pahibalo:</strong> May <strong>{{ pending_riders | length }}</strong> ka nag-apply nga rider nga naghulat sa imong pag-verify sa personal!
       </div>
-      {% if club_advisory.updated_label %}
-      <small id="admin-advisory-updated-text" class="text-muted" style="font-size:0.78rem;">
-        Last updated: {{ club_advisory.updated_label }}
-        {% if club_advisory.expires_label %} &bull; Auto-hides: {{ club_advisory.expires_label }}{% endif %}
-      </small>
-      {% else %}
-      <small id="admin-advisory-updated-text" class="text-muted" style="font-size:0.78rem;"></small>
-      {% endif %}
+      <span class="badge" style="background:#d97706;color:white;font-size:0.75rem;padding:3px 8px;border-radius:8px;white-space:nowrap;">
+        I-review Karon &rarr;
+      </span>
+    </div>
+  {% endif %}
+
+  <!-- Compact KPI Metrics Chips Bar (Super clean on mobile & desktop) -->
+  <div class="admin-kpi-bar">
+    <div class="admin-kpi-chip" style="{% if stats.pending_riders > 0 %}border-color:#f59e0b;background:#fffbeb;{% endif %}">
+      <span class="kpi-label">⏳ Pending Riders</span>
+      <div class="kpi-val" style="color:#d97706;">{{ stats.pending_riders or 0 }}</div>
+      <small>Need in-person check</small>
     </div>
 
-    <!-- One-Tap Camiguin Quick Presets -->
-    <div class="ccrc-advisory-presets-row">
-      <span class="ccrc-advisory-presets-label">⚡ Quick Presets:</span>
-      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('benoni')">⛴️ Benoni Port Ferry</button>
-      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('balbagon')">⛴️ Balbagon Port Ferry</button>
-      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('weather')">🌧️ Weather / Rain Alert</button>
-      <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('night_fare')">🌙 Night-Fare Advisory</button>
+    <div class="admin-kpi-chip">
+      <span class="kpi-label">🟢 Online Riders</span>
+      <div class="kpi-val" style="color:#16a34a;">{{ stats.online_riders }} <span style="font-size:0.8rem;color:#94a3b8;font-weight:500;">/ {{ stats.total_riders }}</span></div>
+      <small>Active club members</small>
     </div>
 
-    <form id="admin-advisory-form" style="margin-top:12px;">
-      <div class="ccrc-advisory-form-grid">
-        <div class="form-group" style="margin-bottom:0;">
-          <label for="advisory-category">Advisory Type</label>
-          <select id="advisory-category" name="category" oninput="updateAdminAdvisoryPreview()" onchange="updateAdminAdvisoryPreview()">
-            <option value="ferry" {% if club_advisory.category == 'ferry' %}selected{% endif %}>⛴️ Port / Ferry Arrival</option>
-            <option value="weather" {% if club_advisory.category == 'weather' %}selected{% endif %}>🌧️ Weather / Rain Advisory</option>
-            <option value="night_fare" {% if club_advisory.category == 'night_fare' %}selected{% endif %}>🌙 Night-Fare / Schedule Notice</option>
-            <option value="promo" {% if club_advisory.category == 'promo' %}selected{% endif %}>🎉 Club Event / Announcement</option>
-            <option value="urgent" {% if club_advisory.category == 'urgent' %}selected{% endif %}>🚨 Urgent Traffic / Road Alert</option>
-            <option value="info" {% if club_advisory.category == 'info' %}selected{% endif %}>📢 General Club Advisory</option>
-          </select>
-        </div>
+    <div class="admin-kpi-chip">
+      <span class="kpi-label">🛵 Active Trips</span>
+      <div class="kpi-val" style="color:var(--primary, #ea580c);">{{ stats.active_now }}</div>
+      <small>Live on road</small>
+    </div>
 
-        <div class="form-group" style="margin-bottom:0;">
-          <label for="advisory-audience">Show Banner To</label>
-          <select id="advisory-audience" name="audience">
-            <option value="all" {% if club_advisory.audience == 'all' %}selected{% endif %}>Everyone (Homepage &amp; Rider Hub)</option>
-            <option value="customers" {% if club_advisory.audience == 'customers' %}selected{% endif %}>Passengers / Homepage Only</option>
-            <option value="riders" {% if club_advisory.audience == 'riders' %}selected{% endif %}>Riders Hub Only</option>
-          </select>
-        </div>
+    <div class="admin-kpi-chip">
+      <span class="kpi-label">✅ Completed</span>
+      <div class="kpi-val" style="color:#0284c7;">{{ stats.completed }}</div>
+      <small>Delivered safely</small>
+    </div>
 
-        <div class="form-group" style="margin-bottom:0;">
-          <label for="advisory-duration">Auto-Hide Timer</label>
-          <select id="advisory-duration" name="duration_hours">
-            <option value="0">Stay active until turned off</option>
-            <option value="2">Auto-hide in 2 hours</option>
-            <option value="4">Auto-hide in 4 hours</option>
-            <option value="8">Auto-hide in 8 hours</option>
-            <option value="24">Auto-hide in 24 hours</option>
-          </select>
-        </div>
-      </div>
+    <div class="admin-kpi-chip">
+      <span class="kpi-label">💰 Island Revenue</span>
+      <div class="kpi-val" style="color:#059669;">₱{{ "%.0f"|format(stats.total_revenue or 0) }}</div>
+      <small>Cash: ₱{{ "%.0f"|format(fin_summary.cash_revenue or 0) }}</small>
+    </div>
 
-      <div class="form-group" style="margin-top:10px;margin-bottom:10px;">
-        <label for="advisory-title">Advisory Headline *</label>
-        <input type="text" id="advisory-title" name="title" maxlength="120" value="{{ club_advisory.title }}" placeholder="e.g., Benoni Port Ferry Arrival — Verified CCRC Riders Standing By!" oninput="updateAdminAdvisoryPreview()">
-      </div>
-
-      <div class="form-group" style="margin-bottom:10px;">
-        <label for="advisory-message">Details / Instructions</label>
-        <textarea id="advisory-message" name="message" rows="2" maxlength="400" placeholder="e.g., FastCraft &amp; RoRo passengers arriving at Benoni Port. Book through the app for fair-rate island pickup." oninput="updateAdminAdvisoryPreview()">{{ club_advisory.message }}</textarea>
-      </div>
-
-      <!-- Live Banner Preview -->
-      <div id="admin-advisory-preview" class="ccrc-advisory-banner is-{{ club_advisory.category }} ccrc-advisory-preview-box">
-        <div class="ccrc-advisory-inner">
-          <div class="ccrc-advisory-top-row">
-            <span class="ccrc-advisory-badge">
-              <span class="ccrc-advisory-live-dot"></span>
-              <span id="admin-adv-prev-icon">{{ club_advisory.category_icon }}</span>
-              <span id="admin-adv-prev-cat">{{ club_advisory.category_label }}</span>
-            </span>
-            <span class="ccrc-advisory-meta">LIVE PREVIEW</span>
-          </div>
-          <div id="admin-adv-prev-title" class="ccrc-advisory-title">{{ club_advisory.title or 'Select a Quick Preset or type your advisory headline above...' }}</div>
-          <div id="admin-adv-prev-msg" class="ccrc-advisory-msg">{{ club_advisory.message or 'Passengers and riders will see this banner live on the homepage and Rider Hub.' }}</div>
-        </div>
-      </div>
-
-      <div id="advisory-save-feedback" class="hidden" style="margin-top:10px;padding:9px 12px;border-radius:8px;font-size:0.84rem;font-weight:600;"></div>
-
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;">
-        <button type="submit" id="save-advisory-btn" class="btn btn-primary">
-          📢 Publish Live Advisory
-        </button>
-        <button type="button" id="turn-off-advisory-btn" onclick="turnOffAdminAdvisory()" class="btn btn-outline" style="border-color:#ef4444;color:#dc2626;">
-          🔕 Turn Off Banner
-        </button>
-      </div>
-    </form>
+    <div class="admin-kpi-chip">
+      <span class="kpi-label">🛡️ Passengers</span>
+      <div class="kpi-val" style="color:#0d9488;">{{ stats.verified_customers or 0 }} <span style="font-size:0.8rem;color:#94a3b8;font-weight:500;">/ {{ stats.total_customers or 0 }}</span></div>
+      <small>Verified legit users</small>
+    </div>
   </div>
 
-  <!-- 2-Column Grid: Settings & Recent Bookings -->
-  <div class="admin-grid-2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;margin-top:1.5rem;">
-    <!-- Taripa / Settings Form -->
-    <div class="card">
-      <h3 style="margin-top:0;">Fare Matrix &amp; Tariff Settings</h3>
-      <form id="admin-settings-form">
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="set-base-fare">Base Meter Fare (₱) *</label>
-            <input type="number" id="set-base-fare" name="base_fare" value="{{ settings.base_fare }}" required min="20">
-          </div>
-          <div class="form-group">
-            <label for="set-base-km">Covered Base Distance (km) *</label>
-            <input type="number" id="set-base-km" name="base_km" value="{{ settings.base_km }}" required step="0.5" min="1">
-          </div>
-        </div>
+  <!-- Segmented Tab Bar (Sticky on mobile & desktop) -->
+  <div class="admin-tab-nav-wrap">
+    <div class="admin-tab-nav" role="tablist">
+      <button type="button" class="admin-tab-btn active" data-tab="riders" onclick="switchAdminTab('riders')">
+        <span>🛵</span> <span>Club Riders</span>
+        <span class="tab-count-badge">{{ riders|length }}</span>
+      </button>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="set-per-km">Per Km Rate (₱/km) *</label>
-            <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required min="5">
-          </div>
-          <div class="form-group">
-            <label for="set-min-fare">Minimum Trip Fare (₱) *</label>
-            <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="20">
-          </div>
-        </div>
+      <button type="button" class="admin-tab-btn" data-tab="bookings" onclick="switchAdminTab('bookings')">
+        <span>📋</span> <span>Live Bookings</span>
+        <span class="tab-count-badge">{{ bookings|length }}</span>
+      </button>
 
-        <h4 style="margin:16px 0 8px;font-size:0.95rem;">Additional Surcharges (₱)</h4>
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="set-pabili-fee">Pabili / Buy-For-Me Fee</label>
-            <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee }}">
-          </div>
-          <div class="form-group">
-            <label for="set-pasugo-fee">Pasugo / Errand Fee</label>
-            <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee }}">
-          </div>
-        </div>
+      <button type="button" class="admin-tab-btn" data-tab="ledger" onclick="switchAdminTab('ledger')">
+        <span>💳</span> <span>Transactions Ledger</span>
+        <span class="tab-count-badge">{{ transactions|length }}</span>
+      </button>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="set-queuing-fee">Queuing / Waiting Fee</label>
-            <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee }}">
-          </div>
-          <div class="form-group">
-            <label for="set-hinterland-fee">Mountain / Trail Surcharge</label>
-            <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee }}">
-          </div>
-        </div>
+      <button type="button" class="admin-tab-btn" data-tab="customers" onclick="switchAdminTab('customers')">
+        <span>👥</span> <span>Passengers</span>
+        <span class="tab-count-badge">{{ customers|length }}</span>
+      </button>
 
-        <h4 style="margin:16px 0 8px;font-size:0.95rem;display:flex;align-items:center;gap:6px;">
-          <span>☁️</span> Google Drive Cloud Backup (Optional)
-        </h4>
-        <div class="form-group">
-          <label for="set-gdrive-webhook">Google Drive Webhook / Apps Script URL</label>
-          <input type="url" id="set-gdrive-webhook" name="google_drive_webhook_url" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec">
-          <small class="text-muted" style="display:block;margin-top:4px;">
-            Automatically upload backups directly to your Google Drive.
-            <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">How to set this up? (1 minute) &rarr;</a>
-          </small>
-        </div>
-
-        <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
-        <button type="submit" id="save-settings-btn" class="btn btn-primary" style="margin-top:12px;">Save Tariff Settings</button>
-      </form>
+      <button type="button" class="admin-tab-btn" data-tab="settings" onclick="switchAdminTab('settings')">
+        <span>⚙️</span> <span>Taripa &amp; Backup</span>
+      </button>
     </div>
+  </div>
 
-    <!-- Active Club Riders List -->
-    <div class="card">
+  <!-- TAB 1: RIDERS PANE -->
+  <div id="pane-riders" class="admin-tab-pane">
+    <div class="card" style="padding:14px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-        <h3 style="margin:0;">Registered Club Riders ({{ riders|length }})</h3>
-        {% set pending_count = riders | selectattr('status', 'equalto', 'pending') | list | length %}
-        {% if pending_count > 0 %}
-          <span class="badge" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;font-weight:700;font-size:0.82rem;padding:4px 10px;">
-            ⚠️ {{ pending_count }} Application{{ 's' if pending_count > 1 else '' }} Pending Verification
+        <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>🛵</span> Registered Club Riders ({{ riders|length }})
+        </h3>
+        {% if (stats.pending_riders or 0) > 0 %}
+          <span class="badge" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;font-weight:700;font-size:0.78rem;padding:3px 8px;">
+            ⚠️ {{ stats.pending_riders }} Pending Verification
           </span>
         {% endif %}
       </div>
 
-      {% set pending_riders = riders | selectattr('status', 'equalto', 'pending') | list %}
       {% if pending_riders | length > 0 %}
-        <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.83rem;color:#78350f;line-height:1.45;">
-          <strong>⚠️ Important Admin Notice:</strong>
-          There {{ 'is' if pending_riders | length == 1 else 'are' }} <strong>{{ pending_riders | length }}</strong> rider applicant{{ '' if pending_riders | length == 1 else 's' }} waiting for your approval.<br>
-          Please ensure they <strong>visit the office in person</strong> with their <strong>Driver's License, OR/CR, and motorcycle</strong> for physical inspection before clicking <span style="background:#16a34a;color:white;padding:2px 6px;border-radius:3px;font-weight:600;font-size:0.75rem;">Approve ✅</span>.
+        <div style="background:#fffdf0;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:0.8rem;color:#78350f;line-height:1.4;">
+          <strong>ℹ️ Pahibalo sa Admin:</strong> Palihug seguroha nga personal silang moadto sa opisina dala ang ilang <strong>Driver's License, OR/CR, ug motorsiklo</strong> para sa physical inspection sa dili pa i-click ang Approve.
         </div>
       {% endif %}
 
-      <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
+      <!-- Desktop Table View -->
+      <div class="table-wrap admin-desktop-view" style="max-height:480px;overflow-y:auto;">
         <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
           <thead>
-            <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
               <th style="padding:6px;">Status</th>
               <th style="padding:6px;">Rider &amp; Photo</th>
               <th style="padding:6px;">License No.</th>
@@ -319,27 +341,14 @@
                 <div style="display:flex;align-items:center;gap:8px;">
                   {% if r.avatar_url %}
                     <a href="{{ r.avatar_url }}" target="_blank" title="View Full Profile Photo">
-                      <img src="{{ r.avatar_url }}" alt="{{ r.name }}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid #cbd5e1;">
+                      <img src="{{ r.avatar_url }}" alt="{{ r.name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #cbd5e1;">
                     </a>
                   {% else %}
-                    <span style="width:38px;height:38px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
+                    <span style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
                   {% endif %}
                   <div>
                     <strong>{{ r.name }}</strong>
-                    <div style="font-size:0.78rem;">
-                      <a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a>
-                      <span style="margin-left:6px;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:10px;font-weight:700;font-size:0.72rem;">⭐ {{ "%.1f"|format(r.rating_avg or 5.0) }}</span>
-                    </div>
-                    <div style="margin-top:3px;font-size:0.72rem;">
-                      {% if r.gcash_qr_url %}
-                        <a href="{{ r.gcash_qr_url }}" target="_blank" style="background:#eff6ff;color:#0057d9;border:1px solid #93c5fd;padding:1px 7px;border-radius:10px;font-weight:700;text-decoration:none;display:inline-block;">💙 View GCash QR</a>
-                        {% if r.gcash_number %}<span class="text-muted" style="margin-left:4px;">{{ r.gcash_number }}</span>{% endif %}
-                      {% elif r.gcash_number %}
-                        <span class="badge" style="background:#eff6ff;color:#0369a1;border:1px solid #bfdbfe;font-size:0.68rem;">💙 {{ r.gcash_number }} (No QR)</span>
-                      {% else %}
-                        <span class="text-muted">No GCash QR</span>
-                      {% endif %}
-                    </div>
+                    <div style="font-size:0.78rem;"><a href="tel:{{ r.phone }}" style="color:#0284c7;text-decoration:none;">{{ r.phone }}</a></div>
                   </div>
                 </div>
               </td>
@@ -352,264 +361,230 @@
               <td style="padding:6px;">{{ r.municipality }}</td>
               <td style="padding:6px;white-space:nowrap;">
                 {% if r.status == 'pending' %}
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.75rem;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="setRiderStatus({{ r.id }}, 'rejected')">Reject ❌</button>
+                  <button type="button" class="btn btn-sm" style="padding:4px 8px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
+                  <button type="button" class="btn btn-sm" style="padding:4px 8px;font-size:0.75rem;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="setRiderStatus({{ r.id }}, 'rejected')">Reject ❌</button>
                 {% elif r.status == 'active' %}
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'suspended')">Deactivate</button>
+                  <button type="button" class="btn btn-sm" style="padding:4px 8px;font-size:0.72rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'suspended')">Deactivate</button>
                 {% else %}
-                  <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
+                  <button type="button" class="btn btn-sm" style="padding:4px 8px;font-size:0.72rem;border:1px solid #16a34a;color:#16a34a;background:none;border-radius:4px;cursor:pointer;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
                 {% endif %}
-                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;cursor:pointer;margin-left:4px;" data-name="{{ r.name }}" onclick="adminResetRiderPassword({{ r.id }}, this.dataset.name)">Reset Pwd 🔑</button>
-                <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:0.72rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;margin-left:4px;" data-name="{{ r.name }}" onclick="deleteRider({{ r.id }}, this.dataset.name)">Delete 🗑️</button>
+                <button type="button" class="btn btn-sm" style="padding:4px 8px;font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="adminResetRiderPassword({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Reset Pwd 🔑</button>
+                <button type="button" class="btn btn-sm" style="padding:4px 8px;font-size:0.72rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="deleteRider({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Delete 🗑️</button>
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="text-muted" style="padding:12px;text-align:center;">No riders registered yet.</td></tr>
+            <tr><td colspan="6" class="text-muted" style="padding:16px;text-align:center;">No riders registered yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
 
-
-
-  <!-- System Data Backup & Restore Card -->
-  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px;">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
-          <span style="font-size:1.4rem;">💾</span> System Data Backup &amp; Restore
-        </h3>
-        <p class="text-muted" style="margin:4px 0 0;font-size:0.88rem;">
-          Back up or restore all club data (Riders, Bookings, Chat Messages, Reviews, Settings, &amp; Media Photos).
-        </p>
-      </div>
-      <span class="badge" style="background:#0284c7;color:#ffffff;font-size:0.75rem;padding:4px 10px;border-radius:12px;">
-        🔒 Admin Restricted Tool
-      </span>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
-      <!-- Export / Download Section -->
-      <div style="padding:1.2rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
-            📥
-          </div>
-          <div>
-            <strong style="font-size:1rem;color:#0f172a;">1-Click Database Backup</strong>
-            <div class="text-muted" style="font-size:0.8rem;">Export complete system snapshot</div>
-          </div>
-        </div>
-        <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
-          Download a complete copy of the database including the riders list, registration records, license numbers, active/past trips, chat history, and custom tariff settings.
-        </p>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <a href="/api/admin/backup" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;text-decoration:none;">
-            <span>⬇️</span> Download Full Backup (.JSON)
-          </a>
-          <button type="button" id="gdrive-backup-btn" class="btn btn-block" onclick="backupToGoogleDrive(event)" style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:10px 14px;background:#0f172a;color:#ffffff;border:1px solid #334155;border-radius:var(--radius-md);cursor:pointer;touch-action:manipulation;">
-            <span>☁️</span> Save to Google Drive
-          </button>
-        </div>
-        <div id="gdrive-status-msg" class="hidden" style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
-      </div>
-
-      <!-- Import / Restore Section -->
-      <div style="padding:1.2rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
-            🔄
-          </div>
-          <div>
-            <strong style="font-size:1rem;color:#0f172a;">Restore from Backup File</strong>
-            <div class="text-muted" style="font-size:0.8rem;">Restore the database from a downloaded .json file</div>
-          </div>
-        </div>
-
-        <form id="admin-restore-form" enctype="multipart/form-data">
-          <div class="form-group" style="margin-bottom:10px;">
-            <label for="restore-file-input" style="font-size:0.82rem;font-weight:600;color:#334155;">Select Backup File (.json) *</label>
-            <input type="file" id="restore-file-input" name="backup_file" accept=".json,application/json" required style="font-size:0.85rem;padding:6px;width:100%;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;">
-          </div>
-
-          <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-            <input type="checkbox" id="restore-wipe-mode" name="wipe_existing" value="true" checked style="width:16px;height:16px;accent-color:var(--primary);">
-            <label for="restore-wipe-mode" style="font-size:0.8rem;color:#475569;cursor:pointer;user-select:none;">
-              <strong>Clean Sync</strong> (Overwrite and synchronize all records to match the backup)
-            </label>
-          </div>
-
-          <div id="restore-status-msg" class="hidden" style="margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
-
-          <button type="submit" id="restore-submit-btn" class="btn btn-outline btn-block" style="border-color:#d97706;color:#b45309;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <span>⬆️</span> Restore This Backup
-          </button>
-        </form>
-      </div>
-
-      <!-- Fresh Launch Wipe / Reset Section -->
-      <div style="padding:1.2rem;background:#ffffff;border:1px solid #fee2e2;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
-            🧹
-          </div>
-          <div>
-            <strong style="font-size:1rem;color:#991b1b;">Wipe Test Data (Launch Reset)</strong>
-            <div class="text-muted" style="font-size:0.8rem;">Clear test bookings, chat &amp; accounts for official launch</div>
-          </div>
-        </div>
-        <p style="font-size:0.84rem;color:#475569;margin-bottom:14px;line-height:1.4;">
-          Safely clear all test bookings, test customers, calls, and test rider registrations. Your official Fare Matrix and club settings remain untouched.
-        </p>
-        <button type="button" class="btn btn-block" onclick="promptLaunchReset()" style="background:#dc2626;color:#ffffff;font-weight:600;padding:10px 14px;border:none;border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-          <span>🗑️</span> Reset Database for Launch
-        </button>
-        <div id="reset-status-msg" class="hidden" style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:0.82rem;"></div>
-      </div>
-    </div>
-  </div>
-
-
-
-  <!-- Recent Bookings Table -->
-  <div class="card" style="margin-top:1.5rem;">
-    <h3 style="margin-top:0;">Recent Island Bookings (Latest 50)</h3>
-    <div class="table-wrap" style="max-height:440px;overflow-y:auto;">
-      <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:2px solid var(--border);text-align:left;">
-            <th style="padding:8px;">Code</th>
-            <th style="padding:8px;">Service</th>
-            <th style="padding:8px;">Status</th>
-            <th style="padding:8px;">Customer</th>
-            <th style="padding:8px;">Pickup &rarr; Dropoff</th>
-            <th style="padding:8px;">Fare</th>
-            <th style="padding:8px;">Rider</th>
-            <th style="padding:8px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for b in bookings %}
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px;font-family:monospace;font-weight:700;">
-              {{ b.booking_code or b.code }}
-              {% if b.group_size and b.group_size|int > 1 and b.group_code %}
-                <div style="margin-top:3px;">
-                  <span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.68rem;font-family:sans-serif;">
-                    👥 {{ b.group_code }} &bull; Slot {{ b.rider_slot or 1 }}/{{ b.group_size }}
-                  </span>
-                </div>
-              {% endif %}
-            </td>
-            <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
-            <td style="padding:8px;">
-              {% if b.status == 'completed' %}
-                <span class="badge badge-success">Completed</span>
-              {% elif b.status == 'in_progress' %}
-                <span class="badge badge-primary">In Transit</span>
-              {% elif b.status == 'accepted' %}
-                <span class="badge" style="background:#0284c7;color:white;">Rider Heading</span>
-              {% elif b.status == 'broadcast' %}
-                <span class="badge badge-warning">Broadcast</span>
+      <!-- Mobile Cards View (Optimized for cellphones) -->
+      <div class="admin-mobile-view">
+        {% for r in riders %}
+        <div class="mobile-record-card" style="{% if r.status == 'pending' %}border:1.5px solid #fcd34d;background:#fffdf5;{% endif %}">
+          <div class="mobile-record-row-top">
+            <div style="display:flex;align-items:center;gap:10px;">
+              {% if r.avatar_url %}
+                <a href="{{ r.avatar_url }}" target="_blank">
+                  <img src="{{ r.avatar_url }}" alt="{{ r.name }}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1.5px solid #cbd5e1;">
+                </a>
               {% else %}
-                <span class="badge">{{ b.status }}</span>
+                <span style="width:42px;height:42px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;">👤</span>
               {% endif %}
-              {% if b.transfer_count and b.transfer_count > 0 %}
-                <div style="margin-top:4px;">
-                  <span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:0.7rem;" title="{{ b.transfer_reason or 'Emergency rider transfer' }}">
-                    🔄 Transferred x{{ b.transfer_count }}
-                  </span>
-                </div>
-              {% endif %}
-            </td>
-            <td style="padding:8px;">
-              <div style="display:flex;align-items:center;gap:4px;">
-                <strong>{{ b.customer_name }}</strong>
-                {% if b.customer_verified %}
-                  <span title="Verified Legit Passenger" style="color:#16a34a;font-size:0.85rem;">🛡️✓</span>
-                {% endif %}
+              <div>
+                <strong style="font-size:0.92rem;color:#0f172a;">{{ r.name }}</strong>
+                <div><a href="tel:{{ r.phone }}" style="color:#0284c7;font-size:0.82rem;text-decoration:none;font-weight:600;">📞 {{ r.phone }}</a></div>
               </div>
-              <a href="tel:{{ b.customer_phone }}" class="text-muted">{{ b.customer_phone }}</a>
-            </td>
-            <td style="padding:8px;">
-              <small><strong>From:</strong> {{ b.pickup_address or b.pickup_location }}</small><br>
-              <small><strong>To:</strong> {{ b.dropoff_address or b.dropoff_location }}</small>
-            </td>
-            <td style="padding:8px;font-weight:700;color:var(--primary);">
-              ₱{{ "%.2f"|format((b.fare_amount or b.estimated_fare or 0)|float) }}
-              {% if (b.payment_method or '')|lower == 'gcash' %}
-                <div style="margin-top:4px;">
-                  {% if b.payment_status == 'paid' %}
-                    <span class="badge badge-success" style="font-size:0.68rem;">💙 GCash Paid</span>
-                  {% elif b.payment_status == 'customer_sent' %}
-                    <span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #60a5fa;font-size:0.68rem;">📲 GCash Sent</span>
-                  {% else %}
-                    <span class="badge badge-warning" style="font-size:0.68rem;">⏳ GCash Pending</span>
+            </div>
+            <div>
+              {% if r.is_online == 1 and r.status == 'active' %}
+                <span class="badge badge-success" style="font-size:0.72rem;">🟢 Online</span>
+              {% elif r.status == 'pending' %}
+                <span class="badge badge-warning" style="font-size:0.72rem;">⏳ Pending Check</span>
+              {% else %}
+                <span class="badge" style="font-size:0.72rem;background:#94a3b8;color:white;">Offline</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:0.8rem;color:#475569;background:#f8fafc;padding:6px 10px;border-radius:8px;">
+            <span>🏍️ <strong>{{ r.bike_model }}</strong> ({{ r.plate_number }})</span>
+            <span>&bull;</span>
+            <span>🪪 License: <code>{{ r.license_no or 'N/A' }}</code></span>
+            <span>&bull;</span>
+            <span>📍 {{ r.municipality }}</span>
+          </div>
+
+          <div class="mobile-actions-wrap">
+            {% if r.status == 'pending' %}
+              <button type="button" class="btn btn-sm" style="background:#16a34a;color:white;border:none;border-radius:6px;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
+              <button type="button" class="btn btn-sm" style="background:#ef4444;color:white;border:none;border-radius:6px;" onclick="setRiderStatus({{ r.id }}, 'rejected')">Reject ❌</button>
+            {% elif r.status == 'active' %}
+              <button type="button" class="btn btn-sm btn-outline" style="border-color:#ef4444;color:#ef4444;border-radius:6px;" onclick="setRiderStatus({{ r.id }}, 'suspended')">Deactivate</button>
+            {% else %}
+              <button type="button" class="btn btn-sm btn-outline" style="border-color:#16a34a;color:#16a34a;border-radius:6px;" onclick="setRiderStatus({{ r.id }}, 'active')">Approve ✅</button>
+            {% endif %}
+            <button type="button" class="btn btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;" onclick="adminResetRiderPassword({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Reset Pwd 🔑</button>
+            <button type="button" class="btn btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;" onclick="deleteRider({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}')">Delete 🗑️</button>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted text-center" style="padding:20px;">No riders registered yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: BOOKINGS PANE -->
+  <div id="pane-bookings" class="admin-tab-pane hidden">
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>📋</span> Recent Island Bookings (Latest 50)
+        </h3>
+        <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.75rem;padding:3px 8px;border-radius:10px;">
+          Auto-synchronized
+        </span>
+      </div>
+
+      <!-- Desktop Table View -->
+      <div class="table-wrap admin-desktop-view" style="max-height:480px;overflow-y:auto;">
+        <table class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
+              <th style="padding:8px;">Code</th>
+              <th style="padding:8px;">Service</th>
+              <th style="padding:8px;">Status</th>
+              <th style="padding:8px;">Customer</th>
+              <th style="padding:8px;">Pickup &rarr; Dropoff</th>
+              <th style="padding:8px;">Fare</th>
+              <th style="padding:8px;">Rider</th>
+              <th style="padding:8px;">Live Track</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in bookings %}
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.booking_code or b.code }}</td>
+              <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
+              <td style="padding:8px;">
+                {% if b.status == 'completed' %}
+                  <span class="badge badge-success">Completed</span>
+                {% elif b.status == 'in_progress' %}
+                  <span class="badge badge-primary">In Transit</span>
+                {% elif b.status == 'accepted' %}
+                  <span class="badge" style="background:#0284c7;color:white;">Rider Heading</span>
+                {% elif b.status == 'broadcast' %}
+                  <span class="badge badge-warning">Broadcast</span>
+                {% else %}
+                  <span class="badge">{{ b.status }}</span>
+                {% endif %}
+              </td>
+              <td style="padding:8px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <strong>{{ b.customer_name }}</strong>
+                  {% if b.customer_verified %}
+                    <span title="Verified Legit Passenger" style="color:#16a34a;font-size:0.85rem;">🛡️✓</span>
                   {% endif %}
                 </div>
-              {% endif %}
-            </td>
-            <td style="padding:8px;">
-              {% if b.rider_name %}
-                <strong>{{ b.rider_name }}</strong><br>
-                <small class="text-muted">{{ b.rider_bike }}</small>
-              {% else %}
-                <span class="text-muted">Unassigned</span>
-              {% endif %}
-              {% if b.transfer_count and b.transfer_count > 0 and (b.transferred_from_rider_name or b.transfer_reason) %}
-                <div style="margin-top:3px;font-size:0.72rem;color:#b45309;">
-                  {% if b.transferred_from_rider_name %}From: <strong>{{ b.transferred_from_rider_name }}</strong>{% endif %}
-                  {% if b.transfer_reason %}<div>{{ b.transfer_reason }}</div>{% endif %}
-                </div>
-              {% endif %}
-            </td>
-            <td style="padding:8px;white-space:nowrap;">
-              <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start;">
-                <a href="{{ ('/track/' ~ b.group_code ~ '?slot=' ~ (b.booking_code or b.code)) if (b.group_size and b.group_size|int > 1 and b.group_code) else ('/track/' ~ (b.booking_code or b.code)) }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
-                {% if b.status in ['accepted', 'in_progress'] %}
-                  <button
-                    type="button"
-                    class="btn btn-sm admin-open-transfer-btn"
-                    data-booking-id="{{ b.id }}"
-                    data-booking-code="{{ b.booking_code or b.code }}"
-                    data-rider-id="{{ b.rider_id or '' }}"
-                    data-rider-name="{{ b.rider_name or 'Unassigned' }}"
-                    data-dropoff="{{ b.dropoff_address or b.dropoff_location or '' }}"
-                    data-fare="{{ '%.2f'|format((b.fare_amount or b.estimated_fare or 0)|float) }}"
-                    data-status="{{ b.status }}"
-                    data-scheduled-at="{{ b.scheduled_at or '' }}"
-                    style="background:#fffbeb;border:1.5px solid #f59e0b;color:#b45309;font-weight:700;font-size:0.75rem;padding:4px 9px;cursor:pointer;"
-                  >
-                    🔄 Transfer to Rider
-                  </button>
+                <a href="tel:{{ b.customer_phone }}" class="text-muted">{{ b.customer_phone }}</a>
+              </td>
+              <td style="padding:8px;">
+                <small><strong>From:</strong> {{ b.pickup_address or b.pickup_location }}</small><br>
+                <small><strong>To:</strong> {{ b.dropoff_address or b.dropoff_location }}</small>
+              </td>
+              <td style="padding:8px;font-weight:700;color:var(--primary);">₱{{ "%.2f"|format((b.fare_amount or b.estimated_fare or 0)|float) }}</td>
+              <td style="padding:8px;">
+                {% if b.rider_name %}
+                  <strong>{{ b.rider_name }}</strong><br>
+                  <small class="text-muted">{{ b.rider_bike }}</small>
+                {% else %}
+                  <span class="text-muted">Unassigned</span>
                 {% endif %}
+              </td>
+              <td style="padding:8px;">
+                <a href="/track/{{ b.booking_code or b.code }}" target="_blank" class="btn btn-sm btn-outline">Track GPS 📍</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No bookings recorded yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Cards View -->
+      <div class="admin-mobile-view">
+        {% for b in bookings %}
+        <div class="mobile-record-card">
+          <div class="mobile-record-row-top">
+            <div>
+              <span style="font-family:monospace;font-weight:700;color:#0284c7;font-size:0.95rem;">{{ b.booking_code or b.code }}</span>
+              <span class="badge badge-accent" style="margin-left:4px;font-size:0.7rem;text-transform:uppercase;">{{ b.service_type }}</span>
+            </div>
+            <div>
+              {% if b.status == 'completed' %}
+                <span class="badge badge-success" style="font-size:0.72rem;">Completed</span>
+              {% elif b.status == 'in_progress' %}
+                <span class="badge badge-primary" style="font-size:0.72rem;">In Transit</span>
+              {% elif b.status == 'accepted' %}
+                <span class="badge" style="background:#0284c7;color:white;font-size:0.72rem;">Heading</span>
+              {% elif b.status == 'broadcast' %}
+                <span class="badge badge-warning" style="font-size:0.72rem;">Broadcast</span>
+              {% else %}
+                <span class="badge" style="font-size:0.72rem;">{{ b.status }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="font-size:0.83rem;color:#334155;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span><strong>Passenger:</strong> {{ b.customer_name }} {% if b.customer_verified %}<span style="color:#16a34a;">🛡️✓</span>{% endif %}</span>
+              <a href="tel:{{ b.customer_phone }}" style="color:#0284c7;text-decoration:none;font-weight:600;">📞 Call</a>
+            </div>
+            <div style="font-size:0.78rem;color:#64748b;line-height:1.35;margin-bottom:6px;">
+              <div>📍 <strong>From:</strong> {{ b.pickup_address or b.pickup_location }}</div>
+              <div>🏁 <strong>To:</strong> {{ b.dropoff_address or b.dropoff_location }}</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;padding:6px 10px;border-radius:8px;">
+              <div>
+                <small class="text-muted" style="display:block;font-size:0.7rem;">Rider:</small>
+                <strong>{{ b.rider_name or 'Unassigned' }}</strong>
               </div>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No bookings recorded yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              <div style="text-align:right;">
+                <small class="text-muted" style="display:block;font-size:0.7rem;">Fare:</small>
+                <strong style="color:var(--primary, #ea580c);font-size:1rem;">₱{{ "%.2f"|format((b.fare_amount or b.estimated_fare or 0)|float) }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding-top:6px;border-top:1px dashed #e2e8f0;">
+            <a href="/track/{{ b.booking_code or b.code }}" target="_blank" class="btn btn-sm btn-outline btn-block" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.8rem;padding:6px;border-radius:8px;">
+              <span>📍</span> <span>View Real-Time Tracking &amp; Route</span>
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted text-center" style="padding:20px;">No bookings recorded yet.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
-  <!-- Master Financial Transactions Ledger -->
-  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+  <!-- TAB 3: MASTER TRANSACTIONS LEDGER PANE -->
+  <div id="pane-ledger" class="admin-tab-pane hidden">
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
           <span>💳</span> Master Transactions Ledger ({{ transactions|length }})
         </h3>
-        <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem;">
-          Recorded financial transactions between verified passengers and club riders.
-        </p>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <input type="text" id="txn-search-input" placeholder="Search customer, rider, txn code..." onkeyup="filterTransactionsTable()" style="padding:6px 12px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;min-width:220px;">
-        <select id="txn-status-filter" onchange="filterTransactionsTable()" style="padding:6px 10px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;background:white;">
+
+      <!-- Quick Search & Filter Controls -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <input type="text" id="txn-search-input" placeholder="Search customer, rider, txn code..." onkeyup="filterTransactionsTable()" style="padding:7px 12px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;flex:1;min-width:180px;">
+        <select id="txn-status-filter" onchange="filterTransactionsTable()" style="padding:7px 10px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;background:white;">
           <option value="">All Statuses</option>
           <option value="completed">Completed</option>
           <option value="in_progress">In Progress</option>
@@ -618,218 +593,404 @@
           <option value="cancelled">Cancelled</option>
         </select>
       </div>
-    </div>
 
-    <!-- Monthly Club Sales & CSV Reports Toolbar -->
-    <div class="ccrc-admin-report-bar">
-      <div class="ccrc-admin-report-bar-left">
-        <span class="ccrc-admin-report-label">📊 Monthly Sales &amp; Reports:</span>
-        <input type="month" id="admin-report-month" value="{{ current_month_pht or '' }}" aria-label="Report Month" class="ccrc-report-month-input">
-        <label class="ccrc-report-alltime-toggle">
-          <input type="checkbox" id="admin-report-alltime-chk">
-          <span>All Time</span>
-        </label>
-      </div>
-      <div class="ccrc-admin-report-bar-actions">
-        <button type="button" id="admin-export-sales-csv-btn" onclick="exportAdminSalesCsv('detailed')" class="btn btn-sm ccrc-btn-csv">
-          📥 Export Sales CSV
-        </button>
-        <button type="button" id="admin-export-rider-csv-btn" onclick="exportAdminSalesCsv('rider_summary')" class="btn btn-sm ccrc-btn-csv-alt">
-          👥 Rider Summary CSV
-        </button>
-        <button type="button" id="admin-print-sales-report-btn" onclick="openAdminPrintableReport()" class="btn btn-sm btn-primary ccrc-btn-print">
-          🖨️ Printable Report
-        </button>
-      </div>
-    </div>
-
-    <div class="table-wrap" style="max-height:480px;overflow-y:auto;">
-      <table id="admin-transactions-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
-            <th style="padding:8px;">Txn Code</th>
-            <th style="padding:8px;">Date / Time</th>
-            <th style="padding:8px;">Passenger</th>
-            <th style="padding:8px;">Assigned Rider</th>
-            <th style="padding:8px;">Service</th>
-            <th style="padding:8px;">Fare Amount</th>
-            <th style="padding:8px;">Payment</th>
-            <th style="padding:8px;">Status</th>
-            <th style="padding:8px;">Trip Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for t in transactions %}
-          <tr class="txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }} {{ t.group_code or '' }}" style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px;font-family:monospace;font-weight:700;color:#0284c7;">
-              {{ t.transaction_code }}
-            </td>
-            <td style="padding:8px;font-size:0.8rem;white-space:nowrap;color:#64748b;">
-              {{ t.created_at[:16].replace('T', ' ') if t.created_at else 'N/A' }}
-            </td>
-            <td style="padding:8px;">
-              <div style="display:flex;align-items:center;gap:4px;">
-                <strong>{{ t.customer_name }}</strong>
-                {% if t.customer_verified %}
-                  <span title="Verified Legit Passenger" style="color:#16a34a;font-size:0.85rem;">🛡️✓</span>
-                {% endif %}
-              </div>
-              <small class="text-muted"><a href="tel:{{ t.customer_phone }}" style="color:#64748b;text-decoration:none;">{{ t.customer_phone }}</a></small>
-            </td>
-            <td style="padding:8px;">
-              {% if t.rider_name %}
-                <strong>{{ t.rider_name }}</strong>
-              {% elif t.rider_id %}
-                <span>Rider #{{ t.rider_id }}</span>
-              {% else %}
-                <span class="text-muted">Unassigned</span>
-              {% endif %}
-            </td>
-            <td style="padding:8px;">
-              <span class="badge badge-accent" style="text-transform:uppercase;font-size:0.75rem;">{{ t.service_type }}</span>
-            </td>
-            <td style="padding:8px;font-weight:700;color:var(--primary);font-size:0.95rem;">
-              ₱{{ "%.2f"|format(t.amount|float) }}
-            </td>
-            <td style="padding:8px;">
-              <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-size:0.75rem;text-transform:uppercase;">
-                {{ t.payment_method or 'CASH' }}
-              </span>
-            </td>
-            <td style="padding:8px;">
-              {% if t.status == 'completed' %}
-                <span class="badge badge-success" style="font-size:0.75rem;">Completed</span>
-              {% elif t.status == 'in_progress' %}
-                <span class="badge badge-primary" style="font-size:0.75rem;">In Transit</span>
-              {% elif t.status == 'accepted' %}
-                <span class="badge" style="background:#0284c7;color:white;font-size:0.75rem;">Accepted</span>
-              {% elif t.status == 'broadcast' %}
-                <span class="badge badge-warning" style="font-size:0.75rem;">Pending</span>
-              {% else %}
-                <span class="badge" style="font-size:0.75rem;">{{ t.status }}</span>
-              {% endif %}
-            </td>
-            <td style="padding:8px;white-space:nowrap;">
-              <a href="{{ ('/track/' ~ t.group_code ~ '?slot=' ~ t.booking_code) if (t.group_size and t.group_size|int > 1 and t.group_code) else ('/track/' ~ t.booking_code) }}" target="_blank" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 8px;">
-                {{ t.booking_code }} 📍
-              </a>
-              {% if t.group_size and t.group_size|int > 1 and t.group_code %}
-                <div style="margin-top:3px;">
-                  <span class="badge" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;font-size:0.66rem;">
-                    👥 {{ t.group_code }} Slot {{ t.rider_slot or 1 }}/{{ t.group_size }}
-                  </span>
-                </div>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="9" class="text-muted" style="padding:16px;text-align:center;">No transactions recorded in database yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Registered Customers Directory -->
-  <div class="card" style="margin-top:1.5rem;border:1.5px solid #cbd5e1;">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
-          <span>👥</span> Registered Customers Directory ({{ customers|length }})
-        </h3>
-        <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem;">
-          Verified and registered passengers in Camiguin Island with transaction history and bogus prevention status.
-        </p>
-      </div>
-      <input type="text" id="cust-search-input" placeholder="Search customer name, phone, barangay..." onkeyup="filterCustomersTable()" style="padding:6px 12px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;min-width:240px;">
-    </div>
-
-    <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
-      <table id="admin-customers-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
-            <th style="padding:8px;">Verification Status</th>
-            <th style="padding:8px;">Passenger Name</th>
-            <th style="padding:8px;">Phone Number</th>
-            <th style="padding:8px;">Barangay / Town</th>
-            <th style="padding:8px;">Completed Rides</th>
-            <th style="padding:8px;">Total Spent</th>
-            <th style="padding:8px;">Last Active</th>
-            <th style="padding:8px;">Admin Legit Verification</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for c in customers %}
-          <tr class="cust-row" data-search="{{ c.name }} {{ c.phone }} {{ c.barangay }}" style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px;">
-              {% if c.is_verified %}
-                <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
-                  🛡️ Verified Legit ✓
-                </span>
-              {% else %}
-                <span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;">
-                  ⚠️ Unverified Passenger
-                </span>
-              {% endif %}
-            </td>
-            <td style="padding:8px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                {% if c.avatar_url %}
-                  <a href="{{ c.avatar_url }}" target="_blank" title="View Full Passenger Profile Photo">
-                    <img src="{{ c.avatar_url }}" alt="{{ c.name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #0284c7;">
-                  </a>
-                {% else %}
-                  <span style="width:36px;height:36px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
-                {% endif %}
-                <div>
-                  <strong>{{ c.name }}</strong>
-                  {% if c.email %}
-                    <div style="font-size:0.75rem;color:#64748b;">{{ c.email }}</div>
+      <!-- Desktop Table View -->
+      <div class="table-wrap admin-desktop-view" style="max-height:480px;overflow-y:auto;">
+        <table id="admin-transactions-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
+              <th style="padding:8px;">Txn Code</th>
+              <th style="padding:8px;">Date / Time</th>
+              <th style="padding:8px;">Passenger</th>
+              <th style="padding:8px;">Assigned Rider</th>
+              <th style="padding:8px;">Service</th>
+              <th style="padding:8px;">Fare Amount</th>
+              <th style="padding:8px;">Payment</th>
+              <th style="padding:8px;">Status</th>
+              <th style="padding:8px;">Trip Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in transactions %}
+            <tr class="txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }}" style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px;font-family:monospace;font-weight:700;color:#0284c7;">{{ t.transaction_code }}</td>
+              <td style="padding:8px;font-size:0.8rem;white-space:nowrap;color:#64748b;">
+                {{ t.created_at[:16].replace('T', ' ') if t.created_at else 'N/A' }}
+              </td>
+              <td style="padding:8px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <strong>{{ t.customer_name }}</strong>
+                  {% if t.customer_verified %}
+                    <span title="Verified Legit Passenger" style="color:#16a34a;font-size:0.85rem;">🛡️✓</span>
                   {% endif %}
                 </div>
-              </div>
-            </td>
-            <td style="padding:8px;">
-              <a href="tel:{{ c.phone }}" style="color:#0284c7;text-decoration:none;font-weight:600;">{{ c.phone }}</a>
-            </td>
-            <td style="padding:8px;">
-              {{ c.barangay or 'Camiguin' }}
-            </td>
-            <td style="padding:8px;font-weight:600;text-align:center;">
-              {{ c.total_rides or 0 }}
-            </td>
-            <td style="padding:8px;font-weight:700;color:var(--primary);">
-              ₱{{ "%.2f"|format(c.total_spent|float if c.total_spent else 0.0) }}
-            </td>
-            <td style="padding:8px;font-size:0.8rem;color:#64748b;white-space:nowrap;">
-                         {{ (c.last_active_at|string)[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
-            </td>
-            <td style="padding:8px;white-space:nowrap;">
-              {% if c.is_verified %}
-                <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;" onclick="toggleCustomerVerify({{ c.id }})">
-                  Revoke Verification
-                </button>
+                <small class="text-muted"><a href="tel:{{ t.customer_phone }}" style="color:#64748b;text-decoration:none;">{{ t.customer_phone }}</a></small>
+              </td>
+              <td style="padding:8px;">
+                {% if t.rider_name %}
+                  <strong>{{ t.rider_name }}</strong>
+                {% elif t.rider_id %}
+                  <span>Rider #{{ t.rider_id }}</span>
+                {% else %}
+                  <span class="text-muted">Unassigned</span>
+                {% endif %}
+              </td>
+              <td style="padding:8px;">
+                <span class="badge badge-accent" style="text-transform:uppercase;font-size:0.75rem;">{{ t.service_type }}</span>
+              </td>
+              <td style="padding:8px;font-weight:700;color:var(--primary);font-size:0.95rem;">
+                ₱{{ "%.2f"|format(t.amount|float) }}
+              </td>
+              <td style="padding:8px;">
+                <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-size:0.75rem;text-transform:uppercase;">
+                  {{ t.payment_method or 'CASH' }}
+                </span>
+              </td>
+              <td style="padding:8px;">
+                {% if t.status == 'completed' %}
+                  <span class="badge badge-success" style="font-size:0.75rem;">Completed</span>
+                {% elif t.status == 'in_progress' %}
+                  <span class="badge badge-primary" style="font-size:0.75rem;">In Transit</span>
+                {% elif t.status == 'accepted' %}
+                  <span class="badge" style="background:#0284c7;color:white;font-size:0.75rem;">Accepted</span>
+                {% elif t.status == 'broadcast' %}
+                  <span class="badge badge-warning" style="font-size:0.75rem;">Pending</span>
+                {% else %}
+                  <span class="badge" style="font-size:0.75rem;">{{ t.status }}</span>
+                {% endif %}
+              </td>
+              <td style="padding:8px;white-space:nowrap;">
+                <a href="/track/{{ t.booking_code }}" target="_blank" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:3px 8px;">
+                  {{ t.booking_code }} 📍
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="text-muted" style="padding:16px;text-align:center;">No transactions recorded in database yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Cards View -->
+      <div class="admin-mobile-view">
+        {% for t in transactions %}
+        <div class="mobile-record-card txn-row" data-status="{{ t.status }}" data-search="{{ t.transaction_code }} {{ t.customer_name }} {{ t.customer_phone }} {{ t.rider_name }} {{ t.booking_code }}">
+          <div class="mobile-record-row-top">
+            <div>
+              <span style="font-family:monospace;font-weight:700;color:#0284c7;font-size:0.88rem;">{{ t.transaction_code }}</span>
+              <div style="font-size:0.72rem;color:#64748b;">{{ t.created_at[:16].replace('T', ' ') if t.created_at else '' }}</div>
+            </div>
+            <div>
+              {% if t.status == 'completed' %}
+                <span class="badge badge-success" style="font-size:0.72rem;">Completed</span>
+              {% elif t.status == 'in_progress' %}
+                <span class="badge badge-primary" style="font-size:0.72rem;">In Transit</span>
+              {% elif t.status == 'accepted' %}
+                <span class="badge" style="background:#0284c7;color:white;font-size:0.72rem;">Accepted</span>
               {% else %}
-                <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;" onclick="toggleCustomerVerify({{ c.id }})">
-                  Mark as Verified Legit ✓
-                </button>
+                <span class="badge" style="font-size:0.72rem;">{{ t.status }}</span>
               {% endif %}
-              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;cursor:pointer;margin-left:6px;" data-name="{{ c.name }}" onclick="adminResetCustomerPassword({{ c.id }}, this.dataset.name)">
-                Reset Pwd 🔑
-              </button>
-              <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;margin-left:6px;" data-name="{{ c.name }}" onclick="deleteCustomer({{ c.id }}, this.dataset.name)">
-                Delete 🗑️
-              </button>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No registered customers in database yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;padding:6px 10px;border-radius:8px;font-size:0.82rem;">
+            <div>
+              <div>👤 <strong>{{ t.customer_name }}</strong></div>
+              <div style="font-size:0.75rem;color:#64748b;">🛵 {{ t.rider_name or 'Unassigned' }}</div>
+            </div>
+            <div style="text-align:right;">
+              <strong style="color:var(--primary, #ea580c);font-size:1.05rem;">₱{{ "%.2f"|format(t.amount|float) }}</strong>
+              <div style="font-size:0.7rem;text-transform:uppercase;color:#64748b;">{{ t.payment_method or 'CASH' }}</div>
+            </div>
+          </div>
+
+          <div style="padding-top:4px;">
+            <a href="/track/{{ t.booking_code }}" target="_blank" class="btn btn-sm btn-outline btn-block" style="font-size:0.75rem;padding:5px;border-radius:6px;text-align:center;">
+              Track Booking ({{ t.booking_code }}) 📍
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted text-center" style="padding:20px;">No transactions recorded in database yet.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
+  <!-- TAB 4: PASSENGERS / CUSTOMERS PANE -->
+  <div id="pane-customers" class="admin-tab-pane hidden">
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>👥</span> Registered Customers Directory ({{ customers|length }})
+        </h3>
+      </div>
+
+      <!-- Quick Search -->
+      <div style="margin-bottom:12px;">
+        <input type="text" id="cust-search-input" placeholder="Search customer name, phone, barangay..." onkeyup="filterCustomersTable()" style="padding:7px 12px;font-size:0.82rem;border:1px solid #cbd5e1;border-radius:8px;width:100%;">
+      </div>
+
+      <!-- Desktop Table View -->
+      <div class="table-wrap admin-desktop-view" style="max-height:480px;overflow-y:auto;">
+        <table id="admin-customers-table" class="data-table" style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left;background:#f8fafc;">
+              <th style="padding:8px;">Verification Status</th>
+              <th style="padding:8px;">Passenger Name</th>
+              <th style="padding:8px;">Phone Number</th>
+              <th style="padding:8px;">Barangay / Town</th>
+              <th style="padding:8px;">Completed Rides</th>
+              <th style="padding:8px;">Total Spent</th>
+              <th style="padding:8px;">Last Active</th>
+              <th style="padding:8px;">Admin Legit Verification</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in customers %}
+            <tr class="cust-row" data-search="{{ c.name }} {{ c.phone }} {{ c.barangay }}" style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px;">
+                {% if c.is_verified %}
+                  <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+                    🛡️ Verified Legit ✓
+                  </span>
+                {% else %}
+                  <span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;">
+                    ⚠️ Unverified Passenger
+                  </span>
+                {% endif %}
+              </td>
+              <td style="padding:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  {% if c.avatar_url %}
+                    <a href="{{ c.avatar_url }}" target="_blank" title="View Full Passenger Profile Photo">
+                      <img src="{{ c.avatar_url }}" alt="{{ c.name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #0284c7;">
+                    </a>
+                  {% else %}
+                    <span style="width:36px;height:36px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
+                  {% endif %}
+                  <div>
+                    <strong>{{ c.name }}</strong>
+                    {% if c.email %}
+                      <div style="font-size:0.75rem;color:#64748b;">{{ c.email }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td style="padding:8px;">
+                <a href="tel:{{ c.phone }}" style="color:#0284c7;text-decoration:none;font-weight:600;">{{ c.phone }}</a>
+              </td>
+              <td style="padding:8px;">{{ c.barangay or 'Camiguin' }}</td>
+              <td style="padding:8px;font-weight:600;text-align:center;">{{ c.total_rides or 0 }}</td>
+              <td style="padding:8px;font-weight:700;color:var(--primary);">
+                ₱{{ "%.2f"|format(c.total_spent|float if c.total_spent else 0.0) }}
+              </td>
+              <td style="padding:8px;font-size:0.8rem;color:#64748b;white-space:nowrap;">
+                {{ c.last_active_at[:16].replace('T', ' ') if c.last_active_at else 'N/A' }}
+              </td>
+              <td style="padding:8px;white-space:nowrap;">
+                {% if c.is_verified %}
+                  <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;" onclick="toggleCustomerVerify({{ c.id }})">
+                    Revoke
+                  </button>
+                {% else %}
+                  <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;" onclick="toggleCustomerVerify({{ c.id }})">
+                    Verify Legit ✓
+                  </button>
+                {% endif %}
+                <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;cursor:pointer;margin-left:4px;" onclick="adminResetCustomerPassword({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+                  Reset Pwd 🔑
+                </button>
+                <button type="button" class="btn btn-sm" style="padding:4px 10px;font-size:0.75rem;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;margin-left:4px;" onclick="deleteCustomer({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+                  Delete 🗑️
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No registered customers in database yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Cards View -->
+      <div class="admin-mobile-view">
+        {% for c in customers %}
+        <div class="mobile-record-card cust-row" data-search="{{ c.name }} {{ c.phone }} {{ c.barangay }}">
+          <div class="mobile-record-row-top">
+            <div style="display:flex;align-items:center;gap:10px;">
+              {% if c.avatar_url %}
+                <a href="{{ c.avatar_url }}" target="_blank">
+                  <img src="{{ c.avatar_url }}" alt="{{ c.name }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid #0284c7;">
+                </a>
+              {% else %}
+                <span style="width:40px;height:40px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">👤</span>
+              {% endif %}
+              <div>
+                <strong style="font-size:0.92rem;color:#0f172a;">{{ c.name }}</strong>
+                <div><a href="tel:{{ c.phone }}" style="color:#0284c7;font-size:0.82rem;text-decoration:none;font-weight:600;">📞 {{ c.phone }}</a></div>
+              </div>
+            </div>
+            <div>
+              {% if c.is_verified %}
+                <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.72rem;font-weight:700;">
+                  🛡️ Verified ✓
+                </span>
+              {% else %}
+                <span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.72rem;">
+                  ⚠️ Unverified
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;padding:6px 10px;border-radius:8px;font-size:0.8rem;color:#475569;">
+            <span>📍 {{ c.barangay or 'Camiguin' }}</span>
+            <span>Rides: <strong>{{ c.total_rides or 0 }}</strong> | Total: <strong style="color:var(--primary, #ea580c);">₱{{ "%.0f"|format(c.total_spent|float if c.total_spent else 0.0) }}</strong></span>
+          </div>
+
+          <div class="mobile-actions-wrap">
+            {% if c.is_verified %}
+              <button type="button" class="btn btn-sm btn-outline" style="border-color:#ef4444;color:#ef4444;border-radius:6px;" onclick="toggleCustomerVerify({{ c.id }})">
+                Revoke Legit
+              </button>
+            {% else %}
+              <button type="button" class="btn btn-sm" style="background:#16a34a;color:white;border:none;border-radius:6px;" onclick="toggleCustomerVerify({{ c.id }})">
+                Verify Legit ✓
+              </button>
+            {% endif %}
+            <button type="button" class="btn btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:6px;" onclick="adminResetCustomerPassword({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+              Reset Pwd 🔑
+            </button>
+            <button type="button" class="btn btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:6px;" onclick="deleteCustomer({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')">
+              Delete 🗑️
+            </button>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted text-center" style="padding:20px;">No registered customers in database yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: TARIPA SETTINGS & SYSTEM BACKUP PANE -->
+  <div id="pane-settings" class="admin-tab-pane hidden">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;">
+      <!-- Tariff Settings Card -->
+      <div class="card" style="padding:16px;">
+        <h3 style="margin-top:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>⚖️</span> Fare Matrix &amp; Tariff Settings
+        </h3>
+        <form id="admin-settings-form">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="set-base-fare">Base Meter Fare (₱) *</label>
+              <input type="number" id="set-base-fare" name="base_fare" value="{{ settings.base_fare }}" required min="20">
+            </div>
+            <div class="form-group">
+              <label for="set-base-km">Covered Base Distance (km) *</label>
+              <input type="number" id="set-base-km" name="base_km" value="{{ settings.base_km }}" required step="0.5" min="1">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="set-per-km">Per Km Rate (₱/km) *</label>
+              <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required min="5">
+            </div>
+            <div class="form-group">
+              <label for="set-min-fare">Minimum Trip Fare (₱) *</label>
+              <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="20">
+            </div>
+          </div>
+
+          <h4 style="margin:14px 0 8px;font-size:0.92rem;color:#334155;">Additional Surcharges (₱)</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="set-pabili-fee">Pabili / Buy-For-Me Fee</label>
+              <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee }}">
+            </div>
+            <div class="form-group">
+              <label for="set-pasugo-fee">Pasugo / Errand Fee</label>
+              <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee }}">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="set-queuing-fee">Queuing / Waiting Fee</label>
+              <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee }}">
+            </div>
+            <div class="form-group">
+              <label for="set-hinterland-fee">Mountain / Trail Surcharge</label>
+              <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee }}">
+            </div>
+          </div>
+
+          <h4 style="margin:14px 0 8px;font-size:0.92rem;display:flex;align-items:center;gap:6px;color:#334155;">
+            <span>☁️</span> Google Drive Cloud Backup (Optional)
+          </h4>
+          <div class="form-group">
+            <label for="set-gdrive-webhook">Google Drive Webhook URL</label>
+            <input type="url" id="set-gdrive-webhook" name="google_drive_webhook_url" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec">
+            <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">
+              Awtomatikong i-upload ang backup diretso sa imong Google Drive.
+              <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">Unsaon kini? &rarr;</a>
+            </small>
+          </div>
+
+          <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
+          <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block" style="margin-top:12px;padding:10px;">Save Taripa Settings</button>
+        </form>
+      </div>
+
+      <!-- Backup & Restore Card -->
+      <div class="card" style="padding:16px;">
+        <h3 style="margin-top:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
+          <span>💾</span> System Data Backup &amp; Restore
+        </h3>
+        <p class="text-muted" style="font-size:0.82rem;margin-top:2px;">
+          I-backup o i-restore ang tanan data sa club (Riders, Bookings, Chats, Reviews, Settings).
+        </p>
+
+        <!-- Export -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
+          <strong style="font-size:0.9rem;display:block;margin-bottom:4px;">1-Click Database Backup</strong>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <a href="/api/admin/backup" class="btn btn-primary btn-sm btn-block" style="text-align:center;padding:8px;text-decoration:none;">
+              ⬇️ Download Full Backup (.JSON)
+            </a>
+            <button type="button" id="gdrive-backup-btn" class="btn btn-sm btn-block" onclick="backupToGoogleDrive(event)" style="background:#0f172a;color:#ffffff;padding:8px;border:none;border-radius:6px;cursor:pointer;">
+              ☁️ I-Save sa Google Drive
+            </button>
+          </div>
+          <div id="gdrive-status-msg" class="hidden" style="margin-top:8px;padding:6px 10px;border-radius:6px;font-size:0.78rem;"></div>
+        </div>
+
+        <!-- Restore -->
+        <div style="background:#fffdf5;border:1px solid #fef08a;border-radius:10px;padding:12px;">
+          <strong style="font-size:0.9rem;display:block;margin-bottom:4px;color:#854d0e;">Restore from Backup File</strong>
+          <form id="admin-restore-form" enctype="multipart/form-data">
+            <div class="form-group" style="margin-bottom:8px;">
+              <input type="file" id="restore-file-input" name="backup_file" accept=".json,application/json" required style="font-size:0.8rem;padding:5px;width:100%;border:1px dashed #cbd5e1;border-radius:6px;background:#ffffff;">
+            </div>
+            <div style="margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="restore-wipe-mode" name="wipe_existing" value="true" checked style="accent-color:var(--primary);">
+              <label for="restore-wipe-mode" style="font-size:0.75rem;color:#713f12;cursor:pointer;">
+                <strong>Clean Sync</strong> (I-overwrite aron motakdo sa backup)
+              </label>
+            </div>
+            <div id="restore-status-msg" class="hidden" style="margin-bottom:8px;padding:6px 10px;border-radius:6px;font-size:0.78rem;"></div>
+            <button type="submit" id="restore-submit-btn" class="btn btn-outline btn-sm btn-block" style="border-color:#d97706;color:#b45309;font-weight:600;padding:8px;">
+              ⬆️ I-restore Kini nga Backup
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 
   {% endif %}
 </div>
@@ -839,19 +1000,19 @@
   <div class="card" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);border-radius:14px;background:#ffffff;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
-        <span>☁️</span> Guide: Free Google Drive Auto-Backup
+        <span>☁️</span> Giya: Libre nga Google Drive Auto-Backup
       </h3>
       <button type="button" onclick="closeGdriveGuideModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;">&times;</button>
     </div>
     <p style="font-size:0.86rem;color:#475569;margin-bottom:12px;">
-      Want every click of <strong>"Save to Google Drive"</strong> to automatically upload the backup file to your Google Drive folder for free? Follow these 3 easy steps:
+      Gusto ka nga sa matag click nimo ug <strong>"I-Save sa Google Drive"</strong>, awtomatikong mosulod ang file sa imong Google Drive folder nga walay bayad? Sunda kining 3 ka sayon nga lakang:
     </p>
     <ol style="font-size:0.84rem;color:#334155;padding-left:1.2rem;line-height:1.5;margin-bottom:14px;">
       <li style="margin-bottom:8px;">
-        Open <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> using your Gmail account, then click <strong>"New Project"</strong>.
+        Ablihi ang <strong><a href="https://script.google.com" target="_blank" style="color:#0284c7;">Google Apps Script (script.google.com)</a></strong> gamit ang imong Gmail account, unya i-click ang <strong>"New Project"</strong>.
       </li>
       <li style="margin-bottom:8px;">
-        Delete the existing code in the editor and paste this short snippet:
+        I-delete ang sulod sa editor ug i-paste kining mubo nga code:
         <pre style="background:#0f172a;color:#f8fafc;padding:10px;border-radius:8px;font-size:0.75rem;overflow-x:auto;margin:6px 0;">function doPost(e) {
   var data = JSON.parse(e.postData.contents);
   var folder = DriveApp.getRootFolder();
@@ -863,65 +1024,14 @@
 }</pre>
       </li>
       <li style="margin-bottom:8px;">
-        Click <strong>Deploy &gt; New deployment</strong>. Select <strong>Web app</strong>, set <em>Who has access</em> to <strong>Anyone</strong>, then click <strong>Deploy</strong>.
+        I-click ang <strong>Deploy &gt; New deployment</strong>. Pilia ang <strong>Web app</strong>, ibutang sa <em>Who has access</em>: <strong>Anyone</strong>, unya i-click ang <strong>Deploy</strong>.
       </li>
       <li>
-        Copy the generated <strong>Web App URL</strong>, paste it into the <strong>Google Drive Webhook / Apps Script URL</strong> field here in Admin Settings, and save!
+        Kopyaha ang gihatag nga <strong>Web App URL</strong> ug i-paste kini sa kahon sa <strong>Google Drive Webhook / Apps Script URL</strong> dinhi sa Admin Settings, dayon i-save!
       </li>
     </ol>
     <div style="text-align:right;">
-      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Got it / Close</button>
-    </div>
-  </div>
-
-
-</div>
-
-<!-- Admin Transfer Booking to Rider Modal -->
-<div id="admin-transfer-modal" class="modal-backdrop hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem;" role="dialog" aria-modal="true">
-  <div class="card" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:1.35rem;border-radius:16px;background:#ffffff;border:2px solid #f59e0b;">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid #fde68a;margin-bottom:12px;">
-      <div>
-        <h3 style="margin:0;font-size:1.1rem;color:#92400e;display:flex;align-items:center;gap:6px;">
-          <span>🔄</span> Transfer Booking to Rider
-        </h3>
-        <small id="admin-transfer-subtitle" style="color:#b45309;font-size:0.78rem;">Select an online rider or re-broadcast this trip</small>
-      </div>
-      <button type="button" id="admin-close-transfer-btn" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#92400e;line-height:1;">&times;</button>
-    </div>
-
-    <div class="form-group" style="margin-bottom:10px;">
-      <label for="admin-transfer-reason" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Reason for Transfer *</label>
-      <select id="admin-transfer-reason" style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.88rem;background:#fff;">
-        <option value="Club dispatch reassignment">📋 Club dispatch reassignment</option>
-        <option value="Flat tire / tire puncture">🛞 Flat tire / tire puncture</option>
-        <option value="Engine / mechanical trouble">🔧 Engine / mechanical trouble</option>
-        <option value="Fuel / battery issue">⛽ Fuel / battery issue</option>
-        <option value="Personal / family emergency">🚨 Personal / family emergency</option>
-      </select>
-    </div>
-
-    <div class="form-group" style="margin-bottom:12px;">
-      <label for="admin-transfer-note" style="font-size:0.84rem;font-weight:700;color:#1e293b;">Handover Note (Optional)</label>
-      <input type="text" id="admin-transfer-note" maxlength="200" placeholder="Optional instructions for replacement rider & passenger..." style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.86rem;">
-    </div>
-
-    <div id="admin-transfer-error" class="alert-error hidden" style="margin-bottom:10px;"></div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <strong style="font-size:0.86rem;color:#0f172a;">Option 1: Direct Transfer to Online Rider</strong>
-      <button type="button" id="admin-refresh-coriders-btn" class="btn btn-sm btn-outline" style="font-size:0.74rem;padding:3px 9px;">🔄 Refresh</button>
-    </div>
-
-    <div id="admin-transfer-riders-list" style="display:grid;gap:8px;max-height:220px;overflow-y:auto;margin-bottom:14px;">
-      <div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Loading online riders...</div>
-    </div>
-
-    <div style="border-top:1px dashed #cbd5e1;padding-top:12px;">
-      <strong style="font-size:0.84rem;color:#0f172a;display:block;margin-bottom:6px;">Option 2: Broadcast to All Online Riders</strong>
-      <button type="button" id="admin-transfer-rebroadcast-btn" class="btn btn-block" style="background:#dc2626;color:#ffffff;border:none;font-weight:700;padding:10px 14px;border-radius:10px;cursor:pointer;">
-        📡 Re-Broadcast to All Online Riders (Urgent)
-      </button>
+      <button type="button" class="btn btn-primary" onclick="closeGdriveGuideModal()" style="padding:6px 16px;">Nasabtan / Close</button>
     </div>
   </div>
 </div>
@@ -929,6 +1039,41 @@
 
 {% block scripts %}
 <script>
+  // Tab Navigation Switcher with State Persistence
+  window.switchAdminTab = function(tabName) {
+    document.querySelectorAll('.admin-tab-btn').forEach(b => {
+      const isTarget = b.getAttribute('data-tab') === tabName;
+      b.classList.toggle('active', isTarget);
+    });
+
+    document.querySelectorAll('.admin-tab-pane').forEach(p => {
+      const isTarget = p.id === 'pane-' + tabName;
+      p.classList.toggle('hidden', !isTarget);
+    });
+
+    try {
+      localStorage.setItem('ccrc_admin_tab', tabName);
+      if (history.replaceState) {
+        history.replaceState(null, '', '#' + tabName);
+      }
+    } catch (_) {}
+  };
+
+  // On Load: Restore active tab
+  document.addEventListener('DOMContentLoaded', () => {
+    let initialTab = 'riders';
+    try {
+      const hash = window.location.hash.replace('#', '').trim();
+      const saved = localStorage.getItem('ccrc_admin_tab');
+      if (['riders', 'bookings', 'ledger', 'customers', 'settings'].includes(hash)) {
+        initialTab = hash;
+      } else if (['riders', 'bookings', 'ledger', 'customers', 'settings'].includes(saved)) {
+        initialTab = saved;
+      }
+    } catch (_) {}
+    switchAdminTab(initialTab);
+  });
+
   // Admin Set Rider Status Handler
   window.setRiderStatus = async function(riderId, newStatus) {
     const actionLabel = newStatus === 'active' ? 'APPROVE' : (newStatus === 'rejected' ? 'REJECT' : 'DEACTIVATE');
@@ -965,7 +1110,7 @@
 
   // Admin Permanent Delete Rider Handler
   window.deleteRider = async function(riderId, riderName) {
-    if (!confirm(`Are you sure you want to delete Rider "${riderName}"'s account?\n\nThis action is permanent and cannot be undone.`)) {
+    if (!confirm(`Sigurado ka ba nga gusto nimo i-delete ang account ni Rider "${riderName}"?\n\nKini permanente ug dili na mabalik.`)) {
       return;
     }
     try {
@@ -984,7 +1129,7 @@
 
   // Admin Permanent Delete Customer Handler
   window.deleteCustomer = async function(customerId, customerName) {
-    if (!confirm(`Are you sure you want to delete "${customerName}"'s customer account?\n\nThis action is permanent and cannot be undone.`)) {
+    if (!confirm(`Sigurado ka ba nga gusto nimo i-delete ang customer account ni "${customerName}"?\n\nKini permanente ug dili na mabalik.`)) {
       return;
     }
     try {
@@ -1003,10 +1148,10 @@
 
   // Admin Quick Password Reset for Rider
   window.adminResetRiderPassword = async function(riderId, riderName) {
-    const newPwd = prompt(`Enter the new password for Rider "${riderName}" (at least 6 characters):`, "rider1234");
+    const newPwd = prompt(`Ibutang ang bag-ong password para sa Rider "${riderName}" (labing menos 6 ka characters):`, "rider1234");
     if (!newPwd) return;
     if (newPwd.length < 6) {
-      alert("Password must be at least 6 characters long.");
+      alert("Ang password kinahanglan labing menos 6 ka characters.");
       return;
     }
     try {
@@ -1017,7 +1162,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reset rider password");
-      alert(`New password has been set successfully for Rider "${riderName}"!`);
+      alert(`Malampusong na-set ang bag-ong password para kang Rider "${riderName}"!`);
     } catch (err) {
       alert("Error: " + err.message);
     }
@@ -1025,10 +1170,10 @@
 
   // Admin Quick Password Reset for Customer
   window.adminResetCustomerPassword = async function(customerId, customerName) {
-    const newPwd = prompt(`Enter the new password for Customer "${customerName}" (at least 6 characters):`, "pass1234");
+    const newPwd = prompt(`Ibutang ang bag-ong password para sa Customer "${customerName}" (labing menos 6 ka characters):`, "pass1234");
     if (!newPwd) return;
     if (newPwd.length < 6) {
-      alert("Password must be at least 6 characters long.");
+      alert("Ang password kinahanglan labing menos 6 ka characters.");
       return;
     }
     try {
@@ -1039,13 +1184,13 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reset customer password");
-      alert(`New password has been set successfully for Customer "${customerName}"!`);
+      alert(`Malampusong na-set ang bag-ong password para kang Customer "${customerName}"!`);
     } catch (err) {
       alert("Error: " + err.message);
     }
   };
 
-  // Transactions Filter
+  // Transactions Filter (Filters both table rows and mobile cards)
   window.filterTransactionsTable = function() {
     const search = (document.getElementById("txn-search-input")?.value || "").toLowerCase();
     const status = (document.getElementById("txn-status-filter")?.value || "").toLowerCase();
@@ -1059,48 +1204,7 @@
     });
   };
 
-  // Monthly Club Sales & Rider Summary CSV / Printable Report Helpers
-  function buildAdminReportQuery(extraParams) {
-    const allTimeChk = document.getElementById("admin-report-alltime-chk");
-    const monthInput = document.getElementById("admin-report-month");
-    const statusFilter = document.getElementById("txn-status-filter");
-    const params = new URLSearchParams();
-    if (!(allTimeChk && allTimeChk.checked) && monthInput && monthInput.value) {
-      params.set("month", monthInput.value.trim());
-    }
-    if (statusFilter && statusFilter.value) {
-      params.set("status", statusFilter.value.trim());
-    }
-    if (extraParams) {
-      Object.entries(extraParams).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && String(v).trim() !== "") {
-          params.set(k, String(v).trim());
-        }
-      });
-    }
-    const qs = params.toString();
-    return qs ? `?${qs}` : "";
-  }
-
-  document.getElementById("admin-report-alltime-chk")?.addEventListener("change", (e) => {
-    const monthInput = document.getElementById("admin-report-month");
-    if (monthInput) {
-      monthInput.disabled = Boolean(e.target.checked);
-      monthInput.style.opacity = e.target.checked ? "0.5" : "1";
-    }
-  });
-
-  window.exportAdminSalesCsv = function(reportType) {
-    const qs = buildAdminReportQuery(reportType === "rider_summary" ? { type: "rider_summary" } : {});
-    window.location.href = `/api/admin/reports/sales.csv${qs}`;
-  };
-
-  window.openAdminPrintableReport = function() {
-    const qs = buildAdminReportQuery({});
-    window.open(`/admin/reports/sales${qs}`, "_blank", "noopener");
-  };
-
-  // Customers Filter
+  // Customers Filter (Filters both table rows and mobile cards)
   window.filterCustomersTable = function() {
     const search = (document.getElementById("cust-search-input")?.value || "").toLowerCase();
     const rows = document.querySelectorAll(".cust-row");
@@ -1173,15 +1277,15 @@
       e.preventDefault();
       const fileInput = document.getElementById("restore-file-input");
       if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Please select a .json backup file to restore first!");
+        alert("Palihug pagpili una ug .json backup file nga i-restore!");
         return;
       }
 
       const file = fileInput.files[0];
       const wipeMode = document.getElementById("restore-wipe-mode").checked;
       const wipeWarning = wipeMode 
-        ? "⚠️ NOTICE: Clean Sync will overwrite existing database data to match the backup file.\n\nAre you sure you want to restore: " + file.name + "?"
-        : "Are you sure you want to merge/restore data from: " + file.name + "?";
+        ? "⚠️ PAHIBALO: Ang Clean Sync mag-overwrite sa existing database data aron motakdo sa sulod sa backup file.\n\nSigurado ba ka nga gusto nimong i-restore ang: " + file.name + "?"
+        : "Sigurado ba ka nga gusto nimong i-merge/i-restore ang data gikan sa: " + file.name + "?";
 
       if (!confirm(wipeWarning)) {
         return;
@@ -1190,9 +1294,9 @@
       const submitBtn = document.getElementById("restore-submit-btn");
       const statusMsg = document.getElementById("restore-status-msg");
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "<span>⏳</span> Restoring database... Please wait...";
+      submitBtn.innerHTML = "<span>⏳</span> Gapa-restore sa database... Palihug hulata...";
       statusMsg.className = "alert-warning";
-      statusMsg.textContent = "Processing backup data transaction. Please do not close your browser...";
+      statusMsg.textContent = "Processing backup data transaction. Palihug ayaw i-close ang browser...";
       statusMsg.classList.remove("hidden");
 
       try {
@@ -1212,7 +1316,7 @@
 
         statusMsg.className = "alert-success";
         statusMsg.textContent = "✅ " + (data.message || "Database successfully restored!");
-        alert("✅ Database restored successfully!\n\n" + (data.message || ""));
+        alert("✅ Malampusong na-restore ang Database!\n\n" + (data.message || ""));
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -1222,61 +1326,10 @@
         alert("❌ Restore Error: " + err.message);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = "<span>⬆️</span> Restore This Backup";
+        submitBtn.innerHTML = "<span>⬆️</span> I-restore Kini nga Backup";
       }
     });
   }
-
-  // Launch Reset Main Function
-  window.promptLaunchReset = async function() {
-    const confirmed = confirm("⚠️ DANGER ZONE: Are you sure you want to wipe all test bookings, chat logs, call history, and test accounts to prepare for official launch?\n\nClub settings and fare matrix will be preserved.");
-    if (!confirmed) return;
-
-    const pwd = prompt("Please enter your Admin Password to confirm launch wipe:");
-    if (!pwd) return;
-
-    const statusEl = document.getElementById("reset-status-msg");
-    if (statusEl) {
-      statusEl.className = "";
-      statusEl.style.display = "block";
-      statusEl.style.background = "#eff6ff";
-      statusEl.style.color = "#1e40af";
-      statusEl.textContent = "Wiping test data. Please wait...";
-    }
-
-    try {
-      const res = await fetch("/api/admin/reset-launch-data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": "{{ csrf_token }}"
-        },
-        body: JSON.stringify({
-          admin_password: pwd,
-          wipe_riders: true,
-          wipe_customers: true,
-          wipe_bookings: true
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Reset failed.");
-
-      if (statusEl) {
-        statusEl.style.background = "#ecfdf5";
-        statusEl.style.color = "#065f46";
-        statusEl.textContent = "✅ " + data.message;
-      }
-      alert("✅ " + data.message + "\n\nPage will now refresh.");
-      window.location.reload();
-    } catch (err) {
-      if (statusEl) {
-        statusEl.style.background = "#fef2f2";
-        statusEl.style.color = "#991b1b";
-        statusEl.textContent = "❌ " + err.message;
-      }
-      alert("❌ Error: " + err.message);
-    }
-  };
 
   // Google Drive Guide Modal Handlers
   window.openGdriveGuideModal = function() {
@@ -1308,9 +1361,9 @@
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.style.opacity = "0.75";
-    btn.innerHTML = "<span>⏳</span> Connecting to Google Drive...";
+    btn.innerHTML = "<span>⏳</span> Naga-konektar sa Google Drive...";
     statusEl.className = "alert-warning";
-    statusEl.textContent = "Preparing database snapshot for Google Drive...";
+    statusEl.textContent = "Naga-andam sa database snapshot para sa Google Drive...";
     statusEl.classList.remove("hidden");
 
     try {
@@ -1330,24 +1383,13 @@
 
       if (serverData && serverData.configured && serverData.success) {
         statusEl.className = "alert-success";
-        statusEl.textContent = `✅ ${serverData.message || 'Successfully saved to Google Drive!'} `;
-        if (serverData.file_url && /^https?:\/\//i.test(String(serverData.file_url))) {
-          const br = document.createElement("br");
-          const link = document.createElement("a");
-          link.href = String(serverData.file_url);
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.style.cssText = "color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;";
-          link.textContent = "🔗 Open File in Google Drive →";
-          statusEl.appendChild(br);
-          statusEl.appendChild(link);
-        }
+        statusEl.innerHTML = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} <br><a href="${serverData.file_url}" target="_blank" style="color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;">🔗 Ablihi ang File sa Google Drive &rarr;</a>`;
         return;
       }
 
       // 2. Fetch the backup file blob for mobile share or direct upload
       const backupBlobRes = await fetch("/api/admin/backup");
-      if (!backupBlobRes.ok) throw new Error("Unable to download backup from server.");
+      if (!backupBlobRes.ok) throw new Error("Dili ma-download ang backup gikan sa server.");
       const blob = await backupBlobRes.blob();
       const nowStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
       const filename = (serverData && serverData.filename) || `ccrc_backup_${nowStr}.json`;
@@ -1356,7 +1398,7 @@
       // 3. Android Mobile: Web Share API (Save to Drive option)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         statusEl.className = "alert-warning";
-        statusEl.textContent = "📱 Opening Android Share Sheet... Select 'Google Drive' / 'Save to Drive'.";
+        statusEl.textContent = "📱 Gina-abli ang Android Share Sheet... Pilia ang 'Google Drive' / 'Save to Drive'.";
         try {
           await navigator.share({
             title: "Camiguin Centric Riders Club - Backup",
@@ -1364,12 +1406,12 @@
             files: [file]
           });
           statusEl.className = "alert-success";
-          statusEl.textContent = "✅ Successfully shared / saved to Google Drive!";
+          statusEl.textContent = "✅ Malampusong na-share / na-save sa Google Drive!";
           return;
         } catch (shareErr) {
           if (shareErr.name === "AbortError") {
             statusEl.className = "alert-warning";
-            statusEl.textContent = "Share dialog canceled. The backup file was still downloaded.";
+            statusEl.textContent = "Gikanselar ang share dialog. Na-save gihapon ang backup file.";
           }
         }
       }
@@ -1389,17 +1431,9 @@
       window.open("https://drive.google.com/drive/my-drive", "_blank");
 
       statusEl.className = "alert-success";
-      statusEl.innerHTML = "";
-      const msgSpan = document.createElement("span");
-      msgSpan.textContent = `📥 Downloaded ${filename} and opened Google Drive in a new tab! Just drag & drop or upload it to your Google Drive.`;
-      statusEl.appendChild(msgSpan);
-      statusEl.appendChild(document.createElement("br"));
-      const guideLink = document.createElement("a");
-      guideLink.href = "javascript:void(0)";
-      guideLink.style.cssText = "color:#0284c7;font-weight:600;font-size:0.85em;";
-      guideLink.textContent = "Want 1-click Automatic Cloud Sync? Set up Webhook →";
-      guideLink.onclick = () => openGdriveGuideModal();
-      statusEl.appendChild(guideLink);
+      statusEl.innerHTML = `📥 Na-download ang <strong>${filename}</strong> ug naablihan ang <strong>Google Drive</strong> sa bag-ong tab!<br>
+      I-drag &amp; drop o i-upload lang kini ngadto sa imong Google Drive.<br>
+      <small class="text-muted"><a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;">Gusto ka'g 1-click Awtomatikong Cloud Sync? I-set up ang Webhook &rarr;</a></small>`;
 
     } catch (err) {
       statusEl.className = "alert-error";
@@ -1411,376 +1445,10 @@
     }
   };
 
-  // Admin Transfer Booking to Rider Handlers
-  let adminTransferState = null;
-
-  function escapeAdminHtml(str) {
-    if (!str) return "";
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  // Add event listener directly to button in addition to inline onclick
+  const gdriveBtn = document.getElementById("gdrive-backup-btn");
+  if (gdriveBtn) {
+    gdriveBtn.addEventListener("click", window.backupToGoogleDrive);
   }
-
-  function isAdminFutureScheduled(status, scheduledAt) {
-    if (!scheduledAt || status === "in_progress") return false;
-    try {
-      const schedMs = new Date(scheduledAt).getTime();
-      if (!Number.isFinite(schedMs)) return false;
-      return (schedMs - Date.now()) / 60000 > 30;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  window.closeAdminTransferModal = function() {
-    const modal = document.getElementById("admin-transfer-modal");
-    if (modal) {
-      modal.style.display = "none";
-      modal.classList.add("hidden");
-    }
-    adminTransferState = null;
-  };
-
-  async function loadAdminTransferRiders() {
-    const listEl = document.getElementById("admin-transfer-riders-list");
-    if (!listEl || !adminTransferState) return;
-    listEl.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">Loading online riders...</div>`;
-    try {
-      const res = await fetch("/api/rider/co-riders");
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Unable to fetch online riders.");
-
-      const currentRid = Number(adminTransferState.riderId || 0);
-      const allowBusy = isAdminFutureScheduled(adminTransferState.status, adminTransferState.scheduledAt);
-      const candidates = (Array.isArray(data.co_riders) ? data.co_riders : [])
-        .filter((r) => !currentRid || Number(r.id) !== currentRid)
-        .sort((a, b) => Number(Boolean(a.has_active_job)) - Number(Boolean(b.has_active_job)));
-
-      if (candidates.length === 0) {
-        listEl.innerHTML = `<div class="empty-state" style="padding:12px;font-size:0.84rem;">No other online riders found right now. Use Option 2 to Re-Broadcast to all online riders.</div>`;
-        return;
-      }
-
-      listEl.innerHTML = candidates.map((r) => {
-        const isBusy = Boolean(r.has_active_job);
-        const isDisabled = isBusy && !allowBusy;
-        const badge = isBusy
-          ? `<span class="badge badge-warning" style="font-size:0.7rem;padding:2px 6px;">Busy</span>`
-          : `<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Available</span>`;
-        return `
-          <div class="transfer-corider-option ${isDisabled ? "is-busy" : ""}">
-            <div style="min-width:0;flex:1;">
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <strong style="font-size:0.88rem;color:#0f172a;">${escapeAdminHtml(r.name)}</strong>
-                ${badge}
-              </div>
-              <div class="text-muted" style="font-size:0.76rem;margin-top:2px;">
-                🏍️ ${escapeAdminHtml(r.bike_model)} (${escapeAdminHtml(r.plate_number)}) &bull; 📍 ${escapeAdminHtml(r.municipality || "Camiguin")}
-              </div>
-            </div>
-            <button
-              type="button"
-              class="btn btn-sm ${isDisabled ? "btn-outline" : "btn-primary"} admin-exec-transfer-btn"
-              data-rider-id="${r.id}"
-              data-can-transfer="${isDisabled ? "0" : "1"}"
-              ${isDisabled ? "disabled" : ""}
-              style="white-space:nowrap;"
-            >${isDisabled ? "Busy" : "Transfer Now"}</button>
-          </div>
-        `;
-      }).join("");
-    } catch (err) {
-      listEl.innerHTML = `<div class="text-muted" style="font-size:0.84rem;text-align:center;padding:12px;">${escapeAdminHtml(err.message || "Error loading riders.")}</div>`;
-    }
-  }
-
-  async function executeAdminBookingTransfer(targetRiderId) {
-    if (!adminTransferState) return;
-    const errEl = document.getElementById("admin-transfer-error");
-    const rebroadcastBtn = document.getElementById("admin-transfer-rebroadcast-btn");
-    const listEl = document.getElementById("admin-transfer-riders-list");
-    if (errEl) {
-      errEl.textContent = "";
-      errEl.classList.add("hidden");
-    }
-
-    const reason = document.getElementById("admin-transfer-reason")?.value || "Club dispatch reassignment";
-    const note = document.getElementById("admin-transfer-note")?.value.trim() || "";
-    const payload = { reason, note };
-    if (targetRiderId) payload.target_rider_id = Number(targetRiderId);
-
-    const origBtnText = rebroadcastBtn ? rebroadcastBtn.textContent : "";
-    if (rebroadcastBtn) {
-      rebroadcastBtn.disabled = true;
-      if (!targetRiderId) rebroadcastBtn.textContent = "Re-broadcasting...";
-    }
-    const execBtns = listEl
-      ? Array.from(listEl.querySelectorAll(".admin-exec-transfer-btn[data-can-transfer='1']"))
-      : [];
-    execBtns.forEach((b) => {
-      b.disabled = true;
-      if (targetRiderId && Number(b.getAttribute("data-rider-id")) === Number(targetRiderId)) {
-        b.textContent = "Transferring...";
-      }
-    });
-
-    try {
-      const res = await fetch(`/api/bookings/${adminTransferState.bookingId}/transfer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to transfer booking.");
-      }
-      closeAdminTransferModal();
-      alert("✅ " + (data.message || "Booking transferred successfully!"));
-      window.location.reload();
-    } catch (err) {
-      if (errEl) {
-        errEl.textContent = err.message || "Failed to transfer booking.";
-        errEl.classList.remove("hidden");
-      } else {
-        alert(err.message || "Failed to transfer booking.");
-      }
-      loadAdminTransferRiders();
-    } finally {
-      if (rebroadcastBtn) {
-        rebroadcastBtn.disabled = false;
-        rebroadcastBtn.textContent = origBtnText || "📡 Re-Broadcast to All Online Riders (Urgent)";
-      }
-      execBtns.forEach((b) => {
-        b.disabled = false;
-        b.textContent = "Transfer Now";
-      });
-    }
-  }
-
-  document.addEventListener("click", (e) => {
-    const openBtn = e.target.closest(".admin-open-transfer-btn");
-    if (openBtn) {
-      adminTransferState = {
-        bookingId: Number(openBtn.dataset.bookingId),
-        bookingCode: openBtn.dataset.bookingCode || "",
-        riderId: openBtn.dataset.riderId ? Number(openBtn.dataset.riderId) : null,
-        riderName: openBtn.dataset.riderName || "Unassigned",
-        dropoff: openBtn.dataset.dropoff || "",
-        fare: openBtn.dataset.fare || "0.00",
-        status: openBtn.dataset.status || "",
-        scheduledAt: openBtn.dataset.scheduledAt || "",
-      };
-      const sub = document.getElementById("admin-transfer-subtitle");
-      if (sub) {
-        sub.textContent = `${adminTransferState.bookingCode} • Current: ${adminTransferState.riderName} • → ${adminTransferState.dropoff} • ₱${adminTransferState.fare}`;
-      }
-      const noteEl = document.getElementById("admin-transfer-note");
-      if (noteEl) noteEl.value = "";
-      const errEl = document.getElementById("admin-transfer-error");
-      if (errEl) {
-        errEl.textContent = "";
-        errEl.classList.add("hidden");
-      }
-      const modal = document.getElementById("admin-transfer-modal");
-      if (modal) {
-        modal.style.display = "flex";
-        modal.classList.remove("hidden");
-      }
-      loadAdminTransferRiders();
-      return;
-    }
-
-    const execBtn = e.target.closest(".admin-exec-transfer-btn");
-    if (execBtn && !execBtn.disabled) {
-      const targetId = execBtn.getAttribute("data-rider-id");
-      if (targetId) executeAdminBookingTransfer(targetId);
-      return;
-    }
-
-    if (e.target.id === "admin-transfer-modal") {
-      closeAdminTransferModal();
-    }
-  });
-
-  document.getElementById("admin-close-transfer-btn")?.addEventListener("click", closeAdminTransferModal);
-  document.getElementById("admin-refresh-coriders-btn")?.addEventListener("click", loadAdminTransferRiders);
-  document.getElementById("admin-transfer-rebroadcast-btn")?.addEventListener("click", () => executeAdminBookingTransfer(null));
-
-  // Admin Live Club Advisory Banner Controls
-  const CCRC_ADVISORY_META = {
-    ferry: { icon: "⛴️", label: "Port / Ferry Advisory" },
-    weather: { icon: "🌧️", label: "Weather Advisory" },
-    night_fare: { icon: "🌙", label: "Night-Fare Advisory" },
-    promo: { icon: "🎉", label: "Club Announcement" },
-    urgent: { icon: "🚨", label: "Urgent Traffic / Road Alert" },
-    info: { icon: "📢", label: "Club Advisory" },
-  };
-
-  const CCRC_ADVISORY_PRESETS = {
-    benoni: {
-      category: "ferry",
-      audience: "all",
-      duration_hours: "4",
-      title: "Benoni Port Ferry Arrival — Verified CCRC Riders Standing By!",
-      message: "New RoRo / FastCraft passengers arriving at Benoni Port. Book through the app now for fast, fair-rate island pickup by verified CCRC riders.",
-    },
-    balbagon: {
-      category: "ferry",
-      audience: "all",
-      duration_hours: "4",
-      title: "Balbagon Port Arrival — Book Your Ride Now!",
-      message: "Ferry docking at Balbagon Port (Mambajao). Verified CCRC riders are online nearby for direct pickup to resorts, hotels, and town centers.",
-    },
-    weather: {
-      category: "weather",
-      audience: "all",
-      duration_hours: "8",
-      title: "Camiguin Weather & Road Safety Advisory",
-      message: "Rainy weather reported in parts of Camiguin. Our riders are driving safely with raincoats — please allow a few extra minutes for pickup.",
-    },
-    night_fare: {
-      category: "night_fare",
-      audience: "all",
-      duration_hours: "8",
-      title: "Night Operations & Standard Fair Tariff Advisory",
-      message: "Nighttime island dispatch is active! Standard transparent CCRC night rates apply. Always book in-app for verified riders and live GPS tracking.",
-    },
-  };
-
-  window.updateAdminAdvisoryPreview = function() {
-    const cat = document.getElementById("advisory-category")?.value || "info";
-    const title = (document.getElementById("advisory-title")?.value || "").trim();
-    const msg = (document.getElementById("advisory-message")?.value || "").trim();
-    const meta = CCRC_ADVISORY_META[cat] || CCRC_ADVISORY_META.info;
-    const box = document.getElementById("admin-advisory-preview");
-    if (box) {
-      box.className = `ccrc-advisory-banner is-${cat} ccrc-advisory-preview-box`;
-    }
-    const iconEl = document.getElementById("admin-adv-prev-icon");
-    const catEl = document.getElementById("admin-adv-prev-cat");
-    const titleEl = document.getElementById("admin-adv-prev-title");
-    const msgEl = document.getElementById("admin-adv-prev-msg");
-    if (iconEl) iconEl.textContent = meta.icon;
-    if (catEl) catEl.textContent = meta.label;
-    if (titleEl) titleEl.textContent = title || "Select a Quick Preset or type your advisory headline above...";
-    if (msgEl) msgEl.textContent = msg || "Passengers and riders will see this banner live on the homepage and Rider Hub.";
-  };
-
-  window.applyAdvisoryPreset = function(presetKey) {
-    const preset = CCRC_ADVISORY_PRESETS[presetKey];
-    if (!preset) return;
-    const catEl = document.getElementById("advisory-category");
-    const audEl = document.getElementById("advisory-audience");
-    const durEl = document.getElementById("advisory-duration");
-    const titleEl = document.getElementById("advisory-title");
-    const msgEl = document.getElementById("advisory-message");
-    if (catEl) catEl.value = preset.category;
-    if (audEl) audEl.value = preset.audience;
-    if (durEl) durEl.value = preset.duration_hours;
-    if (titleEl) titleEl.value = preset.title;
-    if (msgEl) msgEl.value = preset.message;
-    updateAdminAdvisoryPreview();
-  };
-
-  function renderAdminAdvisoryStatus(advisory) {
-    const badge = document.getElementById("admin-advisory-live-badge");
-    const updatedEl = document.getElementById("admin-advisory-updated-text");
-    if (badge && advisory) {
-      badge.className = "badge " + (advisory.is_active ? "ccrc-adv-status-live" : (advisory.is_expired ? "ccrc-adv-status-expired" : "ccrc-adv-status-off"));
-      badge.textContent = advisory.is_active ? "🟢 LIVE ON SITE" : (advisory.is_expired ? "⏱️ EXPIRED" : "⚪ OFF / HIDDEN");
-    }
-    if (updatedEl && advisory) {
-      let txt = advisory.updated_label ? `Last updated: ${advisory.updated_label}` : "";
-      if (advisory.is_active && advisory.expires_label) {
-        txt += (txt ? " • " : "") + `Auto-hides: ${advisory.expires_label}`;
-      }
-      updatedEl.textContent = txt;
-    }
-  }
-
-  function showAdvisoryFeedback(text, isError) {
-    const fb = document.getElementById("advisory-save-feedback");
-    if (!fb) return;
-    fb.textContent = text;
-    fb.className = isError ? "alert-danger" : "alert-success";
-    fb.classList.remove("hidden");
-  }
-
-  document.getElementById("admin-advisory-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById("save-advisory-btn");
-    const origText = btn ? btn.textContent : "";
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Publishing...";
-    }
-    try {
-      const payload = {
-        enabled: true,
-        category: document.getElementById("advisory-category")?.value || "info",
-        audience: document.getElementById("advisory-audience")?.value || "all",
-        duration_hours: Number(document.getElementById("advisory-duration")?.value || 0),
-        title: (document.getElementById("advisory-title")?.value || "").trim(),
-        message: (document.getElementById("advisory-message")?.value || "").trim(),
-      };
-      const res = await fetch("/api/admin/advisory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to publish live advisory.");
-      }
-      renderAdminAdvisoryStatus(data.advisory);
-      showAdvisoryFeedback("✅ " + (data.message || "Live Club Advisory Banner is now LIVE!"), false);
-    } catch (err) {
-      showAdvisoryFeedback("❌ " + (err.message || "Failed to publish live advisory."), true);
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = origText || "📢 Publish Live Advisory";
-      }
-    }
-  });
-
-  window.turnOffAdminAdvisory = async function() {
-    const btn = document.getElementById("turn-off-advisory-btn");
-    const origText = btn ? btn.textContent : "";
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Turning off...";
-    }
-    try {
-      const payload = {
-        enabled: false,
-        category: document.getElementById("advisory-category")?.value || "info",
-        audience: document.getElementById("advisory-audience")?.value || "all",
-        title: (document.getElementById("advisory-title")?.value || "").trim(),
-        message: (document.getElementById("advisory-message")?.value || "").trim(),
-      };
-      const res = await fetch("/api/admin/advisory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to turn off banner.");
-      }
-      renderAdminAdvisoryStatus(data.advisory);
-      showAdvisoryFeedback("🔕 Live Club Advisory Banner is now hidden from passengers and riders.", false);
-    } catch (err) {
-      showAdvisoryFeedback("❌ " + (err.message || "Failed to turn off banner."), true);
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = origText || "🔕 Turn Off Banner";
-      }
-    }
-  };
 </script>
 {% endblock %}
