@@ -1,0 +1,741 @@
+{% extends "base.html" %}
+
+{% block title %}Rider Hub & Dispatch — {{ club.name }}{% endblock %}
+
+{% block head %}
+<style>
+  /* Mobile-first Rider Hub Styles */
+  :root {
+    --ccrc-navy: #051127;
+    --ccrc-card-navy: #0b1936;
+    --ccrc-orange: #f97316;
+    --ccrc-orange-dark: #ea580c;
+    --ccrc-green: #22c55e;
+    --ccrc-red: #ef4444;
+  }
+
+  body {
+    background: #060e1e;
+    color: #f1f5f9;
+  }
+
+  .rider-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 12px 70px 12px;
+  }
+
+  /* Sticky Top Bar */
+  .rider-top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    background: rgba(5, 17, 39, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin: -12px -12px 14px -12px;
+    border-bottom: 1.5px solid rgba(249, 115, 22, 0.35);
+  }
+
+  .rider-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rider-nav-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ccrc-orange);
+    object-fit: cover;
+    background: #0f172a;
+  }
+
+  .rider-nav-titles {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rider-nav-title {
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    line-height: 1.1;
+  }
+
+  .rider-nav-sub {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #94a3b8;
+  }
+
+  .status-dot-indicator {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 4px;
+    background: #94a3b8;
+  }
+  .status-dot-indicator.online {
+    background: var(--ccrc-green);
+    box-shadow: 0 0 6px var(--ccrc-green);
+  }
+
+  .rider-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Big Duty Toggle Button */
+  .duty-switch-btn {
+    border: none;
+    border-radius: 9999px;
+    padding: 7px 15px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+  }
+
+  .duty-switch-btn.offline {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+  }
+
+  .duty-switch-btn.online {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+    border: 1px solid #86efac;
+  }
+
+  /* Profile Avatar Pill */
+  .rider-avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--ccrc-orange);
+    padding: 0;
+    background: #0f172a;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rider-avatar-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Quick Thumb Action Dock */
+  .rider-thumb-dock {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .dock-card-btn {
+    background: #0b1936;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 9px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .dock-card-btn:active {
+    transform: scale(0.96);
+  }
+
+  .dock-card-btn.dock-id {
+    border-color: rgba(249, 115, 22, 0.6);
+    background: linear-gradient(180deg, #162447 0%, #0b1936 100%);
+  }
+
+  .dock-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .dock-text {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    white-space: nowrap;
+  }
+
+  /* Modern Card Box */
+  .rider-card {
+    background: #0b1936;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .card-header-clean {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .card-title-clean {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+  }
+
+  /* Active Job Card Highlight */
+  .active-job-highlight {
+    border: 2px solid var(--ccrc-orange);
+    background: linear-gradient(180deg, #10224a 0%, #08142c 100%);
+    box-shadow: 0 10px 28px rgba(249, 115, 22, 0.2);
+  }
+
+  .route-strip {
+    background: rgba(15, 23, 42, 0.65);
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid #1e293b;
+    margin: 10px 0;
+  }
+
+  .route-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .route-divider-line {
+    width: 2px;
+    height: 14px;
+    background: #334155;
+    margin: 2px 0 2px 7px;
+  }
+
+  .job-actions-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  /* Available Broadcast Jobs */
+  .job-item {
+    background: #0f224a;
+    border: 1px solid #1e3a8a;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .btn-accept-job {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    width: 100%;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+    margin-top: 8px;
+  }
+
+  /* Clean Modal Bottom Sheet for Profile / Single Logout */
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sheet-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .bottom-sheet {
+    background: #0b1936;
+    border-top: 2px solid var(--ccrc-orange);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px 16px 30px 16px;
+    box-sizing: border-box;
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sheet-backdrop.active .bottom-sheet {
+    transform: translateY(0);
+  }
+
+  .sheet-close-bar {
+    width: 40px;
+    height: 4px;
+    background: #334155;
+    border-radius: 9999px;
+    margin: 0 auto 16px auto;
+  }
+
+  .sheet-header-clean {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .sheet-avatar-wrap {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    border: 3px solid var(--ccrc-orange);
+    overflow: hidden;
+    margin: 0 auto 10px auto;
+    background: #060e1e;
+  }
+
+  .sheet-avatar-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .single-logout-btn {
+    width: 100%;
+    background: #ef4444;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    padding: 13px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+    margin-top: 20px;
+  }
+
+  /* Fullscreen Official Club ID Modal (ef66b47) */
+  .ccrc-id-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(8px);
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
+  .ccrc-id-modal-card {
+    background: #ffffff;
+    color: #0f172a;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+  }
+
+  .ccrc-id-modal-actions {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: #0f172a;
+  }
+
+  .ccrc-id-action-btn {
+    flex: 1;
+    background: var(--ccrc-orange);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.8rem;
+    padding: 9px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .ccrc-id-action-close {
+    background: #334155;
+    color: #f1f5f9;
+    font-weight: 800;
+    font-size: 0.8rem;
+    padding: 9px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Hide helper */
+  .hidden {
+    display: none !important;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rider-container">
+
+  <!-- ========================================================================= -->
+  <!-- 1. RIDER AUTHENTICATION CARD (When NOT Logged In)                         -->
+  <!-- ========================================================================= -->
+  <div id="rider-auth-section" class="rider-card text-center {% if session.get('rider_id') %}hidden{% endif %}">
+    <img src="/static/icons/logo.png" alt="CCRC" style="width: 72px; height: 72px; border-radius: 50%; border: 2.5px solid #f97316; margin-bottom: 10px;">
+    <h2 style="margin: 0 0 4px; font-size: 1.25rem; font-weight: 900; color: #ffffff;">RIDER DISPATCH HUB</h2>
+    <p style="margin: 0 0 16px; font-size: 0.75rem; color: #94a3b8;">Camiguin Centric Riders Club &bull; Official Partner Login</p>
+
+    <div style="display: flex; background: #060e1e; border-radius: 10px; padding: 3px; margin-bottom: 16px; border: 1px solid #1e293b;">
+      <button type="button" id="tab-login-btn" class="btn btn-sm" style="flex:1; background:#f97316; color:#fff; font-weight:800; border-radius:8px;">Sign In</button>
+      <button type="button" id="tab-register-btn" class="btn btn-sm" style="flex:1; background:transparent; color:#94a3b8; font-weight:700;">Mag-Apply</button>
+    </div>
+
+    <!-- Sign In Form -->
+    <form id="rider-login-form">
+      <div style="text-align: left; margin-bottom: 12px;">
+        <label for="login-phone" style="font-size: 0.75rem; font-weight: 700; color: #cbd5e1;">Mobile Phone Number o Email</label>
+        <input type="text" id="login-phone" class="form-control" placeholder="0917xxxxxxx o juan@gmail.com" style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:10px; padding:10px;" required>
+      </div>
+
+      <div style="text-align: left; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label for="login-password" style="font-size: 0.75rem; font-weight: 700; color: #cbd5e1; margin:0;">Password</label>
+          <button type="button" id="switch-to-forgot-password-btn" style="background:none; border:none; color:#f97316; font-size:0.7rem; font-weight:700; cursor:pointer; padding:0;">Nakalimot sa Password?</button>
+        </div>
+        <input type="password" id="login-password" class="form-control" placeholder="Imong Sekretong Password" style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:10px; padding:10px;" required>
+      </div>
+
+      <div id="login-error-msg" class="alert alert-danger hidden" style="font-size:0.8rem; padding:8px; margin-bottom:12px; border-radius:8px; background:#450a0a; color:#fca5a5; border:1px solid #ef4444;"></div>
+
+      <button type="submit" id="rider-login-btn" class="btn btn-primary" style="width:100%; background:linear-gradient(135deg, #f97316, #ea580c); font-weight:800; padding:12px; border-radius:10px; border:none; font-size:0.95rem;">
+        Log In as Rider &rarr;
+      </button>
+    </form>
+
+    <!-- Forgot Password Box -->
+    <div id="rider-forgot-box" class="hidden" style="margin-top: 14px; text-align: left; background:#060e1e; padding:12px; border-radius:10px; border:1px solid #334155;">
+      <h4 style="margin:0 0 6px; font-size:0.85rem; color:#f97316;">Reset Rider Password</h4>
+      <p style="font-size:0.72rem; color:#94a3b8; margin-bottom:10px;">I-verify ang imong Plate Number o Driver's License aron maka-set ug bag-ong password.</p>
+      <input type="text" id="forgot-phone" class="form-control" placeholder="Registered Phone (0917...)" style="margin-bottom:8px; background:#0b1936; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.8rem;">
+      <input type="text" id="forgot-identifier" class="form-control" placeholder="Plate No. o License No." style="margin-bottom:8px; background:#0b1936; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.8rem;">
+      <input type="password" id="forgot-new-pass" class="form-control" placeholder="Bag-ong Password (min 6 chars)" style="margin-bottom:10px; background:#0b1936; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.8rem;">
+      <button type="button" id="submit-forgot-pass-btn" class="btn btn-sm" style="width:100%; background:#f97316; color:#fff; font-weight:800; border-radius:8px; padding:8px;">I-save ang Bag-ong Password</button>
+    </div>
+
+    <!-- Registration Form -->
+    <form id="rider-register-form" class="hidden" style="text-align: left; margin-top: 10px;">
+      <div style="margin-bottom: 8px;">
+        <label style="font-size:0.75rem; color:#cbd5e1;">Tibuok Pangalan</label>
+        <input type="text" id="reg-name" class="form-control" placeholder="Juan dela Cruz" required style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem;">
+      </div>
+      <div style="margin-bottom: 8px;">
+        <label style="font-size:0.75rem; color:#cbd5e1;">Mobile Phone Number</label>
+        <input type="text" id="reg-phone" class="form-control" placeholder="0917xxxxxxx" required style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem;">
+      </div>
+      <div style="margin-bottom: 8px;">
+        <label style="font-size:0.75rem; color:#cbd5e1;">Email Address (Optional)</label>
+        <input type="email" id="reg-email" class="form-control" placeholder="juan@gmail.com" style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem;">
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+        <div>
+          <label style="font-size:0.75rem; color:#cbd5e1;">Modelo sa Motor</label>
+          <input type="text" id="reg-bike" class="form-control" placeholder="Click 125 / Mio" required style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; color:#cbd5e1;">Plate Number</label>
+          <input type="text" id="reg-plate" class="form-control" placeholder="ABC-1234" required style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem; text-transform:uppercase;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+        <div>
+          <label style="font-size:0.75rem; color:#cbd5e1;">Driver's License No.</label>
+          <input type="text" id="reg-license" class="form-control" placeholder="K01-xx-xxxxxx" required style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem; text-transform:uppercase;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; color:#cbd5e1;">Munisipyo</label>
+          <select id="reg-muni" class="form-control" style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem;">
+            <option value="Mambajao" selected>Mambajao</option>
+            <option value="Mahinog">Mahinog</option>
+            <option value="Guinsiliban">Guinsiliban</option>
+            <option value="Sagay">Sagay</option>
+            <option value="Catarman">Catarman</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size:0.75rem; color:#cbd5e1;">Password</label>
+        <input type="password" id="reg-password" class="form-control" placeholder="Labing menos 6 ka characters" required style="background:#060e1e; color:#fff; border:1px solid #334155; border-radius:8px; padding:8px; font-size:0.85rem;">
+      </div>
+      <button type="submit" id="rider-register-btn" class="btn btn-primary" style="width:100%; background:linear-gradient(135deg, #f97316, #ea580c); font-weight:800; padding:11px; border-radius:10px; border:none;">
+        I-pasa ang Rider Application &rarr;
+      </button>
+    </form>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- 2. RIDER DASHBOARD & DISPATCH HUB (When Logged In)                        -->
+  <!-- ========================================================================= -->
+  <div id="rider-dashboard-section" class="{% if not session.get('rider_id') %}hidden{% endif %}">
+
+    <!-- STICKY TOP NAV: Limpyo, walay duplicate logout, dako ang Duty Switch -->
+    <header class="rider-top-nav">
+      <div class="rider-nav-brand">
+        <img src="/static/icons/logo.png" alt="CCRC" class="rider-nav-logo">
+        <div class="rider-nav-titles">
+          <span class="rider-nav-title">CCRC RIDER HUB</span>
+          <span class="rider-nav-sub">
+            <span id="rider-status-dot" class="status-dot-indicator offline"></span>
+            <span id="rider-online-status-indicator">Offline</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="rider-nav-actions">
+        <!-- 1-TAP BIG TOGGLE DUTY (ONLINE / OFFLINE) -->
+        <button id="rider-toggle-online-btn" class="duty-switch-btn offline" type="button">
+          <span id="duty-icon">⚪</span> <span id="duty-text">OFFLINE</span>
+        </button>
+
+        <!-- PROFILE TRIGGER: I-tap aron maablihan ang Account Modal diin naa ang nag-inusarang Log Out -->
+        <button id="rider-profile-menu-trigger" class="rider-avatar-btn" type="button" title="View Profile & Logout">
+          <img id="rider-top-avatar" src="/static/icons/icon-192.png" alt="Profile">
+        </button>
+      </div>
+    </header>
+
+    <!-- THUMB-FRIENDLY QUICK ACTION DOCK (4 Buttons) -->
+    <section class="rider-thumb-dock">
+      <button type="button" id="open-club-id-btn" class="dock-card-btn dock-id">
+        <span class="dock-icon">🪪</span>
+        <span class="dock-text">CCRC ID</span>
+      </button>
+      <button type="button" id="open-earnings-btn" class="dock-card-btn">
+        <span class="dock-icon">💰</span>
+        <span class="dock-text">Earnings</span>
+      </button>
+      <button type="button" id="open-reports-btn" class="dock-card-btn">
+        <span class="dock-icon">📊</span>
+        <span class="dock-text">Reports</span>
+      </button>
+      <button type="button" id="open-coriders-btn" class="dock-card-btn">
+        <span class="dock-icon">🛵</span>
+        <span class="dock-text">Co-Riders</span>
+      </button>
+    </section>
+
+    <!-- ACTIVE ONGOING TRIP / ASSIGNED JOB -->
+    <section id="rider-active-job-section" class="rider-card active-job-highlight hidden">
+      <div class="card-header-clean">
+        <h3 class="card-title-clean">
+          <span>⚡</span> <span>ONGOING ASSIGNED TRIP</span>
+        </h3>
+        <span id="active-job-service-badge" class="badge" style="background:#f97316; color:#fff; font-weight:800; font-size:0.7rem; padding:3px 8px; border-radius:6px;">PAHATUD</span>
+      </div>
+
+      <div id="active-job-details">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <strong id="active-job-customer-name" style="font-size:1rem; color:#fff;">Maria Santos</strong>
+          <a id="active-job-call-btn" href="tel:" style="background:#22c55e; color:#fff; padding:4px 10px; border-radius:6px; text-decoration:none; font-size:0.75rem; font-weight:800;">📞 Tawagi</a>
+        </div>
+
+        <div class="route-strip">
+          <div class="route-row">
+            <span style="color:#22c55e;">🟢</span>
+            <div>
+              <span style="font-size:0.68rem; color:#94a3b8; display:block;">PICKUP</span>
+              <strong id="active-job-pickup">Mambajao Public Market</strong>
+            </div>
+          </div>
+          <div class="route-divider-line"></div>
+          <div class="route-row">
+            <span style="color:#f97316;">🏁</span>
+            <div>
+              <span style="font-size:0.68rem; color:#94a3b8; display:block;">DROPOFF</span>
+              <strong id="active-job-dropoff">Balbagon Port Terminal</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:8px;">
+          <span>Distansya: <strong id="active-job-km">3.2 km</strong></span>
+          <span>Plete: <strong id="active-job-fare" style="color:#f97316; font-size:1.1rem; font-family:monospace;">₱65.00</strong></span>
+        </div>
+
+        <!-- Job Action Buttons -->
+        <div class="job-actions-row">
+          <button type="button" id="active-job-chat-btn" class="btn" style="background:#0f224a; color:#f8fafc; border:1px solid #3b82f6; border-radius:10px; padding:10px; font-weight:700; font-size:0.85rem;">
+            💬 Chat Customer
+          </button>
+          <button type="button" id="active-job-receipt-btn" class="btn" style="background:#0f224a; color:#f8fafc; border:1px solid #10b981; border-radius:10px; padding:10px; font-weight:700; font-size:0.85rem;">
+            📷 Upload Resibo
+          </button>
+        </div>
+
+        <button type="button" id="active-job-status-btn" class="btn btn-block" style="margin-top:10px; width:100%; background:linear-gradient(135deg, #22c55e, #16a34a); color:#fff; font-weight:900; font-size:1rem; padding:13px; border-radius:10px; border:none; box-shadow:0 4px 15px rgba(34,197,94,0.35);">
+          ✓ Complete This Trip
+        </button>
+      </div>
+    </section>
+
+    <!-- AVAILABLE BROADCAST BOOKINGS FEED -->
+    <section class="rider-card">
+      <div class="card-header-clean">
+        <h3 class="card-title-clean">
+          <span>📢</span> <span>AVAILABLE TRIPS SA ISLA</span>
+        </h3>
+        <span id="jobs-count-badge" style="background:#ea580c; color:#fff; font-size:0.75rem; font-weight:900; padding:2px 8px; border-radius:9999px;">0</span>
+      </div>
+
+      <div id="available-jobs-list">
+        <!-- Empty Placeholder -->
+        <div id="no-jobs-placeholder" style="text-align:center; padding:24px 12px; color:#64748b;">
+          <span style="font-size:2rem; display:block; margin-bottom:6px;">📡</span>
+          <p style="margin:0; font-size:0.85rem;">Walay pending bookings karon. Siguroha nga naka-<strong>ONLINE</strong> ka aron makadawat og dispatch alert.</p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. RIDER PROFILE & ACCOUNT MODAL (Diri ang BUGTONG Log Out Button)       -->
+  <!-- ========================================================================= -->
+  <div id="rider-profile-sheet" class="sheet-backdrop">
+    <div class="bottom-sheet">
+      <div class="sheet-close-bar"></div>
+      
+      <div class="sheet-header-clean">
+        <h3 style="margin:0; font-size:1.1rem; color:#fff;">Rider Profile &amp; Settings</h3>
+        <button type="button" id="close-profile-sheet-btn" style="background:none; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="text-align:center; margin-bottom:16px;">
+        <div class="sheet-avatar-wrap">
+          <img id="profile-sheet-avatar" src="/static/icons/icon-192.png" alt="Rider">
+        </div>
+        <h2 id="profile-sheet-name" style="margin:0 0 2px; font-size:1.15rem; color:#fff;">Kuya Rider</h2>
+        <div id="profile-sheet-control-no" style="font-family:monospace; color:#f97316; font-weight:800; font-size:0.85rem;">CCRC-0000-R</div>
+      </div>
+
+      <div style="background:#060e1e; border-radius:12px; padding:12px; border:1px solid #1e293b; font-size:0.82rem; margin-bottom:16px; display:grid; gap:8px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#94a3b8;">Motorsiklo:</span>
+          <strong id="profile-sheet-bike">---</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#94a3b8;">Plate Number:</span>
+          <strong id="profile-sheet-plate" style="font-family:monospace;">---</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#94a3b8;">Driver's License:</span>
+          <strong id="profile-sheet-license" style="font-family:monospace;">---</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#94a3b8;">Munisipyo:</span>
+          <strong id="profile-sheet-muni">Mambajao, Camiguin</strong>
+        </div>
+      </div>
+
+      <!-- KINI ANG NAG-INUSARANG LOG OUT BUTTON PARA LIMPYO ANG HEADER -->
+      <button type="button" id="rider-logout-btn" class="single-logout-btn">
+        🚪 Log Out of Rider Hub
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. OFFICIAL DIGITAL CCRC CLUB ID MODAL (From Commit ef66b47)             -->
+  <!-- ========================================================================= -->
+  <div id="ccrc-id-modal" class="ccrc-id-modal hidden">
+    <div class="ccrc-id-modal-card">
+      <div style="background:linear-gradient(135deg, #051127, #0f172a); color:#fff; padding:12px; display:flex; align-items:center; gap:10px; border-bottom:2.5px solid #f97316;">
+        <img src="/static/icons/logo.png" style="width:34px; height:34px; border-radius:50%; border:1px solid #f97316;">
+        <div>
+          <h3 style="margin:0; font-size:0.85rem; font-weight:900; color:#fff;">CAMIGUIN CENTRIC RIDERS CLUB</h3>
+          <span style="font-size:0.6rem; color:#f97316; font-weight:700;">OFFICIAL VERIFIED RIDER ID</span>
+        </div>
+      </div>
+
+      <div style="padding:14px; text-align:center;">
+        <div style="width:72px; height:72px; border-radius:50%; border:2px solid #f97316; overflow:hidden; margin:0 auto 8px auto;">
+          <img id="oid-modal-avatar" src="/static/icons/icon-192.png" style="width:100%; height:100%; object-fit:cover;">
+        </div>
+        <h3 id="oid-modal-name" style="margin:0; font-size:1.05rem; text-transform:uppercase; color:#0f172a;">Rider Name</h3>
+        <div id="oid-modal-id-no" style="font-family:monospace; font-weight:800; color:#ea580c; font-size:0.9rem; margin-bottom:10px;">CCRC-0001-R</div>
+
+        <!-- Scannable Vector QR Code Frame -->
+        <div class="ccrc-id-qr-section" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:10px; margin-bottom:10px;">
+          <div class="ccrc-id-qr-frame" style="width:130px; height:130px; margin:0 auto 8px auto; background:#fff; padding:4px; border-radius:8px; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center;">
+            <img id="oid-qr-img" src="" alt="Official CCRC Rider Verification QR Code" class="ccrc-id-qr-img" style="width:100%; height:100%; object-fit:contain;">
+          </div>
+          <div class="ccrc-id-qr-copy">
+            <div class="ccrc-id-qr-title" style="font-weight:900; font-size:0.8rem; color:#0f172a;">Scan to Verify Rider</div>
+            <div class="ccrc-id-qr-hint" style="font-size:0.65rem; color:#64748b; margin-top:2px;">Tourists &amp; passengers can scan this QR with any phone camera to confirm official CCRC membership.</div>
+            <div class="ccrc-id-hotline-line" style="font-size:0.68rem; color:#0f172a; margin-top:4px;">Club Hotline: <strong id="oid-hotline">{{ club.hotline }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ccrc-id-modal-actions no-print">
+        <button type="button" id="oid-print-btn" class="btn btn-sm ccrc-id-action-btn">
+          🖨️ Print / Save ID
+        </button>
+        <button type="button" id="oid-copy-link-btn" class="btn btn-sm ccrc-id-action-btn">
+          🔗 Copy Verify Link
+        </button>
+        <button type="button" id="oid-close-btn" class="btn btn-sm ccrc-id-action-close">
+          ✕ Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/voice_call.js?v=1"></script>
+<script src="/static/js/rider.js?v=34"></script>
+{% endblock %}
