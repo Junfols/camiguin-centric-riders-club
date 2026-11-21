@@ -1029,6 +1029,22 @@
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
     if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
     if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
+    {
+      const custImg = document.getElementById("active-job-customer-avatar");
+      const custIcon = document.getElementById("active-job-customer-icon");
+      const custPhoto = typeof job.customer_avatar === "string" && job.customer_avatar.startsWith("/media/") ? job.customer_avatar : "";
+      if (custImg) {
+        if (custPhoto) {
+          custImg.src = custPhoto;
+          custImg.classList.remove("hidden");
+          if (custIcon) custIcon.classList.add("hidden");
+        } else {
+          custImg.removeAttribute("src");
+          custImg.classList.add("hidden");
+          if (custIcon) custIcon.classList.remove("hidden");
+        }
+      }
+    }
     const custBadgeEl = document.getElementById("active-job-customer-badge");
     if (custBadgeEl) {
       if (job.customer_verified) {
@@ -1692,7 +1708,7 @@
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;">
                 <div>
-                  <div class="text-muted" style="font-size:0.82rem;font-weight:600;">👤 ${escapeHtml(j.customer_name)}</div>
+                  <div class="text-muted" style="font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:6px;">${(typeof j.customer_avatar === "string" && j.customer_avatar.startsWith("/media/")) ? `<img src="${escapeHtml(j.customer_avatar)}" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:1.5px solid #fdba74;">` : "👤"} ${escapeHtml(j.customer_name)}</div>
                   ${j.customer_verified ? `
                     <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;margin-top:2px;">
                       🛡️ Verified Passenger ✓ ${j.customer_total_rides > 0 ? `(${j.customer_total_rides} completed)` : ''}
