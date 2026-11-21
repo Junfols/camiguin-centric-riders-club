@@ -85,6 +85,7 @@ from db import (
     create_review,
     get_rider_reviews,
     calculate_nearest_rider_eta,
+    is_hinterland_route,
     create_call_session,
     respond_to_call,
     get_latest_call_state,
@@ -427,12 +428,33 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         full_addr = f"{p_addr} {d_addr}".lower()
         hinterland_keywords = [
-            "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
-            "highland", "utopia", "binunsaran", "granelandia",
-            "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
-            "vulcan", "bukid", "mountain", "hinterland"
+            # Mambajao Uplands & Steep Routes
+            "phivolcs", "observatory", "volcano observatory", "quiboro", "quipasa",
+            "ardent", "esperanza", "tagdo", "timogsay", "timugsay", "cogon", "sibato",
+            "katobli", "kaolyong", "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
+            "highland", "utopia", "binunsaran", "nanaw", "granelandia", "itum", "volcano house",
+            "km 11", "hibok-hibok", "hibok hibok", "katibawasan", "sa-ay", "sa ay", "saay",
+            "upper pandan", "kanangkaan", "maubog", "pandayan", "litican", "upper balbagon",
+            "tinago", "upper lakas", "upper anito", "upper magting", "benhaan", "macao",
+            "bas-iao", "basiao", "upper yumbing", "upper naasag",
+            # Catarman Uplands & Steep Routes
+            "tuasan", "mainit", "santo nino", "santo niño", "sto. nino", "sto. niño", "sto nino", "sto niño",
+            "manduao", "mandawa", "bura", "soda water", "liloan", "licoan",
+            "vulcan", "walkway", "old volcano", "stations of the cross", "piyakong", "tres marias", "tresmarias",
+            # Mahinog Uplands & Steep Routes
+            "owakan", "puntod", "san isidro", "san miguel", "tubod", "tupsan pequeno", "tupsan pequeño",
+            # Sagay Uplands & Steep Routes
+            "binangawan", "mantalaga", "cuna", "cuña", "kital-is", "kitalis", "bacnit", "bugang", "bug-ang", "mayana", "upper sagay",
+            # Guinsiliban Uplands & Steep Routes
+            "butay", "cabuan", "upper cantaan", "ibabaw cantaan",
+            # General Upland / Steep Terms
+            "bukid", "mountain", "hinterland", "tungason", "upland", "steep"
         ]
-        is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
+        is_hinterland = (
+            bool(data.get("is_hinterland", False))
+            or any(k in full_addr for k in hinterland_keywords)
+            or is_hinterland_route(p_addr, d_addr, "", p_lat, p_lng, d_lat, d_lng)
+        )
 
         if (not p_lat or not p_lng) and p_addr:
             geo_p = geocode_camiguin_location(p_addr)
@@ -1083,12 +1105,33 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         full_addr = f"{pickup_address} {dropoff_address} {item_notes}".lower()
         hinterland_keywords = [
-            "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
-            "highland", "utopia", "binunsaran", "granelandia",
-            "itum", "katibawasan", "tuasan", "tres marias", "tresmarias",
-            "vulcan", "bukid", "mountain", "hinterland"
+            # Mambajao Uplands & Steep Routes
+            "phivolcs", "observatory", "volcano observatory", "quiboro", "quipasa",
+            "ardent", "esperanza", "tagdo", "timogsay", "timugsay", "cogon", "sibato",
+            "katobli", "kaolyong", "sorosoro", "sorosro", "soro'soro", "soro-soro", "soro soro",
+            "highland", "utopia", "binunsaran", "nanaw", "granelandia", "itum", "volcano house",
+            "km 11", "hibok-hibok", "hibok hibok", "katibawasan", "sa-ay", "sa ay", "saay",
+            "upper pandan", "kanangkaan", "maubog", "pandayan", "litican", "upper balbagon",
+            "tinago", "upper lakas", "upper anito", "upper magting", "benhaan", "macao",
+            "bas-iao", "basiao", "upper yumbing", "upper naasag",
+            # Catarman Uplands & Steep Routes
+            "tuasan", "mainit", "santo nino", "santo niño", "sto. nino", "sto. niño", "sto nino", "sto niño",
+            "manduao", "mandawa", "bura", "soda water", "liloan", "licoan",
+            "vulcan", "walkway", "old volcano", "stations of the cross", "piyakong", "tres marias", "tresmarias",
+            # Mahinog Uplands & Steep Routes
+            "owakan", "puntod", "san isidro", "san miguel", "tubod", "tupsan pequeno", "tupsan pequeño",
+            # Sagay Uplands & Steep Routes
+            "binangawan", "mantalaga", "cuna", "cuña", "kital-is", "kitalis", "bacnit", "bugang", "bug-ang", "mayana", "upper sagay",
+            # Guinsiliban Uplands & Steep Routes
+            "butay", "cabuan", "upper cantaan", "ibabaw cantaan",
+            # General Upland / Steep Terms
+            "bukid", "mountain", "hinterland", "tungason", "upland", "steep"
         ]
-        is_hinterland = bool(data.get("is_hinterland", False)) or any(k in full_addr for k in hinterland_keywords)
+        is_hinterland = (
+            bool(data.get("is_hinterland", False))
+            or any(k in full_addr for k in hinterland_keywords)
+            or is_hinterland_route(pickup_address, dropoff_address, item_notes, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+        )
 
         if is_hinterland and "hinterland" not in item_notes.lower() and "bukid" not in item_notes.lower():
             tag = "[🏔️ Hinterland / Bukid Route +₱30]"
@@ -1907,53 +1950,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"error": str(e)}), 400
         except Exception as e:
             return jsonify({"error": f"Failed to upload receipt: {str(e)}"}), 500
-
-    @app.post("/api/bookings/<int:booking_id>/purchase")
-    def set_booking_purchase_amount(booking_id: int):
-        """Rider enters the real amount paid for the items (e.g. lechon manok P275).
-        The customer sees it live; total to pay = delivery fare + purchase amount."""
-        conn = get_db()
-        booking = get_booking_by_id(conn, booking_id)
-        if not booking:
-            return jsonify({"error": "Booking not found."}), 404
-        rid = _rider_id_from_session()
-        if not (_admin_ok() or (rid and booking.get("rider_id") == rid)):
-            return jsonify({"error": "Only the assigned rider can enter the purchase amount."}), 403
-        if str(booking.get("service_type") or "").lower() in ("pahatud", "pakuha"):
-            return jsonify({"error": "Passenger rides have no purchase amount."}), 400
-        if booking.get("status") in ("completed", "cancelled"):
-            return jsonify({"error": "This trip is already closed."}), 400
-        limited = _throttle("purchase", _client_ip(), 60, 600)
-        if limited:
-            return limited
-
-        data = request.get_json(silent=True) or {}
-        try:
-            amount = round(float(data.get("amount")), 2)
-        except (TypeError, ValueError):
-            return jsonify({"error": "Please enter a valid amount."}), 400
-        if amount != amount or amount < 0 or amount > 100000:
-            return jsonify({"error": "Amount must be between 0 and 100,000."}), 400
-
-        previous = float(booking.get("purchase_amount") or 0)
-        fare = float(booking.get("fare_amount") or 0)
-        budget = float(booking.get("estimated_budget") or 0)
-        total_due = round(fare + amount, 2)
-
-        conn.execute("UPDATE bookings SET purchase_amount = ? WHERE id = ?", (amount, booking_id))
-        note = f"🧾 Pinalit nga gibayran sa rider: ₱{amount:,.2f} + Delivery fare ₱{fare:,.0f} = Total bayronon ₱{total_due:,.2f}"
-        if previous > 0 and abs(previous - amount) > 0.001:
-            note += f" (giusab gikan sa ₱{previous:,.2f})"
-        if budget > 0 and amount > budget:
-            note += f" ⚠️ Lapas sa budget nga ₱{budget:,.0f}"
-        add_booking_message(conn, booking_id, "system", "CCRC", note)
-        conn.commit()
-        return jsonify({
-            "success": True,
-            "purchase_amount": amount,
-            "fare_amount": fare,
-            "total_due": total_due,
-        })
 
     @app.post("/api/rider/location")
     def stream_rider_location():

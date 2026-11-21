@@ -113,46 +113,10 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "brgy baylao",
             "barangay baylao"
         ],
-        "lat": 9.24951,
-        "lng": 124.69505,
+        "lat": 9.24674,
+        "lng": 124.69862,
         "mun": "Mambajao",
         "full_address": "Baylao, Mambajao, Camiguin"
-    },
-    {
-        "name": "Baylao Barangay Hall & Basketball Court",
-        "cat": "building",
-        "keywords": [
-            "baylao barangay hall",
-            "baylao brgy hall",
-            "brgy hall baylao",
-            "barangay hall baylao",
-            "bahay pamahalaan baylao",
-            "bahay pamahalaan ng barangay baylao",
-            "baylao basketball court",
-            "baylao basketball",
-            "baylao court",
-            "baylao covered court"
-        ],
-        "lat": 9.24951,
-        "lng": 124.69505,
-        "mun": "Mambajao",
-        "full_address": "Circumferential Road, Baylao, Mambajao"
-    },
-    {
-        "name": "Baylao Elementary School",
-        "cat": "school",
-        "keywords": [
-            "baylao elementary school",
-            "baylao elementary",
-            "baylao school",
-            "baylao elem",
-            "es baylao",
-            "eskwelahan sa baylao"
-        ],
-        "lat": 9.24956,
-        "lng": 124.69541,
-        "mun": "Mambajao",
-        "full_address": "Circumferential Road, Baylao, Mambajao"
     },
     {
         "name": "Benhaan, Mambajao",
@@ -3641,6 +3605,7 @@ HINTERLAND_ROUTE_KEYWORDS: tuple[str, ...] = (
     "mt. hibok",
     "mt hibok",
     "volcano observatory",
+    "observatory",
     "phivolcs",
     "sa-ay",
     "sa ay cold",
@@ -3735,7 +3700,20 @@ _HINTERLAND_BOUNDARY_RE = re.compile(
 )
 
 _HINTERLAND_PLACE_ZONES: tuple[tuple[float, float, float], ...] = (
-    # Mambajao inland & upland barangays, sitios, springs & mountain trails
+    # Mambajao inland & upland landmarks, observatories, springs & mountain trails
+    (9.22719, 124.70799, 0.65),  # PHIVOLCS Hibok-Hibok Volcano Observatory, Quiboro/Itum
+    (9.23345, 124.71291, 0.55),  # Sitio Quiboro, Poblacion, Mambajao
+    (9.22741, 124.70748, 0.60),  # Utopia Café, Quiboro / Itum Road
+    (9.22110, 124.70340, 0.55),  # Sa-ay Cold Spring, Quipasa, Mambajao
+    (9.21037, 124.70209, 0.60),  # Nanaw Café, Binunsaran, Mambajao
+    (9.21190, 124.70596, 0.60),  # Bintana sa Paraiso, Binunsaran, Mambajao
+    (9.20987, 124.70580, 0.65),  # Binunsaran, Mambajao
+    (9.19684, 124.69221, 0.65),  # Mount Hibok-Hibok Jump-off (DENR Visitors Center)
+    (9.21358, 124.71793, 0.65),  # Katibawasan Falls, Mambajao
+    (9.21816, 124.72839, 0.60),  # Camiguin Highland Resort, Soro-soro
+    (9.22961, 124.72617, 0.60),  # Soro-soro, Mambajao
+    (9.17683, 124.68097, 0.65),  # Tuasan Falls, Mainit, Catarman
+    (9.15596, 124.73317, 0.65),  # Binangawan Falls, Sagay
     (9.20322, 124.76773, 0.45),  # Benhaan, Mambajao
     (9.19586, 124.77407, 0.45),  # Macao Cold Spring, Tupsan
     (9.22850, 124.72150, 0.45),  # Upper Pandan (Kanangkaan / Maubog)
@@ -3745,6 +3723,8 @@ _HINTERLAND_PLACE_ZONES: tuple[tuple[float, float, float], ...] = (
     (9.23150, 124.66100, 0.45),  # Sitio Bas-iao, Upper Yumbing / Naasag
     (9.22950, 124.67650, 0.45),  # Katobli / Sibato Reservoir, Agoho
     (9.20550, 124.69750, 0.45),  # Volcano House (Km 11 Itum)
+    (9.22702, 124.68798, 0.55),  # Ardent Hot Spring, Esperanza, Mambajao
+    (9.22762, 124.68826, 0.55),  # Sitio Esperanza, Tagdo, Mambajao
     (9.23453, 124.69148, 0.45),  # Tagdo, Mambajao
     (9.23750, 124.67950, 0.45),  # Timogsay, Upper Bug-ong
     (9.23580, 124.67380, 0.45),  # Upper Cogon, Agoho
@@ -4406,7 +4386,6 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         ("transfer_count", "INTEGER DEFAULT 0"),
         ("payment_status", "TEXT DEFAULT 'pending'"),
         ("receipt_url", "TEXT DEFAULT ''"),
-        ("purchase_amount", "REAL DEFAULT 0"),
         ("payment_ref", "TEXT DEFAULT ''"),
         ("payment_sent_at", "TEXT DEFAULT NULL"),
         ("payment_confirmed_at", "TEXT DEFAULT NULL"),
@@ -4738,7 +4717,6 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         ("transfer_count", "INTEGER DEFAULT 0"),
         ("payment_status", "VARCHAR(32) DEFAULT 'pending'"),
         ("receipt_url", "TEXT DEFAULT ''"),
-        ("purchase_amount", "DOUBLE PRECISION DEFAULT 0"),
         ("payment_ref", "VARCHAR(64) DEFAULT ''"),
         ("payment_sent_at", "VARCHAR(32) DEFAULT NULL"),
         ("payment_confirmed_at", "VARCHAR(32) DEFAULT NULL"),
