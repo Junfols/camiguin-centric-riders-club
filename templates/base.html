@@ -126,7 +126,11 @@
       <nav class="desktop-nav" aria-label="Main Navigation">
         {% if active_nav == 'admin' %}
           <span class="badge" style="font-size:0.95rem;padding:6px 14px;background:#1e293b;color:white;border-radius:20px;font-weight:600;">⚙️ Club Admin Mode</span>
-          <a href="/" class="nav-link" style="margin-left:12px;">&larr; Exit to App</a>
+          {% if is_admin %}
+            <button type="button" id="header-admin-logout-btn" class="nav-link text-danger" style="margin-left:12px;background:none;border:none;cursor:pointer;font-weight:700;padding:6px 12px;color:#dc2626;" onclick="window.ccrcAdminLogout();return false;">🚪 Log Out</button>
+          {% else %}
+            <a href="/" class="nav-link" style="margin-left:12px;">&larr; Back to App</a>
+          {% endif %}
         {% elif active_nav == 'rider' or session.get('rider_id') %}
           <a href="/rider" class="nav-link active">Rider Dispatch Portal 📱</a>
           <button type="button" id="header-rider-logout-btn" class="nav-link text-danger rider-logged-only {% if not session.get('rider_id') %}hidden{% endif %}" style="{% if not session.get('rider_id') %}display:none;{% endif %}background:none;border:none;cursor:pointer;font-weight:600;padding:6px 12px;" onclick="if(window.ccrcRiderLogout){window.ccrcRiderLogout();return false;}if(confirm('Are you sure you want to log out of your Rider Account?')){try{localStorage.removeItem('ccrc_rider_session');localStorage.removeItem('ccrc_rider');}catch(_){}fetch('/api/rider/logout',{method:'POST'}).finally(()=>{window.location.href='/rider';});}return false;">Log Out 🚪</button>
@@ -210,10 +214,17 @@
       <span class="bottom-nav-icon">⚙️</span>
       <span>Admin Panel</span>
     </a>
+    {% if is_admin %}
+    <a href="javascript:void(0)" id="bottom-admin-logout-btn" class="bottom-nav-item text-danger" style="color:#dc2626;font-weight:700;" onclick="window.ccrcAdminLogout();return false;">
+      <span class="bottom-nav-icon">🚪</span>
+      <span>Log Out</span>
+    </a>
+    {% else %}
     <a href="/" class="bottom-nav-item">
       <span class="bottom-nav-icon">🏠</span>
-      <span>Exit to App</span>
+      <span>Back to App</span>
     </a>
+    {% endif %}
   </nav>
   {% elif active_nav == 'rider' or session.get('rider_id') %}
   <nav class="bottom-nav" aria-label="Rider Navigation">
@@ -400,6 +411,15 @@
         }
       } catch (_) {}
       window.location.reload();
+    };
+
+    window.ccrcAdminLogout = function() {
+      if (!confirm("Sigurado ka nga mo-Log Out sa Club Admin?")) return;
+      fetch("/api/admin/logout", { method: "POST" })
+        .catch(() => {})
+        .finally(() => {
+          window.location.href = "/";
+        });
     };
 
     function isAppAlreadyInstalled() {
