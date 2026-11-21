@@ -14,6 +14,78 @@
     <p class="booking-hero-sub">Fast, verified on-demand island transport, deliveries &amp; errands across Camiguin Island.</p>
   </section>
 
+  <!-- Live Club Advisory Banner (Customers) -->
+  <div id="customer-club-advisory-banner"
+       class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not (club_advisory.show_customers and club_advisory.message) %}hidden{% endif %}"
+       data-revision="{{ club_advisory.revision }}"
+       role="region"
+       aria-label="Club Advisory">
+    <div class="ccrc-advisory-inner">
+      <div class="ccrc-advisory-top-row">
+        <span class="ccrc-advisory-badge">
+          <span class="ccrc-advisory-live-dot"></span>
+          <span id="cust-adv-icon">{{ club_advisory.category_icon }}</span>
+          <span id="cust-adv-label">{{ club_advisory.category_label }}</span>
+        </span>
+        <div class="ccrc-advisory-right-meta">
+          <span id="cust-adv-updated" class="ccrc-advisory-meta">{{ club_advisory.updated_label }}</span>
+          <button type="button" class="ccrc-advisory-dismiss" aria-label="Dismiss announcement" onclick="dismissCcrcAdvisory('customer')">&times;</button>
+        </div>
+      </div>
+      <div id="cust-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
+      <div id="cust-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const banner = document.getElementById("customer-club-advisory-banner");
+      if (!banner) return;
+      window.dismissCcrcAdvisory = function(audience) {
+        const rev = banner.getAttribute("data-revision") || "1";
+        try { localStorage.setItem("ccrc_adv_dismissed_" + audience + "_" + rev, "1"); } catch (_) {}
+        banner.classList.add("hidden");
+      };
+      try {
+        const rev = banner.getAttribute("data-revision") || "1";
+        if (localStorage.getItem("ccrc_adv_dismissed_customer_" + rev) === "1") {
+          banner.classList.add("hidden");
+        }
+      } catch (_) {}
+      setInterval(async function() {
+        try {
+          const res = await fetch("/api/advisory");
+          if (!res.ok) return;
+          const data = await res.json();
+          const adv = data && data.advisory;
+          if (!adv || !adv.show_customers || !adv.message) {
+            banner.classList.add("hidden");
+            return;
+          }
+          const revStr = String(adv.revision || 1);
+          try {
+            if (localStorage.getItem("ccrc_adv_dismissed_customer_" + revStr) === "1") return;
+          } catch (_) {}
+          banner.className = "ccrc-advisory-banner is-" + (adv.category || "info");
+          banner.setAttribute("data-revision", revStr);
+          const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ""; };
+          setT("cust-adv-icon", adv.category_icon);
+          setT("cust-adv-label", adv.category_label);
+          setT("cust-adv-title", adv.title);
+          setT("cust-adv-msg", adv.message);
+          setT("cust-adv-updated", adv.updated_label);
+          if (window._ccrcLastCustAdvRev && window._ccrcLastCustAdvRev !== revStr && window.ccrcNotify) {
+            window.ccrcNotify(
+              `${adv.category_icon || "📢"} ${adv.title || "Club Advisory"}`,
+              adv.message,
+              { tag: `ccrc-adv-${revStr}`, url: "/" }
+            );
+          }
+          window._ccrcLastCustAdvRev = revStr;
+        } catch (_) {}
+      }, 15000);
+    })();
+  </script>
+
   <!-- Persistent Active Ride Notification for Customer -->
   <div id="customer-active-ride-card" class="card active-ride-banner {% if not active_booking %}hidden{% endif %}" style="border: 2px solid #f97316; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%); padding: 18px 20px; border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.15);">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">

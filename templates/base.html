@@ -351,6 +351,77 @@
 
   <!-- PWA Service Worker & Intelligent Install Hide Logic -->
   <script>
+    // Global CCRC App Notification Engine (PWA Service Worker + Fallback Browser Notification + Vibration)
+    window.ccrcRequestNotificationPermission = async function() {
+      if (!("Notification" in window)) return "unsupported";
+      if (Notification.permission === "granted") return "granted";
+      if (Notification.permission === "denied") return "denied";
+      try {
+        return await Notification.requestPermission();
+      } catch (_) {
+        return Notification.permission || "default";
+      }
+    };
+
+    window.ccrcNotify = async function(title, body, options) {
+      const opts = options || {};
+      const targetUrl = opts.url || window.location.pathname || "/";
+      const tag = opts.tag || "ccrc-app-notif";
+      const icon = opts.icon || "/static/icons/icon-192.png";
+
+      if (opts.vibrate !== false && "vibrate" in navigator) {
+        try { navigator.vibrate([250, 100, 250]); } catch (_) {}
+      }
+
+      if (!("Notification" in window)) return false;
+
+      let perm = Notification.permission;
+      if (perm === "default" && opts.askPermission) {
+        perm = await window.ccrcRequestNotificationPermission();
+      }
+      if (perm !== "granted") return false;
+
+      try {
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && typeof reg.showNotification === "function") {
+            await reg.showNotification(title, {
+              body: body || "",
+              icon: icon,
+              badge: icon,
+              tag: tag,
+              renotify: true,
+              vibrate: [250, 100, 250],
+              data: { url: targetUrl }
+            });
+            return true;
+          }
+        }
+      } catch (_) {}
+
+      try {
+        const n = new Notification(title, { body: body || "", icon: icon, tag: tag });
+        n.onclick = function() {
+          window.focus();
+          if (targetUrl && targetUrl !== window.location.pathname) {
+            window.location.href = targetUrl;
+          }
+          n.close();
+        };
+        return true;
+      } catch (_) {
+        return false;
+      }
+    };
+
+    // Request notification permission gently on first user tap
+    document.addEventListener("pointerdown", function _ccrcFirstTapUnlock() {
+      if ("Notification" in window && Notification.permission === "default") {
+        try { Notification.requestPermission().catch(() => {}); } catch (_) {}
+      }
+      document.removeEventListener("pointerdown", _ccrcFirstTapUnlock);
+    }, { once: true, passive: true });
+
     if ("serviceWorker" in navigator) {
       let swRegistration = null;
       let swReloading = false;

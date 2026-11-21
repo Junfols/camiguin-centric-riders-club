@@ -222,6 +222,78 @@
       </div>
     </div>
 
+    <!-- Live Club Advisory Banner (Riders) -->
+    <div id="rider-club-advisory-banner"
+         class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not (club_advisory.show_riders and club_advisory.message) %}hidden{% endif %}"
+         data-revision="{{ club_advisory.revision }}"
+         role="region"
+         aria-label="Club Advisory">
+      <div class="ccrc-advisory-inner">
+        <div class="ccrc-advisory-top-row">
+          <span class="ccrc-advisory-badge">
+            <span class="ccrc-advisory-live-dot"></span>
+            <span id="rider-adv-icon">{{ club_advisory.category_icon }}</span>
+            <span id="rider-adv-label">{{ club_advisory.category_label }}</span>
+          </span>
+          <div class="ccrc-advisory-right-meta">
+            <span id="rider-adv-updated" class="ccrc-advisory-meta">{{ club_advisory.updated_label }}</span>
+            <button type="button" class="ccrc-advisory-dismiss" aria-label="Dismiss announcement" onclick="dismissRiderCcrcAdvisory()">&times;</button>
+          </div>
+        </div>
+        <div id="rider-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
+        <div id="rider-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
+      </div>
+    </div>
+    <script>
+      (function() {
+        const banner = document.getElementById("rider-club-advisory-banner");
+        if (!banner) return;
+        window.dismissRiderCcrcAdvisory = function() {
+          const rev = banner.getAttribute("data-revision") || "1";
+          try { localStorage.setItem("ccrc_adv_dismissed_rider_" + rev, "1"); } catch (_) {}
+          banner.classList.add("hidden");
+        };
+        try {
+          const rev = banner.getAttribute("data-revision") || "1";
+          if (localStorage.getItem("ccrc_adv_dismissed_rider_" + rev) === "1") {
+            banner.classList.add("hidden");
+          }
+        } catch (_) {}
+        setInterval(async function() {
+          try {
+            const res = await fetch("/api/advisory");
+            if (!res.ok) return;
+            const data = await res.json();
+            const adv = data && data.advisory;
+            if (!adv || !adv.show_riders || !adv.message) {
+              banner.classList.add("hidden");
+              return;
+            }
+            const revStr = String(adv.revision || 1);
+            try {
+              if (localStorage.getItem("ccrc_adv_dismissed_rider_" + revStr) === "1") return;
+            } catch (_) {}
+            banner.className = "ccrc-advisory-banner is-" + (adv.category || "info");
+            banner.setAttribute("data-revision", revStr);
+            const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ""; };
+            setT("rider-adv-icon", adv.category_icon);
+            setT("rider-adv-label", adv.category_label);
+            setT("rider-adv-title", adv.title);
+            setT("rider-adv-msg", adv.message);
+            setT("rider-adv-updated", adv.updated_label);
+            if (window._ccrcLastRiderAdvRev && window._ccrcLastRiderAdvRev !== revStr && window.ccrcNotify) {
+              window.ccrcNotify(
+                `${adv.category_icon || "📢"} ${adv.title || "Club Advisory"}`,
+                adv.message,
+                { tag: `ccrc-adv-${revStr}`, url: "/rider" }
+              );
+            }
+            window._ccrcLastRiderAdvRev = revStr;
+          } catch (_) {}
+        }, 15000);
+      })();
+    </script>
+
     <!-- Rider Financial Summary & Transactions Card -->
     <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
@@ -317,11 +389,8 @@
         </div>
 
         <div class="loc-step">
-          <div id="active-job-customer-avatar-wrap" style="width:44px;height:44px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid #cbd5e1;">
-            <span id="active-job-customer-avatar-icon" style="font-size:1.3rem;">👤</span>
-            <img id="active-job-customer-avatar-img" src="" alt="Customer Photo" class="hidden" style="width:100%;height:100%;object-fit:cover;cursor:pointer;">
-          </div>
-          <div style="flex:1;min-width:0;">
+          <span class="loc-icon">👤</span>
+          <div>
             <strong style="font-size:0.85rem;">Customer:</strong>
             <div id="active-job-customer" class="loc-text">Customer Name</div>
             <div id="active-job-customer-badge" style="margin:4px 0;"></div>

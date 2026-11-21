@@ -874,6 +874,88 @@
 
   <!-- TAB 5: TARIPA SETTINGS & SYSTEM BACKUP PANE -->
   <div id="pane-settings" class="admin-tab-pane hidden">
+    <!-- Live Club Advisory & Announcement Broadcast Card -->
+    <div class="card ccrc-admin-advisory-card" style="padding:16px;margin-bottom:1rem;">
+      <div class="ccrc-admin-advisory-head">
+        <div>
+          <h3 style="margin:0;font-size:1.12rem;display:flex;align-items:center;gap:6px;">
+            <span>📢</span> Live Club Advisory &amp; Announcement Broadcast
+          </h3>
+          <p class="text-muted" style="margin:3px 0 0;font-size:0.82rem;">
+            I-broadcast dayon ang ferry arrival updates, weather alerts, night-fare notice, o club announcements ngadto sa mga Pasahero ug/o Riders.
+          </p>
+        </div>
+        <span id="admin-advisory-status-pill" class="{% if club_advisory.show_customers or club_advisory.show_riders %}ccrc-adv-status-live{% elif club_advisory.is_expired %}ccrc-adv-status-expired{% else %}ccrc-adv-status-off{% endif %}">
+          {% if club_advisory.show_customers or club_advisory.show_riders %}
+            🟢 LIVE BROADCASTING
+          {% elif club_advisory.is_expired %}
+            ⏰ EXPIRED
+          {% else %}
+            ⚪ OFF / HIDDEN
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="ccrc-advisory-presets-row" style="margin-bottom:12px;">
+        <span class="ccrc-advisory-presets-label">Quick Templates:</span>
+        <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('ferry', '⛴️ FastCat / Ferry Arrival at Benoni &amp; Balbagon', 'Naay bag-ong dunggo nga barko sa Benoni / Balbagon Port. Daghan pasahero nangita og sakay — online na mga CCRC Riders!')">⛴️ Ferry Arrival</button>
+        <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('weather', '🌧️ Weather &amp; Slippery Road Advisory', 'Nag-ulan sa pipila ka barangay sa Camiguin. Palihug mag-amping sa pagmaneho ug pag-andam og kapote.')">🌧️ Weather Alert</button>
+        <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('night_fare', '🌙 Night-Time Dispatch Notice', 'Palihug timan-i ang night-time dispatch guidelines ug siguroha nga siga ang headlight ug tail light sa motor.')">🌙 Night Notice</button>
+        <button type="button" class="ccrc-preset-chip" onclick="applyAdvisoryPreset('urgent', '🚨 Important Club Meeting / Notice', 'Palihug tan-awa ang bag-ong pahibalo gikan sa Camiguin Centric Riders Club Officers.')">🚨 Club Notice</button>
+      </div>
+
+      <form id="admin-advisory-form">
+        <div class="ccrc-advisory-form-grid">
+          <div class="form-group">
+            <label for="adv-category">Category / Banner Style</label>
+            <select id="adv-category" name="category">
+              <option value="info" {% if club_advisory.category == 'info' %}selected{% endif %}>📢 Club Advisory (Orange)</option>
+              <option value="ferry" {% if club_advisory.category == 'ferry' %}selected{% endif %}>⛴️ Ferry &amp; Port Schedule (Blue)</option>
+              <option value="weather" {% if club_advisory.category == 'weather' %}selected{% endif %}>🌧️ Weather &amp; Road Alert (Amber)</option>
+              <option value="night_fare" {% if club_advisory.category == 'night_fare' %}selected{% endif %}>🌙 Night-Fare Notice (Indigo)</option>
+              <option value="promo" {% if club_advisory.category == 'promo' %}selected{% endif %}>🎉 Club Promo / Update (Green)</option>
+              <option value="urgent" {% if club_advisory.category == 'urgent' %}selected{% endif %}>🚨 Urgent Club Notice (Red)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="adv-title">Announcement Title *</label>
+            <input type="text" id="adv-title" name="title" maxlength="140" value="{{ club_advisory.title or 'Camiguin Centric Advisory' }}" placeholder="e.g. Ferry Arrival Advisory / Club Meeting">
+          </div>
+          <div class="form-group">
+            <label for="adv-expires-at">Auto-Expire Time (Optional)</label>
+            <input type="datetime-local" id="adv-expires-at" name="expires_at" value="{{ club_advisory.expires_at or '' }}" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="adv-message">Broadcast Message *</label>
+          <textarea id="adv-message" name="message" rows="2" maxlength="1000" placeholder="Isulat dinhi ang mensahe nga makita sa mga Pasahero ug Riders...">{{ club_advisory.message or '' }}</textarea>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:12px;">
+          <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;margin:0;font-size:0.86rem;">
+            <input type="checkbox" id="adv-show-customers" {% if club_advisory.raw_show_customers %}checked{% endif %} style="width:17px;height:17px;accent-color:var(--primary);">
+            <span>👥 Show to <strong>Passengers / Customers</strong> (Booking Home)</span>
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;margin:0;font-size:0.86rem;">
+            <input type="checkbox" id="adv-show-riders" {% if club_advisory.raw_show_riders %}checked{% endif %} style="width:17px;height:17px;accent-color:var(--primary);">
+            <span>🛵 Show to <strong>CCRC Riders</strong> (Rider Dispatch Hub)</span>
+          </label>
+        </div>
+
+        <div id="advisory-save-feedback" class="alert-success hidden" style="margin-bottom:10px;"></div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="submit" id="broadcast-advisory-btn" class="btn btn-primary" style="flex:2;min-width:200px;padding:10px 16px;">
+            📢 Broadcast Live Advisory Now
+          </button>
+          <button type="button" id="clear-advisory-btn" class="btn btn-outline" style="flex:1;min-width:140px;padding:10px 14px;border-color:#ef4444;color:#dc2626;" onclick="clearClubAdvisory()">
+            🗑️ Turn Off / Clear
+          </button>
+        </div>
+      </form>
+    </div>
+
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;">
       <!-- Tariff Settings Card -->
       <div class="card" style="padding:16px;">
@@ -1447,5 +1529,100 @@
   if (gdriveBtn) {
     gdriveBtn.addEventListener("click", window.backupToGoogleDrive);
   }
+
+  // Live Club Advisory & Announcement Broadcast Handlers
+  window.applyAdvisoryPreset = function(cat, title, msg) {
+    const catEl = document.getElementById("adv-category");
+    const titleEl = document.getElementById("adv-title");
+    const msgEl = document.getElementById("adv-message");
+    const custEl = document.getElementById("adv-show-customers");
+    const ridEl = document.getElementById("adv-show-riders");
+    if (catEl) catEl.value = cat;
+    if (titleEl) titleEl.value = title;
+    if (msgEl) msgEl.value = msg;
+    if (custEl && !custEl.checked && ridEl && !ridEl.checked) {
+      custEl.checked = true;
+      ridEl.checked = true;
+    }
+  };
+
+  async function submitAdvisoryPayload(payload) {
+    const fb = document.getElementById("advisory-save-feedback");
+    const pill = document.getElementById("admin-advisory-status-pill");
+    const res = await fetch("/api/admin/advisory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update advisory.");
+    if (fb) {
+      fb.className = "alert-success";
+      fb.textContent = "✅ " + (data.message || "Advisory updated!");
+      fb.classList.remove("hidden");
+      setTimeout(() => fb.classList.add("hidden"), 4000);
+    }
+    if (pill && data.advisory) {
+      const isLive = Boolean(data.advisory.show_customers || data.advisory.show_riders);
+      pill.className = isLive ? "ccrc-adv-status-live" : "ccrc-adv-status-off";
+      pill.textContent = isLive ? "🟢 LIVE BROADCASTING" : "⚪ OFF / HIDDEN";
+    }
+  }
+
+  const advForm = document.getElementById("admin-advisory-form");
+  if (advForm) {
+    advForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("broadcast-advisory-btn");
+      const msg = (document.getElementById("adv-message")?.value || "").trim();
+      const showCust = Boolean(document.getElementById("adv-show-customers")?.checked);
+      const showRid = Boolean(document.getElementById("adv-show-riders")?.checked);
+      if (!msg) {
+        alert("Palihug isulat ang mensahe sa announcement sa dili pa i-broadcast.");
+        return;
+      }
+      if (!showCust && !showRid) {
+        alert("Palihug pilia kung kinsa ang makakita (Passengers, Riders, o pareho).");
+        return;
+      }
+      if (btn) btn.disabled = true;
+      try {
+        await submitAdvisoryPayload({
+          category: document.getElementById("adv-category")?.value || "info",
+          title: document.getElementById("adv-title")?.value || "Camiguin Centric Advisory",
+          message: msg,
+          expires_at: document.getElementById("adv-expires-at")?.value || "",
+          show_customers: showCust,
+          show_riders: showRid,
+        });
+      } catch (err) {
+        alert("Error: " + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
+  window.clearClubAdvisory = async function() {
+    if (!confirm("I-turn off ug tangtangon ang active Club Advisory banner?")) return;
+    try {
+      const msgEl = document.getElementById("adv-message");
+      const custEl = document.getElementById("adv-show-customers");
+      const ridEl = document.getElementById("adv-show-riders");
+      if (msgEl) msgEl.value = "";
+      if (custEl) custEl.checked = false;
+      if (ridEl) ridEl.checked = false;
+      await submitAdvisoryPayload({
+        category: document.getElementById("adv-category")?.value || "info",
+        title: document.getElementById("adv-title")?.value || "Camiguin Centric Advisory",
+        message: "",
+        expires_at: "",
+        show_customers: false,
+        show_riders: false,
+      });
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
 </script>
 {% endblock %}
