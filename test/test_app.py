@@ -1507,6 +1507,36 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         html = self.client.get("/").get_data(as_text=True)
         self.assertNotIn('id="promo-code-input"', html)
 
+    def test_rider_sees_customer_photo_in_feed_and_active_job(self):
+        jpeg = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+        reg = self.client.post("/api/customer/register", json={
+            "name": "Angeline Dangan", "phone": "09175550148", "email": "angeline@example.com",
+            "password": "secret123", "barangay": "Poblacion", "avatar_base64": jpeg})
+        self.assertEqual(reg.status_code, 200, reg.get_data(as_text=True))
+        photo = reg.get_json()["customer"]["avatar_url"]
+        self.assertTrue(photo.startswith("/media/"))
+
+        r_id = self._create_active_rider(name="Rider Photo", phone="09170000041")
+        bk = self.client.post("/api/bookings", json={
+            "customer_name": "Angeline Dangan", "customer_phone": "09175550148",
+            "pickup_address": "Balbagon Port", "dropoff_address": "Mambajao Public Market",
+            "service_type": "pahatud"}).get_json()["booking"]
+
+        self._as_rider(r_id)
+        feed = self.client.get("/api/rider/available-jobs").get_json()
+        job = next(j for j in feed["jobs"] if j["id"] == bk["id"])
+        self.assertEqual(job.get("customer_avatar"), photo)
+
+        self.assertEqual(self.client.post(f"/api/bookings/{bk['id']}/accept").status_code, 200)
+        active = self.client.get("/api/rider/active-job").get_json()
+        self.assertEqual(active["job"]["customer_avatar"], photo)
+        self.assertEqual(self.client.get(photo).status_code, 200)
+
+        js = self.client.get("/static/js/rider.js").get_data(as_text=True)
+        self.assertIn("active-job-customer-avatar", js)
+        html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="active-job-customer-avatar"', html)
+
 
 if __name__ == "__main__":
     unittest.main()
