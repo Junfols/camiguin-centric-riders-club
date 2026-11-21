@@ -2,6 +2,7 @@ import os
 import time
 import tempfile
 import unittest
+from unittest import mock
 
 from app import create_app
 from db import calculate_fare
@@ -169,7 +170,7 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertIn("Camiguin Centric Riders Club", html)
         self.assertIn("Passenger", html)
-        self.assertIn("Padala", html)
+        self.assertIn("Errand", html)
         self.assertIn("Pabili", html)
         self.assertIn("Port &amp; Bills", html)
         self.assertIn("Official Camiguin CRC Fare Matrix", html)
@@ -500,7 +501,41 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(settings["base_fare"], "45")
         self.assertEqual(settings["per_km_rate"], "18")
 
-    def test_typed_address_geocoding_baylao_to_jollibee(self):
+    @mock.patch("urllib.request.urlopen")
+    def test_typed_address_geocoding_baylao_to_jollibee(self, mock_urlopen):
+        # Make the test independent of the internet: pretend the online road router (OSRM)
+        # answers with a 1.82 km road route, so we test our geocoding + fare logic only.
+        import json as _json
+        import urllib.error
+        import db as _db
+
+        _db._ROAD_ROUTE_CACHE.clear()
+
+        class _FakeResp:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def read(self):
+                return _json.dumps(self._payload).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        def _fake_urlopen(req, *args, **kwargs):
+            url = getattr(req, "full_url", str(req))
+            if "osrm" in url:
+                return _FakeResp({
+                    "code": "Ok",
+                    "routes": [{"distance": 1820.0,
+                                "geometry": {"coordinates": [[124.69541, 9.24956], [124.7165, 9.2496]]}}],
+                })
+            raise urllib.error.URLError("offline in tests")
+
+        mock_urlopen.side_effect = _fake_urlopen
+
         # User scenario: Pickup "Baylao", Dropoff "Jollibee"
         # Actual road distance along Camiguin roads is ~1.82 km (within 1-2 km base tariff)
         # In Camiguin CRC Fare matrix (1-2 km = 40.00), fare should be 40.00
@@ -1438,6 +1473,27 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             pickup = res.get_json()["resolved_pickup"]
             self.assertAlmostEqual(pickup["lat"], lat, places=5)
             self.assertAlmostEqual(pickup["lng"], lng, places=5)
+
+    def test_customer_receipt_shows_rider_name_plate_and_purchase_total(self):
+        r_id = self._create_active_rider(name="Rider Receipt", phone="09170000031")
+        bk = self.client.post("/api/bookings", json={
+            "customer_name": "Pax", "customer_phone": "09175550401",
+            "pickup_address": "Jollibee Camiguin, Mambajao", "dropoff_address": "Benoni, Mahinog",
+            "service_type": "pabili", "item_notes": "1 lechon manok"}).get_json()["booking"]
+        self._as_rider(r_id)
+        self.assertEqual(self.client.post(f"/api/bookings/{bk['id']}/accept").status_code, 200)
+        self.assertEqual(self.client.post(f"/api/bookings/{bk['id']}/purchase", json={"amount": 275}).status_code, 200)
+        self._as_no_rider()
+        page = self.client.get(f"/track/{bk['booking_code']}").get_data(as_text=True)
+        self.assertIn("Rider Receipt", page)
+        self.assertIn("Plate No.", page)
+        self.assertIn("Pinalit (gi-input sa rider)", page)
+        self.assertIn('id="modal-total-fare"', page)
+        self.assertNotIn("09170000031", page.split('id="receipt-modal"', 1)[1].split("modal-receipt-img-wrap", 1)[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
 
 
 if __name__ == "__main__":
