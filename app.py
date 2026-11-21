@@ -5,9 +5,15 @@ On-Demand Island Express Riders: Pahatud, Pakuha, Pasugo & Pabili.
 
 from __future__ import annotations
 
+import base64
+import html
 import os
-from datetime import datetime, timezone
+import secrets
+import time
+from collections import deque
+from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 from flask import (
     Flask,
@@ -47,6 +53,7 @@ from db import (
     get_rider_by_id,
     get_rider_by_phone,
     get_settings,
+    normalize_ph_phone,
     get_uploaded_media,
     init_db,
     register_rider,
@@ -81,9 +88,62 @@ from db import (
 )
 
 
+_RATE_BUCKETS: dict[tuple[str, str], deque] = {}
+_WEAK_ADMIN_PASSWORDS = ("admin1234", "admin")
+
+
+def _bootstrap_security(app: Flask, conn) -> None:
+    """Persisted random session key + make sure the admin password is never a known default."""
+    # 1) Session secret: env var wins; otherwise a random key stored once in the DB
+    #    (shared by all gunicorn workers and stable across restarts).
+    if not app.secret_key:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
+            ("_session_secret", secrets.token_hex(32)),
+        )
+        conn.commit()
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", ("_session_secret",)).fetchone()
+        app.secret_key = row["value"]
+
+    if app.config.get("TESTING"):
+        return
+
+    # 2) Admin password
+    settings = get_settings(conn)
+    current_hash = settings.get("admin_password_hash") or ""
+    env_pwd = (os.environ.get("ADMIN_PASSWORD") or "").strip()
+
+    def _matches(pwd: str) -> bool:
+        try:
+            return bool(current_hash) and check_password_hash(current_hash, pwd)
+        except Exception:
+            return False
+
+    if env_pwd:
+        if not _matches(env_pwd):
+            update_settings(conn, {"admin_password_hash": generate_password_hash(env_pwd)})
+            conn.commit()
+    elif (not current_hash) or any(_matches(w) for w in _WEAK_ADMIN_PASSWORDS):
+        new_pwd = secrets.token_urlsafe(12)
+        update_settings(conn, {"admin_password_hash": generate_password_hash(new_pwd)})
+        conn.commit()
+        print("=" * 60)
+        print("[CCRC SECURITY] Default admin password was replaced.")
+        print(f"[CCRC SECURITY] NEW ADMIN PASSWORD: {new_pwd}")
+        print("[CCRC SECURITY] Set ADMIN_PASSWORD in your environment to choose your own.")
+        print("=" * 60)
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__, static_folder="static", template_folder="templates")
-    app.secret_key = os.environ.get("SECRET_KEY", "ccrc-island-secret-key-camiguin-2026")
+    app.secret_key = os.environ.get("SECRET_KEY") or None  # persisted random key is loaded after DB init
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER")) or os.environ.get("SESSION_COOKIE_SECURE") == "1",
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+        MAX_CONTENT_LENGTH=32 * 1024 * 1024,
+    )
     if test_config:
         app.config.update(test_config)
 
@@ -106,13 +166,103 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     with app.app_context():
         conn = get_db()
         init_db(conn)
+        _bootstrap_security(app, conn)
 
     @app.after_request
     def set_security_headers(response: Response):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self), microphone=(self)"
+        if request.is_secure or request.headers.get("X-Forwarded-Proto", "") == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
+
+    # -------------------------------------------------------------------------
+    # Security helpers: CSRF (Origin check), rate limiting, admin/rider guards
+    # -------------------------------------------------------------------------
+    @app.before_request
+    def make_session_permanent():
+        session.permanent = True
+
+    @app.before_request
+    def csrf_origin_check():
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and not app.config.get("TESTING"):
+            src = request.headers.get("Origin") or request.headers.get("Referer") or ""
+            if src:
+                host = urlparse(src).netloc.lower()
+                if host and host != request.host.lower():
+                    return jsonify({"error": "Cross-site request blocked."}), 403
+        return None
+
+    def _client_ip() -> str:
+        xff = request.headers.get("X-Forwarded-For", "")
+        return (xff.split(",")[0].strip() if xff else request.remote_addr) or "unknown"
+
+    def _throttle(bucket: str, key: str, limit: int, window_sec: int):
+        """Returns a 429 response if over limit, else None. In-memory, per worker."""
+        if app.config.get("TESTING") and not app.config.get("RATE_LIMIT_IN_TESTS"):
+            return None
+        now = time.time()
+        dq = _RATE_BUCKETS.setdefault((bucket, key), deque())
+        while dq and now - dq[0] > window_sec:
+            dq.popleft()
+        if len(dq) >= limit:
+            return jsonify({"error": "Too many attempts. Please wait a few minutes and try again."}), 429
+        dq.append(now)
+        if len(_RATE_BUCKETS) > 20000:
+            for k in list(_RATE_BUCKETS)[:5000]:
+                _RATE_BUCKETS.pop(k, None)
+        return None
+
+    def _admin_ok() -> bool:
+        return bool(session.get("is_admin")) and (time.time() - float(session.get("admin_ts") or 0)) < 12 * 3600
+
+    def _rider_id_from_session():
+        rid = session.get("rider_id")
+        try:
+            return int(rid) if rid else None
+        except (TypeError, ValueError):
+            return None
+
+    def _is_booking_customer(booking: dict) -> bool:
+        """The customer who owns the booking (same logged-in phone, or holds its active code)."""
+        if not booking:
+            return False
+        phone = (session.get("customer_phone") or "").strip()
+        if phone and normalize_ph_phone(phone) == normalize_ph_phone(booking.get("customer_phone") or ""):
+            return True
+        return bool(session.get("active_booking_code")) and session.get("active_booking_code") == booking.get("booking_code")
+
+    def _is_booking_participant(booking: dict) -> bool:
+        """Admin, assigned rider, or the customer who owns the booking."""
+        if not booking:
+            return False
+        if _admin_ok():
+            return True
+        rid = _rider_id_from_session()
+        if rid and booking.get("rider_id") == rid:
+            return True
+        return _is_booking_customer(booking)
+
+    def _decode_image(data_url: str, max_bytes: int = 8 * 1024 * 1024):
+        """Validate a base64 data URL by real magic bytes. Returns (bytes, mimetype, ext)."""
+        if not data_url or "," not in data_url:
+            raise ValueError("Invalid image data.")
+        b64str = data_url.split(",", 1)[1]
+        if len(b64str) > int(max_bytes * 1.4):
+            raise ValueError("Image file too large.")
+        raw = base64.b64decode(b64str, validate=False)
+        if len(raw) > max_bytes:
+            raise ValueError("Image file too large.")
+        if raw[:3] == b"\xff\xd8\xff":
+            return raw, "image/jpeg", "jpg"
+        if raw[:8] == b"\x89PNG\r\n\x1a\n":
+            return raw, "image/png", "png"
+        if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+            return raw, "image/webp", "webp"
+        raise ValueError("Only JPG, PNG or WebP images are allowed.")
 
     # -------------------------------------------------------------------------
     # Context Processor for Global Template Data
@@ -211,7 +361,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not res:
             return "File not found", 404
         data, mimetype = res
-        return Response(data, mimetype=mimetype)
+        if mimetype not in ("image/jpeg", "image/png", "image/webp"):
+            mimetype = "application/octet-stream"
+        resp = Response(data, mimetype=mimetype)
+        resp.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        resp.headers["Content-Disposition"] = "inline"
+        return resp
 
     # -------------------------------------------------------------------------
     # Customer Storefront & Booking Routes
@@ -424,6 +579,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             mun = rider.get("municipality") or "Mambajao"
             lic = rider.get("license_no") or "N/A"
             avatar = rider.get("avatar_url") or ""
+            name, plate, bike, mun, lic = (html.escape(str(v), quote=True) for v in (name, plate, bike, mun, lic))
+            avatar = html.escape(avatar, quote=True) if str(avatar).startswith("/media/") else ""
             photo_html = f'<img src="{avatar}" style="width:100%;height:100%;object-fit:cover;">' if avatar else '<span style="font-size:26pt;">👤</span>'
 
             return f"""<!DOCTYPE html>
@@ -584,7 +741,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def api_customer_active_booking():
         conn = get_db()
         code = (request.args.get("code") or session.get("active_booking_code") or "").strip()
-        phone = (request.args.get("phone") or session.get("customer_phone") or "").strip()
+        phone = (session.get("customer_phone") or "").strip()
         booking = None
         if code:
             booking = get_booking_by_code(conn, code)
@@ -624,6 +781,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/customer/register")
     def api_customer_register():
+        _lim = _throttle("cust-reg", _client_ip(), 10, 3600)
+        if _lim:
+            return _lim
         conn = get_db()
         data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
@@ -646,13 +806,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if avatar_b64 and "," in avatar_b64:
             import base64
             try:
-                head, b64str = avatar_b64.split(",", 1)
-                mimetype = "image/jpeg"
-                if "png" in head:
-                    mimetype = "image/png"
-                elif "webp" in head:
-                    mimetype = "image/webp"
-                raw_bytes = base64.b64decode(b64str)
+                raw_bytes, mimetype, _ext = _decode_image(avatar_b64, 5 * 1024 * 1024)
                 safe_p = "".join(c for c in phone if c.isalnum()) or "cust"
                 ts = int(datetime.now().timestamp())
                 fname = f"cust_{safe_p}_{ts}.jpg"
@@ -684,6 +838,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/customer/login")
     def api_customer_login():
+        _lim = _throttle("cust-login", _client_ip(), 10, 900)
+        if _lim:
+            return _lim
         conn = get_db()
         data = request.get_json(silent=True) or {}
         identifier = (data.get("phone") or data.get("email") or data.get("identifier") or "").strip()
@@ -692,6 +849,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not identifier or not password:
             return jsonify({"success": False, "error": "Palihug ibutang ang imong Phone Number o Email ug Password."}), 400
 
+        _lim2 = _throttle("cust-login-id", identifier.lower(), 8, 900)
+        if _lim2:
+            return _lim2
         cust = authenticate_customer(conn, identifier, password)
         if not cust:
             return jsonify({"success": False, "error": "Incorrect phone number/email or password. Palihug susiha ang imong phone number/email ug password."}), 401
@@ -713,6 +873,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/customer/forgot-password")
     def api_customer_forgot_password():
+        _lim = _throttle("cust-forgot", _client_ip(), 5, 3600)
+        if _lim:
+            return _lim
         conn = get_db()
         data = request.get_json(silent=True) or {}
         phone = (data.get("phone") or "").strip()
@@ -763,18 +926,29 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/api/customer/me")
     def api_customer_me():
         conn = get_db()
-        phone = (request.args.get("phone") or session.get("customer_phone") or "").strip()
+        phone = (session.get("customer_phone") or "").strip()
         if not phone:
             return jsonify({"logged_in": False, "customer": None})
         cust = get_customer_by_phone(conn, phone)
         if not cust:
             return jsonify({"logged_in": False, "customer": None})
+        cust = {k: v for k, v in cust.items() if k != "password_hash"}
         return jsonify({"logged_in": True, "customer": cust})
 
     @app.get("/api/customer/history/<phone>")
     def api_customer_history(phone: str):
         conn = get_db()
         clean_p = phone.strip()
+        _sess_phone = (session.get("customer_phone") or "").strip()
+        _own = False
+        if _sess_phone:
+            if normalize_ph_phone(_sess_phone) == normalize_ph_phone(clean_p):
+                _own = True
+            else:
+                _c = get_customer_by_phone(conn, clean_p)
+                _own = bool(_c and session.get("customer_id") and _c.get("id") == session.get("customer_id"))
+        if not _admin_ok() and not _own:
+            return jsonify({"success": False, "error": "Please log in to view your ride history.", "rides": [], "history": [], "total_rides": 0}), 403
         customer = get_customer_by_phone(conn, clean_p)
         history = get_customer_ride_history(conn, clean_p)
         if not customer and history:
@@ -811,6 +985,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid IDs or rating value."}), 400
 
+        booking = get_booking_by_id(conn, booking_id) if booking_id else None
+        if not booking or booking.get("rider_id") != rider_id or booking.get("status") != "completed":
+            return jsonify({"error": "You can only review a completed trip."}), 403
+        if not _is_booking_customer(booking):
+            return jsonify({"error": "Only the passenger of this trip can review it."}), 403
+        if conn.execute("SELECT 1 FROM reviews WHERE booking_id = ?", (booking_id,)).fetchone():
+            return jsonify({"error": "This trip was already reviewed."}), 409
+        rating = max(1, min(5, rating))
+        comment = comment[:500]
+        customer_name = customer_name[:80]
         review = create_review(conn, booking_id, rider_id, customer_name, rating, comment)
         return jsonify({"success": True, "review": review}), 201
 
@@ -853,6 +1037,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/bookings")
     def api_create_booking():
+        _lim = _throttle("booking-create", _client_ip(), 20, 3600)
+        if _lim:
+            return _lim
         conn = get_db()
         settings = get_settings(conn)
         data = request.get_json(silent=True) or {}
@@ -1026,6 +1213,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             booking = get_booking_by_code(conn, code_or_id)
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
+        if code_or_id.isdigit() and not _is_booking_participant(booking):
+            return jsonify({"error": "Not allowed."}), 403
 
         after_id = int(request.args.get("after") or 0)
         messages = get_booking_messages(conn, booking["id"], after_id=after_id)
@@ -1047,14 +1236,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
+        if code_or_id.isdigit() and not _is_booking_participant(booking):
+            return jsonify({"error": "Not allowed."}), 403
+        limited = _throttle("chat", _client_ip(), 120, 600)
+        if limited:
+            return limited
         data = request.get_json(silent=True) or {}
-        text = (data.get("message") or "").strip()
+        text = (data.get("message") or "").strip()[:2000]
         if not text:
             return jsonify({"error": "Message cannot be empty."}), 400
 
-        sender_role = (data.get("sender_role") or "customer").lower()
-        if sender_role not in ["customer", "rider", "system"]:
-            sender_role = "customer"
+        # Role is decided by the server, never by the client.
+        _rid = _rider_id_from_session()
+        sender_role = "rider" if (_rid and booking.get("rider_id") == _rid) else "customer"
 
         sender_name = (data.get("sender_name") or "").strip()
         if not sender_name:
@@ -1110,6 +1304,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 booking["rider_lat"], booking["rider_lng"], booking["dropoff_lat"], booking["dropoff_lng"]
             )
 
+        if not _is_booking_participant(booking):
+            booking = {k: v for k, v in booking.items() if k not in ("customer_phone",)}
         return jsonify({
             "booking": booking,
             "trail": trail,
@@ -1138,6 +1334,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/rider/login")
     def rider_login():
+        _lim = _throttle("rider-login", _client_ip(), 10, 900)
+        if _lim:
+            return _lim
         conn = get_db()
         data = request.get_json(silent=True) or {}
         identifier = (data.get("phone") or data.get("email") or data.get("identifier") or "").strip()
@@ -1146,6 +1345,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not identifier or not password:
             return jsonify({"error": "Palihug ibutang ang imong Mobile Phone Number o Email ug Password."}), 400
 
+        _lim2 = _throttle("rider-login-id", identifier.lower(), 8, 900)
+        if _lim2:
+            return _lim2
         rider = get_rider_by_phone(conn, identifier)
         if not rider:
             return jsonify({"error": "Wala makit-i ang rider account nga adunay maong Phone Number o Email. Palihug pagsusi o pag-register."}), 404
@@ -1176,6 +1378,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/rider/forgot-password")
     def rider_forgot_password():
+        _lim = _throttle("rider-forgot", _client_ip(), 5, 3600)
+        if _lim:
+            return _lim
         conn = get_db()
         data = request.get_json(silent=True) or {}
         phone = (data.get("phone") or "").strip()
@@ -1212,6 +1417,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/rider/register")
     def rider_register():
+        _lim = _throttle("rider-reg", _client_ip(), 10, 3600)
+        if _lim:
+            return _lim
         conn = get_db()
         data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
@@ -1243,13 +1451,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if avatar_b64 and "," in avatar_b64:
             import base64
             try:
-                head, b64str = avatar_b64.split(",", 1)
-                mimetype = "image/jpeg"
-                if "png" in head:
-                    mimetype = "image/png"
-                elif "webp" in head:
-                    mimetype = "image/webp"
-                raw_bytes = base64.b64decode(b64str)
+                raw_bytes, mimetype, _ext = _decode_image(avatar_b64, 5 * 1024 * 1024)
                 clean_p = phone.replace(" ", "").replace("-", "")
                 ts = int(datetime.now().timestamp())
                 fname = f"rider_{clean_p}_{ts}.jpg"
@@ -1286,7 +1488,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def get_rider_co_riders():
         conn = get_db()
         riders = get_online_riders(conn)
-        current_rider_id = request.args.get("rider_id", type=int) or session.get("rider_id")
+        current_rider_id = _rider_id_from_session()
+        if not current_rider_id:
+            return jsonify({"error": "Rider login required."}), 401
         clean_list = []
         for r in riders:
             clean_list.append({
@@ -1314,7 +1518,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def rider_toggle_status():
         conn = get_db()
         data = request.get_json(silent=True) or {}
-        rider_id = session.get("rider_id") or data.get("rider_id")
+        rider_id = _rider_id_from_session()
         if not rider_id:
             return jsonify({"error": "Unauthorized"}), 401
 
@@ -1326,13 +1530,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/api/rider/available-jobs")
     def rider_available_jobs():
         conn = get_db()
+        if not _rider_id_from_session():
+            return jsonify({"error": "Rider login required.", "jobs": [], "count": 0}), 401
         jobs = get_available_broadcast_bookings(conn)
         return jsonify({"jobs": jobs, "count": len(jobs)})
 
     @app.get("/api/rider/active-job")
     def rider_active_job():
         conn = get_db()
-        rider_id = session.get("rider_id") or request.args.get("rider_id")
+        rider_id = _rider_id_from_session()
         if not rider_id:
             return jsonify({"job": None, "scheduled_jobs": []})
 
@@ -1344,7 +1550,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def rider_accept_booking(booking_id: int):
         conn = get_db()
         data = request.get_json(silent=True) or {}
-        rider_id = session.get("rider_id") or data.get("rider_id")
+        rider_id = _rider_id_from_session()
         if not rider_id:
             return jsonify({"error": "Please log in as a rider before accepting bookings."}), 401
 
@@ -1398,7 +1604,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def rider_start_scheduled_job(booking_id: int):
         conn = get_db()
         data = request.get_json(silent=True) or {}
-        rider_id = session.get("rider_id") or data.get("rider_id")
+        rider_id = _rider_id_from_session()
         if not rider_id:
             return jsonify({"error": "Unauthorized"}), 401
         booking = get_booking_by_id(conn, booking_id)
@@ -1417,6 +1623,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if new_status not in ("in_progress", "completed", "cancelled"):
             return jsonify({"error": "Invalid status transition"}), 400
 
+        target = get_booking_by_id(conn, booking_id)
+        if not target:
+            return jsonify({"error": "Booking not found."}), 404
+        rid = _rider_id_from_session()
+        if not (_admin_ok() or (rid and target.get("rider_id") == rid)):
+            return jsonify({"error": "Only the assigned rider can update this booking."}), 403
+
         update_booking_status(conn, booking_id, new_status)
         conn.commit()
         updated_job = get_booking_by_id(conn, booking_id)
@@ -1426,27 +1639,28 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def upload_booking_receipt(booking_id: int):
         conn = get_db()
         data = request.get_json(silent=True) or {}
+        _bk = get_booking_by_id(conn, booking_id)
+        if not _bk:
+            return jsonify({"error": "Booking not found."}), 404
+        if not _is_booking_participant(_bk):
+            return jsonify({"error": "Not allowed."}), 403
+        limited = _throttle("upload", _client_ip(), 30, 600)
+        if limited:
+            return limited
         receipt_b64 = (data.get("receipt_image") or "").strip()
         if not receipt_b64 or "," not in receipt_b64:
             return jsonify({"error": "Invalid or missing receipt image data."}), 400
 
         import base64
         try:
-            head, b64str = receipt_b64.split(",", 1)
-            mimetype = "image/jpeg"
-            if "png" in head:
-                mimetype = "image/png"
-            elif "webp" in head:
-                mimetype = "image/webp"
-            raw_bytes = base64.b64decode(b64str)
-            if len(raw_bytes) > 10 * 1024 * 1024:
-                return jsonify({"error": "Image file too large (max 10MB)."}), 400
+            raw_bytes, mimetype, _ext = _decode_image(receipt_b64, 8 * 1024 * 1024)
 
             ts = int(datetime.now().timestamp())
             fname = f"receipt_{booking_id}_{ts}.jpg"
             receipt_url = save_uploaded_media(conn, fname, raw_bytes, mimetype)
+            conn.execute("UPDATE bookings SET receipt_url = ? WHERE id = ?", (receipt_url, booking_id))
             booking_row = get_booking_by_id(conn, booking_id)
-            sender_role = "rider" if session.get("rider_id") else "customer"
+            sender_role = "rider" if (_rider_id_from_session() and booking_row and booking_row.get("rider_id") == _rider_id_from_session()) else "customer"
             sender_name = "Kuya Rider" if sender_role == "rider" else (booking_row.get("customer_name") if booking_row else "Passenger")
             add_booking_message(
                 conn,
@@ -1462,6 +1676,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "receipt_url": receipt_url,
                 "message": "Malampusong na-upload ang litrato sa resibo!",
             })
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             return jsonify({"error": f"Failed to upload receipt: {str(e)}"}), 500
 
@@ -1469,7 +1685,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def stream_rider_location():
         conn = get_db()
         data = request.get_json(silent=True) or {}
-        rider_id = session.get("rider_id") or data.get("rider_id")
+        rider_id = _rider_id_from_session()
         if not rider_id:
             return jsonify({"error": "Rider ID required"}), 400
 
@@ -1489,7 +1705,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/api/rider/transactions")
     def api_rider_transactions():
         conn = get_db()
-        rider_id_val = request.args.get("rider_id") or session.get("rider_id")
+        rider_id_val = _rider_id_from_session()
         if not rider_id_val:
             return jsonify({"success": False, "error": "Rider ID is required."}), 400
         try:
@@ -1524,7 +1740,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # -------------------------------------------------------------------------
     @app.post("/api/admin/riders/<int:rider_id>/status")
     def admin_update_rider_status(rider_id: int):
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin login required."}), 401
         conn = get_db()
         data = request.get_json(silent=True) or {}
@@ -1537,7 +1753,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/riders/<int:rider_id>/delete")
     def admin_delete_rider(rider_id: int):
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin access required."}), 403
         conn = get_db()
         success = delete_rider(conn, rider_id)
@@ -1547,7 +1763,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/riders/<int:rider_id>/reset-password")
     def admin_reset_rider_password(rider_id: int):
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin access required."}), 403
         conn = get_db()
         data = request.get_json(silent=True) or {}
@@ -1564,6 +1780,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def admin_login():
         data = request.get_json(silent=True) or {}
         password = str(data.get("password") or "").strip()
+        limited = _throttle("admin-login", _client_ip(), 8, 900) or _throttle("admin-login-global", "all", 40, 900)
+        if limited:
+            return limited
         conn = get_db()
         settings = get_settings(conn)
         pwd_hash = settings.get("admin_password_hash")
@@ -1573,11 +1792,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 is_valid = check_password_hash(pwd_hash, password)
             except Exception:
                 is_valid = False
-        if not is_valid and password in ("admin1234", "admin"):
-            is_valid = True
 
         if is_valid:
             session["is_admin"] = True
+            session["admin_ts"] = time.time()
             return jsonify({"success": True})
         return jsonify({"error": "Incorrect admin password."}), 401
 
@@ -1588,7 +1806,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/admin")
     def admin_view():
-        is_admin_auth = bool(session.get("is_admin"))
+        is_admin_auth = bool(_admin_ok())
         conn = get_db()
         settings = get_settings(conn)
 
@@ -1650,7 +1868,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/customers/<int:customer_id>/toggle-verify")
     def admin_toggle_customer_verify(customer_id: int):
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin access required."}), 403
         conn = get_db()
         cust = toggle_customer_verify(conn, customer_id)
@@ -1661,7 +1879,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/customers/<int:customer_id>/delete")
     def admin_delete_customer(customer_id: int):
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin access required."}), 403
         conn = get_db()
         success = delete_customer(conn, customer_id)
@@ -1671,7 +1889,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/customers/<int:customer_id>/reset-password")
     def admin_reset_customer_password(customer_id: int):
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin access required."}), 403
         conn = get_db()
         data = request.get_json(silent=True) or {}
@@ -1686,7 +1904,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/api/admin/transactions")
     def admin_get_transactions():
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin access required."}), 403
         conn = get_db()
         status_filter = (request.args.get("status") or "").strip()
@@ -1695,6 +1913,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/settings")
     def admin_save_settings():
+        if not _admin_ok():
+            return jsonify({"error": "Admin login required."}), 401
         conn = get_db()
         data = request.get_json(silent=True) or {}
         updates = {}
@@ -1710,11 +1930,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             update_settings(conn, updates)
             conn.commit()
 
-        return jsonify({"success": True, "settings": get_settings(conn)})
+        safe_settings = {k: v for k, v in get_settings(conn).items() if k != "admin_password_hash"}
+        return jsonify({"success": True, "settings": safe_settings})
 
     @app.get("/api/admin/backup")
     def admin_download_backup():
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin login required."}), 401
         conn = get_db()
         backup_data = export_full_backup(conn)
@@ -1738,7 +1959,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/restore")
     def admin_restore_backup():
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin login required."}), 401
 
         import json
@@ -1776,7 +1997,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/api/admin/backup/google-drive")
     def admin_upload_backup_google_drive():
-        if not session.get("is_admin"):
+        if not _admin_ok():
             return jsonify({"error": "Admin login required."}), 401
 
         conn = get_db()
@@ -1852,4 +2073,4 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=os.environ.get("FLASK_DEBUG") == "1")

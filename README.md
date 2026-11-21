@@ -37,3 +37,18 @@ Usa ka komprehensibo, mobile-first Progressive Web App (PWA) alang sa **Pahatud,
 6. **⚙️ Club Admin & Dispatch Control (`/admin`)**:
    - Real-time dashboard sa mga online riders, biyahe karon, ug natapos nga mga sugo.
    - Roster sa mga miyembro sa club ug editor sa taripa sa plete.
+
+---
+
+## 🔐 Seguridad / Deployment (Render)
+
+Ibutang kini sa **Environment Variables** sa Render:
+
+| Variable | Gamit |
+|---|---|
+| `ADMIN_PASSWORD` | Password sa `/admin`. Kung wala ma-set, mo-generate ang app og random nga password ug i-print sa logs sa unang boot. |
+| `SECRET_KEY` | (Optional) Fixed nga session key. Kung wala, mo-generate ug mo-save ang app og random key sa database. |
+| `DATABASE_URL` | Postgres/Neon connection string (kung gamiton). |
+| `FLASK_DEBUG` | Ayaw i-set sa production. `1` ra kung local dev. |
+
+Tan-awa ang `SECURITY_CHANGES.md` para sa kompletong lista sa mga giayo.
