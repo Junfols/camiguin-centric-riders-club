@@ -113,8 +113,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "brgy baylao",
             "barangay baylao"
         ],
-        "lat": 9.24990,
-        "lng": 124.69862,
+        "lat": 9.24951,
+        "lng": 124.69505,
         "mun": "Mambajao",
         "full_address": "Baylao, Mambajao, Camiguin"
     },
@@ -133,8 +133,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "baylao court",
             "baylao covered court"
         ],
-        "lat": 9.24987,
-        "lng": 124.69844,
+        "lat": 9.24951,
+        "lng": 124.69505,
         "mun": "Mambajao",
         "full_address": "Circumferential Road, Baylao, Mambajao"
     },
@@ -149,8 +149,8 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "es baylao",
             "eskwelahan sa baylao"
         ],
-        "lat": 9.24989,
-        "lng": 124.69864,
+        "lat": 9.24956,
+        "lng": 124.69541,
         "mun": "Mambajao",
         "full_address": "Circumferential Road, Baylao, Mambajao"
     },
