@@ -258,7 +258,50 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         phone = (session.get("customer_phone") or "").strip()
         if phone and normalize_ph_phone(phone) == normalize_ph_phone(booking.get("customer_phone") or ""):
             return True
-        return bool(session.get("active_booking_code")) and session.get("active_booking_code") == booking.get("booking_code")
+        cust_id = session.get("customer_id")
+        if cust_id:
+            try:
+                c_row = get_db().execute("SELECT phone FROM customers WHERE id = ?", (int(cust_id),)).fetchone()
+                if c_row and normalize_ph_phone(c_row["phone"] or "") == normalize_ph_phone(booking.get("customer_phone") or ""):
+                    return True
+            except Exception:
+                pass
+        known_codes = {
+            c.strip().upper()
+            for c in (
+                session.get("active_booking_code"),
+                session.get("last_completed_code"),
+            )
+            if c and str(c).strip()
+        }
+        b_code = (booking.get("booking_code") or "").strip().upper()
+        b_grp = (booking.get("group_code") or "").strip().upper()
+        if b_code and b_code in known_codes:
+            return True
+        if b_grp and b_grp in known_codes:
+            return True
+        if known_codes:
+            conn = get_db()
+            for code in known_codes:
+                ref = conn.execute(
+                    "SELECT group_code, customer_phone, created_at FROM bookings WHERE UPPER(booking_code) = ? OR UPPER(group_code) = ? LIMIT 1",
+                    (code, code),
+                ).fetchone()
+                if not ref:
+                    continue
+                ref_grp = (ref["group_code"] or "").strip().upper()
+                if b_grp and ref_grp and b_grp == ref_grp:
+                    return True
+                if (
+                    ref["customer_phone"]
+                    and booking.get("customer_phone")
+                    and ref["created_at"]
+                    and booking.get("created_at")
+                    and normalize_ph_phone(ref["customer_phone"]) == normalize_ph_phone(booking["customer_phone"])
+                    and ref["created_at"] == booking["created_at"]
+                ):
+                    return True
+        return False
 
     def _is_booking_participant(booking: dict) -> bool:
         if not booking:
@@ -992,6 +1035,99 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def api_submit_review():
         conn = get_db()
         data = request.get_json(silent=True) or {}
+
+        def _resolve_slot_booking(b_id: int | None, r_id: int) -> dict[str, Any] | None:
+            bk = get_booking_by_id(conn, b_id) if b_id else None
+            if not bk:
+                return None
+            if bk.get("rider_id") == r_id:
+                return bk
+            grp_code = (bk.get("group_code") or "").strip().upper()
+            if grp_code:
+                sib = conn.execute(
+                    "SELECT * FROM bookings WHERE UPPER(group_code) = ? AND rider_id = ? ORDER BY id ASC LIMIT 1",
+                    (grp_code, r_id),
+                ).fetchone()
+                if sib:
+                    return dict(sib)
+            if bk.get("customer_phone") and bk.get("created_at"):
+                sib = conn.execute(
+                    "SELECT * FROM bookings WHERE customer_phone = ? AND created_at = ? AND rider_id = ? ORDER BY id ASC LIMIT 1",
+                    (bk["customer_phone"], bk["created_at"], r_id),
+                ).fetchone()
+                if sib:
+                    return dict(sib)
+            return bk
+
+        # Multi-rider batch mode: {"reviews": [{"booking_id": ..., "rider_id": ..., "rating": ..., "comment": ...}, ...]}
+        if isinstance(data.get("reviews"), list):
+            items = data.get("reviews") or []
+            if not items:
+                return jsonify({"error": "At least one rider rating is required."}), 400
+
+            default_customer_name = (data.get("customer_name") or "Passenger").strip()
+            default_booking_id = data.get("booking_id")
+            saved_reviews: list[dict[str, Any]] = []
+            already_reviewed_count = 0
+            unauthorized_count = 0
+            invalid_count = 0
+
+            for item in items:
+                if not isinstance(item, dict):
+                    invalid_count += 1
+                    continue
+                raw_rid = item.get("rider_id")
+                raw_rating = item.get("rating")
+                raw_bid = item.get("booking_id") or default_booking_id
+                if not raw_rid or not raw_rating:
+                    invalid_count += 1
+                    continue
+                try:
+                    b_id = int(raw_bid) if raw_bid else None
+                    r_id = int(raw_rid)
+                    rating_val = int(raw_rating)
+                except (ValueError, TypeError):
+                    invalid_count += 1
+                    continue
+
+                bk = _resolve_slot_booking(b_id, r_id)
+                if not bk or bk.get("rider_id") != r_id or bk.get("status") != "completed":
+                    invalid_count += 1
+                    continue
+                if not _is_booking_customer(bk):
+                    unauthorized_count += 1
+                    continue
+
+                slot_bid = int(bk["id"])
+                if conn.execute(
+                    "SELECT 1 FROM reviews WHERE booking_id = ? AND rider_id = ?",
+                    (slot_bid, r_id),
+                ).fetchone():
+                    already_reviewed_count += 1
+                    continue
+
+                c_name = (item.get("customer_name") or default_customer_name or "Passenger").strip()[:80]
+                c_text = (item.get("comment") or "").strip()[:500]
+                rating_val = max(1, min(5, rating_val))
+                rev = create_review(conn, slot_bid, r_id, c_name, rating_val, c_text)
+                if rev:
+                    saved_reviews.append(rev)
+
+            if saved_reviews:
+                return jsonify({
+                    "success": True,
+                    "review": saved_reviews[0],
+                    "reviews": saved_reviews,
+                    "saved_count": len(saved_reviews),
+                    "already_reviewed_count": already_reviewed_count,
+                }), 201
+            if already_reviewed_count > 0:
+                return jsonify({"error": "All selected riders were already reviewed.", "already_reviewed": True}), 409
+            if unauthorized_count > 0:
+                return jsonify({"error": "Only the passenger of this trip can review it."}), 403
+            return jsonify({"error": "You can only review completed trips."}), 403
+
+        # Single-rider mode (backward compatible)
         rider_id = data.get("rider_id")
         rating = data.get("rating")
         if not rider_id or not rating:
@@ -1006,18 +1142,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid IDs or rating value."}), 400
 
-        booking = get_booking_by_id(conn, booking_id) if booking_id else None
+        booking = _resolve_slot_booking(booking_id, rider_id) if booking_id else None
         if not booking or booking.get("rider_id") != rider_id or booking.get("status") != "completed":
             return jsonify({"error": "You can only review a completed trip."}), 403
         if not _is_booking_customer(booking):
             return jsonify({"error": "Only the passenger of this trip can review it."}), 403
-        if conn.execute("SELECT 1 FROM reviews WHERE booking_id = ?", (booking_id,)).fetchone():
+        slot_booking_id = int(booking["id"])
+        if conn.execute(
+            "SELECT 1 FROM reviews WHERE booking_id = ? AND rider_id = ?",
+            (slot_booking_id, rider_id),
+        ).fetchone():
             return jsonify({"error": "This trip was already reviewed."}), 409
         rating = max(1, min(5, rating))
         comment = comment[:500]
         customer_name = customer_name[:80]
-        review = create_review(conn, booking_id, rider_id, customer_name, rating, comment)
-        return jsonify({"success": True, "review": review}), 201
+        review = create_review(conn, slot_booking_id, rider_id, customer_name, rating, comment)
+        return jsonify({"success": True, "review": review, "reviews": [review], "saved_count": 1}), 201
 
     @app.get("/api/reviews/<int:rider_id>")
     def api_get_rider_reviews(rider_id: int):
@@ -1588,10 +1728,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         booking = get_booking_by_code(conn, booking_code)
         if not booking:
+            grp_list = get_bookings_by_group_code(conn, booking_code)
+            if grp_list:
+                req_slot = (request.args.get("slot") or "").strip().upper()
+                booking = next((gb for gb in grp_list if (gb.get("booking_code") or "").upper() == req_slot), grp_list[0])
+        if not booking:
             return render_template("track.html", booking=None, error="Booking not found."), 404
         if booking.get("status") in ("broadcast", "accepted", "in_progress"):
             session["active_booking_code"] = booking["booking_code"]
         else:
+            if booking.get("status") == "completed":
+                session["last_completed_code"] = booking["booking_code"]
             if session.get("active_booking_code") == booking["booking_code"]:
                 session.pop("active_booking_code", None)
         return render_template("track.html", booking=booking, active_nav="track")
@@ -1600,6 +1747,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def api_track_booking(booking_code: str):
         conn = get_db()
         booking = get_booking_by_code(conn, booking_code)
+        if not booking:
+            grp_list = get_bookings_by_group_code(conn, booking_code)
+            if grp_list:
+                booking = grp_list[0]
         if not booking:
             return jsonify({"error": "Booking not found."}), 404
 
@@ -1646,6 +1797,42 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     sb["rider_slot"] = sb.get("rider_slot") or idx_s
                     sb["group_size"] = len(group_bookings)
         group_summary = build_booking_group_summary(group_bookings) if len(group_bookings) > 1 else None
+
+        # Preserve review authorization when booking completes while tracking page stays open
+        any_completed = booking.get("status") == "completed" or any(
+            gb.get("status") == "completed" for gb in group_bookings
+        )
+        if any_completed and session.get("active_booking_code") in (
+            booking.get("booking_code"),
+            booking.get("group_code"),
+        ):
+            session["last_completed_code"] = booking["booking_code"]
+
+        # Attach per-slot review state so customer UI knows which riders are already rated
+        review_booking_ids = sorted({
+            int(x["id"])
+            for x in ([booking] + list(group_bookings))
+            if x and x.get("id")
+        })
+        reviewed_map: dict[int, int] = {}
+        if review_booking_ids:
+            placeholders = ", ".join(["?"] * len(review_booking_ids))
+            rev_rows = conn.execute(
+                f"SELECT booking_id, rating FROM reviews WHERE booking_id IN ({placeholders})",
+                tuple(review_booking_ids),
+            ).fetchall()
+            for rr in rev_rows:
+                if rr["booking_id"] is not None:
+                    reviewed_map[int(rr["booking_id"])] = int(rr["rating"] or 5)
+
+        if booking.get("id"):
+            b_id_int = int(booking["id"])
+            booking["is_reviewed"] = b_id_int in reviewed_map
+            booking["review_rating"] = reviewed_map.get(b_id_int)
+        for gb in group_bookings:
+            gb_id = int(gb["id"]) if gb.get("id") else None
+            gb["is_reviewed"] = bool(gb_id and gb_id in reviewed_map)
+            gb["review_rating"] = reviewed_map.get(gb_id) if gb_id else None
 
         if not _is_booking_participant(booking):
             booking = {k: v for k, v in booking.items() if k not in ("customer_phone",)}
