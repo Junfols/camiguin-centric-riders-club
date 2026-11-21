@@ -124,12 +124,11 @@
       </div>
       <span id="group-code-badge" class="badge" style="background:#1d4ed8;color:#fff;font-family:monospace;font-size:0.78rem;padding:4px 10px;border-radius:999px;">{{ booking.group_code or '' }}</span>
     </div>
-    <div id="group-riders-slots-list" style="display:grid;gap:8px;"></div>
-    <div id="all-accepted-riders-cards" style="display:grid;gap:10px;margin-top:10px;"></div>
+    <div id="group-riders-slots-list" style="display:grid;gap:10px;"></div>
   </div>
 
-  <!-- Assigned Rider Info Card -->
-  <div id="assigned-rider-card" class="card rider-info-card {% if not booking.rider_id %}hidden{% endif %}">
+  <!-- Assigned Rider Info Card (Solo Bookings Only) -->
+  <div id="assigned-rider-card" class="card rider-info-card {% if not booking.rider_id or (booking.group_size or 1) > 1 %}hidden{% endif %}">
     <div class="rider-card-top">
       <div class="rider-avatar" id="rider-avatar">
         {% if booking.rider_avatar %}
@@ -395,6 +394,6 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=43"></script>
+<script src="/static/js/track.js?v=44"></script>
 {% endif %}
 {% endblock %}
