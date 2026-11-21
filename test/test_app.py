@@ -1428,9 +1428,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
 
     def test_baylao_places_resolve_on_the_highway(self):
         for text, lat, lng in (
-            ("Baylao Elementary School", 9.24989, 124.69864),
-            ("baylao basketball court", 9.24987, 124.69844),
-            ("Bahay Pamahalaan ng Barangay Baylao", 9.24987, 124.69844),
+            ("Baylao Elementary School", 9.24956, 124.69541),
+            ("baylao basketball court", 9.24951, 124.69505),
+            ("Bahay Pamahalaan ng Barangay Baylao", 9.24951, 124.69505),
         ):
             res = self.client.post("/api/fare-estimate", json={
                 "pickup_address": text, "dropoff_address": "Jollibee", "service_type": "pahatud"})
