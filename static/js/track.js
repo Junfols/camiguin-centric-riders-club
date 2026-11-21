@@ -317,15 +317,23 @@
   };
 
   function renderSingleAssignedRiderCard(b) {
-    if (!assignedRiderCard) return;
     if (b && b.rider_id) {
-      assignedRiderCard.classList.remove("hidden");
-      const slotPrefix = (Number(b.group_size || 1) > 1) ? `Rider #${b.rider_slot || 1}: ` : "";
-      if (riderNameEl) riderNameEl.textContent = `${slotPrefix}${b.rider_name || "Club Rider"}`;
       const revRiderInput = document.getElementById("review-rider-id");
-      if (revRiderInput && b.rider_id) revRiderInput.value = b.rider_id;
+      if (revRiderInput) revRiderInput.value = b.rider_id;
       const revBookingInput = document.getElementById("review-booking-id");
       if (revBookingInput && b.id) revBookingInput.value = b.id;
+    }
+    if (!assignedRiderCard) return;
+    const isMultiRiderGroup =
+      (Array.isArray(latestGroupBookings) && latestGroupBookings.length > 1) ||
+      Number((b && b.group_size) || 1) > 1;
+    if (isMultiRiderGroup) {
+      assignedRiderCard.classList.add("hidden");
+      return;
+    }
+    if (b && b.rider_id) {
+      assignedRiderCard.classList.remove("hidden");
+      if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
       if (riderAvatar) {
         if (b.rider_avatar) {
           riderAvatar.innerHTML = `<img src="${escapeHtml(b.rider_avatar)}" alt="${escapeHtml(b.rider_name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
@@ -349,6 +357,11 @@
     const assignedLbl = document.getElementById("group-assigned-label");
     const totalLbl = document.getElementById("group-total-label");
     const grpBadge = document.getElementById("group-code-badge");
+    const legacyDupCards = document.getElementById("all-accepted-riders-cards");
+    if (legacyDupCards) {
+      legacyDupCards.innerHTML = "";
+      legacyDupCards.classList.add("hidden");
+    }
     if (!panel || !slotsContainer) return;
 
     if (!groupList || groupList.length <= 1) {
@@ -366,106 +379,85 @@
       const slotNum = gb.rider_slot || 1;
       const isSelected = gb.booking_code === getActiveBookingRef();
       const hasRider = Boolean(gb.rider_id);
-      const borderStyle = isSelected ? "2px solid #2563eb" : "1px solid #cbd5e1";
+      const borderStyle = isSelected ? "2px solid #2563eb" : "1.5px solid #bfdbfe";
       const bgStyle = isSelected ? "#ffffff" : "#f8fafc";
+      const shadowStyle = isSelected
+        ? "0 4px 12px rgba(37,99,235,0.14)"
+        : "0 2px 6px rgba(15,23,42,0.05)";
 
       if (!hasRider) {
         return `
-          <div style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-            <div>
-              <span class="badge" style="background:#e2e8f0;color:#475569;font-size:0.72rem;font-weight:700;">Rider #${slotNum}</span>
-              <strong style="margin-left:6px;font-size:0.9rem;color:#64748b;">⏳ Waiting for rider to accept...</strong>
-              <div style="font-size:0.75rem;color:#94a3b8;font-family:monospace;">${escapeHtml(gb.booking_code)}</div>
+          <div style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:${shadowStyle};">
+            <div style="width:46px;height:46px;border-radius:50%;background:#e2e8f0;color:#64748b;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.15rem;">
+              ⏳
+            </div>
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="background:#64748b;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:999px;">Rider #${slotNum}</span>
+                <strong style="font-size:0.92rem;color:#475569;">Waiting for rider to accept...</strong>
+              </div>
+              <div style="font-size:0.75rem;color:#94a3b8;font-family:monospace;margin-top:2px;">${escapeHtml(gb.booking_code)}</div>
             </div>
           </div>
         `;
       }
 
       const canCallSlot = ["accepted", "in_progress"].includes(gb.status);
-      const statusTag = gb.status === "completed"
-        ? `<span style="color:#15803d;font-weight:700;font-size:0.74rem;">✓ Completed</span>`
-        : (gb.status === "in_progress"
-          ? `<span style="color:#0284c7;font-weight:700;font-size:0.74rem;">🚀 In Transit</span>`
-          : `<span style="color:#16a34a;font-weight:700;font-size:0.74rem;">🛵 Heading to Pickup</span>`);
-
       const isSlotCompleted = gb.status === "completed";
       const slotRated = isSlotCompleted && isSlotAlreadyReviewed(gb);
-      const rateBtnHtml = isSlotCompleted
-        ? (slotRated
-          ? `<span style="background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:999px;padding:4px 9px;font-size:0.72rem;font-weight:700;white-space:nowrap;">⭐ Rated${getSlotReviewRating(gb) ? ` (${getSlotReviewRating(gb)}/5)` : ""}</span>`
-          : `<button type="button" onclick="event.stopPropagation();window.openRatingModalForGroup('${escapeHtml(gb.booking_code)}');" class="btn btn-sm" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Rate</button>`)
-        : "";
+      const avatarContent = gb.rider_avatar
+        ? `<img src="${escapeHtml(gb.rider_avatar)}" alt="${escapeHtml(gb.rider_name || '')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+        : escapeHtml((gb.rider_name || "R")[0].toUpperCase());
 
-      const callBtnHtml = canCallSlot
-        ? `<button type="button" onclick="event.stopPropagation();window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:0.76rem;font-weight:700;cursor:pointer;">🔊 Call</button>`
-        : rateBtnHtml;
+      const statusHtml = isSlotCompleted
+        ? `<span style="color:#15803d;font-weight:700;">✓ Completed</span>`
+        : (gb.status === "in_progress"
+          ? `<span style="color:#0284c7;font-weight:700;">🚀 In Transit</span>`
+          : `<span style="color:#15803d;font-weight:700;">🛵 Accepted &bull; Heading to Pickup</span>`);
+
+      const primaryActionBtn = canCallSlot
+        ? `<button type="button" onclick="event.stopPropagation();window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;font-weight:700;padding:9px 10px;border-radius:9px;cursor:pointer;">🔊 Free In-App Call</button>`
+        : (isSlotCompleted
+          ? (slotRated
+            ? `<button type="button" disabled onclick="event.stopPropagation();" class="btn btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:700;padding:9px 10px;border-radius:9px;">⭐ Rated${getSlotReviewRating(gb) ? ` (${getSlotReviewRating(gb)}/5)` : " ✓"}</button>`
+            : `<button type="button" onclick="event.stopPropagation();window.openRatingModalForGroup('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#f97316;border-color:#ea580c;font-weight:700;padding:9px 10px;border-radius:9px;cursor:pointer;">⭐ Rate Rider #${slotNum}</button>`)
+          : `<button type="button" disabled onclick="event.stopPropagation();" class="btn btn-sm" style="background:#e2e8f0;color:#64748b;border:none;font-weight:700;padding:9px 10px;border-radius:9px;">🔊 Call</button>`);
 
       return `
-        <div onclick="window.switchActiveGroupSlot('${escapeHtml(gb.booking_code)}')" style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;">
-          <div style="min-width:0;flex:1;">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:0.72rem;font-weight:800;">Rider #${slotNum}</span>
-              <strong style="font-size:0.94rem;color:#0f172a;">${escapeHtml(gb.rider_name || "Club Rider")}</strong>
-              ${isSelected ? `<span style="background:#2563eb;color:#fff;font-size:0.66rem;padding:1px 6px;border-radius:999px;font-weight:700;">Active Chat</span>` : ""}
+        <div onclick="window.switchActiveGroupSlot('${escapeHtml(gb.booking_code)}')" style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:12px 14px;box-shadow:${shadowStyle};cursor:pointer;transition:border-color 0.15s ease;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:48px;height:48px;border-radius:50%;background:#ffedd5;color:#ea580c;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid ${isSelected ? "#2563eb" : "#fdba74"};">
+              ${avatarContent}
             </div>
-            <div style="font-size:0.78rem;color:#475569;margin-top:2px;">
-              🏍️ ${escapeHtml(gb.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(gb.rider_plate || "")}</strong> &bull; ${statusTag}
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="background:#1d4ed8;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:999px;">Rider #${slotNum}</span>
+                <strong style="font-size:0.96rem;color:#0f172a;word-break:break-word;">${escapeHtml(gb.rider_name || "Club Rider")}</strong>
+                ${isSelected ? `<span style="background:#2563eb;color:#fff;font-size:0.66rem;padding:2px 7px;border-radius:999px;font-weight:700;">Active Chat</span>` : ""}
+              </div>
+              <div style="font-size:0.81rem;color:#475569;margin-top:3px;">
+                🏍️ ${escapeHtml(gb.rider_bike || "Motorcycle")} &bull; Plate: <strong>${escapeHtml(gb.rider_plate || "N/A")}</strong>
+              </div>
+              <div style="font-size:0.76rem;margin-top:2px;">
+                ${statusHtml}
+              </div>
             </div>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-            ${callBtnHtml}
-            <a href="sms:${escapeHtml(gb.rider_phone || "")}" onclick="event.stopPropagation();" class="btn btn-sm btn-outline" style="padding:5px 9px;font-size:0.76rem;text-decoration:none;">💬</a>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+            ${primaryActionBtn}
+            <a href="sms:${escapeHtml(gb.rider_phone || "")}" onclick="event.stopPropagation();" class="btn btn-outline btn-sm" style="text-align:center;font-weight:700;padding:9px 10px;border-radius:9px;text-decoration:none;background:#ffffff;">💬 Send SMS</a>
           </div>
         </div>
       `;
     }).join("");
   }
 
-
-  function renderAllAcceptedRiderCards(groupList) {
-    const allCardsEl = document.getElementById("all-accepted-riders-cards");
-    if (!allCardsEl) return;
-    const assignedRiders = (groupList || []).filter((gb) => Boolean(gb.rider_id));
-    allCardsEl.innerHTML = assignedRiders.map((gb) => {
-      const slotNum = gb.rider_slot || 1;
-      const canCallSlot = ["accepted", "in_progress"].includes(gb.status);
-      const avatarContent = gb.rider_avatar
-        ? `<img src="${escapeHtml(gb.rider_avatar)}" alt="${escapeHtml(gb.rider_name || '')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
-        : escapeHtml((gb.rider_name || "R")[0].toUpperCase());
-      const statusText = gb.status === "completed"
-        ? "✓ Completed"
-        : (gb.status === "in_progress" ? "🚀 In Transit" : "🛵 Accepted • Heading to Pickup");
-
-      return `
-        <div class="card" style="margin:0;padding:12px 14px;background:#ffffff;border:1.5px solid #bfdbfe;border-radius:12px;box-shadow:0 2px 6px rgba(15,23,42,0.05);">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:46px;height:46px;border-radius:50%;background:#ffedd5;color:#ea580c;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #fdba74;">
-              ${avatarContent}
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <span style="background:#1d4ed8;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:999px;">Rider #${slotNum}</span>
-                <strong style="font-size:0.98rem;color:#0f172a;">${escapeHtml(gb.rider_name || "Club Rider")}</strong>
-              </div>
-              <div style="font-size:0.82rem;color:#475569;margin-top:2px;">
-                ${escapeHtml(gb.rider_bike || "Motorcycle")} &bull; Plate: <strong>${escapeHtml(gb.rider_plate || "N/A")}</strong>
-              </div>
-              <div style="font-size:0.76rem;color:#15803d;font-weight:700;margin-top:2px;">${statusText}</div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
-            ${canCallSlot
-              ? `<button type="button" onclick="window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;font-weight:700;padding:8px 10px;border-radius:9px;cursor:pointer;">🔊 Free In-App Call</button>`
-              : (gb.status === "completed"
-                ? (isSlotAlreadyReviewed(gb)
-                  ? `<button type="button" disabled class="btn btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:700;padding:8px 10px;border-radius:9px;">⭐ Rated${getSlotReviewRating(gb) ? ` (${getSlotReviewRating(gb)}/5)` : " ✓"}</button>`
-                  : `<button type="button" onclick="window.openRatingModalForGroup('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#f97316;border-color:#ea580c;font-weight:700;padding:8px 10px;border-radius:9px;cursor:pointer;">⭐ Rate Rider #${slotNum}</button>`)
-                : `<button type="button" disabled class="btn btn-sm" style="background:#e2e8f0;color:#64748b;border:none;font-weight:700;padding:8px 10px;border-radius:9px;">🔊 Call</button>`)}
-            <a href="sms:${escapeHtml(gb.rider_phone || "")}" class="btn btn-outline btn-sm" style="text-align:center;font-weight:700;padding:8px 10px;border-radius:9px;text-decoration:none;">💬 Send SMS</a>
-          </div>
-        </div>
-      `;
-    }).join("");
+  function renderAllAcceptedRiderCards() {
+    const legacyDupCards = document.getElementById("all-accepted-riders-cards");
+    if (legacyDupCards) {
+      legacyDupCards.innerHTML = "";
+      legacyDupCards.classList.add("hidden");
+    }
   }
 
     function syncExtraGroupMapMarkers(groupList) {
