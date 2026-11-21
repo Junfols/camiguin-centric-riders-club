@@ -2269,6 +2269,53 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except Exception as e:
             return jsonify({"error": f"Failed to upload receipt: {str(e)}"}), 500
 
+    @app.post("/api/bookings/<int:booking_id>/purchase")
+    def set_booking_purchase_amount(booking_id: int):
+        """Rider enters the real amount paid for the items (e.g. lechon manok P275).
+        The customer sees it live; total to pay = delivery fare + purchase amount."""
+        conn = get_db()
+        booking = get_booking_by_id(conn, booking_id)
+        if not booking:
+            return jsonify({"error": "Booking not found."}), 404
+        rid = _rider_id_from_session()
+        if not (_admin_ok() or (rid and booking.get("rider_id") == rid)):
+            return jsonify({"error": "Only the assigned rider can enter the purchase amount."}), 403
+        if str(booking.get("service_type") or "").lower() in ("pahatud", "pakuha"):
+            return jsonify({"error": "Passenger rides have no purchase amount."}), 400
+        if booking.get("status") in ("completed", "cancelled"):
+            return jsonify({"error": "This trip is already closed."}), 400
+        limited = _throttle("purchase", _client_ip(), 60, 600)
+        if limited:
+            return limited
+
+        data = request.get_json(silent=True) or {}
+        try:
+            amount = round(float(data.get("amount")), 2)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Please enter a valid amount."}), 400
+        if amount != amount or amount < 0 or amount > 100000:
+            return jsonify({"error": "Amount must be between 0 and 100,000."}), 400
+
+        previous = float(booking.get("purchase_amount") or 0)
+        fare = float(booking.get("fare_amount") or 0)
+        budget = float(booking.get("estimated_budget") or 0)
+        total_due = round(fare + amount, 2)
+
+        conn.execute("UPDATE bookings SET purchase_amount = ? WHERE id = ?", (amount, booking_id))
+        note = f"🧾 Pinalit nga gibayran sa rider: ₱{amount:,.2f} + Delivery fare ₱{fare:,.0f} = Total bayronon ₱{total_due:,.2f}"
+        if previous > 0 and abs(previous - amount) > 0.001:
+            note += f" (giusab gikan sa ₱{previous:,.2f})"
+        if budget > 0 and amount > budget:
+            note += f" ⚠️ Lapas sa budget nga ₱{budget:,.0f}"
+        add_booking_message(conn, booking_id, "system", "CCRC", note)
+        conn.commit()
+        return jsonify({
+            "success": True,
+            "purchase_amount": amount,
+            "fare_amount": fare,
+            "total_due": total_due,
+        })
+
     @app.post("/api/rider/location")
     def stream_rider_location():
         conn = get_db()

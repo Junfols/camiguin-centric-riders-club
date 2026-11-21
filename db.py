@@ -113,10 +113,46 @@ CAMIGUIN_KNOWN_PLACES: list[dict[str, Any]] = [
             "brgy baylao",
             "barangay baylao"
         ],
-        "lat": 9.24674,
-        "lng": 124.69862,
+        "lat": 9.24951,
+        "lng": 124.69505,
         "mun": "Mambajao",
         "full_address": "Baylao, Mambajao, Camiguin"
+    },
+    {
+        "name": "Baylao Barangay Hall & Basketball Court",
+        "cat": "building",
+        "keywords": [
+            "baylao barangay hall",
+            "baylao brgy hall",
+            "brgy hall baylao",
+            "barangay hall baylao",
+            "bahay pamahalaan baylao",
+            "bahay pamahalaan ng barangay baylao",
+            "baylao basketball court",
+            "baylao basketball",
+            "baylao court",
+            "baylao covered court"
+        ],
+        "lat": 9.24951,
+        "lng": 124.69505,
+        "mun": "Mambajao",
+        "full_address": "Circumferential Road, Baylao, Mambajao"
+    },
+    {
+        "name": "Baylao Elementary School",
+        "cat": "school",
+        "keywords": [
+            "baylao elementary school",
+            "baylao elementary",
+            "baylao school",
+            "baylao elem",
+            "es baylao",
+            "eskwelahan sa baylao"
+        ],
+        "lat": 9.24956,
+        "lng": 124.69541,
+        "mun": "Mambajao",
+        "full_address": "Circumferential Road, Baylao, Mambajao"
     },
     {
         "name": "Benhaan, Mambajao",
@@ -4386,6 +4422,7 @@ def _create_sqlite_schema(conn: DatabaseConnection) -> None:
         ("transfer_count", "INTEGER DEFAULT 0"),
         ("payment_status", "TEXT DEFAULT 'pending'"),
         ("receipt_url", "TEXT DEFAULT ''"),
+        ("purchase_amount", "REAL DEFAULT 0"),
         ("payment_ref", "TEXT DEFAULT ''"),
         ("payment_sent_at", "TEXT DEFAULT NULL"),
         ("payment_confirmed_at", "TEXT DEFAULT NULL"),
@@ -4717,6 +4754,7 @@ def _create_postgres_schema(conn: DatabaseConnection) -> None:
         ("transfer_count", "INTEGER DEFAULT 0"),
         ("payment_status", "VARCHAR(32) DEFAULT 'pending'"),
         ("receipt_url", "TEXT DEFAULT ''"),
+        ("purchase_amount", "DOUBLE PRECISION DEFAULT 0"),
         ("payment_ref", "VARCHAR(64) DEFAULT ''"),
         ("payment_sent_at", "VARCHAR(32) DEFAULT NULL"),
         ("payment_confirmed_at", "VARCHAR(32) DEFAULT NULL"),
