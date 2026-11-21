@@ -68,6 +68,7 @@
     window.CCRCVoiceCall.configure({
       role: "rider",
       riderId: currentRider.id,
+      riderPhone: currentRider.phone || "",
       bookingRef: job ? job.booking_code : null,
       bookingCode: job ? job.booking_code : "",
       peerName: job ? job.customer_name : "Passenger",
@@ -1356,6 +1357,7 @@
         });
         if (res.ok) {
           checkActiveJob();
+          fetchCoRiders();
         }
       } catch (_) {}
       jobInProgressBtn.disabled = false;
@@ -1381,6 +1383,7 @@
           activeJobBox.classList.add("hidden");
           renderJobOnRiderMap(null);
           fetchAvailableJobs();
+          fetchCoRiders();
           loadRiderTransactions();
         }
       } catch (_) {}
@@ -1619,6 +1622,7 @@
         }
         checkActiveJob();
         fetchAvailableJobs();
+        fetchCoRiders();
       } catch (err) {
         alert(err.message);
         fetchAvailableJobs();
@@ -1874,6 +1878,85 @@
     });
   }
 
+  if (coRidersList && coRidersList.dataset.callDelegated !== "1") {
+    coRidersList.dataset.callDelegated = "1";
+    coRidersList.addEventListener("click", (e) => {
+      const callBtn = e.target.closest(".co-rider-free-call-btn");
+      if (!callBtn) return;
+      const targetId = parseInt(callBtn.getAttribute("data-rider-id") || "0", 10);
+      const targetName = callBtn.getAttribute("data-rider-name") || "Fellow Rider";
+      const targetPhone = callBtn.getAttribute("data-rider-phone") || "";
+      const targetTown = callBtn.getAttribute("data-rider-town") || "Camiguin";
+      if (!targetId) return;
+      if (window.CCRCVoiceCall && typeof window.CCRCVoiceCall.startRiderCall === "function") {
+        window.CCRCVoiceCall.startRiderCall(targetId, targetName, targetPhone, targetTown);
+      } else {
+        alert("In-App Voice Call module is loading. Please try again.");
+      }
+    });
+  }
+
+  function resolveCoRiderStatusUI(r) {
+    const ts = String(r.trip_status || "").toLowerCase();
+    const ws = String(r.work_status || "").toLowerCase();
+
+    if (ts === "in_progress" || ws === "heading_destination") {
+      return {
+        key: "in_progress",
+        avatarClass: "is-heading",
+        badgeClass: "badge-heading",
+        badgeText: "🚀 In Transit",
+        detailClass: "status-heading",
+        detailText: "On trip heading to destination (Busy)",
+        pinBg: "#ea580c",
+        pinEmoji: "🚀",
+        isAvailable: false,
+      };
+    }
+
+    if (ts === "accepted" || ws === "accepting_booking" || Boolean(r.has_active_job)) {
+      return {
+        key: "accepted",
+        avatarClass: "is-accepting",
+        badgeClass: "badge-accepting",
+        badgeText: "🛵 Accepted Booking",
+        detailClass: "status-accepting",
+        detailText: "Accepted a trip — heading to pickup (Busy)",
+        pinBg: "#d97706",
+        pinEmoji: "🛵",
+        isAvailable: false,
+      };
+    }
+
+    if (ts === "completed" || ws === "completed") {
+      const doneTime = r.last_completed_at ? String(r.last_completed_at).slice(11, 16) : "";
+      const timeSuffix = doneTime ? ` (${doneTime})` : "";
+      return {
+        key: "completed",
+        avatarClass: "is-available",
+        badgeClass: "badge-completed",
+        badgeText: "✓ Completed • Available",
+        detailClass: "status-completed",
+        detailText: `Trip completed${timeSuffix} — Available na karon!`,
+        pinBg: "#16a34a",
+        pinEmoji: "✅",
+        isAvailable: true,
+      };
+    }
+
+    return {
+      key: "available",
+      avatarClass: "is-available",
+      badgeClass: "badge-completed",
+      badgeText: "🟢 Available",
+      detailClass: "status-available",
+      detailText: "Free & ready for booking",
+      pinBg: "#16a34a",
+      pinEmoji: "🟢",
+      isAvailable: true,
+    };
+  }
+
   async function fetchCoRiders() {
     if (!currentRider) return;
     try {
@@ -1884,6 +1967,35 @@
 
       if (coRidersCountPill) {
         coRidersCountPill.textContent = `${list.length} Online`;
+      }
+
+      const summaryEl = document.getElementById("co-riders-status-summary");
+      if (summaryEl) {
+        if (list.length === 0) {
+          summaryEl.classList.add("hidden");
+        } else {
+          let availCnt = 0;
+          let compCnt = 0;
+          let accCnt = 0;
+          let transitCnt = 0;
+          list.forEach((r) => {
+            const st = resolveCoRiderStatusUI(r);
+            if (st.key === "in_progress") transitCnt++;
+            else if (st.key === "accepted") accCnt++;
+            else if (st.key === "completed") {
+              compCnt++;
+              availCnt++;
+            } else {
+              availCnt++;
+            }
+          });
+          summaryEl.innerHTML = `
+            <span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:0.72rem;padding:3px 8px;">🟢 ${availCnt} Available${compCnt > 0 ? ` (${compCnt} Completed)` : ""}</span>
+            <span class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-size:0.72rem;padding:3px 8px;">🛵 ${accCnt} Accepted Booking</span>
+            <span class="badge" style="background:#ffedd5;color:#c2410c;border:1px solid #fed7aa;font-size:0.72rem;padding:3px 8px;">🚀 ${transitCnt} In Transit</span>
+          `;
+          summaryEl.classList.remove("hidden");
+        }
       }
 
       if (!coRidersList) return;
@@ -1898,19 +2010,29 @@
       }
 
       coRidersList.innerHTML = list.map((r) => {
-        const isSelf = r.is_self;
+        const isSelf = Boolean(r.is_self);
+        const st = resolveCoRiderStatusUI(r);
         const avatarHtml = r.avatar_url
-          ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar">`
-          : `<div class="co-rider-avatar-placeholder">🛵</div>`;
+          ? `<img src="${escapeHtml(r.avatar_url)}" alt="${escapeHtml(r.name)}" class="co-rider-avatar ${st.avatarClass}">`
+          : `<div class="co-rider-avatar-placeholder ${st.avatarClass}">🛵</div>`;
 
         const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">You</span>` : '';
-        const isBusy = Boolean(r.has_active_job);
-        const statusBadge = isBusy
-          ? `<span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.68rem;padding:2px 7px;border:1px solid #fde68a;">🚀 ${escapeHtml(r.work_status_label || 'On Trip')}</span>`
-          : `<span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.68rem;padding:2px 7px;border:1px solid #86efac;">🟢 Available</span>`;
+        const statusBadge = `<span class="badge ${st.badgeClass}" style="font-size:0.7rem;padding:2px 8px;">${st.badgeText}</span>`;
         const town = escapeHtml(r.municipality || 'Camiguin');
-        const phoneBtn = (!isSelf)
-          ? `<button type="button" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="In-App Voice Call" onclick="window.CCRCVoiceCall && window.CCRCVoiceCall.startRiderCall(${r.id}, '${escapeHtml(r.name)}', '${escapeHtml(r.phone || '')}', '${town}')">📞 Call</button>`
+
+        const actionBtns = (!isSelf)
+          ? `
+            <button type="button"
+                    class="btn btn-sm btn-inapp-call co-rider-free-call-btn"
+                    data-rider-id="${escapeHtml(String(r.id))}"
+                    data-rider-name="${escapeHtml(r.name || 'Fellow Rider')}"
+                    data-rider-phone="${escapeHtml(r.phone || '')}"
+                    data-rider-town="${town}"
+                    style="font-size:0.75rem;padding:6px 11px;border-radius:8px;white-space:nowrap;">
+              🔊 Free In-App Call
+            </button>
+            ${r.phone ? `<a href="sms:${escapeHtml(r.phone)}" class="btn btn-sm btn-outline" style="font-size:0.74rem;padding:5px 9px;border-radius:8px;text-decoration:none;" title="Send SMS">💬 SMS</a>` : ''}
+          `
           : '';
 
         return `
@@ -1922,13 +2044,16 @@
                 ${selfBadge}
                 ${statusBadge}
               </div>
+              <div class="co-rider-status-detail ${st.detailClass}">
+                ${escapeHtml(st.detailText)}
+              </div>
               <div class="co-rider-sub">
                 🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
               </div>
-              <span class="co-rider-town">📍 ${town}</span>
-            </div>
-            <div class="co-rider-actions">
-              ${phoneBtn}
+              <div class="co-rider-footer-row">
+                <span class="co-rider-town">📍 ${town}</span>
+                ${actionBtns ? `<div class="co-rider-actions">${actionBtns}</div>` : ''}
+              </div>
             </div>
           </div>
         `;
@@ -1939,10 +2064,11 @@
         list.forEach((r) => {
           if (r.last_lat && r.last_lng) {
             activeIds.add(r.id);
-            const isSelf = r.is_self;
+            const isSelf = Boolean(r.is_self);
+            const st = resolveCoRiderStatusUI(r);
             const iconHtml = isSelf
               ? `<div style="background:#f97316;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🛵</div>`
-              : `<div style="background:#16a34a;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🟢</div>`;
+              : `<div style="background:${st.pinBg};color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${st.pinEmoji}</div>`;
 
             const customIcon = L.divIcon({
               className: "co-rider-radar-pin",
@@ -1951,18 +2077,22 @@
               iconAnchor: [17, 17],
             });
 
+            const popupHtml = `<strong>${escapeHtml(r.name)}</strong><br><span style="font-weight:700;">${st.badgeText}</span><br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality || 'Camiguin')}`;
+
             if (!radarMarkers[r.id]) {
               radarMarkers[r.id] = L.marker([r.last_lat, r.last_lng], { icon: customIcon })
                 .addTo(radarMap)
-                .bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.bike_model)} (${escapeHtml(r.plate_number)})<br>📍 ${escapeHtml(r.municipality)}`);
+                .bindPopup(popupHtml);
             } else {
+              radarMarkers[r.id].setIcon(customIcon);
               radarMarkers[r.id].setLatLng([r.last_lat, r.last_lng]);
+              radarMarkers[r.id].setPopupContent(popupHtml);
             }
           }
         });
 
         Object.keys(radarMarkers).forEach((id) => {
-          if (!activeIds.has(parseInt(id))) {
+          if (!activeIds.has(parseInt(id, 10))) {
             radarMap.removeLayer(radarMarkers[id]);
             delete radarMarkers[id];
           }

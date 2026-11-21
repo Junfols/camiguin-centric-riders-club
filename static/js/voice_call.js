@@ -70,6 +70,7 @@
   const state = {
     role: null,
     riderId: null,
+    riderPhone: "",
     bookingRef: null,
     bookingCode: "",
     peerName: "User",
@@ -117,6 +118,37 @@
 
   function isRiderCallActive() {
     return state.activeCallKind === "rider";
+  }
+
+  function getRiderAuthCreds() {
+    let rid = state.riderId;
+    let rphone = state.riderPhone || "";
+    if (!rid || !rphone) {
+      try {
+        const stored = JSON.parse(localStorage.getItem("ccrc_rider_session") || "null");
+        if (stored) {
+          if (!rid && stored.id) rid = Number(stored.id);
+          if (!rphone && stored.phone) rphone = String(stored.phone);
+        }
+      } catch (_) {}
+    }
+    return { riderId: rid ? Number(rid) : null, riderPhone: rphone };
+  }
+
+  function appendRiderAuthToParams(qs) {
+    const creds = getRiderAuthCreds();
+    if (creds.riderId) qs.set("rider_id", String(creds.riderId));
+    if (creds.riderPhone) qs.set("rider_phone", creds.riderPhone);
+  }
+
+  function withRiderAuthBody(payload) {
+    const body = Object.assign({}, payload || {});
+    if (state.role === "rider" || isRiderCallActive()) {
+      const creds = getRiderAuthCreds();
+      if (creds.riderId) body.rider_id = creds.riderId;
+      if (creds.riderPhone) body.rider_phone = creds.riderPhone;
+    }
+    return body;
   }
 
   function getRespondUrl(callId) {
@@ -349,7 +381,7 @@
       await fetch(getSignalUrl(state.activeCallId), {
         method: "POST",
         headers: getCsrfHeaders(),
-        body: JSON.stringify({ candidates: batch })
+        body: JSON.stringify(withRiderAuthBody({ candidates: batch }))
       });
     } catch (_) {}
   }
@@ -525,9 +557,9 @@
       const res = await fetch(`/api/calls/${encodeURIComponent(state.bookingRef)}/start`, {
         method: "POST",
         headers: getCsrfHeaders(),
-        body: JSON.stringify({
+        body: JSON.stringify(withRiderAuthBody({
           offer: { type: offer.type, sdp: offer.sdp }
-        })
+        }))
       });
       const data = await res.json().catch(() => ({}));
 
@@ -562,6 +594,10 @@
   async function startRiderCall(targetRiderId, peerName, peerPhone, peerMunicipality) {
     const targetId = Number(targetRiderId);
     if (!targetId) return;
+    const creds = getRiderAuthCreds();
+    if (creds.riderId && !state.riderId) state.riderId = creds.riderId;
+    if (creds.riderPhone && !state.riderPhone) state.riderPhone = creds.riderPhone;
+    if (!state.role && creds.riderId) state.role = "rider";
     if (state.activeCallId && state.pc) {
       if (modal) modal.classList.remove("hidden");
       return;
@@ -622,9 +658,9 @@
       const res = await fetch(`/api/rider/calls/${encodeURIComponent(targetId)}/start`, {
         method: "POST",
         headers: getCsrfHeaders(),
-        body: JSON.stringify({
+        body: JSON.stringify(withRiderAuthBody({
           offer: { type: offer.type, sdp: offer.sdp }
-        })
+        }))
       });
       const data = await res.json().catch(() => ({}));
 
@@ -684,9 +720,13 @@
     try {
       // Ensure we definitely have the caller's SDP offer and queued candidates
       if (!state.pendingIncomingOffer) {
+        const ansQs = new URLSearchParams();
+        ansQs.set("call_id", String(state.activeCallId));
+        ansQs.set("after_signal_id", "0");
+        if (isRider || state.role === "rider") appendRiderAuthToParams(ansQs);
         const stateUrl = isRider
-          ? `/api/rider/calls/state?call_id=${state.activeCallId}&after_signal_id=0`
-          : `/api/calls/${encodeURIComponent(state.bookingRef)}/state?call_id=${state.activeCallId}&after_signal_id=0`;
+          ? `/api/rider/calls/state?${ansQs.toString()}`
+          : `/api/calls/${encodeURIComponent(state.bookingRef)}/state?${ansQs.toString()}`;
         const stRes = await fetch(stateUrl);
         if (stRes.ok) {
           const stData = await stRes.json();
@@ -723,10 +763,10 @@
       const res = await fetch(getRespondUrl(state.activeCallId), {
         method: "POST",
         headers: getCsrfHeaders(),
-        body: JSON.stringify({
+        body: JSON.stringify(withRiderAuthBody({
           action: "accept",
           answer: { type: answer.type, sdp: answer.sdp }
-        })
+        }))
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
@@ -753,7 +793,7 @@
         await fetch(getRespondUrl(callId), {
           method: "POST",
           headers: getCsrfHeaders(),
-          body: JSON.stringify({ action: "decline", reason: "Declined" })
+          body: JSON.stringify(withRiderAuthBody({ action: "decline", reason: "Declined" }))
         });
       } catch (_) {}
     }
@@ -772,7 +812,7 @@
         await fetch(getRespondUrl(callId), {
           method: "POST",
           headers: getCsrfHeaders(),
-          body: JSON.stringify({ action: "hangup", reason: "Ended call" })
+          body: JSON.stringify(withRiderAuthBody({ action: "hangup", reason: "Ended call" }))
         });
       } catch (_) {}
     }
@@ -943,6 +983,7 @@
         const rQs = new URLSearchParams();
         rQs.set("after_signal_id", String(state.lastSignalId || 0));
         rQs.set("call_id", String(state.activeCallId));
+        appendRiderAuthToParams(rQs);
         const rRes = await fetch(`/api/rider/calls/state?${rQs.toString()}`);
         if (rRes.ok) {
           const rData = await rRes.json();
@@ -958,6 +999,7 @@
         if (state.activeCallId && state.activeCallKind === "booking") {
           qs.set("call_id", String(state.activeCallId));
         }
+        if (state.role === "rider") appendRiderAuthToParams(qs);
         const res = await fetch(`/api/calls/${encodeURIComponent(state.bookingRef)}/state?${qs.toString()}`);
         if (res.ok) {
           const data = await res.json();
@@ -970,6 +1012,7 @@
       if (state.role === "rider" && state.riderId) {
         const rQs = new URLSearchParams();
         rQs.set("after_signal_id", "0");
+        appendRiderAuthToParams(rQs);
         const rRes = await fetch(`/api/rider/calls/state?${rQs.toString()}`);
         if (rRes.ok) {
           const rData = await rRes.json();
@@ -990,6 +1033,7 @@
 
     state.role = opts.role || state.role;
     if (opts.riderId !== undefined) state.riderId = opts.riderId ? Number(opts.riderId) : null;
+    if (opts.riderPhone !== undefined) state.riderPhone = opts.riderPhone ? String(opts.riderPhone) : "";
     state.bookingRef = opts.bookingRef || null;
     state.bookingCode = opts.bookingCode || state.bookingCode || "";
     if (!isRiderCallActive()) {
@@ -1044,7 +1088,7 @@
         fetch(getRespondUrl(state.activeCallId), {
           method: "POST",
           headers: getCsrfHeaders(),
-          body: JSON.stringify({ action: "hangup", reason: "Page closed" }),
+          body: JSON.stringify(withRiderAuthBody({ action: "hangup", reason: "Page closed" })),
           keepalive: true
         });
       } catch (_) {}

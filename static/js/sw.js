@@ -1,4 +1,4 @@
-const CACHE_NAME = "ccrc-pwa-v23";
+const CACHE_NAME = "ccrc-pwa-v24";
 
 const PRECACHE_ASSETS = [
   "/",
@@ -8,7 +8,7 @@ const PRECACHE_ASSETS = [
   "/static/js/i18n.js?v=9",
   "/static/js/auth.js?v=1",
   "/static/js/app.js?v=35",
-  "/static/js/voice_call.js?v=1",
+  "/static/js/voice_call.js?v=2",
   "/static/icons/logo.png?v=3",
   "/static/icons/icon-192.png?v=3",
   "/static/icons/icon-maskable-192.png?v=3"
