@@ -50,7 +50,7 @@ self.addEventListener("fetch", (event) => {
   // Network-first for HTML page navigations; never cache authenticated/sensitive pages
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(new Request(req, { cache: "no-cache" }))
+      fetch(req)
         .then((response) => {
           if (response && response.status === 200 && !isSensitivePage) {
             const clone = response.clone();
@@ -71,7 +71,7 @@ self.addEventListener("fetch", (event) => {
   const isCodeAsset = url.pathname.startsWith("/static/js/") || url.pathname.startsWith("/static/css/");
   if (isCodeAsset) {
     event.respondWith(
-      fetch(new Request(req, { cache: "no-cache" }))
+      fetch(req.url, { cache: "no-cache", credentials: "same-origin" })
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
