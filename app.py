@@ -52,6 +52,7 @@ from db import (
     get_booking_tracking_trail,
     get_connection,
     get_online_riders,
+    get_rider_live_statuses,
     get_rider_active_job,
     get_rider_scheduled_jobs,
     get_now_pht,
@@ -229,10 +230,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     def _rider_id_from_session():
         rid = session.get("rider_id")
-        try:
-            return int(rid) if rid else None
-        except (TypeError, ValueError):
-            return None
+        if rid:
+            try:
+                return int(rid)
+            except (TypeError, ValueError):
+                pass
+        # Recover session seamlessly after server restart if valid active rider_id + phone provided
+        req_rid = request.args.get("rider_id")
+        req_phone = (request.args.get("rider_phone") or "").strip()
+        if not req_rid and request.is_json:
+            body = request.get_json(silent=True) or {}
+            req_rid = body.get("rider_id")
+            req_phone = (body.get("rider_phone") or "").strip()
+        if req_rid and req_phone:
+            try:
+                cand = get_rider_by_id(get_db(), int(req_rid))
+                if cand and cand.get("status") == "active" and normalize_ph_phone(cand.get("phone") or "") == normalize_ph_phone(req_phone):
+                    session["rider_id"] = int(cand["id"])
+                    return int(cand["id"])
+            except Exception:
+                pass
+        return None
 
     def _is_booking_customer(booking: dict) -> bool:
         if not booking:
@@ -1796,11 +1814,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def get_rider_co_riders():
         conn = get_db()
         riders = get_online_riders(conn)
+        live_statuses = get_rider_live_statuses(conn)
         current_rider_id = _rider_id_from_session()
         if not current_rider_id:
-            return jsonify({"error": "Rider login required."}), 401
+            q_rid = request.args.get("rider_id", type=int)
+            if q_rid and get_rider_by_id(conn, q_rid):
+                current_rider_id = q_rid
         clean_list = []
         for r in riders:
+            st_info = live_statuses.get(int(r["id"]), {
+                "has_active_job": False,
+                "has_scheduled_job": False,
+                "work_status": "available",
+                "work_status_label": "Available",
+                "trip_status": "available",
+            })
             clean_list.append({
                 "id": r["id"],
                 "name": r["name"],
@@ -1814,7 +1842,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "last_lat": r.get("last_lat"),
                 "last_lng": r.get("last_lng"),
                 "last_active_at": r.get("last_active_at"),
-                "is_self": bool(current_rider_id and r["id"] == current_rider_id),
+                "is_self": bool(current_rider_id and int(r["id"]) == int(current_rider_id)),
+                "has_active_job": bool(st_info.get("has_active_job")),
+                "work_status": st_info.get("work_status", "available"),
+                "work_status_label": st_info.get("work_status_label", "Available"),
             })
         return jsonify({
             "success": True,
