@@ -506,6 +506,25 @@
       const b = data.booking;
       if (!b) return;
 
+      if (window._ccrcLastTrackedStatus && window._ccrcLastTrackedStatus !== b.status && window.ccrcNotify) {
+        const riderLabel = b.rider_name ? ` (${b.rider_name})` : "";
+        const statusTitles = {
+          accepted: `🛵 Rider Accepted Your Booking${riderLabel}!`,
+          in_progress: `🚀 Rider Is On The Way / In Transit${riderLabel}!`,
+          completed: `✅ Trip Completed! Thank you for riding with CCRC.`,
+          cancelled: `❌ Booking Cancelled (${b.booking_code})`,
+        };
+        const notifTitle = statusTitles[b.status];
+        if (notifTitle) {
+          window.ccrcNotify(
+            notifTitle,
+            `${b.pickup_address} → ${b.dropoff_address}`,
+            { tag: `ccrc-status-${b.booking_code}-${b.status}`, url: `/track/${b.booking_code}` }
+          );
+        }
+      }
+      window._ccrcLastTrackedStatus = b.status;
+
       latestPrimaryBooking = Object.assign({}, b);
       latestGroupBookings = Array.isArray(data.group_bookings) ? data.group_bookings : [];
 
@@ -709,6 +728,14 @@
         }
         if (hasIncomingFromOther) {
           playChatBeep();
+          const lastIncoming = data.messages[data.messages.length - 1];
+          if (lastIncoming && window.ccrcNotify) {
+            window.ccrcNotify(
+              `💬 ${lastIncoming.sender_name || "CCRC Rider"}`,
+              lastIncoming.message || "New update on your booking",
+              { tag: `ccrc-cust-chat-${booking.booking_code}`, url: `/track/${booking.booking_code}` }
+            );
+          }
         }
       }
     } catch (_) {}

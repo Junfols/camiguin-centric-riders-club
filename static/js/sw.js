@@ -1,4 +1,4 @@
-const CACHE_NAME = "ccrc-pwa-v25";
+const CACHE_NAME = "ccrc-pwa-v26";
 
 const PRECACHE_ASSETS = [
   "/offline",
@@ -99,4 +99,44 @@ self.addEventListener("fetch", (event) => {
       return cached || fetchPromise;
     })
   );
+});
+
+
+// Handle PWA Notification clicks (focus existing tab or open target URL)
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.focus();
+          if (targetUrl && targetUrl !== "/" && !client.url.endsWith(targetUrl)) {
+            client.navigate(targetUrl).catch(() => {});
+          }
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+self.addEventListener("message", (event) => {
+  const msg = event.data || {};
+  if (msg.type === "SHOW_NOTIFICATION" && self.registration && self.registration.showNotification) {
+    event.waitUntil(
+      self.registration.showNotification(msg.title || "Camiguin Centric Riders Club", {
+        body: msg.body || "",
+        icon: msg.icon || "/static/icons/icon-192.png",
+        badge: "/static/icons/icon-192.png",
+        tag: msg.tag || "ccrc-alert",
+        renotify: true,
+        vibrate: [250, 100, 250],
+        data: { url: msg.url || "/" },
+      })
+    );
+  }
 });

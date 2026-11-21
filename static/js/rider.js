@@ -1027,24 +1027,6 @@
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
     if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
     if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
-    const custAvatarImg = document.getElementById("active-job-customer-avatar-img");
-    const custAvatarIcon = document.getElementById("active-job-customer-avatar-icon");
-    if (custAvatarImg && custAvatarIcon) {
-      if (job.customer_avatar) {
-        custAvatarImg.src = job.customer_avatar;
-        custAvatarImg.classList.remove("hidden");
-        custAvatarImg.onclick = () => {
-          if (window.openCcrcPhotoLightbox) {
-            window.openCcrcPhotoLightbox(job.customer_avatar, job.customer_name || "Customer");
-          }
-        };
-        custAvatarIcon.classList.add("hidden");
-      } else {
-        custAvatarImg.src = "";
-        custAvatarImg.classList.add("hidden");
-        custAvatarIcon.classList.remove("hidden");
-      }
-    }
     const custBadgeEl = document.getElementById("active-job-customer-badge");
     if (custBadgeEl) {
       if (job.customer_verified) {
@@ -1630,6 +1612,16 @@
         } else if ("vibrate" in navigator) {
           try { navigator.vibrate([400, 150, 400, 150, 800]); } catch (_) {}
         }
+        const firstJob = jobs[0];
+        if (firstJob && window.ccrcNotify) {
+          const svc = (firstJob.service_type || "Ride").toUpperCase();
+          const fare = Math.round(Number(firstJob.fare_amount) || 0);
+          window.ccrcNotify(
+            `🛵 New CCRC ${svc} Request (₱${fare})!`,
+            `From: ${firstJob.pickup_address} → To: ${firstJob.dropoff_address}`,
+            { tag: `ccrc-new-job-${firstJob.id}`, url: "/rider" }
+          );
+        }
       }
 
       if (!jobs.length) {
@@ -1675,12 +1667,8 @@
                 ${j.estimated_budget ? `<div style="color:#d97706;font-size:0.8rem;font-weight:700;">Advance Cash: ₱${j.estimated_budget}</div>` : ""}
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  ${j.customer_avatar
-                    ? `<img src="${escapeHtml(j.customer_avatar)}" alt="${escapeHtml(j.customer_name || 'Customer')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #cbd5e1;flex-shrink:0;">`
-                    : `<span style="width:36px;height:36px;border-radius:50%;background:#f1f5f9;display:inline-flex;align-items:center;justify-content:center;font-size:1.05rem;border:1px solid #cbd5e1;flex-shrink:0;">👤</span>`}
-                  <div>
-                  <div class="text-muted" style="font-size:0.82rem;font-weight:600;">${escapeHtml(j.customer_name)}</div>
+                <div>
+                  <div class="text-muted" style="font-size:0.82rem;font-weight:600;">👤 ${escapeHtml(j.customer_name)}</div>
                   ${j.customer_verified ? `
                     <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #86efac;display:inline-flex;align-items:center;gap:4px;margin-top:2px;">
                       🛡️ Verified Passenger ✓ ${j.customer_total_rides > 0 ? `(${j.customer_total_rides} completed)` : ''}
@@ -1833,6 +1821,14 @@
         }
         if (hasIncomingFromCustomer) {
           playRiderBeep();
+          const lastIncoming = data.messages[data.messages.length - 1];
+          if (lastIncoming && window.ccrcNotify) {
+            window.ccrcNotify(
+              `💬 Message from ${lastIncoming.sender_name || "Customer"}`,
+              lastIncoming.message || "New chat message",
+              { tag: `ccrc-rider-chat-${activeJob.id}`, url: "/rider" }
+            );
+          }
         }
       }
     } catch (_) {}
