@@ -631,6 +631,8 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertGreater(len(all_data["places"]), 100)
 
     def test_promo_codes_and_scheduled_bookings(self):
+        # Promo codes are OFF by default; switch them on just for this test of the optional feature
+        self.app.config["PROMOS_ENABLED"] = True
         # Validate starter promo WELCOME20 on fare 100
         val_resp = self.client.post(
             "/api/promo/validate",
@@ -1490,10 +1492,20 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("Pinalit (gi-input sa rider)", page)
         self.assertIn('id="modal-total-fare"', page)
         self.assertNotIn("09170000031", page.split('id="receipt-modal"', 1)[1].split("modal-receipt-img-wrap", 1)[0])
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_promo_codes_are_disabled_by_default(self):
+        res = self.client.post("/api/promo/validate", json={"code": "WELCOME20", "fare_amount": 100.0})
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(res.get_json()["success"])
+        payload = {
+            "customer_name": "Maria Santos", "customer_phone": "09171234568", "service_type": "pahatud",
+            "pickup_address": "Baylao, Mambajao", "dropoff_address": "Jollibee Camiguin",
+        }
+        plain = self.client.post("/api/bookings", json=payload).get_json()["booking"]
+        with_code = self.client.post("/api/bookings", json={**payload, "promo_code": "WELCOME20"}).get_json()["booking"]
+        self.assertEqual(float(with_code.get("discount_amount") or 0), 0.0)
+        self.assertEqual(with_code["fare_amount"], plain["fare_amount"])
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertNotIn('id="promo-code-input"', html)
 
 
 if __name__ == "__main__":
