@@ -353,6 +353,14 @@
               <input type="file" id="rider-receipt-file-input" accept="image/*" capture="environment" style="display:none;">
               <span id="rider-receipt-uploading-spinner" class="hidden" style="font-size:0.8rem;color:#ea580c;font-weight:600;">⏳ Gi-upload ang resibo...</span>
             </div>
+            <div id="rider-purchase-box" style="margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;">
+              <label for="rider-purchase-input" style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:4px;">💰 Amount nga imong gipalit (₱)</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" id="rider-purchase-input" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 275" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:1rem;">
+                <button type="button" id="rider-purchase-btn" class="btn btn-sm" style="background:#16a34a;color:white;border-radius:8px;padding:8px 12px;font-size:0.85rem;white-space:nowrap;cursor:pointer;">Ipadala sa Customer</button>
+              </div>
+              <small id="rider-purchase-note" style="display:block;margin-top:4px;color:#64748b;font-size:0.78rem;">Makita kini sa customer ug i-add sa total nga bayronon.</small>
+            </div>
           </div>
         </div>
       </div>
@@ -541,9 +549,13 @@
       <div style="font-size:0.88rem;display:grid;gap:6px;">
         <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong id="r-modal-code">CCRC-0000</strong></div>
         <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span id="r-modal-customer">-</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>Rider:</span><span id="r-modal-rider">-</span></div>
+        <div id="r-modal-plate-row" class="hidden" style="display:flex;justify-content:space-between;"><span>Plate No.:</span><span id="r-modal-plate">-</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Service:</span><span id="r-modal-service" style="text-transform:uppercase;">-</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span id="r-modal-km">0 km</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span id="r-modal-payment" style="text-transform:uppercase;">CASH</span></div>
+        <div id="r-modal-fare-row" class="hidden" style="display:flex;justify-content:space-between;"><span>Delivery Fare:</span><span id="r-modal-fare">₱0</span></div>
+        <div id="r-modal-purchase-row" class="hidden" style="display:flex;justify-content:space-between;"><span>Pinalit (gi-input sa rider):</span><span id="r-modal-purchase">₱0</span></div>
         <div id="r-modal-promo-row" class="hidden" style="display:flex;justify-content:space-between;color:#16a34a;"><span>Voucher Discount:</span><span id="r-modal-discount">-₱0</span></div>
         <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;border-top:2px solid #1e293b;padding-top:8px;margin-top:6px;">
           <span>Total Collected:</span>
