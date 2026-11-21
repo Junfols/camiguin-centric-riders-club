@@ -200,31 +200,25 @@
     </form>
   </div>
 
-  <!-- Review Submission Box (When Completed) -->
-  <div id="review-submission-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;border:2px solid #fed7aa;background:#fffaf5;">
-    <div style="text-align:center;padding:10px 0;">
+  <!-- Review Submission Box (Single & Multi-Rider Support) -->
+  <div id="review-submission-card" class="card hidden" style="margin-top:1rem;border:2px solid #fed7aa;background:#fffaf5;">
+    <div style="text-align:center;padding:10px 4px;">
       <span style="font-size:2rem;">⭐</span>
-      <h3 style="margin:6px 0 2px;">Rate Your Island Rider</h3>
-      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
+      <h3 id="inline-review-title" style="margin:6px 0 2px;">Rate Your Island Rider</h3>
+      <p id="inline-review-subtitle" class="text-muted" style="font-size:0.85rem;margin:0 0 14px;">How was your ride experience across Camiguin?</p>
 
       <form id="track-review-form">
         <input type="hidden" id="review-rider-id" value="{{ booking.rider_id or '' }}">
         <input type="hidden" id="review-booking-id" value="{{ booking.id }}">
-        <div class="star-rating-select" style="display:flex;justify-content:center;gap:8px;font-size:2rem;cursor:pointer;margin-bottom:12px;" id="star-picker">
-          <span class="star-item" data-value="1">★</span>
-          <span class="star-item" data-value="2">★</span>
-          <span class="star-item" data-value="3">★</span>
-          <span class="star-item" data-value="4">★</span>
-          <span class="star-item" data-value="5" style="color:#f59e0b;">★</span>
-        </div>
-        <input type="hidden" id="selected-rating" value="5">
 
-        <textarea id="review-comment" rows="2" placeholder="Write a compliment or feedback (optional)..." style="width:100%;max-width:480px;margin:0 auto;display:block;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;"></textarea>
+        <div id="inline-rated-summary" class="hidden" style="display:flex;flex-direction:column;gap:6px;max-width:520px;margin:0 auto 12px;text-align:left;"></div>
+        <div id="inline-riders-rating-container" style="display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto;text-align:left;"></div>
+        <div id="inline-pending-riders-note" class="hidden" style="margin:12px auto 0;max-width:520px;font-size:0.8rem;color:#9a3412;background:#ffedd5;border:1px solid #fdba74;border-radius:10px;padding:8px 12px;text-align:center;"></div>
 
-        <button type="submit" id="submit-review-btn" class="btn btn-primary" style="margin-top:10px;padding:8px 24px;">
-          Submit 5-Star Rating &rarr;
+        <button type="submit" id="submit-review-btn" class="btn btn-primary" style="margin-top:14px;padding:10px 26px;font-weight:700;background:#16a34a;border-color:#16a34a;">
+          Submit Rating ⭐ &rarr;
         </button>
-        <div id="review-feedback-msg" class="hidden" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;"></div>
+        <div id="review-feedback-msg" class="hidden" style="margin-top:10px;font-weight:600;color:#16a34a;font-size:0.88rem;"></div>
       </form>
     </div>
   </div>
@@ -246,44 +240,28 @@
     </div>
   </div>
 
-  <!-- Immediate Post-Trip Auto-Popup Rating Modal -->
-  <div id="rate-rider-modal" class="modal-backdrop {% if booking.status != 'completed' %}hidden{% endif %}" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(15,23,42,0.78);z-index:10040;display:{% if booking.status == 'completed' %}flex{% else %}none{% endif %};align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);">
-    <div class="modal-card modal-md" style="width:100%;max-width:420px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 24px 48px rgba(0,0,0,0.35);border:2px solid #fdba74;animation:popInScale 0.25s ease-out;">
-      <div style="background:linear-gradient(135deg,#f97316 0%,#ea580c 100%);color:#fff;padding:16px 20px;text-align:center;position:relative;">
+  <!-- Immediate Post-Trip Auto-Popup Rating Modal (Single & Multi-Rider Support) -->
+  <div id="rate-rider-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(15,23,42,0.78);z-index:10040;display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);">
+    <div class="modal-card modal-md" style="width:100%;max-width:460px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 24px 48px rgba(0,0,0,0.35);border:2px solid #fdba74;animation:popInScale 0.25s ease-out;max-height:92vh;display:flex;flex-direction:column;">
+      <div style="background:linear-gradient(135deg,#f97316 0%,#ea580c 100%);color:#fff;padding:16px 20px;text-align:center;position:relative;flex-shrink:0;">
         <button type="button" id="close-rate-modal-btn" aria-label="Close" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
-        <div style="font-size:2.2rem;margin-bottom:4px;">🎉🛵⭐</div>
-        <h3 style="margin:0;font-size:1.2rem;font-weight:800;">Trip Completed! Rate Your Rider</h3>
-        <p style="margin:4px 0 0;font-size:0.82rem;opacity:0.95;">How was your trip with <strong id="modal-rate-rider-name">{{ booking.rider_name or 'Kuya Rider' }}</strong>?</p>
+        <div style="font-size:2.1rem;margin-bottom:4px;">🎉🛵⭐</div>
+        <h3 id="modal-rate-title" style="margin:0;font-size:1.18rem;font-weight:800;color:#fff;">Trip Completed! Rate Your Rider</h3>
+        <p id="modal-rate-subtitle" style="margin:4px 0 0;font-size:0.82rem;opacity:0.95;">How was your trip with <strong id="modal-rate-rider-name">{{ booking.rider_name or 'Kuya Rider' }}</strong>?</p>
       </div>
-      <div style="padding:18px 20px;text-align:center;">
+      <div style="padding:16px 18px;text-align:center;overflow-y:auto;flex:1;">
         <form id="modal-review-form">
-          <div id="modal-star-picker" style="display:flex;justify-content:center;gap:10px;font-size:2.4rem;cursor:pointer;margin-bottom:6px;user-select:none;">
-            <span class="m-star-item" data-value="1" style="color:#f59e0b;transition:transform 0.1s;">★</span>
-            <span class="m-star-item" data-value="2" style="color:#f59e0b;transition:transform 0.1s;">★</span>
-            <span class="m-star-item" data-value="3" style="color:#f59e0b;transition:transform 0.1s;">★</span>
-            <span class="m-star-item" data-value="4" style="color:#f59e0b;transition:transform 0.1s;">★</span>
-            <span class="m-star-item" data-value="5" style="color:#f59e0b;transition:transform 0.1s;">★</span>
-          </div>
-          <div id="modal-star-label" style="font-size:0.84rem;font-weight:700;color:#d97706;margin-bottom:12px;">★★★★★ Excellent Service!</div>
-          <input type="hidden" id="modal-selected-rating" value="5">
+          <div id="modal-rated-summary" class="hidden" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;text-align:left;"></div>
+          <div id="modal-riders-rating-container" style="display:flex;flex-direction:column;gap:14px;text-align:left;"></div>
+          <div id="modal-pending-riders-note" class="hidden" style="margin-top:10px;font-size:0.78rem;color:#9a3412;background:#ffedd5;border:1px solid #fdba74;border-radius:10px;padding:8px 10px;text-align:center;"></div>
 
-          <!-- Quick Compliment Chips -->
-          <div id="modal-compliment-chips" style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:12px;">
-            <button type="button" class="m-chip-btn" data-chip="Buotan ug matinahuron kaayo! 😊" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">😊 Buotan kaayo</button>
-            <button type="button" class="m-chip-btn" data-chip="Safe ug maayo mo-drive! 🛵" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">🛵 Safe mo-drive</button>
-            <button type="button" class="m-chip-btn" data-chip="Paspas niabot sa pickup! ⚡" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">⚡ Paspas niabot</button>
-            <button type="button" class="m-chip-btn" data-chip="Limpyo ug komportable ang motor! ✨" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">✨ Limpyo ang motor</button>
-          </div>
-
-          <textarea id="modal-review-comment" rows="2" placeholder="Write a compliment or feedback (optional)..." style="width:100%;padding:10px 12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.88rem;resize:none;"></textarea>
-
-          <button type="submit" id="modal-submit-review-btn" class="btn btn-primary btn-block" style="margin-top:12px;padding:12px;font-size:0.95rem;font-weight:800;background:#16a34a;border-color:#16a34a;border-radius:12px;">
+          <button type="submit" id="modal-submit-review-btn" class="btn btn-primary btn-block" style="margin-top:14px;padding:12px;font-size:0.95rem;font-weight:800;background:#16a34a;border-color:#16a34a;border-radius:12px;width:100%;">
             Submit Rating ⭐ &rarr;
           </button>
           <button type="button" id="modal-skip-review-btn" style="margin-top:8px;background:none;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;text-decoration:underline;">
             Maybe Later (Close)
           </button>
-          <div id="modal-review-feedback" class="hidden" style="margin-top:10px;font-weight:700;color:#15803d;font-size:0.9rem;"></div>
+          <div id="modal-review-feedback" class="hidden" style="margin-top:10px;font-weight:700;color:#15803d;font-size:0.9rem;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px;"></div>
         </form>
       </div>
     </div>
@@ -417,6 +395,6 @@
 <script>
   window.INITIAL_BOOKING = {{ booking | tojson }};
 </script>
-<script src="/static/js/track.js?v=42"></script>
+<script src="/static/js/track.js?v=43"></script>
 {% endif %}
 {% endblock %}
