@@ -220,6 +220,20 @@
         <span id="wakelock-status-label" style="flex:1;"><strong>Screen Awake:</strong> Active (Prevents screen sleep while riding)</span>
         <button type="button" id="wakelock-toggle-btn" class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:0.75rem;background:#fff;border-color:#f59e0b;color:#b45309;cursor:pointer;">Awake: ON</button>
       </div>
+
+      <!-- Idle GPS Timeout Notification Banner -->
+      <div id="rider-idle-timeout-banner" class="hidden" style="margin-top:8px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:0.82rem;color:#78350f;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.25rem;">⏳</span>
+          <div>
+            <strong>Auto-Offline (15m Idle):</strong>
+            <span>Wala kay GPS ping sulod sa 15 minutos mao gihimo kang Offline aron dili maglaum ang mga pasahero.</span>
+          </div>
+        </div>
+        <button type="button" onclick="document.getElementById('rider-online-toggle').click();" class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:0.76rem;font-weight:700;white-space:nowrap;cursor:pointer;">
+          Go Online 🟢
+        </button>
+      </div>
     </div>
 
     <!-- Live Club Advisory Banner (Riders) -->
@@ -664,7 +678,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=45"></script>
+<script src="/static/js/rider.js?v=46"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     function updateIdButton() {
