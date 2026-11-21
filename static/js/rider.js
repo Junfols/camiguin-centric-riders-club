@@ -459,11 +459,11 @@
 
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(() => {
+      fetchCoRiders();
+      loadRiderReviews();
       if (onlineToggle.checked) {
         fetchAvailableJobs();
-        fetchCoRiders();
         checkActiveJob();
-        loadRiderReviews();
       }
     }, 3500);
   }
@@ -1014,7 +1014,7 @@
     if (activeJobBox) activeJobBox.classList.remove("hidden");
     if (activeJobCode) activeJobCode.textContent = job.booking_code;
     if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}`;
-    updateRiderFareLabel(job);
+    if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}`;
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
     if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
     if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
@@ -1100,15 +1100,6 @@
     renderJobOnRiderMap(job);
   }
 
-  function updateRiderFareLabel(job) {
-    if (!activeJobFare || !job) return;
-    const fare = Number(job.fare_amount) || 0;
-    const bought = Number(job.purchase_amount) || 0;
-    activeJobFare.textContent = bought > 0
-      ? `Total to Collect: ₱${Math.round(fare + bought)} (Fare ₱${Math.round(fare)} + Pinalit ₱${bought.toFixed(2)})`
-      : `Fare to Collect: ₱${Math.round(fare)}`;
-  }
-
   function renderRiderReceiptSection(job) {
     const sec = document.getElementById("active-job-receipt-section");
     const previewWrap = document.getElementById("rider-receipt-preview-wrap");
@@ -1130,18 +1121,6 @@
     }
     sec.style.display = "";
     sec.classList.remove("hidden");
-    const pIn = document.getElementById("rider-purchase-input");
-    if (pIn && document.activeElement !== pIn) {
-      pIn.value = Number(job.purchase_amount) > 0 ? String(job.purchase_amount) : "";
-    }
-    const pNote = document.getElementById("rider-purchase-note");
-    if (pNote) {
-      const b = Number(job.estimated_budget) || 0;
-      pNote.textContent = (Number(job.purchase_amount) > 0
-        ? `Na-send na: ₱${Number(job.purchase_amount).toFixed(2)}. Pwede nimo usbon kung sayop.`
-        : "Makita kini sa customer ug i-add sa total nga bayronon.")
-        + (b > 0 ? ` Budget sa customer: ₱${Math.round(b)}.` : "");
-    }
 
     if (job.receipt_url) {
       if (previewWrap) previewWrap.classList.remove("hidden");
@@ -1236,7 +1215,7 @@
   async function checkActiveJob() {
     if (!currentRider) return;
     try {
-      const res = await fetch(`/api/rider/active-job?rider_id=${currentRider.id}`);
+      const res = await fetch(`/api/rider/active-job${riderQuerySuffix()}`);
       const data = await res.json();
       activeJob = data.job;
       if (activeJob) {
@@ -1350,7 +1329,7 @@
       const res = await fetch(`/api/bookings/${bookingId}/start-now`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rider_id: currentRider.id }),
+        body: JSON.stringify({ rider_id: currentRider.id, rider_phone: currentRider.phone || "" }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -1408,46 +1387,6 @@
     });
   }
 
-  // Rider enters the real purchase amount (e.g. lechon manok P275)
-  const riderPurchaseBtn = document.getElementById("rider-purchase-btn");
-  const riderPurchaseInput = document.getElementById("rider-purchase-input");
-  if (riderPurchaseBtn && riderPurchaseInput) {
-    riderPurchaseBtn.addEventListener("click", async () => {
-      if (!activeJob) {
-        alert("No active trip found.");
-        return;
-      }
-      const amount = parseFloat(riderPurchaseInput.value);
-      if (!isFinite(amount) || amount < 0) {
-        alert("Ibutang ang saktong amount (pananglitan 275).");
-        return;
-      }
-      const budget = Number(activeJob.estimated_budget) || 0;
-      if (budget > 0 && amount > budget && !confirm(`Mas taas ang ₱${amount.toFixed(2)} kaysa budget sa customer (₱${Math.round(budget)}). Ipadayon?`)) {
-        return;
-      }
-      if (!confirm(`I-send ang ₱${amount.toFixed(2)} isip pinalit sa customer?`)) return;
-      riderPurchaseBtn.disabled = true;
-      try {
-        const res = await fetch(`/api/bookings/${activeJob.id}/purchase`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to send amount.");
-        activeJob.purchase_amount = data.purchase_amount;
-        renderRiderReceiptSection(activeJob);
-        updateRiderFareLabel(activeJob);
-        alert(`✅ Na-send na sa customer. Total bayronon: ₱${Math.round(data.total_due)}`);
-      } catch (err) {
-        alert(err.message || "Failed to send amount.");
-      } finally {
-        riderPurchaseBtn.disabled = false;
-      }
-    });
-  }
-
   const riderViewReceiptBtn = document.getElementById("rider-view-receipt-btn");
   const riderReceiptModal = document.getElementById("rider-receipt-modal");
   if (riderViewReceiptBtn && riderReceiptModal) {
@@ -1496,7 +1435,7 @@
   async function loadRiderTransactions() {
     if (!currentRider) return;
     try {
-      const res = await fetch(`/api/rider/transactions?rider_id=${currentRider.id}`);
+      const res = await fetch(`/api/rider/transactions${riderQuerySuffix()}`);
       if (!res.ok) return;
       const data = await res.json();
       const todayEl = document.getElementById("rider-today-earnings");
@@ -1547,10 +1486,16 @@
     });
   }
 
+  function riderQuerySuffix() {
+    if (!currentRider) return "";
+    const p = encodeURIComponent(currentRider.phone || "");
+    return `?rider_id=${currentRider.id}&rider_phone=${p}`;
+  }
+
   async function fetchAvailableJobs() {
     if (!onlineToggle.checked) return;
     try {
-      const res = await fetch("/api/rider/available-jobs");
+      const res = await fetch(`/api/rider/available-jobs${riderQuerySuffix()}`);
       if (!res.ok) return;
       const data = await res.json();
       const jobs = data.jobs || [];
@@ -1586,12 +1531,27 @@
 
       jobsFeedList.innerHTML = jobs
         .map(
-          (j) => `
+          (j) => {
+            const gSize = Number(j.group_size || 1);
+            const gOpen = Number(j.group_open_count || 1);
+            const gAssigned = Number(j.group_assigned_count || 0);
+            const isGroup = gSize > 1;
+            const groupBanner = isGroup
+              ? `<div style="background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;padding:5px 9px;border-radius:8px;font-size:0.78rem;font-weight:700;margin:6px 0;display:flex;justify-content:space-between;align-items:center;">
+                  <span>👥 Group Ride (${gSize} Riders Needed)</span>
+                  <span style="background:#1d4ed8;color:#fff;padding:2px 8px;border-radius:999px;font-size:0.72rem;">${gOpen} of ${gSize} open (${gAssigned} joined)</span>
+                </div>`
+              : "";
+            const acceptBtnHtml = (isGroup && j.rider_already_in_group)
+              ? `<button type="button" class="btn btn-sm" disabled style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:700;cursor:default;">✓ Already Joined Group</button>`
+              : `<button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">${isGroup ? "Accept Group Slot 🛵" : "Accept This Booking 🛵"}</button>`;
+            return `
             <div class="job-card" data-job-id="${j.id}">
               <div class="job-card-top">
                 <span class="badge badge-accent">${escapeHtml(j.service_type.toUpperCase())}</span>
-                <span class="job-fare-tag">₱${Math.round(j.fare_amount)}</span>
+                <span class="job-fare-tag">₱${Math.round(j.fare_amount)}${isGroup ? " <small style='font-size:0.7rem;font-weight:600;'>/ rider</small>" : ""}</span>
               </div>
+              ${groupBanner}
               <div class="job-route-preview">
                 <div>🟢 <strong>From:</strong> ${escapeHtml(j.pickup_address)}</div>
                 <div>🏁 <strong>To:</strong> ${escapeHtml(j.dropoff_address)}</div>
@@ -1617,12 +1577,11 @@
                     </span>
                   `)}
                 </div>
-                <button type="button" class="btn btn-primary btn-sm accept-job-btn" data-id="${j.id}">
-                  Accept This Booking 🛵
-                </button>
+                ${acceptBtnHtml}
               </div>
             </div>
-          `
+          `;
+          }
         )
         .join("");
     } catch (_) {}
@@ -1641,7 +1600,7 @@
         const res = await fetch(`/api/bookings/${jobId}/accept`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rider_id: currentRider.id }),
+          body: JSON.stringify({ rider_id: currentRider.id, rider_phone: currentRider.phone || "" }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -1917,7 +1876,7 @@
   async function fetchCoRiders() {
     if (!currentRider) return;
     try {
-      const res = await fetch(`/api/rider/co-riders?rider_id=${currentRider.id}`);
+      const res = await fetch(`/api/rider/co-riders${riderQuerySuffix()}`);
       if (!res.ok) return;
       const data = await res.json();
       const list = data.co_riders || [];
@@ -1944,6 +1903,10 @@
           : `<div class="co-rider-avatar-placeholder">🛵</div>`;
 
         const selfBadge = isSelf ? `<span class="badge badge-accent" style="font-size:0.7rem;padding:2px 7px;">You</span>` : '';
+        const isBusy = Boolean(r.has_active_job);
+        const statusBadge = isBusy
+          ? `<span class="badge" style="background:#fef3c7;color:#b45309;font-size:0.68rem;padding:2px 7px;border:1px solid #fde68a;">🚀 ${escapeHtml(r.work_status_label || 'On Trip')}</span>`
+          : `<span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.68rem;padding:2px 7px;border:1px solid #86efac;">🟢 Available</span>`;
         const town = escapeHtml(r.municipality || 'Camiguin');
         const phoneBtn = (!isSelf)
           ? `<button type="button" class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:4px 9px;" title="In-App Voice Call" onclick="window.CCRCVoiceCall && window.CCRCVoiceCall.startRiderCall(${r.id}, '${escapeHtml(r.name)}', '${escapeHtml(r.phone || '')}', '${town}')">📞 Call</button>`
@@ -1956,6 +1919,7 @@
               <div class="co-rider-name-row">
                 <span class="co-rider-name">${escapeHtml(r.name)}</span>
                 ${selfBadge}
+                ${statusBadge}
               </div>
               <div class="co-rider-sub">
                 🏍️ ${escapeHtml(r.bike_model)} &bull; Plate: <strong>${escapeHtml(r.plate_number)}</strong>
