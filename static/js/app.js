@@ -5401,6 +5401,27 @@
       if (nameInput && !nameInput.value) nameInput.value = cust.name || "";
       if (phoneInput && !phoneInput.value) phoneInput.value = cust.phone || "";
 
+      // Logged-in customers: collapse the big Passenger/Sender card into one compact line
+      const fullCard = document.querySelector(".customer-info-card");
+      const compact = document.getElementById("customer-compact-card");
+      const editBtn = document.getElementById("customer-compact-edit");
+      if (editBtn && !editBtn.dataset.bound) {
+        editBtn.dataset.bound = "1";
+        editBtn.addEventListener("click", () => {
+          if (compact) { compact.dataset.expanded = "1"; compact.classList.add("hidden"); }
+          if (fullCard) fullCard.classList.remove("hidden");
+        });
+      }
+      if (fullCard && compact && !compact.dataset.expanded
+          && nameInput && phoneInput && nameInput.value.trim() && phoneInput.value.trim()) {
+        const cn = document.getElementById("customer-compact-name");
+        const cp = document.getElementById("customer-compact-phone");
+        if (cn) cn.textContent = nameInput.value.trim();
+        if (cp) cp.textContent = phoneInput.value.trim();
+        fullCard.classList.add("hidden");
+        compact.classList.remove("hidden");
+      }
+
       // Customer Avatar in Home Card
       const homeImg = document.getElementById("cust-home-avatar-img");
       const homePlaceholder = document.getElementById("cust-home-placeholder");
@@ -5417,6 +5438,10 @@
     } else {
       if (custBadge) custBadge.classList.add("hidden");
       if (regOption) regOption.classList.remove("hidden");
+      const guestFullCard = document.querySelector(".customer-info-card");
+      const guestCompact = document.getElementById("customer-compact-card");
+      if (guestFullCard) guestFullCard.classList.remove("hidden");
+      if (guestCompact) { guestCompact.classList.add("hidden"); delete guestCompact.dataset.expanded; }
       const historyCard = document.getElementById("customer-home-history-card");
       if (historyCard) historyCard.classList.add("hidden");
     }
