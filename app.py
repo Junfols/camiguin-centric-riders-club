@@ -190,6 +190,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self), microphone=(self)"
         if request.is_secure or request.headers.get("X-Forwarded-Proto", "") == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        if response.mimetype == "text/html":
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        elif request.path.startswith(("/static/js/", "/static/css/")):
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response
 
     @app.before_request
