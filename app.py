@@ -336,21 +336,57 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return raw, "image/webp", "webp"
         raise ValueError("Only JPG, PNG or WebP images are allowed.")
 
+    def _build_advisory_payload(settings: dict[str, str]) -> dict[str, Any]:
+        cat = (settings.get("advisory_category") or "info").strip().lower()
+        if cat not in ("info", "ferry", "weather", "night_fare", "promo", "urgent"):
+            cat = "info"
+        meta_map = {
+            "info": ("📢", "Club Advisory"),
+            "ferry": ("⛴️", "Ferry & Port Schedule"),
+            "weather": ("🌧️", "Weather & Road Alert"),
+            "night_fare": ("🌙", "Night-Fare Notice"),
+            "promo": ("🎉", "Club Promo / Update"),
+            "urgent": ("🚨", "Urgent Club Notice"),
+        }
+        default_icon, default_label = meta_map[cat]
+        msg = (settings.get("advisory_message") or "").strip()
+        title = (settings.get("advisory_title") or "Camiguin Centric Advisory").strip()
+        expires_at = (settings.get("advisory_expires_at") or "").strip()
+        is_expired = False
+        if expires_at:
+            try:
+                exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+                if exp_dt.tzinfo is not None:
+                    exp_dt = exp_dt.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
+                if get_now_pht() > exp_dt:
+                    is_expired = True
+            except Exception:
+                pass
+        enabled_flag = str(settings.get("advisory_enabled", "1")).lower() not in ("0", "false", "no")
+        show_cust = enabled_flag and not is_expired and bool(msg) and str(settings.get("advisory_show_customers", "0")).lower() in ("1", "true", "yes")
+        show_rid = enabled_flag and not is_expired and bool(msg) and str(settings.get("advisory_show_riders", "0")).lower() in ("1", "true", "yes")
+        return {
+            "enabled": enabled_flag,
+            "is_expired": is_expired,
+            "category": cat,
+            "category_icon": settings.get("advisory_icon") or default_icon,
+            "category_label": settings.get("advisory_label") or default_label,
+            "revision": int(settings.get("advisory_revision", 1) or 1),
+            "show_customers": show_cust,
+            "show_riders": show_rid,
+            "raw_show_customers": str(settings.get("advisory_show_customers", "0")).lower() in ("1", "true", "yes"),
+            "raw_show_riders": str(settings.get("advisory_show_riders", "0")).lower() in ("1", "true", "yes"),
+            "message": msg,
+            "title": title,
+            "expires_at": expires_at,
+            "updated_label": settings.get("advisory_updated_label", ""),
+        }
+
     @app.context_processor
     def inject_club_context():
         conn = get_db()
         settings = get_settings(conn)
-        advisory_data = {
-            "category": settings.get("advisory_category", "info"),
-            "category_icon": settings.get("advisory_icon", "📢"),
-            "category_label": settings.get("advisory_label", "Club Advisory"),
-            "revision": int(settings.get("advisory_revision", 1) or 1),
-            "show_customers": str(settings.get("advisory_show_customers", "0")).lower() in ("1", "true", "yes"),
-            "show_riders": str(settings.get("advisory_show_riders", "0")).lower() in ("1", "true", "yes"),
-            "message": settings.get("advisory_message", ""),
-            "title": settings.get("advisory_title", "Camiguin Centric Advisory"),
-            "updated_label": settings.get("advisory_updated_label", ""),
-        }
+        advisory_data = _build_advisory_payload(settings)
         return {
             "club": {
                 "name": settings.get("club_name", "Camiguin Centric Riders Club"),
@@ -1799,14 +1835,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                        r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
                        r.avatar_url AS rider_avatar, r.license_no AS rider_license,
                        COALESCE(r.gcash_number, '') AS rider_gcash_number,
-                       COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr,
-                       COALESCE(c.is_verified, 0) AS customer_verified,
-                       COALESCE(c.total_rides, 0) AS customer_total_rides,
-                       COALESCE(c.barangay, '') AS customer_barangay,
-                       COALESCE(c.avatar_url, '') AS customer_avatar
+                       COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
                 FROM bookings b
                 LEFT JOIN riders r ON r.id = b.rider_id
-                LEFT JOIN customers c ON b.customer_phone = c.phone
                 WHERE b.customer_phone = ? AND b.created_at = ?
                   AND b.status IN ('broadcast', 'accepted', 'in_progress', 'completed')
                 ORDER BY b.id ASC
@@ -2578,6 +2609,64 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         safe_settings = {k: v for k, v in get_settings(conn).items() if k != "admin_password_hash"}
         return jsonify({"success": True, "settings": safe_settings})
+
+    @app.get("/api/advisory")
+    def api_get_live_advisory():
+        conn = get_db()
+        settings = get_settings(conn)
+        return jsonify({"success": True, "advisory": _build_advisory_payload(settings)})
+
+    @app.post("/api/admin/advisory")
+    def admin_save_advisory():
+        if not _admin_ok():
+            return jsonify({"error": "Admin login required."}), 401
+        conn = get_db()
+        settings = get_settings(conn)
+        data = request.get_json(silent=True) or {}
+
+        cat = (data.get("category") or "info").strip().lower()
+        if cat not in ("info", "ferry", "weather", "night_fare", "promo", "urgent"):
+            cat = "info"
+        meta_map = {
+            "info": ("📢", "Club Advisory"),
+            "ferry": ("⛴️", "Ferry & Port Schedule"),
+            "weather": ("🌧️", "Weather & Road Alert"),
+            "night_fare": ("🌙", "Night-Fare Notice"),
+            "promo": ("🎉", "Club Promo / Update"),
+            "urgent": ("🚨", "Urgent Club Notice"),
+        }
+        icon, label = meta_map[cat]
+        title = (data.get("title") or "Camiguin Centric Advisory").strip()[:140]
+        message = (data.get("message") or "").strip()[:1000]
+        expires_at = (data.get("expires_at") or "").strip()[:40]
+        show_customers = "1" if data.get("show_customers") else "0"
+        show_riders = "1" if data.get("show_riders") else "0"
+        enabled = "1" if (message and (show_customers == "1" or show_riders == "1")) else "0"
+
+        prev_rev = int(settings.get("advisory_revision", 0) or 0)
+        next_rev = prev_rev + 1
+        updated_label = get_now_pht().strftime("%b %d, %I:%M %p PHT")
+
+        update_settings(conn, {
+            "advisory_enabled": enabled,
+            "advisory_category": cat,
+            "advisory_icon": icon,
+            "advisory_label": label,
+            "advisory_title": title or "Camiguin Centric Advisory",
+            "advisory_message": message,
+            "advisory_expires_at": expires_at,
+            "advisory_show_customers": show_customers,
+            "advisory_show_riders": show_riders,
+            "advisory_revision": str(next_rev),
+            "advisory_updated_label": updated_label,
+        })
+        conn.commit()
+        adv = _build_advisory_payload(get_settings(conn))
+        return jsonify({
+            "success": True,
+            "advisory": adv,
+            "message": "Live Club Advisory broadcasted!" if adv["enabled"] else "Club Advisory cleared / turned off.",
+        })
 
     @app.get("/api/admin/backup")
     def admin_download_backup():
