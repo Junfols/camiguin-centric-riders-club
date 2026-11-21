@@ -1799,9 +1799,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                        r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
                        r.avatar_url AS rider_avatar, r.license_no AS rider_license,
                        COALESCE(r.gcash_number, '') AS rider_gcash_number,
-                       COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
+                       COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr,
+                       COALESCE(c.is_verified, 0) AS customer_verified,
+                       COALESCE(c.total_rides, 0) AS customer_total_rides,
+                       COALESCE(c.barangay, '') AS customer_barangay,
+                       COALESCE(c.avatar_url, '') AS customer_avatar
                 FROM bookings b
                 LEFT JOIN riders r ON r.id = b.rider_id
+                LEFT JOIN customers c ON b.customer_phone = c.phone
                 WHERE b.customer_phone = ? AND b.created_at = ?
                   AND b.status IN ('broadcast', 'accepted', 'in_progress', 'completed')
                 ORDER BY b.id ASC

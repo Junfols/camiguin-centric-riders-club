@@ -5453,7 +5453,8 @@ def get_booking_by_id(conn: DatabaseConnection, booking_id: int) -> dict[str, An
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
-               COALESCE(c.barangay, '') AS customer_barangay
+               COALESCE(c.barangay, '') AS customer_barangay,
+               COALESCE(c.avatar_url, '') AS customer_avatar
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
         LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
@@ -5478,7 +5479,8 @@ def get_booking_by_code(conn: DatabaseConnection, booking_code: str) -> dict[str
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
-               COALESCE(c.barangay, '') AS customer_barangay
+               COALESCE(c.barangay, '') AS customer_barangay,
+               COALESCE(c.avatar_url, '') AS customer_avatar
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
         LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
@@ -5506,7 +5508,8 @@ def get_bookings_by_group_code(conn: DatabaseConnection, group_code: str) -> lis
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
-               COALESCE(c.barangay, '') AS customer_barangay
+               COALESCE(c.barangay, '') AS customer_barangay,
+               COALESCE(c.avatar_url, '') AS customer_avatar
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
         LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
@@ -5667,7 +5670,8 @@ def get_available_broadcast_bookings(conn: DatabaseConnection, rider_id: int | N
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
-               COALESCE(c.barangay, '') AS customer_barangay
+               COALESCE(c.barangay, '') AS customer_barangay,
+               COALESCE(c.avatar_url, '') AS customer_avatar
         FROM bookings b
         LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
         LEFT JOIN customers c ON b.customer_phone = c.phone
@@ -5777,7 +5781,8 @@ def get_rider_active_job(conn: DatabaseConnection, rider_id: int) -> dict[str, A
                COALESCE(tr.name, '') AS transferred_from_rider_name,
                COALESCE(c.is_verified, 0) AS customer_verified,
                COALESCE(c.total_rides, 0) AS customer_total_rides,
-               COALESCE(c.barangay, '') AS customer_barangay
+               COALESCE(c.barangay, '') AS customer_barangay,
+               COALESCE(c.avatar_url, '') AS customer_avatar
         FROM bookings b
         LEFT JOIN riders r ON r.id = b.rider_id
         LEFT JOIN riders tr ON tr.id = b.transferred_from_rider_id
