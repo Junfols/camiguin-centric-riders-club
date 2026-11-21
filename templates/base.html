@@ -346,13 +346,16 @@
       let lastSwCheckTs = 0;
       const hadController = Boolean(navigator.serviceWorker.controller);
 
-      function isCallActiveNow() {
+      function isUserBusyNow() {
         const callModal = document.getElementById("ccrc-call-modal");
-        return Boolean(callModal && !callModal.classList.contains("hidden"));
+        if (callModal && !callModal.classList.contains("hidden")) return true;
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return true;
+        return false;
       }
 
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (!hadController || swReloading || isCallActiveNow()) return;
+        if (!hadController || swReloading || isUserBusyNow()) return;
         swReloading = true;
         window.location.reload();
       });
