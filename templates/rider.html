@@ -353,14 +353,6 @@
               <input type="file" id="rider-receipt-file-input" accept="image/*" capture="environment" style="display:none;">
               <span id="rider-receipt-uploading-spinner" class="hidden" style="font-size:0.8rem;color:#ea580c;font-weight:600;">⏳ Gi-upload ang resibo...</span>
             </div>
-            <div id="rider-purchase-box" style="margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;">
-              <label for="rider-purchase-input" style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:4px;">💰 Amount nga imong gipalit (₱)</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" id="rider-purchase-input" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 275" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:1rem;">
-                <button type="button" id="rider-purchase-btn" class="btn btn-sm" style="background:#16a34a;color:white;border-radius:8px;padding:8px 12px;font-size:0.85rem;white-space:nowrap;cursor:pointer;">Ipadala sa Customer</button>
-              </div>
-              <small id="rider-purchase-note" style="display:block;margin-top:4px;color:#64748b;font-size:0.78rem;">Makita kini sa customer ug i-add sa total nga bayronon.</small>
-            </div>
           </div>
         </div>
       </div>
@@ -586,7 +578,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=40"></script>
+<script src="/static/js/rider.js?v=42"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     function updateIdButton() {
