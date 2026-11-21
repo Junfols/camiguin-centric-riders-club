@@ -1622,6 +1622,29 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         attach_group_metadata(conn, booking)
         grp_code = (booking.get("group_code") or "").strip().upper()
         group_bookings = get_bookings_by_group_code(conn, grp_code) if grp_code else []
+        if len(group_bookings) <= 1 and booking.get("customer_phone") and booking.get("created_at"):
+            sib_rows = conn.execute(
+                """
+                SELECT b.*,
+                       r.name AS rider_name, r.phone AS rider_phone, r.bike_model AS rider_bike,
+                       r.plate_number AS rider_plate, r.color AS rider_color, r.last_lat AS rider_lat,
+                       r.last_lng AS rider_lng, r.rating_avg AS rider_rating,
+                       r.avatar_url AS rider_avatar, r.license_no AS rider_license,
+                       COALESCE(r.gcash_number, '') AS rider_gcash_number,
+                       COALESCE(r.gcash_qr_url, '') AS rider_gcash_qr
+                FROM bookings b
+                LEFT JOIN riders r ON r.id = b.rider_id
+                WHERE b.customer_phone = ? AND b.created_at = ?
+                  AND b.status IN ('broadcast', 'accepted', 'in_progress', 'completed')
+                ORDER BY b.id ASC
+                """,
+                (booking["customer_phone"], booking["created_at"]),
+            ).fetchall()
+            if len(sib_rows) > 1:
+                group_bookings = [dict(sr) for sr in sib_rows]
+                for idx_s, sb in enumerate(group_bookings, start=1):
+                    sb["rider_slot"] = sb.get("rider_slot") or idx_s
+                    sb["group_size"] = len(group_bookings)
         group_summary = build_booking_group_summary(group_bookings) if len(group_bookings) > 1 else None
 
         if not _is_booking_participant(booking):
