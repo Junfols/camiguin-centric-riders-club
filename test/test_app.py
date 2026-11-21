@@ -1426,6 +1426,19 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.client.post(f"/api/bookings/{bk['id']}/accept")
         self.assertEqual(self.client.post(f"/api/bookings/{bk['id']}/purchase", json={"amount": 100}).status_code, 400)
 
+    def test_baylao_places_resolve_on_the_highway(self):
+        for text, lat, lng in (
+            ("Baylao Elementary School", 9.24989, 124.69864),
+            ("baylao basketball court", 9.24987, 124.69844),
+            ("Bahay Pamahalaan ng Barangay Baylao", 9.24987, 124.69844),
+        ):
+            res = self.client.post("/api/fare-estimate", json={
+                "pickup_address": text, "dropoff_address": "Jollibee", "service_type": "pahatud"})
+            self.assertEqual(res.status_code, 200)
+            pickup = res.get_json()["resolved_pickup"]
+            self.assertAlmostEqual(pickup["lat"], lat, places=5)
+            self.assertAlmostEqual(pickup["lng"], lng, places=5)
+
 
 if __name__ == "__main__":
     unittest.main()
