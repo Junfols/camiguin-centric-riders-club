@@ -1537,6 +1537,13 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         html = self.client.get("/rider").get_data(as_text=True)
         self.assertIn('id="active-job-customer-avatar"', html)
 
+    def test_island_tour_banner_is_at_the_bottom_of_the_home_page(self):
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertEqual(html.count("Planning an Island Tour"), 1)
+        self.assertLess(html.index('id="fare-display"'), html.index("Planning an Island Tour"))
+        self.assertLess(html.index("Camiguin Live Island Map"), html.index("Planning an Island Tour"))
+        self.assertIn('href="/tours"', html)
+
 
 if __name__ == "__main__":
     unittest.main()
