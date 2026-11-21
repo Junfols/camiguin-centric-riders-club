@@ -482,11 +482,13 @@
           </button>
         </div>
         <div id="co-riders-radar-map" style="height:280px;width:100%;"></div>
-        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;">
-          <span>🟢 Green = Active Rider &bull; 🛵 Centric Emblem = Your Location</span>
+        <div style="background:#f8fafc;padding:6px 12px;font-size:0.74rem;color:#64748b;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+          <span>🟢 Available &bull; 🟡 Accepted &bull; 🟠 In Transit &bull; ✅ Completed</span>
           <span>Auto-syncs live GPS</span>
         </div>
       </div>
+
+      <div id="co-riders-status-summary" class="hidden" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
 
       <div id="co-riders-list" class="co-riders-grid">
         <div class="empty-state" style="padding:1rem;">
@@ -578,7 +580,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/rider.js?v=43"></script>
+<script src="/static/js/rider.js?v=44"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     function updateIdButton() {
