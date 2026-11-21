@@ -5093,7 +5093,70 @@ def update_rider_location(
         )
 
 
+def expire_idle_online_riders(conn: DatabaseConnection, idle_minutes: int = 15) -> int:
+    """
+    Auto-offline idle riders whose last GPS location update / beacon ping is older
+    than idle_minutes (default 15 minutes), ensuring customer maps and dispatch feeds
+    stay 100% accurate.
+    IMPORTANT: Riders currently holding an ongoing active trip (status 'accepted' or
+    'in_progress') are strictly protected and NEVER auto-offlined.
+    """
+    now = get_now_pht()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, last_active_at
+            FROM riders
+            WHERE is_online = 1 AND status = 'active'
+            """
+        ).fetchall()
+    except Exception:
+        return 0
+
+    if not rows:
+        return 0
+
+    busy_rider_ids = set()
+    try:
+        busy_rows = conn.execute(
+            """
+            SELECT DISTINCT rider_id
+            FROM bookings
+            WHERE rider_id IS NOT NULL AND status IN ('accepted', 'in_progress')
+            """
+        ).fetchall()
+        busy_rider_ids = {int(r["rider_id"]) for r in busy_rows if r["rider_id"]}
+    except Exception:
+        busy_rider_ids = set()
+
+    cutoff_sec = max(60, int(idle_minutes) * 60)
+    expired_ids = []
+
+    for r in rows:
+        rid = int(r["id"])
+        if rid in busy_rider_ids:
+            continue
+        last_str = (r["last_active_at"] or "").strip()
+        last_dt = _parse_pht_iso(last_str) if last_str else None
+        if not last_dt or (now - last_dt).total_seconds() > cutoff_sec:
+            expired_ids.append(rid)
+
+    if expired_ids:
+        placeholders = ", ".join(["?"] * len(expired_ids))
+        conn.execute(
+            f"UPDATE riders SET is_online = 0 WHERE id IN ({placeholders})",
+            tuple(expired_ids),
+        )
+        conn.commit()
+
+    return len(expired_ids)
+
+
 def get_online_riders(conn: DatabaseConnection) -> list[dict[str, Any]]:
+    try:
+        expire_idle_online_riders(conn, idle_minutes=15)
+    except Exception:
+        pass
     rows = conn.execute(
         """
         SELECT id, name, phone, bike_model, plate_number, municipality, color,

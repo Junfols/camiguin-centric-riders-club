@@ -55,6 +55,7 @@ from db import (
     get_rider_live_statuses,
     get_rider_active_job,
     get_rider_scheduled_jobs,
+    expire_idle_online_riders,
     get_now_pht,
     get_rider_by_id,
     get_rider_by_phone,
@@ -2170,11 +2171,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         rider_id = _rider_id_from_session()
         if not rider_id:
-            return jsonify({"job": None, "scheduled_jobs": []})
+            return jsonify({"job": None, "scheduled_jobs": [], "is_online": 0})
 
+        r_row = get_rider_by_id(conn, int(rider_id))
+        current_online = int((r_row and r_row.get("is_online")) or 0) if r_row else 0
         job = get_rider_active_job(conn, int(rider_id))
         scheduled_jobs = get_rider_scheduled_jobs(conn, int(rider_id))
-        return jsonify({"job": job, "scheduled_jobs": scheduled_jobs})
+        return jsonify({
+            "job": job,
+            "scheduled_jobs": scheduled_jobs,
+            "is_online": current_online,
+        })
 
     @app.post("/api/bookings/<int:booking_id>/accept")
     def rider_accept_booking(booking_id: int):
