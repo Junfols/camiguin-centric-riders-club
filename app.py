@@ -794,8 +794,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def api_tour_packages():
         return jsonify({"success": True, "packages": CAMIGUIN_TOUR_PACKAGES})
 
+    def _promos_on() -> bool:
+        """Promo codes / vouchers are OFF by default. Set PROMOS_ENABLED=1 to bring them back."""
+        return bool(app.config.get("PROMOS_ENABLED")) or os.environ.get("PROMOS_ENABLED") == "1"
+
     @app.post("/api/promo/validate")
     def api_validate_promo():
+        if not _promos_on():
+            return jsonify({"success": False, "error": "Promo codes are not available right now."}), 400
         conn = get_db()
         data = request.get_json(silent=True) or {}
         code = (data.get("code") or "").strip()
@@ -1321,7 +1327,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             payment_method = "cash"
 
         scheduled_at = (data.get("scheduled_at") or "").strip() or None
-        promo_code = (data.get("promo_code") or "").strip().upper()
+        promo_code = (data.get("promo_code") or "").strip().upper() if _promos_on() else ""
         discount_amount = 0.0
 
         if promo_code:
