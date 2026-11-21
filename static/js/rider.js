@@ -357,6 +357,7 @@
     });
   }
 
+  window.ccrcRiderLogout = handleRiderLogout;
   async function handleRiderLogout() {
     if (confirm("Are you sure you want to log out of your Rider Account?")) {
       setStoredRider(null);
@@ -370,11 +371,11 @@
       if (pollInterval) clearInterval(pollInterval);
       releaseRiderWakeLock();
 
-      document.querySelectorAll(".rider-logged-only").forEach((el) => {
+      document.querySelectorAll(".rider-logged-only, #bottom-nav-rider-logout, #header-rider-logout-btn").forEach((el) => {
         el.classList.add("hidden");
-        el.style.display = "none";
+        el.style.setProperty("display", "none", "important");
       });
-      document.querySelectorAll(".rider-unlogged-only").forEach((el) => {
+      document.querySelectorAll(".rider-unlogged-only, #bottom-nav-rider-back-home, #header-rider-back-home-btn").forEach((el) => {
         el.classList.remove("hidden");
         el.style.display = "";
       });
@@ -416,9 +417,9 @@
       el.classList.remove("hidden");
       el.style.display = "";
     });
-    document.querySelectorAll(".rider-unlogged-only").forEach((el) => {
+    document.querySelectorAll(".rider-unlogged-only, #bottom-nav-rider-back-home, #header-rider-back-home-btn").forEach((el) => {
       el.classList.add("hidden");
-      el.style.display = "none";
+      el.style.setProperty("display", "none", "important");
     });
 
     authSection.classList.add("hidden");
@@ -2044,11 +2045,11 @@
     if (saved) {
       initRiderSession(saved);
     } else {
-      document.querySelectorAll(".rider-logged-only").forEach((el) => {
+      document.querySelectorAll(".rider-logged-only, #bottom-nav-rider-logout, #header-rider-logout-btn").forEach((el) => {
         el.classList.add("hidden");
-        el.style.display = "none";
+        el.style.setProperty("display", "none", "important");
       });
-      document.querySelectorAll(".rider-unlogged-only").forEach((el) => {
+      document.querySelectorAll(".rider-unlogged-only, #bottom-nav-rider-back-home, #header-rider-back-home-btn").forEach((el) => {
         el.classList.remove("hidden");
         el.style.display = "";
       });
