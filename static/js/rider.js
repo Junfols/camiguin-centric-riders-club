@@ -401,7 +401,14 @@
   }
   const bottomRiderRefresh = document.getElementById("bottom-rider-refresh-btn");
   if (bottomRiderRefresh) {
-    bottomRiderRefresh.addEventListener("click", fetchAvailableJobs);
+    bottomRiderRefresh.addEventListener("click", (e) => {
+      if (e) e.preventDefault();
+      if (typeof window.ccrcForceAppRefresh === "function") {
+        window.ccrcForceAppRefresh();
+      } else {
+        window.location.reload();
+      }
+    });
   }
 
   function initRiderSession(rider) {
@@ -1631,7 +1638,11 @@
   }
 
   if (refreshJobsBtn) {
-    refreshJobsBtn.addEventListener("click", fetchAvailableJobs);
+    refreshJobsBtn.addEventListener("click", () => {
+      fetchAvailableJobs();
+      checkActiveJob();
+      fetchCoRiders();
+    });
   }
 
   function escapeHtml(str) {

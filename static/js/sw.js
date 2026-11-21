@@ -1,14 +1,8 @@
-const CACHE_NAME = "ccrc-pwa-v24";
+const CACHE_NAME = "ccrc-pwa-v25";
 
 const PRECACHE_ASSETS = [
-  "/",
   "/offline",
   "/manifest.webmanifest?v=3",
-  "/static/css/style.css?v=31",
-  "/static/js/i18n.js?v=9",
-  "/static/js/auth.js?v=1",
-  "/static/js/app.js?v=35",
-  "/static/js/voice_call.js?v=2",
   "/static/icons/logo.png?v=3",
   "/static/icons/icon-192.png?v=3",
   "/static/icons/icon-maskable-192.png?v=3"
@@ -53,10 +47,10 @@ self.addEventListener("fetch", (event) => {
 
   const isSensitivePage = NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p));
 
-  // Network-first for pages; never cache authenticated/sensitive pages
+  // Network-first for HTML page navigations; never cache authenticated/sensitive pages
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
+      fetch(new Request(req, { cache: "no-cache" }))
         .then((response) => {
           if (response && response.status === 200 && !isSensitivePage) {
             const clone = response.clone();
@@ -73,7 +67,24 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Stale-while-revalidate for same-origin static assets
+  // Network-first for JS and CSS so PWA users always receive the latest code updates immediately
+  const isCodeAsset = url.pathname.startsWith("/static/js/") || url.pathname.startsWith("/static/css/");
+  if (isCodeAsset) {
+    event.respondWith(
+      fetch(new Request(req, { cache: "no-cache" }))
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for static images/icons
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)
