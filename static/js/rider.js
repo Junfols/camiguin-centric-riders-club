@@ -483,6 +483,8 @@
       updateOnlineBadge(isOnline);
       if (isOnline) {
         requestRiderWakeLock();
+        const idleBanner = document.getElementById("rider-idle-timeout-banner");
+        if (idleBanner) idleBanner.classList.add("hidden");
       } else {
         releaseRiderWakeLock();
       }
@@ -1248,6 +1250,28 @@
       const res = await fetch(`/api/rider/active-job${riderQuerySuffix()}`);
       const data = await res.json();
       activeJob = data.job;
+
+      // Auto-Sync: if server auto-offlined rider due to idle timeout (>15 mins without GPS ping)
+      if (data.is_online !== undefined && onlineToggle) {
+        const serverOnline = data.is_online === 1;
+        if (onlineToggle.checked !== serverOnline) {
+          onlineToggle.checked = serverOnline;
+          updateOnlineBadge(serverOnline);
+          if (currentRider) currentRider.is_online = serverOnline ? 1 : 0;
+          if (!serverOnline) {
+            releaseRiderWakeLock();
+            const idleBanner = document.getElementById("rider-idle-timeout-banner");
+            if (idleBanner) {
+              idleBanner.classList.remove("hidden");
+            }
+            if (jobsFeedList) {
+              jobsFeedList.innerHTML = `<div class="empty-state">Na-offline ka awtomatiko tungod kay walay GPS update sulod sa 15 minutos.<br><strong style="color:#d97706;">I-on pag-usab ang switch sa ibabaw</strong> kung andam na ka modawat og booking.</div>`;
+              if (jobsCountPill) jobsCountPill.textContent = "0";
+            }
+          }
+        }
+      }
+
       if (activeJob) {
         requestRiderWakeLock();
       }
