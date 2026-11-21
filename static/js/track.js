@@ -388,9 +388,17 @@
           ? `<span style="color:#0284c7;font-weight:700;font-size:0.74rem;">🚀 In Transit</span>`
           : `<span style="color:#16a34a;font-weight:700;font-size:0.74rem;">🛵 Heading to Pickup</span>`);
 
+      const isSlotCompleted = gb.status === "completed";
+      const slotRated = isSlotCompleted && isSlotAlreadyReviewed(gb);
+      const rateBtnHtml = isSlotCompleted
+        ? (slotRated
+          ? `<span style="background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:999px;padding:4px 9px;font-size:0.72rem;font-weight:700;white-space:nowrap;">⭐ Rated${getSlotReviewRating(gb) ? ` (${getSlotReviewRating(gb)}/5)` : ""}</span>`
+          : `<button type="button" onclick="event.stopPropagation();window.openRatingModalForGroup('${escapeHtml(gb.booking_code)}');" class="btn btn-sm" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ Rate</button>`)
+        : "";
+
       const callBtnHtml = canCallSlot
         ? `<button type="button" onclick="event.stopPropagation();window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:0.76rem;font-weight:700;cursor:pointer;">🔊 Call</button>`
-        : "";
+        : rateBtnHtml;
 
       return `
         <div onclick="window.switchActiveGroupSlot('${escapeHtml(gb.booking_code)}')" style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;">
@@ -448,7 +456,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
             ${canCallSlot
               ? `<button type="button" onclick="window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;font-weight:700;padding:8px 10px;border-radius:9px;cursor:pointer;">🔊 Free In-App Call</button>`
-              : `<button type="button" disabled class="btn btn-sm" style="background:#e2e8f0;color:#64748b;border:none;font-weight:700;padding:8px 10px;border-radius:9px;">🔊 Call</button>`}
+              : (gb.status === "completed"
+                ? (isSlotAlreadyReviewed(gb)
+                  ? `<button type="button" disabled class="btn btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:700;padding:8px 10px;border-radius:9px;">⭐ Rated${getSlotReviewRating(gb) ? ` (${getSlotReviewRating(gb)}/5)` : " ✓"}</button>`
+                  : `<button type="button" onclick="window.openRatingModalForGroup('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#f97316;border-color:#ea580c;font-weight:700;padding:8px 10px;border-radius:9px;cursor:pointer;">⭐ Rate Rider #${slotNum}</button>`)
+                : `<button type="button" disabled class="btn btn-sm" style="background:#e2e8f0;color:#64748b;border:none;font-weight:700;padding:8px 10px;border-radius:9px;">🔊 Call</button>`)}
             <a href="sms:${escapeHtml(gb.rider_phone || "")}" class="btn btn-outline btn-sm" style="text-align:center;font-weight:700;padding:8px 10px;border-radius:9px;text-decoration:none;">💬 Send SMS</a>
           </div>
         </div>
@@ -502,35 +514,25 @@
       const b = data.booking;
       if (!b) return;
 
-      if (b.status === "completed" || b.status === "cancelled") {
+      latestPrimaryBooking = Object.assign({}, b);
+      latestGroupBookings = Array.isArray(data.group_bookings) ? data.group_bookings : [];
+
+      const allKnownSlots = latestGroupBookings.length > 0 ? latestGroupBookings : [b];
+      allKnownSlots.forEach((slot) => {
+        if (slot && slot.is_reviewed) {
+          markSlotReviewedLocally(slot, slot.review_rating || 5);
+        }
+      });
+
+      const hasAnyOngoingSlot = allKnownSlots.some((slot) =>
+        ["broadcast", "accepted", "in_progress"].includes(slot.status)
+      );
+      if (!hasAnyOngoingSlot && (b.status === "completed" || b.status === "cancelled")) {
         try { localStorage.removeItem("ccrc_active_booking"); } catch (_) {}
-      } else {
+      } else if (b.status !== "completed" && b.status !== "cancelled") {
         try { localStorage.setItem("ccrc_active_booking", b.booking_code); } catch (_) {}
       }
 
-      if (statusPill) {
-        statusPill.className = `status-pill status-${b.status}`;
-        if (b.status === "broadcast") {
-          statusPill.textContent = "⏳ Waiting for an available rider to accept...";
-        } else if (b.status === "accepted") {
-          statusPill.textContent = "🛵 Accepted! Rider is heading to pickup point...";
-        } else if (b.status === "in_progress") {
-          statusPill.textContent = "🚀 In Transit / Heading to destination...";
-        } else if (b.status === "completed") {
-          statusPill.textContent = "✓ Delivered! Thank you for using CCRC.";
-          const backWrap = document.getElementById("track-completed-back-wrap");
-          if (backWrap) backWrap.classList.remove("hidden");
-          const deliveredCard = document.getElementById("delivered-actions-card");
-          if (deliveredCard) deliveredCard.classList.remove("hidden");
-          const reviewCard = document.getElementById("review-submission-card");
-          if (reviewCard && !ratingAlreadySubmitted) reviewCard.classList.remove("hidden");
-          openRatingPopup(b);
-        } else if (b.status === "cancelled") {
-          statusPill.textContent = "✕ Booking has been cancelled.";
-        }
-      }
-
-      latestGroupBookings = Array.isArray(data.group_bookings) ? data.group_bookings : [];
       if (latestGroupBookings.length > 1) {
         const matched = latestGroupBookings.find((gb) => gb.booking_code === activeSlotBooking.booking_code);
         if (matched) {
@@ -543,10 +545,40 @@
         activeSlotBooking = Object.assign({}, b);
       }
 
+      if (statusPill) {
+        const completedCount = allKnownSlots.filter((s) => s.status === "completed").length;
+        const isGroupAllCompleted = latestGroupBookings.length > 1 && completedCount > 0 && !hasAnyOngoingSlot;
+        statusPill.className = `status-pill status-${isGroupAllCompleted ? "completed" : b.status}`;
+        if (isGroupAllCompleted) {
+          statusPill.textContent = `✓ All ${completedCount} Riders Delivered! Thank you for using CCRC.`;
+        } else if (b.status === "broadcast") {
+          statusPill.textContent = "⏳ Waiting for an available rider to accept...";
+        } else if (b.status === "accepted") {
+          statusPill.textContent = "🛵 Accepted! Rider is heading to pickup point...";
+        } else if (b.status === "in_progress") {
+          statusPill.textContent = "🚀 In Transit / Heading to destination...";
+        } else if (b.status === "completed") {
+          statusPill.textContent = latestGroupBookings.length > 1 && hasAnyOngoingSlot
+            ? `✓ ${completedCount}/${latestGroupBookings.length} Riders Delivered! Waiting for remaining rider...`
+            : "✓ Delivered! Thank you for using CCRC.";
+        } else if (b.status === "cancelled") {
+          statusPill.textContent = "✕ Booking has been cancelled.";
+        }
+      }
+
+      const anyCompletedSlot = allKnownSlots.some((s) => s.status === "completed");
+      if (anyCompletedSlot) {
+        const backWrap = document.getElementById("track-completed-back-wrap");
+        if (backWrap && !hasAnyOngoingSlot) backWrap.classList.remove("hidden");
+        const deliveredCard = document.getElementById("delivered-actions-card");
+        if (deliveredCard && !hasAnyOngoingSlot) deliveredCard.classList.remove("hidden");
+      }
+
       renderGroupRidersPanel(latestGroupBookings);
       renderAllAcceptedRiderCards(latestGroupBookings);
       renderSingleAssignedRiderCard(activeSlotBooking);
       syncCustomerVoiceCall(activeSlotBooking);
+      syncMultiRiderReviewUI(b);
 
       const focusRider = activeSlotBooking.rider_id ? activeSlotBooking : b;
       if (focusRider.rider_lat && focusRider.rider_lng) {
@@ -743,86 +775,34 @@
     closeReceiptBtn.addEventListener("click", () => receiptModal.classList.add("hidden"));
   }
 
-  const starPicker = document.getElementById("star-picker");
-  const selectedRatingInput = document.getElementById("selected-rating");
-  if (starPicker && selectedRatingInput) {
-    const stars = starPicker.querySelectorAll(".star-item");
-    stars.forEach(s => {
-      s.addEventListener("click", () => {
-        const val = parseInt(s.getAttribute("data-value") || "5", 10);
-        selectedRatingInput.value = val;
-        stars.forEach(st => {
-          const v = parseInt(st.getAttribute("data-value") || "1", 10);
-          st.style.color = (v <= val) ? "#f59e0b" : "#cbd5e1";
-        });
-      });
-    });
-  }
-
-  const reviewForm = document.getElementById("track-review-form");
-  const reviewFeedback = document.getElementById("review-feedback-msg");
-  if (reviewForm) {
-    reviewForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const riderId = document.getElementById("review-rider-id")?.value;
-      const bookingId = document.getElementById("review-booking-id")?.value;
-      const rating = selectedRatingInput?.value || "5";
-      const comment = document.getElementById("review-comment")?.value || "";
-
-      if (!riderId) {
-        alert("Rider not yet assigned for this ride.");
-        return;
-      }
-
-      try {
-        const btn = document.getElementById("submit-review-btn");
-        if (btn) btn.disabled = true;
-        const res = await fetch("/api/reviews", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            rider_id: parseInt(riderId, 10),
-            booking_id: parseInt(bookingId, 10),
-            rating: parseInt(rating, 10),
-            comment: comment,
-            customer_name: booking.customer_name || "Passenger"
-          }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          if (reviewFeedback) {
-            reviewFeedback.innerHTML = `✓ Salamat kaayo! Your review has been submitted.<br><div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Balik sa Dashboard</a></div>`;
-            reviewFeedback.classList.remove("hidden");
-          }
-          if (btn) btn.style.display = "none";
-        } else {
-          alert(data.error || "Could not submit review.");
-          if (btn) btn.disabled = false;
-        }
-      } catch (err) {
-        alert("Network error submitting review.");
-        const btn = document.getElementById("submit-review-btn");
-        if (btn) btn.disabled = false;
-      }
-    });
-  }
-
-
   // ---------------------------------------------------------------------------
-  // Immediate Post-Trip Rating Modal (Auto-opens on completion so customer never forgets)
+  // Multi-Rider & Single-Rider Rating System (Auto-Popup Modal + Inline Card)
+  // Supports 1..10 riders: batch submits all completed riders in one tap, and
+  // automatically re-prompts when a 2nd/3rd rider completes later.
   // ---------------------------------------------------------------------------
   const rateRiderModal = document.getElementById("rate-rider-modal");
-  const modalStarPicker = document.getElementById("modal-star-picker");
-  const modalSelectedRating = document.getElementById("modal-selected-rating");
-  const modalStarLabel = document.getElementById("modal-star-label");
-  const modalReviewComment = document.getElementById("modal-review-comment");
+  const modalRidersContainer = document.getElementById("modal-riders-rating-container");
+  const modalRatedSummary = document.getElementById("modal-rated-summary");
+  const modalPendingNote = document.getElementById("modal-pending-riders-note");
   const modalReviewForm = document.getElementById("modal-review-form");
   const modalReviewFeedback = document.getElementById("modal-review-feedback");
+  const modalSubmitBtn = document.getElementById("modal-submit-review-btn");
   const closeRateModalBtn = document.getElementById("close-rate-modal-btn");
   const skipRateModalBtn = document.getElementById("modal-skip-review-btn");
 
-  let ratingPromptShownForBooking = false;
-  let ratingAlreadySubmitted = false;
+  const inlineReviewCard = document.getElementById("review-submission-card");
+  const inlineRidersContainer = document.getElementById("inline-riders-rating-container");
+  const inlineRatedSummary = document.getElementById("inline-rated-summary");
+  const inlinePendingNote = document.getElementById("inline-pending-riders-note");
+  const inlineReviewForm = document.getElementById("track-review-form");
+  const inlineReviewFeedback = document.getElementById("review-feedback-msg");
+  const inlineSubmitBtn = document.getElementById("submit-review-btn");
+
+  let latestPrimaryBooking = Object.assign({}, booking);
+  const locallyReviewedSlots = new Map();
+  const promptedSlotCodes = new Set();
+  let lastRenderedInlineSig = "";
+  let lastRenderedModalSig = "";
 
   const STAR_LABELS = {
     1: "★ Poor",
@@ -832,22 +812,360 @@
     5: "★★★★★ Excellent Service!"
   };
 
-  function openRatingPopup(b) {
-    if (!rateRiderModal || ratingAlreadySubmitted || ratingPromptShownForBooking) return;
-    if (!b || b.status !== "completed" || !b.rider_id) return;
-    const storageFlag = `ccrc_rated_${b.booking_code}`;
+  const COMPLIMENT_CHIPS = [
+    { label: "😊 Buotan kaayo", text: "Buotan ug matinahuron kaayo! 😊" },
+    { label: "🛵 Safe mo-drive", text: "Safe ug maayo mo-drive! 🛵" },
+    { label: "⚡ Paspas niabot", text: "Paspas niabot sa pickup! ⚡" },
+    { label: "✨ Limpyo ang motor", text: "Limpyo ug komportable ang motor! ✨" }
+  ];
+
+  function getSlotStorageKey(slot) {
+    return slot && slot.booking_code ? `ccrc_rated_${slot.booking_code}` : "";
+  }
+
+  function markSlotReviewedLocally(slot, ratingVal) {
+    if (!slot || !slot.booking_code) return;
+    const cleanRating = Math.max(1, Math.min(5, parseInt(ratingVal || "5", 10) || 5));
+    locallyReviewedSlots.set(slot.booking_code, cleanRating);
+    slot.is_reviewed = true;
+    slot.review_rating = cleanRating;
     try {
-      if (localStorage.getItem(storageFlag) === "1") {
-        ratingAlreadySubmitted = true;
+      localStorage.setItem(getSlotStorageKey(slot), String(cleanRating));
+    } catch (_) {}
+  }
+
+  function isSlotAlreadyReviewed(slot) {
+    if (!slot) return false;
+    if (slot.is_reviewed) return true;
+    if (slot.booking_code && locallyReviewedSlots.has(slot.booking_code)) return true;
+    const key = getSlotStorageKey(slot);
+    if (key) {
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored && stored !== "0") return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  function getSlotReviewRating(slot) {
+    if (!slot) return null;
+    if (slot.review_rating) return Number(slot.review_rating);
+    if (slot.booking_code && locallyReviewedSlots.has(slot.booking_code)) {
+      return locallyReviewedSlots.get(slot.booking_code);
+    }
+    const key = getSlotStorageKey(slot);
+    if (key) {
+      try {
+        const stored = parseInt(localStorage.getItem(key) || "0", 10);
+        if (stored >= 1 && stored <= 5) return stored;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function getAllTripSlots(primaryBooking) {
+    if (Array.isArray(latestGroupBookings) && latestGroupBookings.length > 0) {
+      return latestGroupBookings;
+    }
+    const ref = primaryBooking || latestPrimaryBooking || booking;
+    return ref ? [ref] : [];
+  }
+
+  function getRatingPartition(primaryBooking, focusSlotCode) {
+    const allSlots = getAllTripSlots(primaryBooking);
+    const completedAssigned = allSlots.filter(
+      (s) => s && s.status === "completed" && Boolean(s.rider_id)
+    );
+    const reviewed = completedAssigned.filter((s) => isSlotAlreadyReviewed(s));
+    let unreviewed = completedAssigned.filter((s) => !isSlotAlreadyReviewed(s));
+    if (focusSlotCode && unreviewed.length > 1) {
+      unreviewed = unreviewed.slice().sort((a, b) => {
+        if (a.booking_code === focusSlotCode) return -1;
+        if (b.booking_code === focusSlotCode) return 1;
+        return Number(a.rider_slot || 1) - Number(b.rider_slot || 1);
+      });
+    }
+    const pendingInTransit = allSlots.filter(
+      (s) => s && ["broadcast", "accepted", "in_progress"].includes(s.status)
+    );
+    return { allSlots, completedAssigned, reviewed, unreviewed, pendingInTransit };
+  }
+
+  function buildRatedSummaryHtml(reviewedSlots) {
+    return reviewedSlots.map((r, idx) => {
+      const slotNum = r.rider_slot || (idx + 1);
+      const starsNum = getSlotReviewRating(r) || 5;
+      const starsStr = "★".repeat(starsNum) + "☆".repeat(5 - starsNum);
+      const slotPrefix = (Number(r.group_size || 1) > 1 || latestGroupBookings.length > 1) ? `Rider #${slotNum}: ` : "";
+      return `
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:0.8rem;">
+          <span style="color:#166534;font-weight:700;">✓ ${escapeHtml(slotPrefix)}${escapeHtml(r.rider_name || "Club Rider")}</span>
+          <span style="color:#d97706;font-weight:800;white-space:nowrap;">${starsStr} (${starsNum}/5)</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function buildRiderRatingCardsHtml(ridersList, prefix) {
+    const isGroup = latestGroupBookings.length > 1 || ridersList.length > 1;
+    return ridersList.map((r, idx) => {
+      const slotNum = r.rider_slot || (idx + 1);
+      const riderName = r.rider_name || `Rider #${slotNum}`;
+      const avatarHtml = r.rider_avatar
+        ? `<img src="${escapeHtml(r.rider_avatar)}" alt="${escapeHtml(riderName)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+        : escapeHtml(riderName.charAt(0).toUpperCase());
+      const slotBadge = isGroup
+        ? `<span style="background:#1d4ed8;color:#fff;font-size:0.68rem;font-weight:800;padding:2px 7px;border-radius:999px;">Rider #${slotNum}</span>`
+        : "";
+      const chipsHtml = COMPLIMENT_CHIPS.map((c) => `
+        <button type="button" class="m-chip-btn" data-chip="${escapeHtml(c.text)}" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:999px;padding:4px 9px;font-size:0.72rem;font-weight:600;cursor:pointer;">
+          ${escapeHtml(c.label)}
+        </button>
+      `).join("");
+
+      return `
+        <div class="multi-rider-rating-card" data-booking-id="${escapeHtml(String(r.id))}" data-booking-code="${escapeHtml(r.booking_code || "")}" data-rider-id="${escapeHtml(String(r.rider_id))}" data-rider-name="${escapeHtml(riderName)}" style="background:#fffaf5;border:1.5px solid #fed7aa;border-radius:14px;padding:12px 14px;text-align:center;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;text-align:left;">
+            <div style="width:42px;height:42px;border-radius:50%;background:#ffedd5;color:#ea580c;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #fdba74;">
+              ${avatarHtml}
+            </div>
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                ${slotBadge}
+                <strong style="font-size:0.95rem;color:#0f172a;">${escapeHtml(riderName)}</strong>
+              </div>
+              <div style="font-size:0.76rem;color:#475569;margin-top:1px;">
+                🏍️ ${escapeHtml(r.rider_bike || "Motorcycle")}${r.rider_plate ? ` &bull; Plate: <strong>${escapeHtml(r.rider_plate)}</strong>` : ""}
+              </div>
+            </div>
+          </div>
+
+          <div class="multi-star-picker" style="display:flex;justify-content:center;gap:8px;font-size:2.2rem;cursor:pointer;margin-bottom:4px;user-select:none;">
+            <span class="m-star-item" data-value="1" style="color:#f59e0b;transition:transform 0.1s;">★</span>
+            <span class="m-star-item" data-value="2" style="color:#f59e0b;transition:transform 0.1s;">★</span>
+            <span class="m-star-item" data-value="3" style="color:#f59e0b;transition:transform 0.1s;">★</span>
+            <span class="m-star-item" data-value="4" style="color:#f59e0b;transition:transform 0.1s;">★</span>
+            <span class="m-star-item" data-value="5" style="color:#f59e0b;transition:transform 0.1s;">★</span>
+          </div>
+          <div class="multi-star-label" style="font-size:0.8rem;font-weight:700;color:#d97706;margin-bottom:8px;">★★★★★ Excellent Service!</div>
+          <input type="hidden" class="multi-selected-rating" name="${prefix}_rating_${escapeHtml(String(r.id))}" value="5">
+
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin-bottom:8px;">
+            ${chipsHtml}
+          </div>
+
+          <textarea class="multi-review-comment" rows="2" maxlength="500" placeholder="Feedback or compliment for ${escapeHtml(riderName)} (optional)..." style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:0.84rem;resize:none;box-sizing:border-box;background:#ffffff;"></textarea>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function bindInteractiveRatingCards(containerEl) {
+    if (!containerEl || containerEl.dataset.ratingDelegated === "1") return;
+    containerEl.dataset.ratingDelegated = "1";
+
+    containerEl.addEventListener("click", (e) => {
+      const starEl = e.target.closest(".m-star-item");
+      if (starEl) {
+        const card = starEl.closest(".multi-rider-rating-card");
+        if (!card) return;
+        const val = parseInt(starEl.getAttribute("data-value") || "5", 10);
+        const hiddenInput = card.querySelector(".multi-selected-rating");
+        const labelEl = card.querySelector(".multi-star-label");
+        if (hiddenInput) hiddenInput.value = String(val);
+        if (labelEl) labelEl.textContent = STAR_LABELS[val] || "";
+        card.querySelectorAll(".m-star-item").forEach((st) => {
+          const v = parseInt(st.getAttribute("data-value") || "1", 10);
+          st.style.color = v <= val ? "#f59e0b" : "#cbd5e1";
+          st.style.transform = v === val ? "scale(1.16)" : "scale(1)";
+        });
         return;
       }
-    } catch (_) {}
 
-    ratingPromptShownForBooking = true;
-    const nameEl = document.getElementById("modal-rate-rider-name");
-    if (nameEl && b.rider_name) nameEl.textContent = b.rider_name;
-    const revRiderInput = document.getElementById("review-rider-id");
-    if (revRiderInput && b.rider_id) revRiderInput.value = b.rider_id;
+      const chipBtn = e.target.closest(".m-chip-btn");
+      if (chipBtn) {
+        const card = chipBtn.closest(".multi-rider-rating-card");
+        if (!card) return;
+        const txt = chipBtn.getAttribute("data-chip") || "";
+        const commentBox = card.querySelector(".multi-review-comment");
+        if (!commentBox || !txt) return;
+        if (!commentBox.value.includes(txt)) {
+          commentBox.value = commentBox.value ? `${commentBox.value.trim()} ${txt}` : txt;
+        }
+        chipBtn.style.background = "#fed7aa";
+      }
+    });
+  }
+
+  bindInteractiveRatingCards(modalRidersContainer);
+  bindInteractiveRatingCards(inlineRidersContainer);
+
+  function collectRatingsFromContainer(containerEl) {
+    if (!containerEl) return [];
+    const cards = containerEl.querySelectorAll(".multi-rider-rating-card");
+    const items = [];
+    cards.forEach((card) => {
+      const bookingId = parseInt(card.getAttribute("data-booking-id") || "0", 10);
+      const bookingCode = card.getAttribute("data-booking-code") || "";
+      const riderId = parseInt(card.getAttribute("data-rider-id") || "0", 10);
+      const riderName = card.getAttribute("data-rider-name") || "Club Rider";
+      const rating = parseInt(card.querySelector(".multi-selected-rating")?.value || "5", 10);
+      const comment = (card.querySelector(".multi-review-comment")?.value || "").trim();
+      if (bookingId && riderId) {
+        items.push({
+          booking_id: bookingId,
+          booking_code: bookingCode,
+          rider_id: riderId,
+          rider_name: riderName,
+          rating: Math.max(1, Math.min(5, rating || 5)),
+          comment: comment,
+          customer_name: latestPrimaryBooking.customer_name || booking.customer_name || "Passenger"
+        });
+      }
+    });
+    return items;
+  }
+
+  function renderPendingNote(noteEl, pendingSlots) {
+    if (!noteEl) return;
+    if (pendingSlots.length > 0) {
+      const names = pendingSlots.map((s) => s.rider_name ? `Rider #${s.rider_slot || 1} (${s.rider_name})` : `Rider #${s.rider_slot || 1}`).join(", ");
+      noteEl.textContent = `⏳ ${names} is still in transit — you will be able to rate them automatically once they arrive!`;
+      noteEl.classList.remove("hidden");
+    } else {
+      noteEl.classList.add("hidden");
+      noteEl.textContent = "";
+    }
+  }
+
+  function renderInlineReviewSection(primaryBooking, forceRerender) {
+    if (!inlineReviewCard || !inlineRidersContainer) return;
+    const { reviewed, unreviewed, pendingInTransit } = getRatingPartition(primaryBooking);
+
+    if (unreviewed.length === 0 && reviewed.length === 0) {
+      inlineReviewCard.classList.add("hidden");
+      return;
+    }
+
+    const sig = `${unreviewed.map((s) => s.id).join(",")}|${reviewed.map((s) => `${s.id}:${getSlotReviewRating(s)}`).join(",")}|${pendingInTransit.length}`;
+    if (!forceRerender && sig === lastRenderedInlineSig) {
+      return;
+    }
+    lastRenderedInlineSig = sig;
+
+    inlineReviewCard.classList.remove("hidden");
+
+    const titleEl = document.getElementById("inline-review-title");
+    const subEl = document.getElementById("inline-review-subtitle");
+    if (unreviewed.length > 1) {
+      if (titleEl) titleEl.textContent = `Rate Your ${unreviewed.length} Island Riders`;
+      if (subEl) subEl.textContent = "Give individual stars and feedback for each rider below:";
+    } else if (unreviewed.length === 1) {
+      if (titleEl) titleEl.textContent = `Rate ${unreviewed[0].rider_name || "Your Island Rider"}`;
+      if (subEl) subEl.textContent = "How was your ride experience across Camiguin?";
+    } else {
+      if (titleEl) titleEl.textContent = "Thank You for Rating!";
+      if (subEl) subEl.textContent = "All completed riders on this trip have been rated.";
+    }
+
+    if (inlineRatedSummary) {
+      if (reviewed.length > 0) {
+        inlineRatedSummary.innerHTML = buildRatedSummaryHtml(reviewed);
+        inlineRatedSummary.classList.remove("hidden");
+      } else {
+        inlineRatedSummary.innerHTML = "";
+        inlineRatedSummary.classList.add("hidden");
+      }
+    }
+
+    if (unreviewed.length > 0) {
+      inlineRidersContainer.innerHTML = buildRiderRatingCardsHtml(unreviewed, "inline");
+      if (inlineSubmitBtn) {
+        inlineSubmitBtn.style.display = "";
+        inlineSubmitBtn.disabled = false;
+        inlineSubmitBtn.textContent = unreviewed.length > 1
+          ? `Submit Ratings for ${unreviewed.length} Riders ⭐ →`
+          : "Submit Rating ⭐ →";
+      }
+      if (inlineReviewFeedback) inlineReviewFeedback.classList.add("hidden");
+    } else {
+      inlineRidersContainer.innerHTML = "";
+      if (inlineSubmitBtn) inlineSubmitBtn.style.display = "none";
+      if (inlineReviewFeedback) {
+        const backBtnHtml = pendingInTransit.length === 0
+          ? `<div style="margin-top:10px;"><a href="/" class="btn btn-sm btn-primary" style="background:#16a34a;border:none;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none;display:inline-block;color:white;">← Balik sa Dashboard</a></div>`
+          : "";
+        inlineReviewFeedback.innerHTML = `✓ Salamat kaayo! All completed rider ratings have been saved.${backBtnHtml}`;
+        inlineReviewFeedback.classList.remove("hidden");
+      }
+    }
+
+    renderPendingNote(inlinePendingNote, pendingInTransit);
+  }
+
+  function openRatingPopup(primaryBooking, opts) {
+    const options = opts || {};
+    if (!rateRiderModal || !modalRidersContainer) return;
+
+    const { reviewed, unreviewed, pendingInTransit } = getRatingPartition(
+      primaryBooking,
+      options.focusSlotCode
+    );
+    if (unreviewed.length === 0) return;
+
+    const isModalAlreadyOpen = !rateRiderModal.classList.contains("hidden") && rateRiderModal.style.display !== "none";
+    const newlyCompletedUnprompted = unreviewed.filter((s) => !promptedSlotCodes.has(s.booking_code));
+
+    if (!options.manual) {
+      if (newlyCompletedUnprompted.length === 0) return;
+      const incomingSig = `${unreviewed.map((s) => s.id).join(",")}|${reviewed.map((s) => s.id).join(",")}`;
+      if (isModalAlreadyOpen && incomingSig === lastRenderedModalSig) return;
+    }
+
+    unreviewed.forEach((s) => {
+      if (s.booking_code) promptedSlotCodes.add(s.booking_code);
+    });
+    lastRenderedModalSig = `${unreviewed.map((s) => s.id).join(",")}|${reviewed.map((s) => s.id).join(",")}`;
+
+    const modalTitle = document.getElementById("modal-rate-title");
+    const modalSub = document.getElementById("modal-rate-subtitle");
+    if (unreviewed.length > 1) {
+      if (modalTitle) modalTitle.textContent = `Trip Completed! Rate All ${unreviewed.length} Riders`;
+      if (modalSub) modalSub.textContent = "Palihug i-rate ang tagsa-tagsa ka rider sa imong group ride:";
+    } else {
+      const onlyRider = unreviewed[0];
+      if (modalTitle) modalTitle.textContent = "Trip Completed! Rate Your Rider";
+      if (modalSub) {
+        modalSub.innerHTML = `How was your trip with <strong id="modal-rate-rider-name">${escapeHtml(onlyRider.rider_name || "Kuya Rider")}</strong>?`;
+      }
+    }
+
+    if (modalRatedSummary) {
+      if (reviewed.length > 0) {
+        modalRatedSummary.innerHTML = buildRatedSummaryHtml(reviewed);
+        modalRatedSummary.classList.remove("hidden");
+      } else {
+        modalRatedSummary.innerHTML = "";
+        modalRatedSummary.classList.add("hidden");
+      }
+    }
+
+    modalRidersContainer.innerHTML = buildRiderRatingCardsHtml(unreviewed, "modal");
+    renderPendingNote(modalPendingNote, pendingInTransit);
+
+    if (modalReviewFeedback) modalReviewFeedback.classList.add("hidden");
+    if (modalSubmitBtn) {
+      modalSubmitBtn.style.display = "";
+      modalSubmitBtn.disabled = false;
+      modalSubmitBtn.textContent = unreviewed.length > 1
+        ? `Submit Ratings for ${unreviewed.length} Riders ⭐ →`
+        : "Submit Rating ⭐ →";
+    }
+    if (skipRateModalBtn) {
+      skipRateModalBtn.style.display = "";
+      skipRateModalBtn.textContent = "Maybe Later (Close)";
+    }
 
     rateRiderModal.classList.remove("hidden");
     rateRiderModal.style.display = "flex";
@@ -860,117 +1178,132 @@
     if (!rateRiderModal) return;
     rateRiderModal.classList.add("hidden");
     rateRiderModal.style.display = "none";
-    const inlineReviewCard = document.getElementById("review-submission-card");
-    if (inlineReviewCard && !ratingAlreadySubmitted) {
+    renderInlineReviewSection(latestPrimaryBooking, true);
+    const { unreviewed } = getRatingPartition(latestPrimaryBooking);
+    if (inlineReviewCard && unreviewed.length > 0) {
       inlineReviewCard.classList.remove("hidden");
       inlineReviewCard.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
+  function syncMultiRiderReviewUI(primaryBooking) {
+    renderInlineReviewSection(primaryBooking, false);
+    openRatingPopup(primaryBooking, { manual: false });
+  }
+
+  window.openRatingModalForGroup = function(slotCode) {
+    openRatingPopup(latestPrimaryBooking, { manual: true, focusSlotCode: slotCode || "" });
+  };
+
   if (closeRateModalBtn) closeRateModalBtn.addEventListener("click", closeRatingPopup);
   if (skipRateModalBtn) skipRateModalBtn.addEventListener("click", closeRatingPopup);
 
-  if (modalStarPicker && modalSelectedRating) {
-    const mStars = modalStarPicker.querySelectorAll(".m-star-item");
-    mStars.forEach((s) => {
-      s.addEventListener("click", () => {
-        const val = parseInt(s.getAttribute("data-value") || "5", 10);
-        modalSelectedRating.value = val;
-        if (modalStarLabel) modalStarLabel.textContent = STAR_LABELS[val] || "";
-        mStars.forEach((st) => {
-          const v = parseInt(st.getAttribute("data-value") || "1", 10);
-          st.style.color = (v <= val) ? "#f59e0b" : "#cbd5e1";
-          st.style.transform = (v === val) ? "scale(1.18)" : "scale(1)";
-        });
+  async function submitBatchRatings(containerEl, submitBtnEl, feedbackEl, isModal) {
+    const items = collectRatingsFromContainer(containerEl);
+    if (items.length === 0) {
+      alert("No completed rider available to rate yet.");
+      return;
+    }
+
+    const origBtnText = submitBtnEl ? submitBtnEl.textContent : "Submit Rating ⭐ →";
+    if (submitBtnEl) {
+      submitBtnEl.disabled = true;
+      submitBtnEl.textContent = items.length > 1 ? `Submitting ${items.length} ratings...` : "Submitting...";
+    }
+
+    try {
+      const payload = items.length === 1
+        ? {
+            booking_id: items[0].booking_id,
+            rider_id: items[0].rider_id,
+            rating: items[0].rating,
+            comment: items[0].comment,
+            customer_name: items[0].customer_name
+          }
+        : {
+            customer_name: items[0].customer_name,
+            reviews: items.map((it) => ({
+              booking_id: it.booking_id,
+              rider_id: it.rider_id,
+              rating: it.rating,
+              comment: it.comment,
+              customer_name: it.customer_name
+            }))
+          };
+
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
+      const data = await res.json().catch(() => ({}));
+
+      if ((res.ok && data.success) || res.status === 409) {
+        const allSlots = getAllTripSlots(latestPrimaryBooking);
+        items.forEach((it) => {
+          const matchedSlot = allSlots.find(
+            (s) => Number(s.id) === it.booking_id || (it.booking_code && s.booking_code === it.booking_code)
+          );
+          if (matchedSlot) {
+            markSlotReviewedLocally(matchedSlot, it.rating);
+          } else if (it.booking_code) {
+            markSlotReviewedLocally({ booking_code: it.booking_code }, it.rating);
+          }
+        });
+
+        const { pendingInTransit } = getRatingPartition(latestPrimaryBooking);
+        const savedMsg = items.length > 1
+          ? `✓ Salamat kaayo! Saved ratings for all ${items.length} riders.`
+          : `✓ Thank you! Your ${items[0].rating}-Star rating for ${escapeHtml(items[0].rider_name)} has been saved.`;
+
+        if (feedbackEl) {
+          const actionHtml = pendingInTransit.length === 0
+            ? `<div style="margin-top:12px;"><a href="/" class="btn btn-sm btn-primary" style="background:#ea580c;border:none;padding:9px 20px;border-radius:10px;font-weight:700;text-decoration:none;display:inline-block;color:white;">🏠 Back to Dashboard</a></div>`
+            : `<div style="margin-top:10px;font-size:0.8rem;color:#9a3412;">We will notify you to rate the remaining rider as soon as they arrive.</div>`;
+          feedbackEl.innerHTML = `${savedMsg}${actionHtml}`;
+          feedbackEl.classList.remove("hidden");
+        }
+        if (submitBtnEl) submitBtnEl.style.display = "none";
+        if (isModal && skipRateModalBtn) {
+          skipRateModalBtn.textContent = "Close";
+        }
+
+        renderGroupRidersPanel(latestGroupBookings);
+        renderAllAcceptedRiderCards(latestGroupBookings);
+        renderInlineReviewSection(latestPrimaryBooking, true);
+      } else {
+        alert(data.error || "Could not submit review.");
+        if (submitBtnEl) {
+          submitBtnEl.disabled = false;
+          submitBtnEl.textContent = origBtnText;
+        }
+      }
+    } catch (_) {
+      alert("Network error submitting review.");
+      if (submitBtnEl) {
+        submitBtnEl.disabled = false;
+        submitBtnEl.textContent = origBtnText;
+      }
+    }
+  }
+
+  if (modalReviewForm) {
+    modalReviewForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      submitBatchRatings(modalRidersContainer, modalSubmitBtn, modalReviewFeedback, true);
     });
   }
 
-  document.querySelectorAll("#modal-compliment-chips .m-chip-btn").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const txt = chip.getAttribute("data-chip") || "";
-      if (!modalReviewComment || !txt) return;
-      if (!modalReviewComment.value.includes(txt)) {
-        modalReviewComment.value = modalReviewComment.value
-          ? `${modalReviewComment.value.trim()} ${txt}`
-          : txt;
-      }
-      chip.style.background = "#fed7aa";
-    });
-  });
-
-  if (modalReviewForm) {
-    modalReviewForm.addEventListener("submit", async (e) => {
+  if (inlineReviewForm) {
+    inlineReviewForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const riderId = document.getElementById("review-rider-id")?.value || booking.rider_id;
-      const bookingId = document.getElementById("review-booking-id")?.value || booking.id;
-      const rating = modalSelectedRating?.value || "5";
-      const comment = modalReviewComment?.value || "";
-
-      if (!riderId) {
-        alert("Rider not assigned for this ride.");
-        return;
-      }
-
-      const btn = document.getElementById("modal-submit-review-btn");
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = "Submitting...";
-      }
-
-      try {
-        const res = await fetch("/api/reviews", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            rider_id: parseInt(riderId, 10),
-            booking_id: parseInt(bookingId, 10),
-            rating: parseInt(rating, 10),
-            comment: comment,
-            customer_name: booking.customer_name || "Passenger"
-          }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          ratingAlreadySubmitted = true;
-          try { localStorage.setItem(`ccrc_rated_${booking.booking_code}`, "1"); } catch (_) {}
-          if (modalReviewFeedback) {
-            modalReviewFeedback.innerHTML = `✓ Thank you! Your ${rating}-Star rating has been saved.<br><div style="margin-top:12px;"><a href="/" class="btn btn-sm btn-primary" style="background:#ea580c;border:none;padding:9px 20px;border-radius:10px;font-weight:700;text-decoration:none;display:inline-block;color:white;">🏠 Back to Dashboard</a></div>`;
-            modalReviewFeedback.classList.remove("hidden");
-          }
-          if (btn) btn.style.display = "none";
-          if (skipRateModalBtn) skipRateModalBtn.style.display = "none";
-          const inlineCard = document.getElementById("review-submission-card");
-          if (inlineCard) inlineCard.classList.add("hidden");
-        } else {
-          if (res.status === 409) {
-            ratingAlreadySubmitted = true;
-            try { localStorage.setItem(`ccrc_rated_${booking.booking_code}`, "1"); } catch (_) {}
-            closeRatingPopup();
-            return;
-          }
-          alert(data.error || "Could not submit review.");
-          if (btn) {
-            btn.disabled = false;
-            btn.textContent = "Submit Rating ⭐ →";
-          }
-        }
-      } catch (_) {
-        alert("Network error submitting review.");
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = "Submit Rating ⭐ →";
-        }
-      }
+      submitBatchRatings(inlineRidersContainer, inlineSubmitBtn, inlineReviewFeedback, false);
     });
   }
 
   window.addEventListener("DOMContentLoaded", () => {
     initMap();
     syncCustomerVoiceCall(booking);
-    if (booking && booking.status === "completed") {
-      openRatingPopup(booking);
-    }
 
     if (riderCallBtn) {
       riderCallBtn.addEventListener("click", (e) => {
