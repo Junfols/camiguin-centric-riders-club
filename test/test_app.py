@@ -1554,6 +1554,18 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("customer-compact-card", js)
         self.assertIn("customer-compact-edit", js)
 
+    def test_rider_hub_has_cart_button_that_opens_the_request_list(self):
+        html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="requests-fab"', html)
+        self.assertIn('id="requests-fab-count"', html)
+        drawer = html.index('id="requests-drawer"')
+        # the live feed and its counter live inside the full-screen drawer, so the existing JS keeps working
+        self.assertLess(drawer, html.index('id="available-jobs-feed"'))
+        self.assertLess(drawer, html.index('id="jobs-count-pill"'))
+        self.assertLess(html.index('id="available-jobs-feed"'), html.index("co-riders-card"))
+        self.assertIn('id="requests-drawer-close"', html)
+        # an active trip card still comes before everything else on the page
+        self.assertLess(html.index('id="rider-active-job-box"'), drawer)
 
 if __name__ == "__main__":
     unittest.main()
