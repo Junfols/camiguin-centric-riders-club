@@ -315,6 +315,17 @@
           </div>
         </details>
 
+        <!-- Compact summary for logged-in customers (saves scrolling) -->
+        <div id="customer-compact-card" class="hidden" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+          <div style="min-width:0;">
+            <div style="font-size:0.72rem;font-weight:700;color:#15803d;">🛡️ Verified CCRC Account ✓</div>
+            <div style="font-size:0.92rem;font-weight:700;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <span id="customer-compact-name"></span> · <span id="customer-compact-phone" style="font-weight:600;color:#475569;"></span>
+            </div>
+          </div>
+          <button type="button" id="customer-compact-edit" style="background:none;border:1px solid #86efac;color:#15803d;border-radius:8px;padding:4px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;">Edit</button>
+        </div>
+
         <!-- Customer Contact Details (Clean Modern Grid) -->
         <div class="customer-info-card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
