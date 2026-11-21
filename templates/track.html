@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Live GPS Tracking — {{ booking.booking_code if booking else 'CCRC' }}{% endblock %}
+
+{% block content %}
+<div class="container page-narrow" style="padding-top:1.5rem;padding-bottom:2.5rem;">
+  {% if not booking %}
+  <div class="card text-center" style="padding:2.5rem 1rem;">
+    <h2>Booking Not Found</h2>
+    <p class="text-muted">Please verify your tracking code or tracking link.</p>
+    <a href="/" class="btn btn-primary" style="margin-top:1rem;">Back to Home &rarr;</a>
+  </div>
+  {% else %}
+
+  <div class="track-header-card card">
+    <div class="track-status-pill-wrap">
+      <span id="track-status-pill" class="status-pill status-{{ booking.status }}">
+        {% if booking.status == 'broadcast' %}
+          ⏳ Waiting for an available rider to accept...
+        {% elif booking.status == 'accepted' %}
+          🛵 Accepted! Rider is heading to pickup point...
+        {% elif booking.status == 'in_progress' %}
+          🚀 In Transit / Heading to destination...
+        {% elif booking.status == 'completed' %}
+          ✓ Delivered! Thank you for using CCRC.
+        {% elif booking.status == 'cancelled' %}
+          ✕ Booking has been cancelled.
+        {% endif %}
+      </span>
+      <span class="booking-code-pill">{{ booking.booking_code }}</span>
+    </div>
+
+    <h1 style="font-size:1.4rem;margin:0.5rem 0 0.2rem;">
+      {{ booking.service_type|capitalize }} — {{ booking.dropoff_address }}
+    </h1>
+    <div class="text-muted" style="font-size:0.86rem;">
+      Fare: <strong>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</strong> &bull; Distance: <strong>{{ booking.estimated_km }} km</strong>
+      {% if booking.estimated_budget and booking.estimated_budget > 0 %}
+        &bull; Shopping Budget: <strong>₱{{ '{:,.0f}'.format(booking.estimated_budget) }}</strong>
+      {% endif %}
+      {% if booking.payment_method %}
+        &bull; Payment: <strong style="text-transform:uppercase;">{{ booking.payment_method }}</strong>
+      {% endif %}
+    </div>
+
+    <!-- Safety & Quick Action Toolbar -->
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button type="button" id="share-gps-btn" class="btn-sm" style="background:#0284c7;color:white;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+        <span>🔗</span> Share Live GPS
+      </button>
+      <button type="button" id="open-sos-btn" onclick="document.getElementById('sos-modal')?.classList.remove('hidden')" class="btn-sm" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+        <span>🚨</span> Emergency SOS
+      </button>
+      <button type="button" id="view-receipt-btn" onclick="document.getElementById('receipt-modal')?.classList.remove('hidden')" class="btn-sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+        <span>🧾</span> View Receipt
+      </button>
+    </div>
+
+    <div id="track-completed-back-wrap" class="{% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:14px;border-top:1px solid #e2e8f0;padding-top:12px;">
+      <a href="/" class="btn btn-primary btn-block" style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:0.95rem;font-weight:700;padding:12px;background:#16a34a;border-color:#16a34a;text-decoration:none;border-radius:10px;color:white;">
+        <span>🏠</span> Balik sa Dashboard (Book Another Ride)
+      </a>
+    </div>
+  </div>
+
+  <!-- Visual Ride Progress Stepper -->
+  <div class="card" style="padding:16px;margin-bottom:1rem;border-radius:14px;">
+    <div class="stepper-horizontal" style="display:flex;justify-content:space-between;position:relative;text-align:center;">
+      <div class="step-item {% if booking.status in ['broadcast', 'accepted', 'in_progress', 'completed'] %}active{% endif %}" id="step-broadcast" style="flex:1;">
+        <div style="font-size:1.3rem;">📡</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">1. Broadcast</small>
+      </div>
+      <div class="step-item {% if booking.status in ['accepted', 'in_progress', 'completed'] %}active{% endif %}" id="step-accepted" style="flex:1;">
+        <div style="font-size:1.3rem;">🛵</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">2. Accepted</small>
+      </div>
+      <div class="step-item {% if booking.status in ['in_progress', 'completed'] %}active{% endif %}" id="step-transit" style="flex:1;">
+        <div style="font-size:1.3rem;">🚀</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">3. In Transit</small>
+      </div>
+      <div class="step-item {% if booking.status == 'completed' %}active{% endif %}" id="step-completed" style="flex:1;">
+        <div style="font-size:1.3rem;">🏁</div>
+        <small style="font-weight:700;font-size:0.75rem;display:block;margin-top:4px;">4. Completed</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Live GPS Map -->
+  <div class="card map-canvas-container" id="tracking-map-container" style="padding:10px;margin-bottom:1rem;border-radius:14px;overflow:hidden;position:relative;">
+    <div class="map-floating-bar" style="top:18px;right:18px;">
+      <div class="map-layer-pill">
+        <button type="button" class="layer-pill-btn active" data-track-layer="street">🗺️ Kalsada</button>
+        <button type="button" class="layer-pill-btn" data-track-layer="satellite">🛰️ Satellite</button>
+      </div>
+      <button type="button" id="track-recenter-btn" class="map-float-btn" title="I-focus sa lokasyon sa Rider">
+        <span>🎯</span> I-focus sa Rider
+      </button>
+      <button type="button" id="track-fullscreen-btn" class="map-float-btn" title="Padak-a ang Mapa">
+        <span>⛶</span>
+      </button>
+    </div>
+    <div id="tracking-map" style="height: 380px; width: 100%; border-radius: 10px; z-index: 1;"></div>
+    <div class="tracking-legend" style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px 0;font-size:0.78rem;">
+      <div>
+        <span class="legend-dot dot-rider"></span> <strong>Rider</strong> &bull;
+        <span class="legend-dot dot-pickup"></span> <strong>Pickup</strong> &bull;
+        <span class="legend-dot dot-dropoff"></span> <strong>Dropoff</strong>
+      </div>
+      <div id="live-distance-indicator" class="text-muted">
+        Updating every 3 seconds...
+      </div>
+    </div>
+  </div>
+
+  <!-- Assigned Rider Info Card -->
+  <div id="assigned-rider-card" class="card rider-info-card {% if not booking.rider_id %}hidden{% endif %}">
+    <div class="rider-card-top">
+      <div class="rider-avatar" id="rider-avatar">
+        {% if booking.rider_avatar %}
+          <img src="{{ booking.rider_avatar }}" alt="{{ booking.rider_name }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+        {% else %}
+          {{ (booking.rider_name or 'R')[:1] }}
+        {% endif %}
+      </div>
+      <div class="rider-meta">
+        <h3 id="rider-name" style="margin:0;">{{ booking.rider_name or 'Club Rider' }}</h3>
+        <div class="text-muted" id="rider-bike-text" style="font-size:0.85rem;">
+          {{ booking.rider_bike }} &bull; Plate: <strong>{{ booking.rider_plate }}</strong>
+        </div>
+        <div class="rider-stars" style="color:#f59e0b;font-size:0.85rem;">
+          ★ <strong>{{ booking.rider_rating or 5.0 }}</strong> (Verified CCRC Member)
+        </div>
+      </div>
+    </div>
+
+    <div class="rider-actions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      <button type="button" id="rider-call-btn" onclick="if(window.CCRCVoiceCall){window.CCRCVoiceCall.startCall();}" class="btn btn-primary" style="text-align:center;background:#16a34a;border-color:#16a34a;font-weight:700;cursor:pointer;">
+        🔊 Free In-App Call
+      </button>
+      <a id="rider-sms-btn" href="sms:{{ booking.rider_phone }}" class="btn btn-outline" style="text-align:center;">
+        💬 Send SMS
+      </a>
+    </div>
+  </div>
+
+  <!-- Live In-App Chat with Assigned Rider -->
+  <div class="card chat-card" id="chat-section">
+    <div class="chat-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.4rem;">💬</span>
+        <div>
+          <h3 style="margin:0;font-size:1.05rem;">Live Chat with Rider</h3>
+          <span class="chat-subtitle text-muted" id="chat-rider-status-text" style="font-size:0.8rem;">
+            Direct in-app messaging with {{ booking.rider_name or 'your assigned driver' }}
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" onclick="if(window.CCRCVoiceCall){window.CCRCVoiceCall.startCall();}" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:5px 11px;font-size:0.76rem;font-weight:700;cursor:pointer;">
+          📞 Call
+        </button>
+        <span class="badge badge-success" id="chat-online-badge">Online</span>
+      </div>
+    </div>
+
+    <div class="canned-replies" id="customer-canned-replies">
+      <button type="button" class="canned-btn" data-msg="Asa na dapit Kuya?">📍 Asa na dapit Kuya?</button>
+      <button type="button" class="canned-btn" data-msg="Diri ra ko sa gawas naghulat Kuya.">🏠 Diri ra ko sa gawas naghulat.</button>
+      <button type="button" class="canned-btn" data-msg="Salamat Kuya!">👍 Salamat Kuya!</button>
+      <button type="button" class="canned-btn" data-msg="Palihug ko pag-abot Kuya.">🛵 Palihug ko pag-abot.</button>
+    </div>
+
+    <div class="chat-messages" id="chat-messages-box">
+      <div class="chat-empty-hint" id="chat-empty-hint">
+        <span>💬 Start chatting with your rider for directions, landmarks, or special requests.</span>
+      </div>
+    </div>
+
+    <form class="chat-input-bar" id="chat-form">
+      <input type="text" id="chat-input-field" placeholder="Type a message to rider..." maxlength="300" autocomplete="off" required>
+      <button type="submit" id="chat-send-btn" class="btn btn-primary chat-send-btn" title="Send message">
+        <span>Send</span> ✈️
+      </button>
+    </form>
+  </div>
+
+  <!-- Review Submission Box (When Completed) -->
+  <div id="review-submission-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;border:2px solid #fed7aa;background:#fffaf5;">
+    <div style="text-align:center;padding:10px 0;">
+      <span style="font-size:2rem;">⭐</span>
+      <h3 style="margin:6px 0 2px;">Rate Your Island Rider</h3>
+      <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px;">How was your ride experience across Camiguin?</p>
+
+      <form id="track-review-form">
+        <input type="hidden" id="review-rider-id" value="{{ booking.rider_id or '' }}">
+        <input type="hidden" id="review-booking-id" value="{{ booking.id }}">
+        <div class="star-rating-select" style="display:flex;justify-content:center;gap:8px;font-size:2rem;cursor:pointer;margin-bottom:12px;" id="star-picker">
+          <span class="star-item" data-value="1">★</span>
+          <span class="star-item" data-value="2">★</span>
+          <span class="star-item" data-value="3">★</span>
+          <span class="star-item" data-value="4">★</span>
+          <span class="star-item" data-value="5" style="color:#f59e0b;">★</span>
+        </div>
+        <input type="hidden" id="selected-rating" value="5">
+
+        <textarea id="review-comment" rows="2" placeholder="Write a compliment or feedback (optional)..." style="width:100%;max-width:480px;margin:0 auto;display:block;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;"></textarea>
+
+        <button type="submit" id="submit-review-btn" class="btn btn-primary" style="margin-top:10px;padding:8px 24px;">
+          Submit 5-Star Rating &rarr;
+        </button>
+        <div id="review-feedback-msg" class="hidden" style="margin-top:8px;font-weight:600;color:#16a34a;font-size:0.88rem;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delivered Celebration Card -->
+  <div id="delivered-actions-card" class="card {% if booking.status != 'completed' %}hidden{% endif %}" style="margin-top:1rem;background:#f0fdf4;border:2px solid #86efac;text-align:center;padding:18px;">
+    <div style="font-size:2.5rem;margin-bottom:6px;">🎉</div>
+    <h2 style="margin:0 0 6px;color:#15803d;font-size:1.3rem;">✓ Delivered! Thank you for using CCRC.</h2>
+    <p style="color:#166534;font-size:0.88rem;margin:0 0 16px;">
+      Ang imong booking malampusong nahuman. Daghang salamat sa pagsalig sa Camiguin Centric Riders Club!
+    </p>
+    <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <a href="/" class="btn btn-primary" style="padding:10px 22px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#16a34a;border-color:#16a34a;text-decoration:none;color:white;">
+        <span>🏠</span> Balik sa Dashboard
+      </a>
+      <a href="/history" class="btn btn-outline" style="padding:10px 18px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:white;text-decoration:none;">
+        <span>📜</span> View Ride History
+      </a>
+    </div>
+  </div>
+
+  <!-- Emergency / SOS Modal -->
+  <div id="sos-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-md">
+      <div class="modal-header" style="background:#fee2e2;border-bottom:1px solid #fecaca;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;color:#b91c1c;font-size:1.15rem;display:flex;align-items:center;gap:6px;">
+          <span>🚨</span> Island Emergency Hotlines
+        </h3>
+        <button type="button" id="close-sos-btn" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#991b1b;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px 18px;">
+        <p style="font-size:0.88rem;color:#475569;margin-top:0;">
+          If you are in danger or require medical/police assistance on Camiguin island, contact these hotlines immediately:
+        </p>
+        <ul style="list-style:none;padding:0;margin:12px 0;display:grid;gap:10px;">
+          <li style="padding:10px 14px;background:#fef2f2;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>Camiguin General Hospital (CGH)</strong>
+              <small style="display:block;color:#64748b;">Mambajao Hospital Emergency</small>
+            </div>
+            <a href="tel:0883871026" class="btn btn-sm btn-primary">📞 Call</a>
+          </li>
+          <li style="padding:10px 14px;background:#fef2f2;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>PNP Mambajao Police Station</strong>
+              <small style="display:block;color:#64748b;">Emergency Police Response</small>
+            </div>
+            <a href="tel:09985986877" class="btn btn-sm btn-primary">📞 Call</a>
+          </li>
+          <li style="padding:10px 14px;background:#fef2f2;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>CCRC Island Dispatch Center</strong>
+              <small style="display:block;color:#64748b;">Club Manager &amp; Dispatcher</small>
+            </div>
+            <a href="tel:09170001122" class="btn btn-sm btn-primary">📞 Call</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Digital Receipt Modal -->
+  <div id="receipt-modal" class="modal-backdrop hidden" onclick="if(event.target===this) this.classList.add('hidden')" role="dialog" aria-modal="true">
+    <div class="modal-card modal-md">
+      <div class="modal-header" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+        <h3 style="margin:0;font-size:1.1rem;">🧾 Digital Ride Receipt</h3>
+        <button type="button" id="close-receipt-btn" onclick="document.getElementById('receipt-modal')?.classList.add('hidden')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:18px;">
+        <div style="text-align:center;border-bottom:1px dashed #cbd5e1;padding-bottom:12px;margin-bottom:12px;">
+          <h2 style="margin:0;font-size:1.2rem;color:var(--primary);">CAMIGUIN CENTRIC RIDERS CLUB</h2>
+          <small class="text-muted">Verified Island Transport &bull; Official Island Tariff</small>
+        </div>
+        <div style="font-size:0.88rem;display:grid;gap:6px;">
+          <div style="display:flex;justify-content:space-between;"><span>Booking Code:</span><strong>{{ booking.booking_code }}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>Passenger:</span><span>{{ booking.customer_name }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Service:</span><span style="text-transform:uppercase;">{{ booking.service_type }}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Distance:</span><span>{{ booking.estimated_km }} km</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Payment:</span><span style="text-transform:uppercase;">{{ booking.payment_method or 'CASH' }}</span></div>
+          {% if booking.promo_code %}
+          <div style="display:flex;justify-content:space-between;color:#16a34a;"><span>Voucher ({{ booking.promo_code }}):</span><span>-₱{{ '{:,.0f}'.format(booking.discount_amount or 0) }}</span></div>
+          {% endif %}
+          <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;border-top:2px solid #1e293b;padding-top:8px;margin-top:6px;">
+            <span>Total Fare:</span>
+            <span>₱{{ '{:,.0f}'.format(booking.fare_amount) }}</span>
+          </div>
+        </div>
+
+        <div id="modal-receipt-img-wrap" class="{% if not booking.receipt_url %}hidden{% endif %}" style="margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:12px;text-align:center;">
+          <strong style="display:block;font-size:0.85rem;margin-bottom:6px;color:#334155;">Store Official Receipt / Photo Proof:</strong>
+          <a id="modal-receipt-img-link" href="{{ booking.receipt_url or '#' }}" target="_blank" rel="noopener">
+            <img id="modal-receipt-img" src="{{ booking.receipt_url or '' }}" alt="Resibo" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #cbd5e1;object-fit:cover;">
+          </a>
+        </div>
+
+        <button type="button" onclick="window.print()" class="btn btn-outline btn-block" style="margin-top:16px;">🖨️ Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trip Details Card -->
+  <div class="card" style="margin-top:1rem;">
+    <h3 style="margin-top:0;font-size:1.05rem;">Trip Details &amp; Summary</h3>
+    <div class="trip-details-list">
+      <div class="trip-detail-item">
+        <span class="detail-label">Service Type:</span>
+        <strong style="text-transform:uppercase;">{{ booking.service_type }}</strong>
+      </div>
+      <div class="trip-detail-item">
+        <span class="detail-label">Pickup Point:</span>
+        <span>{{ booking.pickup_address }}</span>
+      </div>
+      <div class="trip-detail-item">
+        <span class="detail-label">Drop-off Destination:</span>
+        <span>{{ booking.dropoff_address }}</span>
+      </div>
+      {% if booking.item_notes %}
+      <div class="trip-detail-item">
+        <span class="detail-label">Item Notes / Instructions:</span>
+        <span class="item-notes-text">&ldquo;{{ booking.item_notes }}&rdquo;</span>
+      </div>
+      {% endif %}
+      <div class="trip-detail-item">
+        <span class="detail-label">Customer:</span>
+        <span>{{ booking.customer_name }} ({{ booking.customer_phone }})</span>
+      </div>
+
+      <div id="track-receipt-item" class="trip-detail-item {% if not booking.receipt_url %}hidden{% endif %}" style="display:block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="detail-label" style="color:#166534;font-weight:700;">🧾 Store Receipt / Proof of Delivery:</span>
+          <span class="badge" style="background:#dcfce7;color:#15803d;font-size:0.75rem;font-weight:700;">Verified by Rider ✓</span>
+        </div>
+        <a id="track-receipt-link" href="{{ booking.receipt_url or '#' }}" target="_blank" rel="noopener" title="I-click aron makita sa full size">
+          <img id="track-receipt-img" src="{{ booking.receipt_url or '' }}" alt="Store Official Receipt" style="width:100%;max-height:280px;object-fit:cover;border-radius:8px;border:1px solid #86efac;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <small style="display:block;margin-top:4px;color:#15803d;font-weight:600;text-align:center;">🔍 I-click ang imahe para sa Full Resolution</small>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if booking %}
+<script>
+  window.INITIAL_BOOKING = {{ booking | tojson }};
+</script>
+<script src="/static/js/track.js?v=35"></script>
+{% endif %}
+{% endblock %}
