@@ -1544,6 +1544,16 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertLess(html.index("Camiguin Live Island Map"), html.index("Planning an Island Tour"))
         self.assertIn('href="/tours"', html)
 
+    def test_logged_in_customer_gets_compact_passenger_info(self):
+        html = self.client.get("/").get_data(as_text=True)
+        # compact summary exists, hidden by default, and the real inputs are still in the form
+        self.assertIn('id="customer-compact-card" class="hidden"', html)
+        self.assertIn('id="customer-name"', html)
+        self.assertIn('id="customer-phone"', html)
+        js = self.client.get("/static/js/app.js").get_data(as_text=True)
+        self.assertIn("customer-compact-card", js)
+        self.assertIn("customer-compact-edit", js)
+
 
 if __name__ == "__main__":
     unittest.main()
