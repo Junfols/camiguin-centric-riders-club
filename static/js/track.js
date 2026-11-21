@@ -264,6 +264,236 @@
       .replace(/'/g, "&#039;");
   }
 
+
+  // ---------------------------------------------------------------------------
+  // Multi-Rider Group Tracking, Chat Switcher & Per-Rider Free In-App Voice Call
+  // ---------------------------------------------------------------------------
+  let activeSlotBooking = Object.assign({}, booking);
+  let latestGroupBookings = [];
+  let extraGroupRiderMarkers = {};
+
+  function getActiveBookingRef() {
+    return (activeSlotBooking && activeSlotBooking.booking_code) || booking.booking_code;
+  }
+
+  window.switchActiveGroupSlot = function(slotCode) {
+    if (!slotCode) return;
+    const found = latestGroupBookings.find((gb) => gb.booking_code === slotCode);
+    if (!found) return;
+    const changed = activeSlotBooking.booking_code !== found.booking_code;
+    activeSlotBooking = Object.assign({}, found);
+    if (changed) {
+      lastMessageId = 0;
+      if (chatMessagesBox) {
+        chatMessagesBox.innerHTML = "";
+        if (chatEmptyHint) {
+          chatEmptyHint.style.display = "block";
+          chatMessagesBox.appendChild(chatEmptyHint);
+        }
+      }
+      pollChatMessages();
+    }
+    const chatSub = document.getElementById("chat-rider-status-text");
+    if (chatSub) {
+      chatSub.textContent = found.rider_name
+        ? `Direct in-app messaging with Rider #${found.rider_slot || 1}: ${found.rider_name}`
+        : `Waiting for Rider #${found.rider_slot || 1} to join...`;
+    }
+    renderSingleAssignedRiderCard(activeSlotBooking);
+    syncCustomerVoiceCall(activeSlotBooking);
+    renderGroupRidersPanel(latestGroupBookings);
+    if (found.rider_lat && found.rider_lng && map) {
+      map.flyTo([found.rider_lat, found.rider_lng], 15, { duration: 0.8 });
+    }
+  };
+
+  window.callSpecificGroupRider = function(slotCode) {
+    window.switchActiveGroupSlot(slotCode);
+    setTimeout(() => {
+      if (window.CCRCVoiceCall) {
+        window.CCRCVoiceCall.startCall();
+      }
+    }, 80);
+  };
+
+  function renderSingleAssignedRiderCard(b) {
+    if (!assignedRiderCard) return;
+    if (b && b.rider_id) {
+      assignedRiderCard.classList.remove("hidden");
+      const slotPrefix = (Number(b.group_size || 1) > 1) ? `Rider #${b.rider_slot || 1}: ` : "";
+      if (riderNameEl) riderNameEl.textContent = `${slotPrefix}${b.rider_name || "Club Rider"}`;
+      const revRiderInput = document.getElementById("review-rider-id");
+      if (revRiderInput && b.rider_id) revRiderInput.value = b.rider_id;
+      const revBookingInput = document.getElementById("review-booking-id");
+      if (revBookingInput && b.id) revBookingInput.value = b.id;
+      if (riderAvatar) {
+        if (b.rider_avatar) {
+          riderAvatar.innerHTML = `<img src="${escapeHtml(b.rider_avatar)}" alt="${escapeHtml(b.rider_name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        } else {
+          riderAvatar.textContent = (b.rider_name || "R")[0].toUpperCase();
+        }
+      }
+      if (riderBikeText) {
+        riderBikeText.innerHTML = `${escapeHtml(b.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(b.rider_plate || "")}</strong>`;
+      }
+      if (riderCallBtn && b.rider_phone) riderCallBtn.href = `tel:${b.rider_phone}`;
+      if (riderSmsBtn && b.rider_phone) riderSmsBtn.href = `sms:${b.rider_phone}`;
+    } else {
+      assignedRiderCard.classList.add("hidden");
+    }
+  }
+
+  function renderGroupRidersPanel(groupList) {
+    const panel = document.getElementById("group-riders-panel");
+    const slotsContainer = document.getElementById("group-riders-slots-list");
+    const assignedLbl = document.getElementById("group-assigned-label");
+    const totalLbl = document.getElementById("group-total-label");
+    const grpBadge = document.getElementById("group-code-badge");
+    if (!panel || !slotsContainer) return;
+
+    if (!groupList || groupList.length <= 1) {
+      panel.classList.add("hidden");
+      return;
+    }
+
+    panel.classList.remove("hidden");
+    const assignedCount = groupList.filter((g) => Boolean(g.rider_id)).length;
+    if (assignedLbl) assignedLbl.textContent = assignedCount;
+    if (totalLbl) totalLbl.textContent = groupList.length;
+    if (grpBadge && groupList[0].group_code) grpBadge.textContent = groupList[0].group_code;
+
+    slotsContainer.innerHTML = groupList.map((gb) => {
+      const slotNum = gb.rider_slot || 1;
+      const isSelected = gb.booking_code === getActiveBookingRef();
+      const hasRider = Boolean(gb.rider_id);
+      const borderStyle = isSelected ? "2px solid #2563eb" : "1px solid #cbd5e1";
+      const bgStyle = isSelected ? "#ffffff" : "#f8fafc";
+
+      if (!hasRider) {
+        return `
+          <div style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div>
+              <span class="badge" style="background:#e2e8f0;color:#475569;font-size:0.72rem;font-weight:700;">Rider #${slotNum}</span>
+              <strong style="margin-left:6px;font-size:0.9rem;color:#64748b;">⏳ Waiting for rider to accept...</strong>
+              <div style="font-size:0.75rem;color:#94a3b8;font-family:monospace;">${escapeHtml(gb.booking_code)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      const canCallSlot = ["accepted", "in_progress"].includes(gb.status);
+      const statusTag = gb.status === "completed"
+        ? `<span style="color:#15803d;font-weight:700;font-size:0.74rem;">✓ Completed</span>`
+        : (gb.status === "in_progress"
+          ? `<span style="color:#0284c7;font-weight:700;font-size:0.74rem;">🚀 In Transit</span>`
+          : `<span style="color:#16a34a;font-weight:700;font-size:0.74rem;">🛵 Heading to Pickup</span>`);
+
+      const callBtnHtml = canCallSlot
+        ? `<button type="button" onclick="event.stopPropagation();window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:0.76rem;font-weight:700;cursor:pointer;">🔊 Call</button>`
+        : "";
+
+      return `
+        <div onclick="window.switchActiveGroupSlot('${escapeHtml(gb.booking_code)}')" style="background:${bgStyle};border:${borderStyle};border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;">
+          <div style="min-width:0;flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:0.72rem;font-weight:800;">Rider #${slotNum}</span>
+              <strong style="font-size:0.94rem;color:#0f172a;">${escapeHtml(gb.rider_name || "Club Rider")}</strong>
+              ${isSelected ? `<span style="background:#2563eb;color:#fff;font-size:0.66rem;padding:1px 6px;border-radius:999px;font-weight:700;">Active Chat</span>` : ""}
+            </div>
+            <div style="font-size:0.78rem;color:#475569;margin-top:2px;">
+              🏍️ ${escapeHtml(gb.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(gb.rider_plate || "")}</strong> &bull; ${statusTag}
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            ${callBtnHtml}
+            <a href="sms:${escapeHtml(gb.rider_phone || "")}" onclick="event.stopPropagation();" class="btn btn-sm btn-outline" style="padding:5px 9px;font-size:0.76rem;text-decoration:none;">💬</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+
+  function renderAllAcceptedRiderCards(groupList) {
+    const allCardsEl = document.getElementById("all-accepted-riders-cards");
+    if (!allCardsEl) return;
+    const assignedRiders = (groupList || []).filter((gb) => Boolean(gb.rider_id));
+    allCardsEl.innerHTML = assignedRiders.map((gb) => {
+      const slotNum = gb.rider_slot || 1;
+      const canCallSlot = ["accepted", "in_progress"].includes(gb.status);
+      const avatarContent = gb.rider_avatar
+        ? `<img src="${escapeHtml(gb.rider_avatar)}" alt="${escapeHtml(gb.rider_name || '')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+        : escapeHtml((gb.rider_name || "R")[0].toUpperCase());
+      const statusText = gb.status === "completed"
+        ? "✓ Completed"
+        : (gb.status === "in_progress" ? "🚀 In Transit" : "🛵 Accepted • Heading to Pickup");
+
+      return `
+        <div class="card" style="margin:0;padding:12px 14px;background:#ffffff;border:1.5px solid #bfdbfe;border-radius:12px;box-shadow:0 2px 6px rgba(15,23,42,0.05);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:46px;height:46px;border-radius:50%;background:#ffedd5;color:#ea580c;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid #fdba74;">
+              ${avatarContent}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="background:#1d4ed8;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:999px;">Rider #${slotNum}</span>
+                <strong style="font-size:0.98rem;color:#0f172a;">${escapeHtml(gb.rider_name || "Club Rider")}</strong>
+              </div>
+              <div style="font-size:0.82rem;color:#475569;margin-top:2px;">
+                ${escapeHtml(gb.rider_bike || "Motorcycle")} &bull; Plate: <strong>${escapeHtml(gb.rider_plate || "N/A")}</strong>
+              </div>
+              <div style="font-size:0.76rem;color:#15803d;font-weight:700;margin-top:2px;">${statusText}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+            ${canCallSlot
+              ? `<button type="button" onclick="window.callSpecificGroupRider('${escapeHtml(gb.booking_code)}');" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;font-weight:700;padding:8px 10px;border-radius:9px;cursor:pointer;">🔊 Free In-App Call</button>`
+              : `<button type="button" disabled class="btn btn-sm" style="background:#e2e8f0;color:#64748b;border:none;font-weight:700;padding:8px 10px;border-radius:9px;">🔊 Call</button>`}
+            <a href="sms:${escapeHtml(gb.rider_phone || "")}" class="btn btn-outline btn-sm" style="text-align:center;font-weight:700;padding:8px 10px;border-radius:9px;text-decoration:none;">💬 Send SMS</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+    function syncExtraGroupMapMarkers(groupList) {
+    if (!map || typeof L === "undefined") return;
+    const activeCodes = new Set();
+    (groupList || []).forEach((gb) => {
+      if (gb.booking_code === getActiveBookingRef()) return;
+      if (gb.rider_id && gb.rider_lat && gb.rider_lng) {
+        activeCodes.add(gb.booking_code);
+        const slotNum = gb.rider_slot || 1;
+        const iconHtml = `
+          <div class="rider-3d-wrap">
+            <div class="rider-3d-avatar" style="background:#2563eb;border:2px solid #fff;" title="Rider #${slotNum}: ${escapeHtml(gb.rider_name || '')}">
+              <span style="font-size:0.78rem;font-weight:900;color:#fff;">#${slotNum}</span>
+            </div>
+          </div>
+        `;
+        const gIcon = L.divIcon({
+          className: "ccrc-rider-3d-marker",
+          html: iconHtml,
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        });
+        if (!extraGroupRiderMarkers[gb.booking_code]) {
+          extraGroupRiderMarkers[gb.booking_code] = L.marker([gb.rider_lat, gb.rider_lng], { icon: gIcon, zIndexOffset: 950 })
+            .addTo(map)
+            .bindPopup(`<strong>Rider #${slotNum}: ${escapeHtml(gb.rider_name || "Club Rider")}</strong><br>${escapeHtml(gb.rider_plate || "")}`);
+        } else {
+          extraGroupRiderMarkers[gb.booking_code].setLatLng([gb.rider_lat, gb.rider_lng]);
+        }
+      }
+    });
+    Object.keys(extraGroupRiderMarkers).forEach((code) => {
+      if (!activeCodes.has(code)) {
+        map.removeLayer(extraGroupRiderMarkers[code]);
+        delete extraGroupRiderMarkers[code];
+      }
+    });
+  }
+
   async function pollLiveStatus() {
     try {
       const res = await fetch(`/api/bookings/track/${encodeURIComponent(booking.booking_code)}`);
@@ -300,30 +530,29 @@
         }
       }
 
-      if (b.rider_id && assignedRiderCard) {
-        assignedRiderCard.classList.remove("hidden");
-        if (riderNameEl) riderNameEl.textContent = b.rider_name || "Club Rider";
-        const revRiderInput = document.getElementById("review-rider-id");
-        if (revRiderInput && b.rider_id) revRiderInput.value = b.rider_id;
-        if (riderAvatar) {
-          if (b.rider_avatar) {
-            riderAvatar.innerHTML = `<img src="${escapeHtml(b.rider_avatar)}" alt="${escapeHtml(b.rider_name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-          } else {
-            riderAvatar.textContent = (b.rider_name || "R")[0].toUpperCase();
-          }
+      latestGroupBookings = Array.isArray(data.group_bookings) ? data.group_bookings : [];
+      if (latestGroupBookings.length > 1) {
+        const matched = latestGroupBookings.find((gb) => gb.booking_code === activeSlotBooking.booking_code);
+        if (matched) {
+          activeSlotBooking = Object.assign({}, matched);
+        } else {
+          const firstAssigned = latestGroupBookings.find((gb) => Boolean(gb.rider_id));
+          activeSlotBooking = Object.assign({}, firstAssigned || b);
         }
-        if (riderBikeText) {
-          riderBikeText.innerHTML = `${escapeHtml(b.rider_bike || "")} &bull; Plate: <strong>${escapeHtml(b.rider_plate || "")}</strong>`;
-        }
-        if (riderCallBtn && b.rider_phone) riderCallBtn.href = `tel:${b.rider_phone}`;
-        if (riderSmsBtn && b.rider_phone) riderSmsBtn.href = `sms:${b.rider_phone}`;
+      } else {
+        activeSlotBooking = Object.assign({}, b);
       }
 
-      syncCustomerVoiceCall(b);
+      renderGroupRidersPanel(latestGroupBookings);
+      renderAllAcceptedRiderCards(latestGroupBookings);
+      renderSingleAssignedRiderCard(activeSlotBooking);
+      syncCustomerVoiceCall(activeSlotBooking);
 
-      if (b.rider_lat && b.rider_lng) {
-        updateRiderMarker(b.rider_lat, b.rider_lng, b.rider_name, b.rider_speed || 0, b.rider_heading || 0);
+      const focusRider = activeSlotBooking.rider_id ? activeSlotBooking : b;
+      if (focusRider.rider_lat && focusRider.rider_lng) {
+        updateRiderMarker(focusRider.rider_lat, focusRider.rider_lng, focusRider.rider_name, focusRider.rider_speed || 0, focusRider.rider_heading || 0);
       }
+      syncExtraGroupMapMarkers(latestGroupBookings);
 
       if (liveDistanceIndicator) {
         if (b.status === "accepted" && data.distance_to_pickup_km !== null) {
@@ -349,18 +578,6 @@
         if (modalReceiptWrap) modalReceiptWrap.classList.remove("hidden");
         if (modalReceiptLink) modalReceiptLink.href = b.receipt_url;
         if (modalReceiptImg) modalReceiptImg.src = b.receipt_url;
-      }
-
-      const purchaseBox = document.getElementById("track-purchase-box");
-      const purchaseVal = Number(b.purchase_amount) || 0;
-      if (purchaseBox && purchaseVal > 0) {
-        const fareVal = Number(b.fare_amount) || 0;
-        const fmt = (n, d) => n.toLocaleString("en-PH", { minimumFractionDigits: d, maximumFractionDigits: d });
-        const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-        setTxt("track-purchase-amount", fmt(purchaseVal, 2));
-        setTxt("track-purchase-fare", fmt(fareVal, 0));
-        setTxt("track-purchase-total", fmt(fareVal + purchaseVal, 2));
-        purchaseBox.classList.remove("hidden");
       }
     } catch (_) {}
   }
@@ -420,7 +637,7 @@
 
   async function pollChatMessages() {
     try {
-      const res = await fetch(`/api/chat/${encodeURIComponent(booking.booking_code)}/messages?after=${lastMessageId}`);
+      const res = await fetch(`/api/chat/${encodeURIComponent(getActiveBookingRef())}/messages?after=${lastMessageId}`);
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.messages && data.messages.length > 0) {
@@ -446,7 +663,7 @@
     if (chatInputField) chatInputField.value = "";
 
     try {
-      const res = await fetch(`/api/chat/${encodeURIComponent(booking.booking_code)}/messages`, {
+      const res = await fetch(`/api/chat/${encodeURIComponent(getActiveBookingRef())}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -764,6 +981,7 @@
       });
     }
 
+    pollLiveStatus();
     setInterval(pollLiveStatus, 3000);
     pollChatMessages();
     chatPollTimer = setInterval(pollChatMessages, 2500);
