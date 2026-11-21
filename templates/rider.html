@@ -317,8 +317,11 @@
         </div>
 
         <div class="loc-step">
-          <span class="loc-icon">👤</span>
-          <div>
+          <div id="active-job-customer-avatar-wrap" style="width:44px;height:44px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid #cbd5e1;">
+            <span id="active-job-customer-avatar-icon" style="font-size:1.3rem;">👤</span>
+            <img id="active-job-customer-avatar-img" src="" alt="Customer Photo" class="hidden" style="width:100%;height:100%;object-fit:cover;cursor:pointer;">
+          </div>
+          <div style="flex:1;min-width:0;">
             <strong style="font-size:0.85rem;">Customer:</strong>
             <div id="active-job-customer" class="loc-text">Customer Name</div>
             <div id="active-job-customer-badge" style="margin:4px 0;"></div>
