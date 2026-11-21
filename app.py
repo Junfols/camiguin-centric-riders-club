@@ -1632,11 +1632,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             offer_data=data.get("offer"),
         )
         conn.commit()
-        if not ok:
-            return jsonify({"success": False, "error": msg, "call": call_obj}), status_code
         if call_obj:
             call_obj["caller_role"] = f"rider:{call_obj['caller_rider_id']}"
             call_obj["callee_role"] = f"rider:{call_obj['callee_rider_id']}"
+            call_obj["call_kind"] = "rider_to_rider"
+        if not ok:
+            return jsonify({"success": False, "error": msg, "call": call_obj}), status_code
         return jsonify({
             "success": True,
             "message": msg,
@@ -1696,6 +1697,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             reason=data.get("reason") or "",
         )
         conn.commit()
+        if updated_call:
+            updated_call["caller_role"] = f"rider:{updated_call['caller_rider_id']}"
+            updated_call["callee_role"] = f"rider:{updated_call['callee_rider_id']}"
+            updated_call["call_kind"] = "rider_to_rider"
         if not ok:
             return jsonify({"success": False, "error": msg, "call": updated_call}), status_code
         return jsonify({"success": True, "message": msg, "call": updated_call}), status_code
@@ -2024,12 +2029,25 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def get_rider_co_riders():
         conn = get_db()
         riders = get_online_riders(conn)
-        live_statuses = get_rider_live_statuses(conn)
+        live_statuses = get_rider_live_statuses(conn, recent_completed_minutes=15)
         current_rider_id = _rider_id_from_session()
         if not current_rider_id:
             q_rid = request.args.get("rider_id", type=int)
             if q_rid and get_rider_by_id(conn, q_rid):
                 current_rider_id = q_rid
+
+        status_label_map = {
+            "accepted": "Accepted Booking",
+            "in_progress": "In Transit",
+            "completed": "Completed • Available",
+            "available": "Available",
+        }
+        status_counts = {
+            "available": 0,
+            "completed": 0,
+            "accepted": 0,
+            "in_progress": 0,
+        }
         clean_list = []
         for r in riders:
             st_info = live_statuses.get(int(r["id"]), {
@@ -2038,7 +2056,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "work_status": "available",
                 "work_status_label": "Available",
                 "trip_status": "available",
+                "last_completed_at": None,
             })
+            trip_status = st_info.get("trip_status", "available")
+            if trip_status not in status_label_map:
+                trip_status = "available"
+            has_active_job = bool(st_info.get("has_active_job"))
+            is_available = not has_active_job
+            status_counts[trip_status] = status_counts.get(trip_status, 0) + 1
+
             clean_list.append({
                 "id": r["id"],
                 "name": r["name"],
@@ -2053,13 +2079,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "last_lng": r.get("last_lng"),
                 "last_active_at": r.get("last_active_at"),
                 "is_self": bool(current_rider_id and int(r["id"]) == int(current_rider_id)),
-                "has_active_job": bool(st_info.get("has_active_job")),
+                "has_active_job": has_active_job,
+                "has_scheduled_job": bool(st_info.get("has_scheduled_job")),
+                "is_available": is_available,
+                "trip_status": trip_status,
                 "work_status": st_info.get("work_status", "available"),
-                "work_status_label": st_info.get("work_status_label", "Available"),
+                "work_status_label": status_label_map[trip_status],
+                "last_completed_at": st_info.get("last_completed_at"),
             })
         return jsonify({
             "success": True,
             "total_online": len(clean_list),
+            "available_count": status_counts["available"] + status_counts["completed"],
+            "status_counts": status_counts,
             "co_riders": clean_list,
         })
 
