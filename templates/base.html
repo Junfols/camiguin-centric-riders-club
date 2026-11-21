@@ -341,10 +341,63 @@
   <!-- PWA Service Worker & Intelligent Install Hide Logic -->
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js").catch(console.error);
+      let swRegistration = null;
+      let swReloading = false;
+      let lastSwCheckTs = 0;
+      const hadController = Boolean(navigator.serviceWorker.controller);
+
+      function isCallActiveNow() {
+        const callModal = document.getElementById("ccrc-call-modal");
+        return Boolean(callModal && !callModal.classList.contains("hidden"));
+      }
+
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController || swReloading || isCallActiveNow()) return;
+        swReloading = true;
+        window.location.reload();
       });
+
+      function checkForSwUpdate() {
+        if (!swRegistration) return;
+        const now = Date.now();
+        if (now - lastSwCheckTs < 25000) return;
+        lastSwCheckTs = now;
+        swRegistration.update().catch(() => {});
+      }
+
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js", { updateViaCache: "none" })
+          .then((reg) => {
+            swRegistration = reg;
+            lastSwCheckTs = Date.now();
+            reg.update().catch(() => {});
+          })
+          .catch(console.error);
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          checkForSwUpdate();
+        }
+      });
+
+      setInterval(checkForSwUpdate, 10 * 60 * 1000);
     }
+
+    window.ccrcForceAppRefresh = async function() {
+      try {
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.update().catch(() => {})));
+        }
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k).catch(() => {})));
+        }
+      } catch (_) {}
+      window.location.reload();
+    };
 
     function isAppAlreadyInstalled() {
       if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
