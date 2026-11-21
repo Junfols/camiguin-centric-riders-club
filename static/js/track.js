@@ -603,6 +603,39 @@
         if (modalReceiptLink) modalReceiptLink.href = b.receipt_url;
         if (modalReceiptImg) modalReceiptImg.src = b.receipt_url;
       }
+
+      const setT = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      if (b.rider_name) setT("modal-rider-name", b.rider_name);
+      if (b.rider_plate) {
+        setT("modal-rider-plate", b.rider_plate);
+        const plateRow = document.getElementById("modal-rider-plate-row");
+        if (plateRow) plateRow.classList.remove("hidden");
+      }
+      {
+        const fareN = Number(b.fare_amount) || 0;
+        const boughtN = Number(b.purchase_amount) || 0;
+        const f = (n, d) => n.toLocaleString("en-PH", { minimumFractionDigits: d, maximumFractionDigits: d });
+        if (boughtN > 0) {
+          setT("modal-fare-only", f(fareN, 0));
+          setT("modal-purchase-amount", f(boughtN, 2));
+          setT("modal-total-fare", f(fareN + boughtN, 2));
+          document.getElementById("modal-fare-row")?.classList.remove("hidden");
+          document.getElementById("modal-purchase-row")?.classList.remove("hidden");
+        } else {
+          setT("modal-total-fare", f(fareN, 0));
+        }
+      }
+      const purchaseBox = document.getElementById("track-purchase-box");
+      const purchaseVal = Number(b.purchase_amount) || 0;
+      if (purchaseBox && purchaseVal > 0) {
+        const fareVal = Number(b.fare_amount) || 0;
+        const fmt = (n, d) => n.toLocaleString("en-PH", { minimumFractionDigits: d, maximumFractionDigits: d });
+        const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        setTxt("track-purchase-amount", fmt(purchaseVal, 2));
+        setTxt("track-purchase-fare", fmt(fareVal, 0));
+        setTxt("track-purchase-total", fmt(fareVal + purchaseVal, 2));
+        purchaseBox.classList.remove("hidden");
+      }
     } catch (_) {}
   }
 

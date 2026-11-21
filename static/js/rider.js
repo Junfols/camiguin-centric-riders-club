@@ -1023,7 +1023,7 @@
     if (activeJobBox) activeJobBox.classList.remove("hidden");
     if (activeJobCode) activeJobCode.textContent = job.booking_code;
     if (activeJobTitle) activeJobTitle.textContent = `${job.service_type.toUpperCase()} • ${job.dropoff_address}`;
-    if (activeJobFare) activeJobFare.textContent = `Fare to Collect: ₱${Math.round(job.fare_amount)}`;
+    updateRiderFareLabel(job);
     if (activeJobPickup) activeJobPickup.textContent = job.pickup_address;
     if (activeJobDropoff) activeJobDropoff.textContent = job.dropoff_address;
     if (activeJobCustomer) activeJobCustomer.textContent = `${job.customer_name} (${job.customer_phone})`;
@@ -1109,6 +1109,15 @@
     renderJobOnRiderMap(job);
   }
 
+  function updateRiderFareLabel(job) {
+    if (!activeJobFare || !job) return;
+    const fare = Number(job.fare_amount) || 0;
+    const bought = Number(job.purchase_amount) || 0;
+    activeJobFare.textContent = bought > 0
+      ? `Total to Collect: ₱${Math.round(fare + bought)} (Fare ₱${Math.round(fare)} + Pinalit ₱${bought.toFixed(2)})`
+      : `Fare to Collect: ₱${Math.round(fare)}`;
+  }
+
   function renderRiderReceiptSection(job) {
     const sec = document.getElementById("active-job-receipt-section");
     const previewWrap = document.getElementById("rider-receipt-preview-wrap");
@@ -1130,6 +1139,18 @@
     }
     sec.style.display = "";
     sec.classList.remove("hidden");
+    const pIn = document.getElementById("rider-purchase-input");
+    if (pIn && document.activeElement !== pIn) {
+      pIn.value = Number(job.purchase_amount) > 0 ? String(job.purchase_amount) : "";
+    }
+    const pNote = document.getElementById("rider-purchase-note");
+    if (pNote) {
+      const b = Number(job.estimated_budget) || 0;
+      pNote.textContent = (Number(job.purchase_amount) > 0
+        ? `Na-send na: ₱${Number(job.purchase_amount).toFixed(2)}. Pwede nimo usbon kung sayop.`
+        : "Makita kini sa customer ug i-add sa total nga bayronon.")
+        + (b > 0 ? ` Budget sa customer: ₱${Math.round(b)}.` : "");
+    }
 
     if (job.receipt_url) {
       if (previewWrap) previewWrap.classList.remove("hidden");
@@ -1398,6 +1419,46 @@
     });
   }
 
+  // Rider enters the real purchase amount (e.g. lechon manok P275)
+  const riderPurchaseBtn = document.getElementById("rider-purchase-btn");
+  const riderPurchaseInput = document.getElementById("rider-purchase-input");
+  if (riderPurchaseBtn && riderPurchaseInput) {
+    riderPurchaseBtn.addEventListener("click", async () => {
+      if (!activeJob) {
+        alert("No active trip found.");
+        return;
+      }
+      const amount = parseFloat(riderPurchaseInput.value);
+      if (!isFinite(amount) || amount < 0) {
+        alert("Ibutang ang saktong amount (pananglitan 275).");
+        return;
+      }
+      const budget = Number(activeJob.estimated_budget) || 0;
+      if (budget > 0 && amount > budget && !confirm(`Mas taas ang ₱${amount.toFixed(2)} kaysa budget sa customer (₱${Math.round(budget)}). Ipadayon?`)) {
+        return;
+      }
+      if (!confirm(`I-send ang ₱${amount.toFixed(2)} isip pinalit sa customer?`)) return;
+      riderPurchaseBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/bookings/${activeJob.id}/purchase`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to send amount.");
+        activeJob.purchase_amount = data.purchase_amount;
+        renderRiderReceiptSection(activeJob);
+        updateRiderFareLabel(activeJob);
+        alert(`✅ Na-send na sa customer. Total bayronon: ₱${Math.round(data.total_due)}`);
+      } catch (err) {
+        alert(err.message || "Failed to send amount.");
+      } finally {
+        riderPurchaseBtn.disabled = false;
+      }
+    });
+  }
+
   const riderViewReceiptBtn = document.getElementById("rider-view-receipt-btn");
   const riderReceiptModal = document.getElementById("rider-receipt-modal");
   if (riderViewReceiptBtn && riderReceiptModal) {
@@ -1418,7 +1479,31 @@
       if (srvEl) srvEl.textContent = (activeJob.service_type || "pahatud").toUpperCase();
       if (kmEl) kmEl.textContent = `${activeJob.estimated_km || 0} km`;
       if (payEl) payEl.textContent = (activeJob.payment_method || "CASH").toUpperCase();
-      if (totEl) totEl.textContent = `₱${Number(activeJob.fare_amount || 0).toLocaleString()}`;
+      {
+        const fareN = Number(activeJob.fare_amount || 0);
+        const boughtN = Number(activeJob.purchase_amount || 0);
+        if (totEl) totEl.textContent = `₱${(fareN + boughtN).toLocaleString()}`;
+        const fareRow = document.getElementById("r-modal-fare-row");
+        const buyRow = document.getElementById("r-modal-purchase-row");
+        if (boughtN > 0) {
+          const fe = document.getElementById("r-modal-fare");
+          const be = document.getElementById("r-modal-purchase");
+          if (fe) fe.textContent = `₱${fareN.toLocaleString()}`;
+          if (be) be.textContent = `₱${boughtN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          fareRow?.classList.remove("hidden");
+          buyRow?.classList.remove("hidden");
+        } else {
+          fareRow?.classList.add("hidden");
+          buyRow?.classList.add("hidden");
+        }
+      }
+      const riderEl = document.getElementById("r-modal-rider");
+      const plateEl = document.getElementById("r-modal-plate");
+      const plateRow = document.getElementById("r-modal-plate-row");
+      if (riderEl) riderEl.textContent = activeJob.rider_name || (currentRider && currentRider.name) || "-";
+      const plateVal = activeJob.rider_plate || (currentRider && currentRider.plate_number) || "";
+      if (plateEl) plateEl.textContent = plateVal || "-";
+      if (plateRow) plateRow.classList.toggle("hidden", !plateVal);
       
       const promoRow = document.getElementById("r-modal-promo-row");
       const promoDiscount = document.getElementById("r-modal-discount");
