@@ -36,10 +36,15 @@ from db import (
     add_booking_message,
     get_booking_messages,
     accept_booking,
+    accept_booking_for_group_slot,
+    attach_group_metadata,
+    build_booking_group_summary,
     calculate_fare,
     calculate_haversine_km,
     calculate_road_km,
     create_booking,
+    create_booking_group,
+    get_bookings_by_group_code,
     geocode_camiguin_location,
     get_available_broadcast_bookings,
     get_booking_by_code,
@@ -1185,7 +1190,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             except Exception:
                 pass
 
-        booking = create_booking(
+        try:
+            riders_count = max(1, min(10, int(data.get("riders_count") or data.get("group_size") or 1)))
+        except (ValueError, TypeError):
+            riders_count = 1
+
+        group_code, created_bookings = create_booking_group(
             conn=conn,
             service_type=service_type,
             customer_name=customer_name,
@@ -1198,25 +1208,40 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             dropoff_lng=dropoff_lng,
             item_notes=item_notes,
             estimated_budget=estimated_budget,
-            fare_amount=fare_amount,
+            per_rider_fare=fare_amount,
             estimated_km=estimated_km,
             payment_method=payment_method,
             scheduled_at=scheduled_at,
             promo_code=promo_code,
-            discount_amount=discount_amount,
+            total_discount=discount_amount,
+            riders_count=riders_count,
         )
         conn.commit()
 
-        session["active_booking_code"] = booking["booking_code"]
-        session["customer_phone"] = booking["customer_phone"]
-        session["customer_name"] = booking["customer_name"]
+        booking = attach_group_metadata(conn, created_bookings[0]) if created_bookings else None
+        group_summary = build_booking_group_summary(created_bookings) if len(created_bookings) > 1 else None
+
+        if booking:
+            session["active_booking_code"] = booking["booking_code"]
+            session["customer_phone"] = booking["customer_phone"]
+            session["customer_name"] = booking["customer_name"]
+
+        msg_text = (
+            f"Your group booking for {riders_count} riders ({group_code}) has been broadcasted to all active riders!"
+            if riders_count > 1
+            else "Your booking has been broadcasted to all active riders!"
+        )
 
         return jsonify({
             "success": True,
-            "message": "Your booking has been broadcasted to all active riders!",
+            "message": msg_text,
             "booking": booking,
+            "bookings": created_bookings,
+            "group_code": group_code,
+            "group_summary": group_summary,
+            "riders_count": riders_count,
             "breakdown": breakdown,
-            "tracking_url": f"/track/{booking['booking_code']}",
+            "tracking_url": f"/track/{booking['booking_code']}" if booking else "/",
         }), 201
 
     # -------------------------------------------------------------------------
@@ -1576,10 +1601,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 booking["rider_lat"], booking["rider_lng"], booking["dropoff_lat"], booking["dropoff_lng"]
             )
 
+        attach_group_metadata(conn, booking)
+        grp_code = (booking.get("group_code") or "").strip().upper()
+        group_bookings = get_bookings_by_group_code(conn, grp_code) if grp_code else []
+        group_summary = build_booking_group_summary(group_bookings) if len(group_bookings) > 1 else None
+
         if not _is_booking_participant(booking):
             booking = {k: v for k, v in booking.items() if k not in ("customer_phone",)}
+            group_bookings = [
+                {k: v for k, v in gb.items() if k not in ("customer_phone",)}
+                for gb in group_bookings
+            ]
+
         return jsonify({
             "booking": booking,
+            "group_bookings": group_bookings,
+            "group_summary": group_summary,
             "trail": trail,
             "distance_to_pickup_km": distance_to_pickup_km,
             "distance_to_dropoff_km": distance_to_dropoff_km,
@@ -1801,9 +1838,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/api/rider/available-jobs")
     def rider_available_jobs():
         conn = get_db()
-        if not _rider_id_from_session():
+        rid = _rider_id_from_session()
+        if not rid:
             return jsonify({"error": "Rider login required.", "jobs": [], "count": 0}), 401
-        jobs = get_available_broadcast_bookings(conn)
+        jobs = get_available_broadcast_bookings(conn, rider_id=int(rid))
         return jsonify({"jobs": jobs, "count": len(jobs)})
 
     @app.get("/api/rider/active-job")
@@ -1857,17 +1895,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if not is_active_advance:
                 return jsonify({"error": "You already have an active ongoing trip that must be completed first."}), 400
 
-        claimed = accept_booking(conn, booking_id, int(rider_id))
-        if not claimed:
+        claimed, claimed_id, claim_reason = accept_booking_for_group_slot(conn, booking_id, int(rider_id))
+        if not claimed or not claimed_id:
             conn.rollback()
-            return jsonify({"error": "This booking has already been claimed by another rider."}), 409
+            return jsonify({"error": claim_reason or "This booking has already been claimed by another rider."}), 409
 
         conn.commit()
-        updated_job = get_booking_by_id(conn, booking_id)
+        updated_job = attach_group_metadata(conn, get_booking_by_id(conn, int(claimed_id)))
         return jsonify({
             "success": True,
             "message": "Booking accepted successfully!",
             "job": updated_job,
+            "claimed_booking_id": int(claimed_id),
             "is_advance": is_target_advance,
         })
 
