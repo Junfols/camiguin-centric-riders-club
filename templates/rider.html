@@ -236,98 +236,6 @@
       </div>
     </div>
 
-    <!-- Live Club Advisory Banner (Riders) -->
-    <div id="rider-club-advisory-banner"
-         class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not (club_advisory.show_riders and club_advisory.message) %}hidden{% endif %}"
-         data-revision="{{ club_advisory.revision }}"
-         role="region"
-         aria-label="Club Advisory">
-      <div class="ccrc-advisory-inner">
-        <div class="ccrc-advisory-top-row">
-          <span class="ccrc-advisory-badge">
-            <span class="ccrc-advisory-live-dot"></span>
-            <span id="rider-adv-icon">{{ club_advisory.category_icon }}</span>
-            <span id="rider-adv-label">{{ club_advisory.category_label }}</span>
-          </span>
-          <div class="ccrc-advisory-right-meta">
-            <span id="rider-adv-updated" class="ccrc-advisory-meta">{{ club_advisory.updated_label }}</span>
-            <button type="button" class="ccrc-advisory-dismiss" aria-label="Dismiss announcement" onclick="dismissRiderCcrcAdvisory()">&times;</button>
-          </div>
-        </div>
-        <div id="rider-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
-        <div id="rider-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
-      </div>
-    </div>
-    <script>
-      (function() {
-        const banner = document.getElementById("rider-club-advisory-banner");
-        if (!banner) return;
-        window.dismissRiderCcrcAdvisory = function() {
-          const rev = banner.getAttribute("data-revision") || "1";
-          try { localStorage.setItem("ccrc_adv_dismissed_rider_" + rev, "1"); } catch (_) {}
-          banner.classList.add("hidden");
-        };
-        try {
-          const rev = banner.getAttribute("data-revision") || "1";
-          if (localStorage.getItem("ccrc_adv_dismissed_rider_" + rev) === "1") {
-            banner.classList.add("hidden");
-          }
-        } catch (_) {}
-        setInterval(async function() {
-          try {
-            const res = await fetch("/api/advisory");
-            if (!res.ok) return;
-            const data = await res.json();
-            const adv = data && data.advisory;
-            if (!adv || !adv.show_riders || !adv.message) {
-              banner.classList.add("hidden");
-              return;
-            }
-            const revStr = String(adv.revision || 1);
-            try {
-              if (localStorage.getItem("ccrc_adv_dismissed_rider_" + revStr) === "1") return;
-            } catch (_) {}
-            banner.className = "ccrc-advisory-banner is-" + (adv.category || "info");
-            banner.setAttribute("data-revision", revStr);
-            const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ""; };
-            setT("rider-adv-icon", adv.category_icon);
-            setT("rider-adv-label", adv.category_label);
-            setT("rider-adv-title", adv.title);
-            setT("rider-adv-msg", adv.message);
-            setT("rider-adv-updated", adv.updated_label);
-            if (window._ccrcLastRiderAdvRev && window._ccrcLastRiderAdvRev !== revStr && window.ccrcNotify) {
-              window.ccrcNotify(
-                `${adv.category_icon || "📢"} ${adv.title || "Club Advisory"}`,
-                adv.message,
-                { tag: `ccrc-adv-${revStr}`, url: "/rider" }
-              );
-            }
-            window._ccrcLastRiderAdvRev = revStr;
-          } catch (_) {}
-        }, 15000);
-      })();
-    </script>
-
-    <!-- Rider Financial Summary & Transactions Card -->
-    <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <div>
-          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Today's Completed Earnings</span>
-          <div id="rider-today-earnings" style="font-size:1.6rem;font-weight:800;color:#4ade80;">₱0.00</div>
-        </div>
-        <div style="text-align:right;">
-          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">All-Time Earnings</span>
-          <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
-        <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
-        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
-          📜 View Transactions Ledger
-        </button>
-      </div>
-    </div>
-
     <!-- Upcoming Advance Trip Reminder Banner -->
     <div id="advance-reminder-banner" class="card hidden" style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:14px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
@@ -342,17 +250,6 @@
           Start Trip Now 🛵
         </button>
       </div>
-    </div>
-
-    <!-- My Reserved Advance Bookings Card -->
-    <div id="rider-scheduled-card" class="card hidden" style="margin-bottom:1.2rem;border:2px solid #bfdbfe;background:#f8fafc;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <h3 style="margin:0;font-size:1.05rem;color:#1e40af;display:flex;align-items:center;gap:6px;">
-          <span>📅</span> My Reserved Advance Bookings
-        </h3>
-        <span id="rider-scheduled-count" class="badge" style="background:#1d4ed8;color:white;font-weight:700;">0</span>
-      </div>
-      <div id="rider-scheduled-list" style="display:grid;gap:10px;"></div>
     </div>
 
     <!-- Active Job (if currently handling one) -->
@@ -533,7 +430,31 @@
       </div>
     </div>
 
-    <!-- Incoming Broadcast Jobs Feed -->
+    <!-- Cart-style button: shows how many booking requests are waiting. Tap to open the full list. -->
+    <button type="button" id="requests-fab" aria-label="Available booking requests">
+      <span style="font-size:1.55rem;line-height:1;">🛒</span>
+      <span id="requests-fab-count">0</span>
+    </button>
+    <style>
+      #requests-fab{position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom, 0px));z-index:900;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;box-shadow:0 6px 18px rgba(234,88,12,.45);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+      #requests-fab-count{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#64748b;color:#fff;font-size:.78rem;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-sizing:border-box;}
+      #requests-fab.has-requests #requests-fab-count{background:#dc2626;}
+      #requests-fab.has-requests{animation:reqFabPulse 1.6s ease-in-out infinite;}
+      @keyframes reqFabPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.09);}}
+      #requests-drawer{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:1000;background:#f8fafc;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+      #requests-drawer.open{display:block;}
+      .requests-drawer-inner{max-width:720px;margin:0 auto;padding:0 14px 48px;}
+      .requests-drawer-top{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;padding:calc(10px + env(safe-area-inset-top, 0px)) 0 10px;margin-bottom:10px;border-bottom:1px solid #e2e8f0;}
+      #requests-drawer-close{background:#1e293b;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:700;font-size:.85rem;cursor:pointer;}
+    </style>
+
+    <!-- Full list of available booking requests (opens full-screen from the cart button) -->
+    <div id="requests-drawer" role="dialog" aria-modal="true" aria-label="Available Island Booking Requests">
+      <div class="requests-drawer-inner">
+        <div class="requests-drawer-top">
+          <strong style="font-size:1rem;">🛒 Booking Requests</strong>
+          <button type="button" id="requests-drawer-close">✕ Close</button>
+        </div>
     <div class="dispatch-feed-header">
       <div style="display:flex;align-items:center;gap:8px;">
         <h3>Available Island Booking Requests</h3>
@@ -549,6 +470,154 @@
         <small class="text-muted">Your phone will play a sound alert when a customer books!</small>
       </div>
     </div>
+
+    <!-- Live Club Advisory Banner (Riders) -->
+    <div id="rider-club-advisory-banner"
+         class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not (club_advisory.show_riders and club_advisory.message) %}hidden{% endif %}"
+         data-revision="{{ club_advisory.revision }}"
+         role="region"
+         aria-label="Club Advisory">
+      <div class="ccrc-advisory-inner">
+        <div class="ccrc-advisory-top-row">
+          <span class="ccrc-advisory-badge">
+            <span class="ccrc-advisory-live-dot"></span>
+            <span id="rider-adv-icon">{{ club_advisory.category_icon }}</span>
+            <span id="rider-adv-label">{{ club_advisory.category_label }}</span>
+          </span>
+          <div class="ccrc-advisory-right-meta">
+            <span id="rider-adv-updated" class="ccrc-advisory-meta">{{ club_advisory.updated_label }}</span>
+            <button type="button" class="ccrc-advisory-dismiss" aria-label="Dismiss announcement" onclick="dismissRiderCcrcAdvisory()">&times;</button>
+          </div>
+        </div>
+        <div id="rider-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
+        <div id="rider-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
+      </div>
+    </div>
+    <script>
+      (function() {
+        const banner = document.getElementById("rider-club-advisory-banner");
+        if (!banner) return;
+        window.dismissRiderCcrcAdvisory = function() {
+          const rev = banner.getAttribute("data-revision") || "1";
+          try { localStorage.setItem("ccrc_adv_dismissed_rider_" + rev, "1"); } catch (_) {}
+          banner.classList.add("hidden");
+        };
+        try {
+          const rev = banner.getAttribute("data-revision") || "1";
+          if (localStorage.getItem("ccrc_adv_dismissed_rider_" + rev) === "1") {
+            banner.classList.add("hidden");
+          }
+        } catch (_) {}
+        setInterval(async function() {
+          try {
+            const res = await fetch("/api/advisory");
+            if (!res.ok) return;
+            const data = await res.json();
+            const adv = data && data.advisory;
+            if (!adv || !adv.show_riders || !adv.message) {
+              banner.classList.add("hidden");
+              return;
+            }
+            const revStr = String(adv.revision || 1);
+            try {
+              if (localStorage.getItem("ccrc_adv_dismissed_rider_" + revStr) === "1") return;
+            } catch (_) {}
+            banner.className = "ccrc-advisory-banner is-" + (adv.category || "info");
+            banner.setAttribute("data-revision", revStr);
+            const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ""; };
+            setT("rider-adv-icon", adv.category_icon);
+            setT("rider-adv-label", adv.category_label);
+            setT("rider-adv-title", adv.title);
+            setT("rider-adv-msg", adv.message);
+            setT("rider-adv-updated", adv.updated_label);
+            if (window._ccrcLastRiderAdvRev && window._ccrcLastRiderAdvRev !== revStr && window.ccrcNotify) {
+              window.ccrcNotify(
+                `${adv.category_icon || "📢"} ${adv.title || "Club Advisory"}`,
+                adv.message,
+                { tag: `ccrc-adv-${revStr}`, url: "/rider" }
+              );
+            }
+            window._ccrcLastRiderAdvRev = revStr;
+          } catch (_) {}
+        }, 15000);
+      })();
+    </script>
+
+    <!-- Rider Financial Summary & Transactions Card -->
+    <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Today's Completed Earnings</span>
+          <div id="rider-today-earnings" style="font-size:1.6rem;font-weight:800;color:#4ade80;">₱0.00</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">All-Time Earnings</span>
+          <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
+        <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
+        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
+          📜 View Transactions Ledger
+        </button>
+      </div>
+    </div>
+
+    <!-- My Reserved Advance Bookings Card -->
+    <div id="rider-scheduled-card" class="card hidden" style="margin-bottom:1.2rem;border:2px solid #bfdbfe;background:#f8fafc;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 style="margin:0;font-size:1.05rem;color:#1e40af;display:flex;align-items:center;gap:6px;">
+          <span>📅</span> My Reserved Advance Bookings
+        </h3>
+        <span id="rider-scheduled-count" class="badge" style="background:#1d4ed8;color:white;font-weight:700;">0</span>
+      </div>
+      <div id="rider-scheduled-list" style="display:grid;gap:10px;"></div>
+    </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var fab = document.getElementById("requests-fab");
+        var drawer = document.getElementById("requests-drawer");
+        var closeBtn = document.getElementById("requests-drawer-close");
+        var countEl = document.getElementById("requests-fab-count");
+        var pill = document.getElementById("jobs-count-pill");
+        var activeBox = document.getElementById("rider-active-job-box");
+        if (!fab || !drawer) return;
+
+        function syncCount() {
+          var n = parseInt((pill && pill.textContent) || "0", 10) || 0;
+          countEl.textContent = n > 99 ? "99+" : String(n);
+          fab.classList.toggle("has-requests", n > 0);
+        }
+        function openDrawer() {
+          drawer.classList.add("open");
+          fab.style.display = "none";
+          document.body.style.overflow = "hidden";
+          drawer.scrollTop = 0;
+        }
+        function closeDrawer() {
+          drawer.classList.remove("open");
+          fab.style.display = "";
+          document.body.style.overflow = "";
+        }
+
+        fab.addEventListener("click", openDrawer);
+        if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+        document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeDrawer(); });
+
+        if (pill && window.MutationObserver) {
+          new MutationObserver(syncCount).observe(pill, { childList: true, characterData: true, subtree: true });
+        }
+        // When a trip is accepted the active-trip card appears: close the list so the rider sees it
+        if (activeBox && window.MutationObserver) {
+          new MutationObserver(function () {
+            if (!activeBox.classList.contains("hidden")) closeDrawer();
+          }).observe(activeBox, { attributes: true, attributeFilter: ["class"] });
+        }
+        syncCount();
+      })();
+    </script>
 
     <!-- Fellow Online Riders Roster -->
     <div class="card co-riders-card" style="margin-top:1.5rem;">
