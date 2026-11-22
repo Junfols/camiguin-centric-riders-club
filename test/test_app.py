@@ -1633,6 +1633,27 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('href="/history"', html)
         self.assertNotIn('id="customer-home-recent-feed"', html)
 
+    def test_receipt_modals_are_scrollable_and_closable(self):
+        css = self.client.get("/static/css/style.css").get_data(as_text=True)
+        self.assertIn(".modal-backdrop .modal-card", css)
+        self.assertIn("overflow-y: auto", css.split(".modal-backdrop .modal-card", 1)[1][:400])
+        self.assertIn("position: sticky", css.split(".modal-card > .modal-header", 1)[1][:200])
+
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        modal = rider_html.split('id="rider-receipt-modal"', 1)[1].split("rider-transactions-modal", 1)[0]
+        self.assertIn("close-rider-receipt-btn", modal)
+        self.assertIn("✕ Close", modal)          # extra close button at the bottom of the receipt
+
+        r_id = self._create_active_rider(name="Rider Modal", phone="09170000061")
+        bk = self.client.post("/api/bookings", json={
+            "customer_name": "Pax", "customer_phone": "09175550501",
+            "pickup_address": "Balbagon Port", "dropoff_address": "Mambajao Public Market",
+            "service_type": "pahatud"}).get_json()["booking"]
+        page = self.client.get(f"/track/{bk['booking_code']}").get_data(as_text=True)
+        cmodal = page.split('id="receipt-modal"', 1)[1]
+        self.assertIn("close-receipt-btn", cmodal)
+        self.assertIn("✕ Close", cmodal)
+
 
 if __name__ == "__main__":
     unittest.main()
