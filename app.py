@@ -1211,8 +1211,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/api/reviews/<int:rider_id>")
     def api_get_rider_reviews(rider_id: int):
         conn = get_db()
-        reviews = get_rider_reviews(conn, rider_id)
-        return jsonify({"success": True, "reviews": reviews})
+        limit = request.args.get("limit", 10, type=int) or 10
+        limit = max(1, min(200, limit))
+        reviews = get_rider_reviews(conn, rider_id, limit=limit)
+        stats = conn.execute(
+            "SELECT COUNT(*) AS n, AVG(rating) AS avg_rating FROM reviews WHERE rider_id = ?", (rider_id,)
+        ).fetchone()
+        total = int((stats["n"] if stats else 0) or 0)
+        average = round(float(stats["avg_rating"]), 2) if total and stats["avg_rating"] is not None else None
+        return jsonify({"success": True, "reviews": reviews, "total": total, "average": average})
 
     @app.get("/api/riders/online")
     def api_online_riders():
