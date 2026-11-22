@@ -1599,5 +1599,32 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertLess(html.index('rider-status-banner'), html.index('id="rider-today-earnings"'))
         self.assertLess(html.index('id="rider-today-earnings"'), html.index('id="rider-active-job-box"'))
 
+    def test_reviews_api_returns_total_average_and_supports_limit(self):
+        from db import get_connection, create_review
+
+        r_id = self._create_active_rider(name="Rider Many Reviews", phone="09170000051")
+        conn = get_connection(self.db_path)
+        try:
+            for i in range(12):
+                create_review(conn, None, r_id, f"Pax {i}", 5 if i % 2 == 0 else 4, f"comment {i}")
+            conn.commit()
+        finally:
+            conn.close()
+
+        default = self.client.get(f"/api/reviews/{r_id}").get_json()
+        self.assertEqual(len(default["reviews"]), 10)          # old behaviour kept for other callers
+        self.assertEqual(default["total"], 12)
+        self.assertAlmostEqual(default["average"], 4.5, places=2)
+
+        more = self.client.get(f"/api/reviews/{r_id}?limit=100").get_json()
+        self.assertEqual(len(more["reviews"]), 12)
+        self.assertEqual(more["reviews"][0]["customer_name"], "Pax 11")   # newest first
+
+        js = self.client.get("/static/js/rider.js").get_data(as_text=True)
+        self.assertIn("rider-reviews-toggle", js)
+        self.assertIn("REVIEWS_PREVIEW_COUNT", js)
+        self.assertIn('id="rider-reviews-toggle"', self.client.get("/rider").get_data(as_text=True))
+
+
 if __name__ == "__main__":
     unittest.main()
