@@ -1625,6 +1625,14 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("REVIEWS_PREVIEW_COUNT", js)
         self.assertIn('id="rider-reviews-toggle"', self.client.get("/rider").get_data(as_text=True))
 
+    def test_home_history_card_shows_summary_only(self):
+        html = self.client.get("/").get_data(as_text=True)
+        # summary + "View Full History" stay; the list of recent trips moves to the history page only
+        self.assertIn('id="customer-home-history-card"', html)
+        self.assertIn('id="customer-home-trips-count"', html)
+        self.assertIn('href="/history"', html)
+        self.assertNotIn('id="customer-home-recent-feed"', html)
+
 
 if __name__ == "__main__":
     unittest.main()
