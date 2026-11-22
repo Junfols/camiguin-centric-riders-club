@@ -1555,17 +1555,46 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("customer-compact-edit", js)
 
     def test_rider_hub_has_cart_button_that_opens_the_request_list(self):
+        from html.parser import HTMLParser
+
         html = self.client.get("/rider").get_data(as_text=True)
         self.assertIn('id="requests-fab"', html)
         self.assertIn('id="requests-fab-count"', html)
-        drawer = html.index('id="requests-drawer"')
-        # the live feed and its counter live inside the full-screen drawer, so the existing JS keeps working
-        self.assertLess(drawer, html.index('id="available-jobs-feed"'))
-        self.assertLess(drawer, html.index('id="jobs-count-pill"'))
-        self.assertLess(html.index('id="available-jobs-feed"'), html.index("co-riders-card"))
         self.assertIn('id="requests-drawer-close"', html)
-        # an active trip card still comes before everything else on the page
-        self.assertLess(html.index('id="rider-active-job-box"'), drawer)
+
+        void = {"br", "img", "input", "meta", "link", "hr", "source", "area", "base", "col", "embed", "param", "track", "wbr"}
+
+        class Nesting(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.stack, self.inside = [], {}
+
+            def handle_starttag(self, tag, attrs):
+                if tag in void:
+                    return
+                attrs = dict(attrs)
+                el_id = attrs.get("id")
+                self.stack.append(el_id or "")
+                if el_id:
+                    self.inside[el_id] = "requests-drawer" in self.stack[:-1]
+
+            def handle_endtag(self, tag):
+                if tag in void:
+                    return
+                if self.stack:
+                    self.stack.pop()
+
+        parser = Nesting()
+        parser.feed(html)
+        # only the booking requests live inside the full-screen drawer ...
+        self.assertTrue(parser.inside["available-jobs-feed"])
+        self.assertTrue(parser.inside["jobs-count-pill"])
+        # ... earnings, advisory, reserved trips and the active trip must NOT be swallowed by it
+        for el_id in ("rider-today-earnings", "open-rider-txns-btn", "rider-club-advisory-banner",
+                      "rider-scheduled-card", "rider-active-job-box", "requests-fab"):
+            self.assertIn(el_id, parser.inside, el_id)
+            self.assertFalse(parser.inside[el_id], f"{el_id} is wrongly inside the requests drawer")
+        self.assertLess(html.index('id="rider-active-job-box"'), html.index('id="requests-drawer"'))
 
 if __name__ == "__main__":
     unittest.main()
