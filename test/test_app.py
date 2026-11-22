@@ -1595,6 +1595,9 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
             self.assertIn(el_id, parser.inside, el_id)
             self.assertFalse(parser.inside[el_id], f"{el_id} is wrongly inside the requests drawer")
         self.assertLess(html.index('id="rider-active-job-box"'), html.index('id="requests-drawer"'))
+        # earnings are shown at the top of the dashboard, right after the online/offline banner
+        self.assertLess(html.index('rider-status-banner'), html.index('id="rider-today-earnings"'))
+        self.assertLess(html.index('id="rider-today-earnings"'), html.index('id="rider-active-job-box"'))
 
 if __name__ == "__main__":
     unittest.main()
