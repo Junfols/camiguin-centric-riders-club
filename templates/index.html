@@ -12,6 +12,11 @@
     </div>
     <h1 class="booking-hero-title">Where are you heading today?</h1>
     <p class="booking-hero-sub">Fast, verified on-demand island transport, deliveries &amp; errands across Camiguin Island.</p>
+    <div style="margin-top:10px;">
+      <button type="button" id="open-how-to-book-btn" onclick="window.openCcrcHowToBookModal()" style="display:inline-flex;align-items:center;gap:6px;background:#ffffff;color:#047857;border:1.5px solid #a7f3d0;border-radius:999px;padding:6px 14px;font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(4,120,87,0.12);">
+        <span>📘</span> <span>How to Book CCRC</span>
+      </button>
+    </div>
   </section>
 
   <!-- Live Club Advisory Banner (Customers) -->
@@ -696,6 +701,132 @@
     </div>
   </div>
 </div>
+
+<!-- How to Book CCRC Guide Modal (Customer) -->
+<div id="ccrc-how-to-book-modal" class="modal-backdrop hidden" onclick="if(event.target===this) window.closeCcrcHowToBookModal(false)" role="dialog" aria-modal="true" aria-labelledby="ccrc-htb-title" style="position:fixed;inset:0;background:rgba(15,23,42,0.72);z-index:10040;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px);">
+  <div style="width:100%;max-width:410px;max-height:90vh;overflow-y:auto;background:#ffffff;border-radius:22px;padding:20px 18px 18px;box-shadow:0 24px 48px rgba(15,23,42,0.32);position:relative;font-family:inherit;">
+    <button type="button" onclick="window.closeCcrcHowToBookModal(false)" aria-label="Close guide" style="position:absolute;top:12px;right:14px;background:#f1f5f9;border:none;width:30px;height:30px;border-radius:50%;font-size:1.15rem;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:center;">&times;</button>
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-right:24px;">
+      <div style="width:42px;height:42px;border-radius:50%;background:#0d9488;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;box-shadow:0 4px 10px rgba(13,148,136,0.28);">
+        ✓
+      </div>
+      <div>
+        <h2 id="ccrc-htb-title" style="margin:0;font-size:1.18rem;font-weight:800;color:#0f766e;line-height:1.2;">How to Book CCRC</h2>
+        <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">Mambajao &amp; All Camiguin 24/7 🕒</div>
+      </div>
+    </div>
+
+    <!-- Example Booking Box -->
+    <div style="background:#fef9c3;border:1px solid #fde047;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:0.75rem;font-weight:800;color:#b45309;letter-spacing:0.3px;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+        <span>❗</span> <span>EXAMPLE BOOKING</span> <span>❗</span>
+      </div>
+      <div style="font-size:0.84rem;color:#1e293b;line-height:1.55;">
+        <div>📍 <strong>Pick Up :</strong> JOLLIBEE MAMBAJAO</div>
+        <div>🏁 <strong>Drop Off :</strong> BENONI PORT</div>
+      </div>
+    </div>
+
+    <!-- Services Checklist -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.88rem;font-weight:700;color:#0f172a;margin-bottom:8px;">We Cater 24/7 Across Camiguin:</div>
+      <div style="display:grid;gap:8px;font-size:0.83rem;color:#334155;line-height:1.35;">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="width:19px;height:19px;border-radius:50%;background:#0d9488;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:800;flex-shrink:0;margin-top:1px;">✓</span>
+          <span>🔸 <strong>PABILI</strong> (Food, Medicine, Groceries, Jollibee)</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="width:19px;height:19px;border-radius:50%;background:#0d9488;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:800;flex-shrink:0;margin-top:1px;">✓</span>
+          <span>🔸 <strong>PASUGO</strong> (Cash In, Parcels, Documents)</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="width:19px;height:19px;border-radius:50%;background:#0d9488;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:800;flex-shrink:0;margin-top:1px;">✓</span>
+          <span>🔸 <strong>PAKUHA</strong> (Baggage / Items pickup)</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="width:19px;height:19px;border-radius:50%;background:#0d9488;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:800;flex-shrink:0;margin-top:1px;">✓</span>
+          <span>🔸 <strong>PAHATUD / PASSENGER</strong> (Short &amp; Long Distance Rides)</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="width:19px;height:19px;border-radius:50%;background:#0d9488;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:800;flex-shrink:0;margin-top:1px;">✓</span>
+          <span>📏 <strong>Metered Fare Calculation</strong> (Basihan sa bayad kay kalayo / distance)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Policy Box -->
+    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#d1fae5;color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;">
+        💵
+      </div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:800;color:#047857;letter-spacing:0.3px;">💵 PAYMENT POLICY</div>
+        <div style="font-size:0.81rem;color:#065f46;line-height:1.38;margin-top:2px;">
+          Bayad human na sa pag-hatud / pag-pabili.<br>
+          <strong>(Payment is strictly collected AFTER completion!)</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- CCRC Guarantee Box -->
+    <div style="background:#0f172a;border-radius:14px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;color:#f8fafc;">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(250,204,21,0.16);color:#facc15;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;">
+        🛡️
+      </div>
+      <div>
+        <div style="font-size:0.74rem;font-weight:800;color:#fbbf24;letter-spacing:0.3px;">🛡️ CAMIGUIN CENTRIC RIDERS CLUB GUARANTEE</div>
+        <div style="font-size:0.79rem;color:#cbd5e1;line-height:1.38;margin-top:3px;">
+          Serviced by 100% Verified CCRC Club Members! All riders undergo in-person physical motorcycle inspection, license check &amp; safety pledge before activation.
+        </div>
+      </div>
+    </div>
+
+    <!-- Primary CTA Button -->
+    <button type="button" onclick="window.closeCcrcHowToBookModal(true)" style="width:100%;background:#0d9488;color:#ffffff;border:none;border-radius:12px;padding:12px 16px;font-size:0.95rem;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(13,148,136,0.3);">
+      Got It! Start Booking
+    </button>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const modal = document.getElementById("ccrc-how-to-book-modal");
+    if (!modal) return;
+    const SEEN_KEY = "ccrc_how_to_book_seen_v1";
+
+    window.openCcrcHowToBookModal = function() {
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+    };
+
+    window.closeCcrcHowToBookModal = function(focusBooking) {
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+      try { localStorage.setItem(SEEN_KEY, "1"); } catch (_) {}
+      if (focusBooking) {
+        const pickupInput = document.getElementById("pickup-address");
+        if (pickupInput) {
+          pickupInput.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => pickupInput.focus(), 300);
+        }
+      }
+    };
+
+    window.addEventListener("DOMContentLoaded", function() {
+      try {
+        const hasActive = Boolean(window.SERVER_ACTIVE_BOOKING);
+        const alreadySeen = localStorage.getItem(SEEN_KEY) === "1";
+        if (!hasActive && !alreadySeen) {
+          setTimeout(() => {
+            window.openCcrcHowToBookModal();
+          }, 900);
+        }
+      } catch (_) {}
+    });
+  })();
+</script>
 {% endblock %}
 
 {% block scripts %}
