@@ -6021,5 +6021,22 @@ body.rider-logged-in .nav-rider-logged-item {
   }
 }
 
-
-
+/* Modals: always scrollable on phones, and the header with the close button stays visible.
+   (Long receipts used to be cut off at the top and bottom, with no way to scroll or close.) */
+.modal-backdrop {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-backdrop .modal-card {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.modal-backdrop .modal-card > .modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #ffffff;
+}
