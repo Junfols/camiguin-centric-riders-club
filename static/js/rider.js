@@ -2259,16 +2259,24 @@
   // ---------------------------------------------------------------------------
   // Rider Ratings & Customer Feedback Loader
   // ---------------------------------------------------------------------------
+  // Show only the latest few reviews; "View all" expands the list (scrolls inside its own box)
+  const REVIEWS_PREVIEW_COUNT = 3;
+  let riderReviewsExpanded = false;
+
   async function loadRiderReviews() {
     if (!currentRider) return;
     try {
-      const res = await fetch(`/api/reviews/${currentRider.id}`);
+      const res = await fetch(`/api/reviews/${currentRider.id}?limit=100`);
       if (!res.ok) return;
       const data = await res.json();
       const reviews = data.reviews || [];
+      // total / average come from the server, so they stay correct even with hundreds of reviews
+      const totalReviews = Number.isFinite(Number(data.total)) ? Number(data.total) : reviews.length;
 
       let avgRating = Number(currentRider.rating_avg || 5.0);
-      if (reviews.length > 0) {
+      if (typeof data.average === "number") {
+        avgRating = data.average;
+      } else if (reviews.length > 0) {
         const sum = reviews.reduce((acc, r) => acc + Number(r.rating || 5), 0);
         avgRating = sum / reviews.length;
       }
@@ -2278,7 +2286,7 @@
       const headerCnt = document.getElementById("dash-rider-reviews-count");
       const cardPill = document.getElementById("rider-card-avg-pill");
       if (headerVal) headerVal.textContent = avgFormatted;
-      if (headerCnt) headerCnt.textContent = `(${reviews.length} review${reviews.length === 1 ? "" : "s"})`;
+      if (headerCnt) headerCnt.textContent = `(${totalReviews} review${totalReviews === 1 ? "" : "s"})`;
       if (cardPill) cardPill.textContent = `★ ${avgFormatted}`;
 
       const listEl = document.getElementById("rider-reviews-list");
@@ -2293,7 +2301,22 @@
         return;
       }
 
-      listEl.innerHTML = reviews.map((rv) => {
+      const toggleBtn = document.getElementById("rider-reviews-toggle");
+      const shownReviews = riderReviewsExpanded ? reviews : reviews.slice(0, REVIEWS_PREVIEW_COUNT);
+      listEl.style.maxHeight = riderReviewsExpanded ? "70vh" : "";
+      listEl.style.overflowY = riderReviewsExpanded ? "auto" : "";
+      if (toggleBtn) {
+        if (totalReviews > REVIEWS_PREVIEW_COUNT) {
+          toggleBtn.classList.remove("hidden");
+          toggleBtn.textContent = riderReviewsExpanded
+            ? `▲ Ipakita ang pinakabag-o ra (${REVIEWS_PREVIEW_COUNT})`
+            : `▼ Tan-awa ang tanan (${totalReviews} ka review)`;
+        } else {
+          toggleBtn.classList.add("hidden");
+        }
+      }
+
+      listEl.innerHTML = shownReviews.map((rv) => {
         const ratingNum = Math.max(1, Math.min(5, Number(rv.rating || 5)));
         const starsHtml = "★".repeat(ratingNum) + '<span style="color:#cbd5e1;">' + "★".repeat(5 - ratingNum) + "</span>";
         const dateStr = rv.created_at ? rv.created_at.slice(0, 16).replace("T", " ") : "";
@@ -2317,6 +2340,18 @@
         `;
       }).join("");
     } catch (_) {}
+  }
+
+  const reviewsToggleBtn = document.getElementById("rider-reviews-toggle");
+  if (reviewsToggleBtn) {
+    reviewsToggleBtn.addEventListener("click", () => {
+      riderReviewsExpanded = !riderReviewsExpanded;
+      loadRiderReviews();
+      if (!riderReviewsExpanded) {
+        const card = document.getElementById("rider-reviews-card");
+        if (card) card.scrollIntoView({ block: "start" });
+      }
+    });
   }
 
   const refreshReviewsBtn = document.getElementById("refresh-reviews-btn");
