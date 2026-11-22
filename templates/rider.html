@@ -470,27 +470,6 @@
         <small class="text-muted">Your phone will play a sound alert when a customer books!</small>
       </div>
     </div>
-
-    <!-- Live Club Advisory Banner (Riders) -->
-    <div id="rider-club-advisory-banner"
-         class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not (club_advisory.show_riders and club_advisory.message) %}hidden{% endif %}"
-         data-revision="{{ club_advisory.revision }}"
-         role="region"
-         aria-label="Club Advisory">
-      <div class="ccrc-advisory-inner">
-        <div class="ccrc-advisory-top-row">
-          <span class="ccrc-advisory-badge">
-            <span class="ccrc-advisory-live-dot"></span>
-            <span id="rider-adv-icon">{{ club_advisory.category_icon }}</span>
-            <span id="rider-adv-label">{{ club_advisory.category_label }}</span>
-          </span>
-          <div class="ccrc-advisory-right-meta">
-            <span id="rider-adv-updated" class="ccrc-advisory-meta">{{ club_advisory.updated_label }}</span>
-            <button type="button" class="ccrc-advisory-dismiss" aria-label="Dismiss announcement" onclick="dismissRiderCcrcAdvisory()">&times;</button>
-          </div>
-        </div>
-        <div id="rider-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
-        <div id="rider-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
       </div>
     </div>
     <script>
@@ -542,6 +521,27 @@
         }, 15000);
       })();
     </script>
+
+    <!-- Live Club Advisory Banner (Riders) -->
+    <div id="rider-club-advisory-banner"
+         class="ccrc-advisory-banner is-{{ club_advisory.category }} {% if not (club_advisory.show_riders and club_advisory.message) %}hidden{% endif %}"
+         data-revision="{{ club_advisory.revision }}"
+         role="region"
+         aria-label="Club Advisory">
+      <div class="ccrc-advisory-inner">
+        <div class="ccrc-advisory-top-row">
+          <span class="ccrc-advisory-badge">
+            <span class="ccrc-advisory-live-dot"></span>
+            <span id="rider-adv-icon">{{ club_advisory.category_icon }}</span>
+            <span id="rider-adv-label">{{ club_advisory.category_label }}</span>
+          </span>
+          <div class="ccrc-advisory-right-meta">
+            <span id="rider-adv-updated" class="ccrc-advisory-meta">{{ club_advisory.updated_label }}</span>
+            <button type="button" class="ccrc-advisory-dismiss" aria-label="Dismiss announcement" onclick="dismissRiderCcrcAdvisory()">&times;</button>
+          </div>
+        </div>
+        <div id="rider-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
+        <div id="rider-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
 
     <!-- Rider Financial Summary & Transactions Card -->
     <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
