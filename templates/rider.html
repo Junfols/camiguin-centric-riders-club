@@ -236,6 +236,26 @@
       </div>
     </div>
 
+    <!-- Rider Financial Summary & Transactions Card -->
+    <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Today's Completed Earnings</span>
+          <div id="rider-today-earnings" style="font-size:1.6rem;font-weight:800;color:#4ade80;">₱0.00</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">All-Time Earnings</span>
+          <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
+        <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
+        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
+          📜 View Transactions Ledger
+        </button>
+      </div>
+    </div>
+
     <!-- Upcoming Advance Trip Reminder Banner -->
     <div id="advance-reminder-banner" class="card hidden" style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:14px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
@@ -542,26 +562,6 @@
         </div>
         <div id="rider-adv-title" class="ccrc-advisory-title">{{ club_advisory.title }}</div>
         <div id="rider-adv-msg" class="ccrc-advisory-msg">{{ club_advisory.message }}</div>
-
-    <!-- Rider Financial Summary & Transactions Card -->
-    <div class="card" style="margin-bottom:1.2rem;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:white;border-radius:14px;padding:14px 18px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <div>
-          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">Today's Completed Earnings</span>
-          <div id="rider-today-earnings" style="font-size:1.6rem;font-weight:800;color:#4ade80;">₱0.00</div>
-        </div>
-        <div style="text-align:right;">
-          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:700;">All-Time Earnings</span>
-          <div id="rider-alltime-earnings" style="font-size:1.2rem;font-weight:700;color:#f8fafc;">₱0.00</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">
-        <span style="font-size:0.8rem;color:#cbd5e1;"><span id="rider-txns-count">0</span> Transactions recorded in DB</span>
-        <button type="button" id="open-rider-txns-btn" class="btn btn-sm" style="background:#334155;color:white;border:1px solid #475569;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;">
-          📜 View Transactions Ledger
-        </button>
-      </div>
-    </div>
 
     <!-- My Reserved Advance Bookings Card -->
     <div id="rider-scheduled-card" class="card hidden" style="margin-bottom:1.2rem;border:2px solid #bfdbfe;background:#f8fafc;">
