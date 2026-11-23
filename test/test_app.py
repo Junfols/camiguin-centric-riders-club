@@ -1948,6 +1948,26 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="admin-reset-launch-form"', admin_html)
         self.assertIn("/api/admin/reset-launch-data", admin_html)
 
+    def test_admin_backup_destination_chooser_device_or_cloud(self):
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["admin_ts"] = time.time()
+
+        resp = self.client.get("/admin")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+
+        self.assertIn('id="backup-dest-device"', html)
+        self.assertIn('id="backup-dest-cloud"', html)
+        self.assertIn('id="admin-backup-action-btn"', html)
+        self.assertIn("window.selectBackupDestination = function", html)
+        self.assertIn("window.runAdminBackup = async function", html)
+        # Ensure /api/admin/backup endpoint still downloads valid JSON
+        bkp = self.client.get("/api/admin/backup")
+        self.assertEqual(bkp.status_code, 200)
+        self.assertIn("attachment; filename=", bkp.headers.get("Content-Disposition", ""))
+        self.assertIn("tables", bkp.get_json())
+
 
 if __name__ == "__main__":
     unittest.main()
