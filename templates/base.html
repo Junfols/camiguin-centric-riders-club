@@ -57,7 +57,8 @@
   </script>
   {% block head %}{% endblock %}
   <style>
-    #ccrc-call-modal:not(.hidden) {
+    #ccrc-call-modal:not(.hidden),
+    #ccrc-share-qr-modal:not(.hidden) {
       display: flex !important;
     }
     .ccrc-call-avatar-ring {
@@ -1006,6 +1007,362 @@
     if (window.CCRCAuth && typeof window.CCRCAuth.syncUI === "function") {
       window.CCRCAuth.syncUI();
     }
+  </script>
+
+  <!-- Shared Share App QR Modal (Customer, Rider, & Admin Dashboards) -->
+  <div id="ccrc-share-qr-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="ccrc-qr-modal-heading"
+       onclick="if(event.target===this) window.closeCcrcQrModal()"
+       style="position:fixed;inset:0;background:rgba(15,23,42,0.72);z-index:10040;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);">
+    <div class="modal-card modal-sm" style="width:100%;max-width:390px;max-height:92vh;overflow-y:auto;background:#ffffff;color:#0f172a;border-radius:18px;box-shadow:0 24px 48px rgba(0,0,0,0.35);border:1px solid #e2e8f0;padding:18px 18px 16px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;">
+        <div style="display:flex;align-items:center;gap:8px;text-align:left;">
+          <img src="/static/icons/logo.png?v=3" alt="CCRC" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
+          <div>
+            <h3 id="ccrc-qr-modal-heading" style="margin:0;font-size:1rem;color:#0f172a;line-height:1.2;">📲 Share CCRC App QR</h3>
+            <div style="font-size:0.74rem;color:#64748b;">Ipa-scan lang sa camera aron maabli dayon ang app</div>
+          </div>
+        </div>
+        <button type="button" id="close-ccrc-qr-modal-btn" onclick="window.closeCcrcQrModal()" aria-label="Close QR popup"
+                style="background:#f1f5f9;color:#334155;border:none;border-radius:50%;width:32px;height:32px;font-size:1.25rem;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">&times;</button>
+      </div>
+
+      <!-- Audience Switcher Tabs (Shown for Riders & Admin) -->
+      <div id="ccrc-qr-tabs" class="hidden" role="tablist" aria-label="QR target" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;">
+        <button type="button" id="ccrc-qr-tab-main" role="tab" aria-selected="true" onclick="window.switchCcrcQrMode('main')"
+                style="padding:7px 8px;border-radius:10px;font-size:0.78rem;font-weight:700;cursor:pointer;border:1.5px solid #ea580c;background:#ea580c;color:#ffffff;">
+          🛵 Booking Site
+        </button>
+        <button type="button" id="ccrc-qr-tab-rider" role="tab" aria-selected="false" onclick="window.switchCcrcQrMode('rider')"
+                style="padding:7px 8px;border-radius:10px;font-size:0.78rem;font-weight:700;cursor:pointer;border:1.5px solid #cbd5e1;background:#f8fafc;color:#334155;">
+          📱 Rider Hub
+        </button>
+      </div>
+
+      <!-- Scannable QR Preview -->
+      <div style="margin:14px auto 10px;display:inline-block;padding:10px;background:#ffffff;border:2px solid #fed7aa;border-radius:16px;box-shadow:0 6px 20px rgba(234,88,12,0.12);">
+        <canvas id="ccrc-qr-modal-canvas" width="440" height="440" style="display:block;width:236px;height:236px;border-radius:8px;"></canvas>
+      </div>
+
+      <div id="ccrc-qr-modal-caption" style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:2px;">
+        SCAN TO BOOK A RIDER
+      </div>
+      <div id="ccrc-qr-modal-url" style="font-size:0.72rem;font-family:monospace;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 8px;word-break:break-all;margin-bottom:12px;">
+        https://camiguin-centric-riders-club.onrender.com
+      </div>
+
+      <div style="display:grid;gap:7px;">
+        <button type="button" id="ccrc-qr-dl-poster-btn" onclick="window.downloadCcrcQrPng('poster')"
+                class="btn btn-primary btn-sm btn-block" style="padding:9px 12px;font-weight:700;border-radius:10px;cursor:pointer;">
+          📥 Download Printable Poster (PNG)
+        </button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+          <button type="button" id="ccrc-qr-dl-clean-btn" onclick="window.downloadCcrcQrPng('clean')"
+                  class="btn btn-outline btn-sm" style="padding:8px 10px;font-weight:700;border-radius:10px;cursor:pointer;">
+            🖼️ Clean QR
+          </button>
+          <button type="button" id="ccrc-qr-copy-btn" onclick="window.copyCcrcQrLink()"
+                  class="btn btn-outline btn-sm" style="padding:8px 10px;font-weight:700;border-radius:10px;cursor:pointer;">
+            🔗 Copy Link
+          </button>
+        </div>
+      </div>
+
+      <div id="ccrc-qr-modal-feedback" style="margin-top:8px;font-size:0.74rem;color:#059669;font-weight:600;min-height:16px;"></div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const QR_SPECS = {
+        main: {
+          n: 49,
+          b64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP6LFEu/gEFB/jlQQC6lDnZroBdCX+Zl0AunySCa6AQW3NO1BAP6qqqq/gAB4qrwAAA61Vsdc4BKo40l3cANoQXXqkAaHFvRMrAJvDMp9HACKQjFtvQD2xtN9WgAwmAOp3MAUn8zNVMAfkImxtzAEfNCfQuABpeMRf0ABrd2nhA4BCkB3138Az8oxWhIATBaaKIoAHd42QQDADrZd0e+QCrFo3YsABG/+b49gAOv7PJaYASg2qLC9AJrjhqb0AFDkbMU2AC3tsAk+gAAcXgFR8A/jFSW6wAQSe2/EYALrh3vL6AF1v1VZoQC6tNowfwBBL2KwxoA/kwQ9VoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+          url: "https://camiguin-centric-riders-club.onrender.com",
+          shortUrl: "camiguin-centric-riders-club.onrender.com",
+          cta: "SCAN TO BOOK A RIDER",
+          filePrefix: "CCRC_Booking_Site"
+        },
+        rider: {
+          n: 49,
+          b64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP7snnM/gEFdjf9QQC6B7zHroBddVZ5F0Aup2qei6AQVngWpBAP6qqqq/gAAHynsAAASCLZhHYAoLTTGU8AT1oCr24AGrb/tQ3AKshvCekgEaENZzjADipgxgq4ASHjMKksAoyg+RJQALOUYlRvAG4og+jNgFTCU8PoQBXRIiZcgAwvgUXUcAj49tC9UAJHGmaU1AE7ZPdzhgDjJFlCiAA3ZlvEwYBifZ7bWAABznC1MEAGsYy3RhAKYJEB6XgBT0GQKqQC71hc4+4AAfUDGxcA/lQIDqsAQTGJvMUALpidIr5gF1QpJB0AC6R1kMDoBBIktTSIA/g3opJ0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+          url: "https://camiguin-centric-riders-club.onrender.com/rider",
+          shortUrl: "camiguin-centric-riders-club.onrender.com/rider",
+          cta: "SCAN FOR RIDER HUB",
+          filePrefix: "CCRC_Rider_Hub"
+        }
+      };
+
+      let _qrMode = "main";
+      let _qrLogo = null;
+      let _qrLogoPromise = null;
+
+      function _loadQrLogo() {
+        if (_qrLogo) return Promise.resolve(_qrLogo);
+        if (_qrLogoPromise) return _qrLogoPromise;
+        _qrLogoPromise = new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => { _qrLogo = img; resolve(img); };
+          img.onerror = () => resolve(null);
+          img.src = "/static/icons/logo.png?v=3";
+        });
+        return _qrLogoPromise;
+      }
+
+      function _unpackQr(n, b64) {
+        const raw = atob(b64);
+        const grid = [];
+        let bitIdx = 0;
+        for (let r = 0; r < n; r++) {
+          const row = new Uint8Array(n);
+          for (let c = 0; c < n; c++) {
+            const byteVal = raw.charCodeAt(bitIdx >> 3);
+            row[c] = (byteVal >> (7 - (bitIdx & 7))) & 1;
+            bitIdx++;
+          }
+          grid.push(row);
+        }
+        return grid;
+      }
+
+      function _rrect(ctx, x, y, w, h, r) {
+        const rad = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rad, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rad);
+        ctx.arcTo(x + w, y + h, x, y + h, rad);
+        ctx.arcTo(x, y + h, x, y, rad);
+        ctx.arcTo(x, y, x + w, y, rad);
+        ctx.closePath();
+      }
+
+      function _drawQr(canvas, spec, sizePx) {
+        canvas.width = sizePx;
+        canvas.height = sizePx;
+        const ctx = canvas.getContext("2d");
+        const n = spec.n;
+        const border = 4;
+        const grid = _unpackQr(n, spec.b64);
+        const cell = sizePx / n;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, sizePx, sizePx);
+
+        const inFinder = (r, c) =>
+          (r >= border && r < border + 7 && c >= border && c < border + 7) ||
+          (r >= border && r < border + 7 && c >= n - border - 7 && c < n - border) ||
+          (r >= n - border - 7 && r < n - border && c >= border && c < border + 7);
+
+        const inCenter = (r, c) =>
+          (r >= border + 2 && r < border + 5 && c >= border + 2 && c < border + 5) ||
+          (r >= border + 2 && r < border + 5 && c >= n - border - 5 && c < n - border - 2) ||
+          (r >= n - border - 5 && r < n - border - 2 && c >= border + 2 && c < border + 5);
+
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            if (!grid[r][c]) continue;
+            const x = c * cell;
+            const y = r * cell;
+            if (inFinder(r, c)) {
+              ctx.fillStyle = inCenter(r, c) ? "#ea580c" : "#0b192c";
+              ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(cell), Math.ceil(cell));
+            } else {
+              ctx.fillStyle = "#0b192c";
+              const pad = cell * 0.05;
+              _rrect(ctx, x + pad, y + pad, cell - pad * 2, cell - pad * 2, cell * 0.25);
+              ctx.fill();
+            }
+          }
+        }
+
+        if (_qrLogo) {
+          const logoD = sizePx * 0.185;
+          const ringD = logoD * 1.18;
+          const cx = sizePx / 2;
+          const cy = sizePx / 2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(cx, cy, ringD / 2, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+          ctx.drawImage(_qrLogo, cx - logoD / 2, cy - logoD / 2, logoD, logoD);
+          ctx.restore();
+        }
+      }
+
+      function _buildPoster(spec) {
+        const W = 1200, H = 1600;
+        const c = document.createElement("canvas");
+        c.width = W;
+        c.height = H;
+        const ctx = c.getContext("2d");
+
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#0b192c";
+        ctx.fillRect(0, 0, W, 370);
+        ctx.fillStyle = "#f97316";
+        ctx.fillRect(0, 370, W, 10);
+
+        if (_qrLogo) ctx.drawImage(_qrLogo, (W - 156) / 2, 34, 156, 156);
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = "800 50px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("CAMIGUIN CENTRIC", W / 2, 206);
+        ctx.fillStyle = "#f97316";
+        ctx.fillText("RIDERS CLUB", W / 2, 266);
+
+        ctx.font = "500 24px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillStyle = "#cbd5e1";
+        ctx.fillText("Express Ride  •  Pabili  •  Pasugo  •  Island Tours", W / 2, 328);
+
+        ctx.fillStyle = "#e2e8f0";
+        _rrect(ctx, 113, 430, W - 210, 970, 36);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 3;
+        _rrect(ctx, 105, 420, W - 210, 970, 36);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ea580c";
+        _rrect(ctx, (W - 640) / 2, 462, 640, 74, 37);
+        ctx.fill();
+        ctx.font = "800 38px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(spec.cta, W / 2, 480);
+
+        const qrCanvas = document.createElement("canvas");
+        _drawQr(qrCanvas, spec, 760);
+        const qrX = (W - 760) / 2;
+        const qrY = 566;
+        ctx.drawImage(qrCanvas, qrX, qrY);
+
+        const bLen = 56, bW = 8;
+        const bx0 = qrX - 14, by0 = qrY - 14, bx1 = qrX + 774, by1 = qrY + 774;
+        ctx.fillStyle = "#f97316";
+        ctx.fillRect(bx0, by0, bLen, bW); ctx.fillRect(bx0, by0, bW, bLen);
+        ctx.fillRect(bx1 - bLen, by0, bLen, bW); ctx.fillRect(bx1 - bW, by0, bW, bLen);
+        ctx.fillRect(bx0, by1 - bW, bLen, bW); ctx.fillRect(bx0, by1 - bLen, bW, bLen);
+        ctx.fillRect(bx1 - bLen, by1 - bW, bLen, bW); ctx.fillRect(bx1 - bW, by1 - bLen, bW, bLen);
+
+        ctx.font = "500 24px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillStyle = "#475569";
+        ctx.fillText("Point your phone camera here to open instantly", W / 2, qrY + 784);
+
+        ctx.fillStyle = "#0b192c";
+        _rrect(ctx, 105, 1430, W - 210, 72, 18);
+        ctx.fill();
+        ctx.font = "700 28px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(spec.shortUrl, W / 2, 1451);
+
+        ctx.font = "700 23px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillStyle = "#475569";
+        ctx.fillText("Official Web App  •  Camiguin Island, Philippines", W / 2, 1524);
+        return c;
+      }
+
+      async function _renderQrModal() {
+        await _loadQrLogo();
+        const spec = QR_SPECS[_qrMode] || QR_SPECS.main;
+        const canvas = document.getElementById("ccrc-qr-modal-canvas");
+        if (canvas) _drawQr(canvas, spec, 440);
+        const cap = document.getElementById("ccrc-qr-modal-caption");
+        const urlEl = document.getElementById("ccrc-qr-modal-url");
+        if (cap) cap.textContent = spec.cta;
+        if (urlEl) urlEl.textContent = spec.url;
+
+        const tabMain = document.getElementById("ccrc-qr-tab-main");
+        const tabRider = document.getElementById("ccrc-qr-tab-rider");
+        if (tabMain && tabRider) {
+          const isMain = _qrMode === "main";
+          tabMain.setAttribute("aria-selected", String(isMain));
+          tabRider.setAttribute("aria-selected", String(!isMain));
+          tabMain.style.background = isMain ? "#ea580c" : "#f8fafc";
+          tabMain.style.color = isMain ? "#ffffff" : "#334155";
+          tabMain.style.borderColor = isMain ? "#ea580c" : "#cbd5e1";
+          tabRider.style.background = !isMain ? "#ea580c" : "#f8fafc";
+          tabRider.style.color = !isMain ? "#ffffff" : "#334155";
+          tabRider.style.borderColor = !isMain ? "#ea580c" : "#cbd5e1";
+        }
+      }
+
+      window.switchCcrcQrMode = function(mode) {
+        _qrMode = mode === "rider" ? "rider" : "main";
+        const fb = document.getElementById("ccrc-qr-modal-feedback");
+        if (fb) fb.textContent = "";
+        _renderQrModal();
+      };
+
+      window.openCcrcQrModal = function(mode, allowTabs) {
+        const modal = document.getElementById("ccrc-share-qr-modal");
+        if (!modal) return;
+        _qrMode = mode === "rider" ? "rider" : "main";
+        const tabs = document.getElementById("ccrc-qr-tabs");
+        if (tabs) {
+          if (allowTabs) {
+            tabs.classList.remove("hidden");
+            tabs.style.display = "grid";
+          } else {
+            tabs.classList.add("hidden");
+            tabs.style.display = "none";
+          }
+        }
+        const fb = document.getElementById("ccrc-qr-modal-feedback");
+        if (fb) fb.textContent = "";
+        modal.classList.remove("hidden");
+        _renderQrModal();
+      };
+
+      window.closeCcrcQrModal = function() {
+        const modal = document.getElementById("ccrc-share-qr-modal");
+        if (modal) modal.classList.add("hidden");
+      };
+
+      window.downloadCcrcQrPng = async function(kind) {
+        await _loadQrLogo();
+        const spec = QR_SPECS[_qrMode] || QR_SPECS.main;
+        const fb = document.getElementById("ccrc-qr-modal-feedback");
+        const isPoster = kind === "poster";
+        const filename = spec.filePrefix + (isPoster ? "_QR_Poster.png" : "_QR_Clean.png");
+        let canvas;
+        if (isPoster) {
+          canvas = _buildPoster(spec);
+        } else {
+          canvas = document.createElement("canvas");
+          _drawQr(canvas, spec, 1000);
+        }
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (!blob) return;
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = dlUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { a.remove(); URL.revokeObjectURL(dlUrl); }, 1000);
+        if (fb) fb.textContent = "✅ Na-download na ang " + filename;
+      };
+
+      window.copyCcrcQrLink = async function() {
+        const spec = QR_SPECS[_qrMode] || QR_SPECS.main;
+        const fb = document.getElementById("ccrc-qr-modal-feedback");
+        try {
+          await navigator.clipboard.writeText(spec.url);
+          if (fb) fb.textContent = "✅ Na-copy na ang link!";
+        } catch (_) {
+          if (fb) fb.textContent = spec.url;
+        }
+      };
+
+      document.addEventListener("keydown", function(ev) {
+        if (ev.key === "Escape") window.closeCcrcQrModal();
+      });
+    })();
   </script>
 </body>
 

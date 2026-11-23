@@ -192,10 +192,13 @@
               <span>⭐</span> <span id="dash-rider-rating-val">5.0</span> <span id="dash-rider-reviews-count" style="font-weight:500;color:#92400e;">(0 reviews)</span>
             </div>
 
-            <div style="margin-top:6px;">
+            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
               <a id="btn-view-rider-id" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #f97316 0%, #ea580c 100%);color:#ffffff;font-size:0.75rem;font-weight:800;padding:5px 12px;border-radius:9999px;text-decoration:none;box-shadow:0 2px 6px rgba(249,115,22,0.35);border:1px solid #fdba74;">
                 <span>🪪</span> <span>View / Print CCRC ID</span>
               </a>
+              <button type="button" id="open-rider-qr-btn" onclick="window.openCcrcQrModal('main', true)" style="display:inline-flex;align-items:center;gap:5px;background:#0f172a;color:#ffffff;font-size:0.75rem;font-weight:800;padding:5px 12px;border-radius:9999px;border:1px solid #334155;cursor:pointer;box-shadow:0 2px 6px rgba(15,23,42,0.22);">
+                <span>📲</span> <span>Share App QR</span>
+              </button>
             </div>
           </div>
         </div>
