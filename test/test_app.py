@@ -1674,6 +1674,37 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(db_resp.get_json()["status"], "ok")
         self.assertEqual(db_resp.get_json()["backend"], "sqlite")
 
+    def test_admin_recent_bookings_period_filter(self):
+        self._create_active_rider(name="Rider Filter Test", phone="09170000077")
+        bk = self.client.post("/api/bookings", json={
+            "customer_name": "Pax Filter",
+            "customer_phone": "09175550777",
+            "pickup_address": "Balbagon Port",
+            "dropoff_address": "Mambajao Public Market",
+            "service_type": "pahatud",
+        }).get_json()["booking"]
+
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["admin_ts"] = time.time()
+
+        resp = self.client.get("/admin")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.get_data(as_text=True)
+
+        bookings_pane = html.split('id="pane-bookings"', 1)[1].split('id="pane-ledger"', 1)[0]
+        for period, label in (("all", "All-Time"), ("today", "Today"), ("weekly", "Weekly"), ("monthly", "Monthly")):
+            self.assertIn(f'data-period="{period}"', bookings_pane)
+            self.assertIn(f"filterBookingsByPeriod('{period}')", bookings_pane)
+            self.assertIn(label, bookings_pane)
+
+        created_date = str(bk["created_at"])[:10]
+        self.assertIn(f'class="booking-row" data-created-date="{created_date}"', bookings_pane)
+        self.assertIn(f'class="mobile-record-card booking-card" data-created-date="{created_date}"', bookings_pane)
+        self.assertIn('id="bookings-filter-empty-desktop"', bookings_pane)
+        self.assertIn('id="bookings-filter-empty-mobile"', bookings_pane)
+        self.assertIn("window.filterBookingsByPeriod = function", html)
+
 
 if __name__ == "__main__":
     unittest.main()

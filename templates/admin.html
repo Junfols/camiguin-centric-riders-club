@@ -168,6 +168,53 @@
       display: none !important;
     }
   }
+
+  /* Recent Island Bookings Date Filter Pills */
+  .booking-period-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .booking-period-btn {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 18px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .booking-period-btn:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+  .booking-period-btn.active {
+    background: var(--primary, #ea580c);
+    color: #ffffff;
+    border-color: var(--primary, #ea580c);
+    box-shadow: 0 2px 6px rgba(234,88,12,0.28);
+  }
+  .booking-period-btn .period-count {
+    background: rgba(0,0,0,0.08);
+    color: inherit;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .booking-period-btn.active .period-count {
+    background: rgba(255,255,255,0.25);
+    color: #ffffff;
+  }
 </style>
 
 <div class="container page-admin-wrap" style="padding-top:1.2rem;padding-bottom:3rem;">
@@ -436,13 +483,33 @@
   <!-- TAB 2: BOOKINGS PANE -->
   <div id="pane-bookings" class="admin-tab-pane hidden">
     <div class="card" style="padding:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
         <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:6px;">
           <span>📋</span> Recent Island Bookings (Latest 50)
         </h3>
-        <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.75rem;padding:3px 8px;border-radius:10px;">
-          Auto-synchronized
+        <span id="bookings-visible-badge" class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.75rem;padding:3px 8px;border-radius:10px;">
+          Showing {{ bookings|length }} of {{ bookings|length }}
         </span>
+      </div>
+
+      <!-- Period Filter Bar: All-Time, Today, Weekly, Monthly -->
+      <div class="booking-period-bar" role="group" aria-label="Filter recent bookings by date">
+        <button type="button" class="booking-period-btn" data-period="all" onclick="filterBookingsByPeriod('all')" aria-pressed="false">
+          <span>All-Time</span>
+          <span class="period-count" id="booking-count-all">{{ bookings|length }}</span>
+        </button>
+        <button type="button" class="booking-period-btn active" data-period="today" onclick="filterBookingsByPeriod('today')" aria-pressed="true">
+          <span>Today</span>
+          <span class="period-count" id="booking-count-today">0</span>
+        </button>
+        <button type="button" class="booking-period-btn" data-period="weekly" onclick="filterBookingsByPeriod('weekly')" aria-pressed="false" title="Last 7 days">
+          <span>Weekly</span>
+          <span class="period-count" id="booking-count-weekly">0</span>
+        </button>
+        <button type="button" class="booking-period-btn" data-period="monthly" onclick="filterBookingsByPeriod('monthly')" aria-pressed="false" title="Last 30 days">
+          <span>Monthly</span>
+          <span class="period-count" id="booking-count-monthly">0</span>
+        </button>
       </div>
 
       <!-- Desktop Table View -->
@@ -462,8 +529,13 @@
           </thead>
           <tbody>
             {% for b in bookings %}
-            <tr style="border-bottom:1px solid var(--border);">
-              <td style="padding:8px;font-family:monospace;font-weight:700;">{{ b.booking_code or b.code }}</td>
+            <tr class="booking-row" data-created-date="{{ (b.created_at|string)[:10] if b.created_at else '' }}" style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px;font-family:monospace;font-weight:700;">
+                {{ b.booking_code or b.code }}
+                {% if b.created_at %}
+                  <div class="text-muted" style="font-size:0.7rem;font-family:sans-serif;font-weight:400;">{{ (b.created_at|string)[:16].replace('T', ' ') }}</div>
+                {% endif %}
+              </td>
               <td style="padding:8px;"><span class="badge badge-accent">{{ b.service_type }}</span></td>
               <td style="padding:8px;">
                 {% if b.status == 'completed' %}
@@ -507,6 +579,7 @@
             {% else %}
             <tr><td colspan="8" class="text-muted" style="padding:16px;text-align:center;">No bookings recorded yet.</td></tr>
             {% endfor %}
+            <tr id="bookings-filter-empty-desktop" style="display:none;"><td colspan="8" class="text-muted" style="padding:18px;text-align:center;">No bookings found for this period.</td></tr>
           </tbody>
         </table>
       </div>
@@ -514,11 +587,14 @@
       <!-- Mobile Cards View -->
       <div class="admin-mobile-view">
         {% for b in bookings %}
-        <div class="mobile-record-card">
+        <div class="mobile-record-card booking-card" data-created-date="{{ (b.created_at|string)[:10] if b.created_at else '' }}">
           <div class="mobile-record-row-top">
             <div>
               <span style="font-family:monospace;font-weight:700;color:#0284c7;font-size:0.95rem;">{{ b.booking_code or b.code }}</span>
               <span class="badge badge-accent" style="margin-left:4px;font-size:0.7rem;text-transform:uppercase;">{{ b.service_type }}</span>
+              {% if b.created_at %}
+                <div style="font-size:0.72rem;color:#64748b;margin-top:2px;">🕒 {{ (b.created_at|string)[:16].replace('T', ' ') }}</div>
+              {% endif %}
             </div>
             <div>
               {% if b.status == 'completed' %}
@@ -565,6 +641,7 @@
         {% else %}
         <div class="text-muted text-center" style="padding:20px;">No bookings recorded yet.</div>
         {% endfor %}
+        <div id="bookings-filter-empty-mobile" class="text-muted text-center" style="display:none;padding:20px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;font-size:0.85rem;">No bookings found for this period.</div>
       </div>
     </div>
   </div>
@@ -1268,6 +1345,113 @@
       alert("Error: " + err.message);
     }
   };
+
+  // Recent Island Bookings Period Filter (All-Time, Today, Weekly, Monthly — PHT UTC+8)
+  function _getPhtTodayUtc() {
+    const phtNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    return Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth(), phtNow.getUTCDate());
+  }
+
+  function _matchesBookingPeriod(dateStr, period, todayUtc) {
+    if (period === "all") return true;
+    if (!dateStr || dateStr.length < 10) return false;
+    const parts = dateStr.slice(0, 10).split("-");
+    if (parts.length !== 3) return false;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return false;
+    const rowUtc = Date.UTC(y, m - 1, d);
+    const diffDays = Math.floor((todayUtc - rowUtc) / 86400000);
+    if (period === "today") return diffDays === 0;
+    if (period === "weekly") return diffDays >= 0 && diffDays < 7;
+    if (period === "monthly") return diffDays >= 0 && diffDays < 30;
+    return true;
+  }
+
+  window.filterBookingsByPeriod = function(period) {
+    const valid = ["all", "today", "weekly", "monthly"];
+    const activePeriod = valid.includes(period) ? period : "all";
+    const todayUtc = _getPhtTodayUtc();
+
+    document.querySelectorAll(".booking-period-btn").forEach(btn => {
+      const isTarget = btn.getAttribute("data-period") === activePeriod;
+      btn.classList.toggle("active", isTarget);
+      btn.setAttribute("aria-pressed", isTarget ? "true" : "false");
+    });
+
+    const tableRows = document.querySelectorAll(".booking-row");
+    const mobileCards = document.querySelectorAll(".booking-card");
+    const totalCount = tableRows.length || mobileCards.length;
+
+    const counts = { all: totalCount, today: 0, weekly: 0, monthly: 0 };
+    const countSource = tableRows.length ? tableRows : mobileCards;
+    countSource.forEach(el => {
+      const dateStr = el.getAttribute("data-created-date") || "";
+      if (_matchesBookingPeriod(dateStr, "today", todayUtc)) counts.today++;
+      if (_matchesBookingPeriod(dateStr, "weekly", todayUtc)) counts.weekly++;
+      if (_matchesBookingPeriod(dateStr, "monthly", todayUtc)) counts.monthly++;
+    });
+
+    valid.forEach(key => {
+      const badge = document.getElementById("booking-count-" + key);
+      if (badge) badge.textContent = String(counts[key]);
+    });
+
+    let visibleDesktop = 0;
+    tableRows.forEach(r => {
+      const show = _matchesBookingPeriod(r.getAttribute("data-created-date") || "", activePeriod, todayUtc);
+      r.style.display = show ? "" : "none";
+      if (show) visibleDesktop++;
+    });
+
+    let visibleMobile = 0;
+    mobileCards.forEach(c => {
+      const show = _matchesBookingPeriod(c.getAttribute("data-created-date") || "", activePeriod, todayUtc);
+      c.style.display = show ? "" : "none";
+      if (show) visibleMobile++;
+    });
+
+    const visibleCount = tableRows.length ? visibleDesktop : visibleMobile;
+    const summaryBadge = document.getElementById("bookings-visible-badge");
+    if (summaryBadge) {
+      summaryBadge.textContent = `Showing ${visibleCount} of ${totalCount}`;
+    }
+
+    const emptyLabelMap = {
+      all: "No bookings recorded yet.",
+      today: "No bookings today yet. Tap Weekly, Monthly, or All-Time above.",
+      weekly: "No bookings in the last 7 days. Tap Monthly or All-Time above.",
+      monthly: "No bookings in the last 30 days. Tap All-Time above."
+    };
+    const emptyDesktop = document.getElementById("bookings-filter-empty-desktop");
+    if (emptyDesktop) {
+      emptyDesktop.style.display = (totalCount > 0 && visibleDesktop === 0) ? "" : "none";
+      const td = emptyDesktop.querySelector("td");
+      if (td) td.textContent = emptyLabelMap[activePeriod];
+    }
+    const emptyMobile = document.getElementById("bookings-filter-empty-mobile");
+    if (emptyMobile) {
+      emptyMobile.style.display = (totalCount > 0 && visibleMobile === 0) ? "" : "none";
+      emptyMobile.textContent = emptyLabelMap[activePeriod];
+    }
+
+    try {
+      localStorage.setItem("ccrc_admin_bookings_period", activePeriod);
+    } catch (_) {}
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try {
+      if (!document.querySelector(".booking-period-btn")) return;
+      let initialPeriod = "today";
+      const saved = localStorage.getItem("ccrc_admin_bookings_period");
+      if (["all", "today", "weekly", "monthly"].includes(saved)) {
+        initialPeriod = saved;
+      }
+      window.filterBookingsByPeriod(initialPeriod);
+    } catch (_) {}
+  });
 
   // Transactions Filter (Filters both table rows and mobile cards)
   window.filterTransactionsTable = function() {
