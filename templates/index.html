@@ -52,13 +52,16 @@
       };
       try {
         const rev = banner.getAttribute("data-revision") || "1";
+        if (!banner.classList.contains("hidden")) {
+          window._ccrcLastCustAdvRev = rev;
+        }
         if (localStorage.getItem("ccrc_adv_dismissed_customer_" + rev) === "1") {
           banner.classList.add("hidden");
         }
       } catch (_) {}
-      setInterval(async function() {
+      async function syncCustAdvisory() {
         try {
-          const res = await fetch("/api/advisory");
+          const res = await fetch("/api/advisory", { cache: "no-store" });
           if (!res.ok) return;
           const data = await res.json();
           const adv = data && data.advisory;
@@ -68,7 +71,10 @@
           }
           const revStr = String(adv.revision || 1);
           try {
-            if (localStorage.getItem("ccrc_adv_dismissed_customer_" + revStr) === "1") return;
+            if (localStorage.getItem("ccrc_adv_dismissed_customer_" + revStr) === "1") {
+              banner.classList.add("hidden");
+              return;
+            }
           } catch (_) {}
           banner.className = "ccrc-advisory-banner is-" + (adv.category || "info");
           banner.setAttribute("data-revision", revStr);
@@ -87,7 +93,12 @@
           }
           window._ccrcLastCustAdvRev = revStr;
         } catch (_) {}
-      }, 15000);
+      }
+      syncCustAdvisory();
+      setInterval(syncCustAdvisory, 10000);
+      document.addEventListener("visibilitychange", function() {
+        if (document.visibilityState === "visible") syncCustAdvisory();
+      });
     })();
   </script>
 

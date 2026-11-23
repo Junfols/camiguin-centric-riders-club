@@ -1978,6 +1978,90 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("attachment; filename=", bkp.headers.get("Content-Disposition", ""))
         self.assertIn("tables", bkp.get_json())
 
+    def test_advisory_broadcast_to_riders_html_order_and_expired_guard(self):
+        from html.parser import HTMLParser
+        from db import get_connection, update_settings
+
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["admin_ts"] = time.time()
+
+        # 1. Broadcasting with an already-expired timestamp must be rejected (HTTP 400)
+        expired_res = self.client.post("/api/admin/advisory", json={
+            "category": "night_fare",
+            "title": "Night Notice",
+            "message": "Turn on headlights",
+            "expires_at": "2020-01-01T10:00",
+            "show_customers": False,
+            "show_riders": True,
+        })
+        self.assertEqual(expired_res.status_code, 400)
+        self.assertIn("expired", expired_res.get_json()["error"].lower())
+
+        # 2. If DB already holds an old expired advisory, Admin form must NOT prefill stale expires_at
+        conn = get_connection(self.db_path)
+        try:
+            update_settings(conn, {
+                "advisory_enabled": "1",
+                "advisory_message": "Old notice",
+                "advisory_expires_at": "2020-01-01T10:00",
+                "advisory_show_riders": "1",
+            })
+            conn.commit()
+        finally:
+            conn.close()
+        admin_html = self.client.get("/admin").get_data(as_text=True)
+        self.assertIn('id="adv-expires-at" name="expires_at" value=""', admin_html)
+
+        # 3. Valid broadcast to riders shows live on /api/advisory and on /rider HTML
+        ok_res = self.client.post("/api/admin/advisory", json={
+            "category": "night_fare",
+            "title": "Night Dispatch Notice",
+            "message": "Headlights on please",
+            "expires_at": "",
+            "show_customers": False,
+            "show_riders": True,
+        })
+        self.assertEqual(ok_res.status_code, 200)
+        adv = ok_res.get_json()["advisory"]
+        self.assertTrue(adv["show_riders"])
+        self.assertFalse(adv["is_expired"])
+
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        # Advisory banner DOM element must come BEFORE its script so getElementById never returns null
+        banner_pos = rider_html.index('id="rider-club-advisory-banner"')
+        script_pos = rider_html.index('window.dismissRiderCcrcAdvisory = function()')
+        self.assertLess(banner_pos, script_pos)
+        self.assertIn("Night Dispatch Notice", rider_html)
+        self.assertIn("Headlights on please", rider_html)
+
+        # Verify #rider-scheduled-card is NOT nested inside #rider-club-advisory-banner
+        void = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+
+        class BannerNesting(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.stack = []
+                self.scheduled_inside_banner = None
+
+            def handle_starttag(self, tag, attrs):
+                if tag in void:
+                    return
+                id_val = dict(attrs).get("id")
+                if id_val == "rider-scheduled-card":
+                    self.scheduled_inside_banner = "rider-club-advisory-banner" in self.stack
+                self.stack.append(id_val or tag)
+
+            def handle_endtag(self, tag):
+                if tag in void:
+                    return
+                if self.stack:
+                    self.stack.pop()
+
+        p = BannerNesting()
+        p.feed(rider_html)
+        self.assertIs(p.scheduled_inside_banner, False)
+
 
 if __name__ == "__main__":
     unittest.main()

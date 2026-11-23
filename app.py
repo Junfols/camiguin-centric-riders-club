@@ -2749,6 +2749,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         show_riders = "1" if data.get("show_riders") else "0"
         enabled = "1" if (message and (show_customers == "1" or show_riders == "1")) else "0"
 
+        if enabled == "1" and expires_at:
+            try:
+                exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+                if exp_dt.tzinfo is not None:
+                    exp_dt = exp_dt.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
+                if get_now_pht() > exp_dt:
+                    return jsonify({
+                        "error": "Ang Auto-Expire Time kay lapas na (expired). Palihug i-clear kini o pilia ang umaabot nga petsa ug oras sa dili pa mo-broadcast."
+                    }), 400
+            except Exception:
+                return jsonify({"error": "Invalid Auto-Expire Time format."}), 400
+
         prev_rev = int(settings.get("advisory_revision", 0) or 0)
         next_rev = prev_rev + 1
         updated_label = get_now_pht().strftime("%b %d, %I:%M %p PHT")
@@ -2771,7 +2783,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return jsonify({
             "success": True,
             "advisory": adv,
-            "message": "Live Club Advisory broadcasted!" if adv["enabled"] else "Club Advisory cleared / turned off.",
+            "message": "Live Club Advisory broadcasted!" if (adv["show_customers"] or adv["show_riders"]) else "Club Advisory cleared / turned off.",
         })
 
     @app.get("/api/admin/backup")
