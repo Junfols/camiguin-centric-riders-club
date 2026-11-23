@@ -3878,11 +3878,20 @@ def calculate_fare(
     - Bulky orders / Shopping orders >= ₱2,000: +₱20.00
     - Hinterland / Mountain route (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon, Quiboro, Sa-ay, Tuasan, Binangawan, Itum, etc.): +₱30.00
     """
+    def _num(key: str, default: float) -> float:
+        val = settings.get(key)
+        if val is None or str(val).strip() == "":
+            return default
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return default
+
     clean_km = max(1.0, round(km, 2))
-    base_fare = float(settings.get("base_fare") or 40.0)
-    base_km = float(settings.get("base_km") or 2.0)
-    per_km_rate = float(settings.get("per_km_rate") or 18.0)
-    min_fare = float(settings.get("min_fare") or 40.0)
+    base_fare = _num("base_fare", 40.0)
+    base_km = _num("base_km", 2.0)
+    per_km_rate = _num("per_km_rate", 18.0)
+    min_fare = _num("min_fare", 40.0)
 
     # 1. Base distance meter calculation
     if clean_km <= base_km:
@@ -3891,24 +3900,26 @@ def calculate_fare(
         extra_km = clean_km - base_km
         meter_fare = base_fare + (extra_km * per_km_rate)
 
-    # 2. Service fee (Pasugo / Pabili / Pabayad: +₱20, Passenger Ride: ₱0)
+    # 2. Service fee (Pabili uses pabili_service_fee; Pasugo/Pabayad/Errand uses pasugo_service_fee; Passenger Ride: ₱0)
     service_add = 0.0
     st = (service_type or "").lower().strip()
-    if st in ("pabili", "pabayad", "pasugo", "delivery", "courier", "errand", "cargo"):
-        service_add = float(settings.get("pabili_service_fee") or 20.0)
+    if st == "pabili":
+        service_add = _num("pabili_service_fee", 20.0)
+    elif st in ("pasugo", "pabayad", "delivery", "courier", "errand", "cargo"):
+        service_add = _num("pasugo_service_fee", _num("pabili_service_fee", 20.0))
 
-    # 3. Queuing / Large store fee (+₱30)
-    queuing_fee = float(settings.get("queuing_fee") or 30.0) if is_large_store else 0.0
+    # 3. Queuing / Large store fee (+₱30 default)
+    queuing_fee = _num("queuing_fee", 30.0) if is_large_store else 0.0
 
-    # 4. Extra stores fee (+₱20 per extra store)
-    per_store_rate = float(settings.get("extra_store_fee") or 20.0)
+    # 4. Extra stores fee (+₱20 per extra store default)
+    per_store_rate = _num("extra_store_fee", 20.0)
     extra_stores_fee = max(0, int(extra_stores_count or 0)) * per_store_rate
 
-    # 5. Bulky / High value order fee (+₱20)
-    bulky_fee = float(settings.get("bulky_order_fee") or 20.0) if is_bulky_or_high_value else 0.0
+    # 5. Bulky / High value order fee (+₱20 default)
+    bulky_fee = _num("bulky_order_fee", 20.0) if is_bulky_or_high_value else 0.0
 
-    # 6. Hinterland / Mountain route fee (+₱30)
-    hinterland_fee = float(settings.get("hinterland_fee") or 30.0) if is_hinterland else 0.0
+    # 6. Hinterland / Mountain route fee (+₱30 default)
+    hinterland_fee = _num("hinterland_fee", 30.0) if is_hinterland else 0.0
 
     total_computed = meter_fare + service_add + queuing_fee + extra_stores_fee + bulky_fee + hinterland_fee
     final_fare = max(min_fare, round(total_computed, 0))
@@ -4798,11 +4809,6 @@ def _seed_initial_data(conn: DatabaseConnection) -> None:
         row = conn.execute("SELECT value FROM settings WHERE key = ?", (k,)).fetchone()
         if not row:
             conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (k, v))
-        else:
-            # Upgrade outdated default fare numbers to Official Camiguin CRC Fare Matrix
-            old_val = str(row["value"] if isinstance(row, dict) or hasattr(row, "keys") else row[0])
-            if (k == "base_fare" and old_val == "50.0") or (k == "per_km_rate" and old_val == "15.0") or (k == "min_fare" and old_val == "50.0"):
-                conn.execute("UPDATE settings SET value = ? WHERE key = ?", (v, k))
 
     # Starter promo codes
     try:

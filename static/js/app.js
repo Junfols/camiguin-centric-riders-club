@@ -3412,6 +3412,21 @@
   }
   let currentTargetMode = "pickup"; // 'pickup' or 'dropoff'
 
+  // Dynamic Tariff Configuration injected from Admin Settings (fallback matches Official Camiguin CRC Tariff)
+  const TARIFF = Object.assign({
+    base_fare: 40,
+    base_km: 2,
+    base_km_label: "2",
+    per_km_rate: 18,
+    min_fare: 40,
+    pabili_fee: 20,
+    pasugo_fee: 20,
+    queuing_fee: 30,
+    extra_store_fee: 20,
+    bulky_fee: 20,
+    hinterland_fee: 30,
+  }, window.CCRC_TARIFF || {});
+
   // Service Type Switcher
   const serviceExtraFields = document.getElementById("service-extra-fields");
   const fareOptionsAccordion = document.getElementById("fare-options-accordion") || document.querySelector(".fare-options-accordion");
@@ -3430,29 +3445,29 @@
           fareOptionsAccordion.classList.add("hidden");
           fareOptionsAccordion.open = false;
         }
-        if (fareHintText) fareHintText.textContent = "Official Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km.";
+        if (fareHintText) fareHintText.textContent = `Official Tariff: 1-${TARIFF.base_km_label} km = ₱${TARIFF.base_fare} base, ₱${TARIFF.per_km_rate} per succeeding km.`;
       } else if (service === "pabili") {
         if (serviceExtraFields) serviceExtraFields.classList.remove("hidden");
         if (fareOptionsAccordion) fareOptionsAccordion.classList.remove("hidden");
         if (budgetGroup) budgetGroup.classList.remove("hidden");
         if (notesLabel) notesLabel.textContent = "Shopping List & Store Names *";
-        if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Buy For Me fee.";
+        if (fareHintText) fareHintText.textContent = `Official Tariff: Base meter (₱${TARIFF.base_fare} for ${TARIFF.base_km_label}km + ₱${TARIFF.per_km_rate}/km) + ₱${TARIFF.pabili_fee} Buy For Me fee.`;
       } else if (service === "pasugo") {
         if (serviceExtraFields) serviceExtraFields.classList.remove("hidden");
         if (fareOptionsAccordion) fareOptionsAccordion.classList.remove("hidden");
         if (budgetGroup) budgetGroup.classList.add("hidden");
         if (notesLabel) notesLabel.textContent = "Parcel Description / Cargo Details *";
-        if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Courier delivery fee.";
+        if (fareHintText) fareHintText.textContent = `Official Tariff: Base meter (₱${TARIFF.base_fare} for ${TARIFF.base_km_label}km + ₱${TARIFF.per_km_rate}/km) + ₱${TARIFF.pasugo_fee} Courier delivery fee.`;
       } else if (service === "pabayad") {
         if (serviceExtraFields) serviceExtraFields.classList.remove("hidden");
         if (fareOptionsAccordion) fareOptionsAccordion.classList.remove("hidden");
         if (budgetGroup) budgetGroup.classList.remove("hidden");
         if (notesLabel) notesLabel.textContent = "Payment Details / Port Cargo Claim Number *";
-        if (fareHintText) fareHintText.textContent = "Official Tariff: Base meter (₱40 for 2km + ₱18/km) + ₱20 Port claim fee.";
+        if (fareHintText) fareHintText.textContent = `Official Tariff: Base meter (₱${TARIFF.base_fare} for ${TARIFF.base_km_label}km + ₱${TARIFF.per_km_rate}/km) + ₱${TARIFF.pasugo_fee} Port claim fee.`;
       } else {
         if (serviceExtraFields) serviceExtraFields.classList.add("hidden");
         if (fareOptionsAccordion) fareOptionsAccordion.classList.add("hidden");
-        if (fareHintText) fareHintText.textContent = "Official Tariff: 1-2 km = ₱40 base, ₱18 per succeeding km.";
+        if (fareHintText) fareHintText.textContent = `Official Tariff: 1-${TARIFF.base_km_label} km = ₱${TARIFF.base_fare} base, ₱${TARIFF.per_km_rate} per succeeding km.`;
       }
       recalculateFare();
     });
@@ -4396,7 +4411,7 @@
     recalculateFare();
   }
 
-  let lastBaseFare = 40;
+  let lastBaseFare = TARIFF.base_fare;
   let appliedPromo = null;
 
   const ridersCountInput = document.getElementById("riders-count-input");
@@ -4469,7 +4484,7 @@
     const groupSummaryVal = document.getElementById("fare-group-summary-val");
     const fareEstLabel = document.getElementById("fare-estimate-label");
 
-    const perRiderBase = Math.max(0, Math.round(Number(lastBaseFare || 40)));
+    const perRiderBase = Math.max(0, Math.round(Number(lastBaseFare || TARIFF.base_fare)));
     const ridersCount = getRidersCount();
     const baseFare = perRiderBase * ridersCount;
 
@@ -4590,7 +4605,7 @@
         routeLine = null;
       }
       currentRoadKm = null;
-      lastBaseFare = 40;
+      lastBaseFare = TARIFF.base_fare;
       applyPromoPreviewToFare();
       if (fareKmDisplay) fareKmDisplay.textContent = "~0.0 km (Select Location)";
       renderFareBreakdownBadges(null, false);
@@ -5049,7 +5064,7 @@
           applyPromoPreviewToFare();
           return;
         }
-        const currentFare = Math.max(0, Math.round(Number(lastBaseFare || 40))) * getRidersCount();
+        const currentFare = Math.max(0, Math.round(Number(lastBaseFare || TARIFF.base_fare))) * getRidersCount();
 
         try {
           applyPromoBtn.disabled = true;

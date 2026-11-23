@@ -1705,6 +1705,114 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="bookings-filter-empty-mobile"', bookings_pane)
         self.assertIn("window.filterBookingsByPeriod = function", html)
 
+    def test_admin_tariff_changes_propagate_to_calculation_ui_and_survive_restart(self):
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["admin_ts"] = time.time()
+
+        # Save custom rates including 50.0 / 15.0 (previously overwritten on restart) and distinct Pabili vs Pasugo fees
+        save_resp = self.client.post(
+            "/api/admin/settings",
+            json={
+                "base_fare": "50.0",
+                "base_km": "2.0",
+                "per_km_rate": "15.0",
+                "min_fare": "50.0",
+                "pabili_service_fee": "35",
+                "pasugo_service_fee": "25",
+                "queuing_fee": "40",
+                "hinterland_fee": "45",
+            },
+        )
+        self.assertEqual(save_resp.status_code, 200)
+        self.assertTrue(save_resp.get_json()["success"])
+
+        # 1. Verify /api/fare-estimate uses new base/per-km and SEPARATE pasugo vs pabili fees
+        est_ride = self.client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_lat": 9.25405, "pickup_lng": 124.71636,
+                "dropoff_lat": 9.23802, "dropoff_lng": 124.73950,
+                "road_km": 4.0, "service_type": "pahatud",
+            },
+        ).get_json()
+        # 4 km = 50 + (4-2)*15 = 80
+        self.assertEqual(est_ride["fare_amount"], 80.0)
+
+        est_pasugo = self.client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_lat": 9.25405, "pickup_lng": 124.71636,
+                "dropoff_lat": 9.23802, "dropoff_lng": 124.73950,
+                "road_km": 4.0, "service_type": "pasugo",
+            },
+        ).get_json()
+        # 80 + 25 pasugo fee = 105
+        self.assertEqual(est_pasugo["fare_amount"], 105.0)
+        self.assertEqual(est_pasugo["breakdown"]["service_fee"], 25.0)
+
+        est_pabili = self.client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_lat": 9.25405, "pickup_lng": 124.71636,
+                "dropoff_lat": 9.23802, "dropoff_lng": 124.73950,
+                "road_km": 4.0, "service_type": "pabili",
+                "is_large_store": True, "is_hinterland": True,
+            },
+        ).get_json()
+        # 80 + 35 pabili + 40 queuing + 45 hinterland = 200
+        self.assertEqual(est_pabili["fare_amount"], 200.0)
+        self.assertEqual(est_pabili["breakdown"]["service_fee"], 35.0)
+        self.assertEqual(est_pabili["breakdown"]["queuing_fee"], 40.0)
+        self.assertEqual(est_pabili["breakdown"]["hinterland_fee"], 45.0)
+
+        # 2. Verify booking uses live hinterland fee in note tag as well
+        bk_resp = self.client.post(
+            "/api/bookings",
+            json={
+                "customer_name": "Tariff Tester",
+                "customer_phone": "09175550888",
+                "pickup_address": "Mambajao Public Market",
+                "dropoff_address": "Ardent Hot Spring",
+                "road_km": 4.0,
+                "service_type": "pasugo",
+            },
+        ).get_json()
+        self.assertEqual(bk_resp["booking"]["fare_amount"], 150.0)  # 80 + 25 pasugo + 45 hinterland
+        self.assertIn("[🏔️ Hinterland / Bukid Route +₱45]", bk_resp["booking"]["item_notes"])
+
+        # 3. Verify customer home page labels, matrix, and CCRC_TARIFF update automatically
+        home_html = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Delivery (+₱25)", home_html)
+        self.assertIn("Shopping (+₱35)", home_html)
+        self.assertIn("Large Supermarket Queuing (+₱40)", home_html)
+        self.assertIn("Hinterland / Mountain Route (+₱45)", home_html)
+        self.assertIn("1-2 km = ₱50 base, ₱15 per succeeding road km", home_html)
+        self.assertIn("<tr><td>1 KM</td><td><strong>₱50</strong></td></tr>", home_html)
+        self.assertIn("<tr><td>4 KMS</td><td><strong>₱80</strong></td></tr>", home_html)
+        self.assertIn("window.CCRC_TARIFF =", home_html)
+
+        # 4. Verify zero surcharge works (does not fall back to default 20)
+        f_zero, _, bd_zero = calculate_fare(2.0, "pasugo", {
+            "base_fare": "50", "base_km": "2", "per_km_rate": "15", "min_fare": "50",
+            "pasugo_service_fee": "0", "pabili_service_fee": "35",
+        })
+        self.assertEqual(bd_zero["service_fee"], 0.0)
+        self.assertEqual(f_zero, 50.0)
+
+        # 5. Verify 50.0 / 15.0 settings survive a fresh server restart (init_db / _seed_initial_data)
+        restarted_app = create_app({"TESTING": True, "DB_PATH": self.db_path})
+        restarted_client = restarted_app.test_client()
+        est_after = restarted_client.post(
+            "/api/fare-estimate",
+            json={
+                "pickup_lat": 9.25405, "pickup_lng": 124.71636,
+                "dropoff_lat": 9.23802, "dropoff_lng": 124.73950,
+                "road_km": 4.0, "service_type": "pahatud",
+            },
+        ).get_json()
+        self.assertEqual(est_after["fare_amount"], 80.0)
+
 
 if __name__ == "__main__":
     unittest.main()

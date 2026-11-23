@@ -191,19 +191,19 @@
         <button type="button" class="service-tab-btn" data-service="pasugo">
           <span class="service-icon">📦</span>
           <span class="service-title">Courier</span>
-          <span class="service-tag">Delivery (+₱20)</span>
+          <span class="service-tag">Delivery (+₱{{ tariff.pasugo_fee if tariff else 20 }})</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabili">
           <span class="service-icon">🛒</span>
           <span class="service-title">Errand</span>
-          <span class="service-tag">Shopping (+₱20)</span>
+          <span class="service-tag">Shopping (+₱{{ tariff.pabili_fee if tariff else 20 }})</span>
         </button>
 
         <button type="button" class="service-tab-btn" data-service="pabayad">
           <span class="service-icon">💼</span>
           <span class="service-title">Port &amp; Bills</span>
-          <span class="service-tag">Baggage (+₱20)</span>
+          <span class="service-tag">Baggage (+₱{{ tariff.pasugo_fee if tariff else 20 }})</span>
         </button>
       </div>
 
@@ -295,25 +295,26 @@
             <label class="custom-check-row">
               <input type="checkbox" id="opt-large-store" name="is_large_store" value="1">
               <div>
-                <strong>Large Supermarket Queuing (+₱30)</strong>
+                <strong>Large Supermarket Queuing (+₱{{ tariff.queuing_fee if tariff else 30 }})</strong>
                 <small class="text-muted">Lining up at Gaisano, Davilett, Nene Uy, etc.</small>
               </div>
             </label>
 
             <div class="custom-select-row">
               <label for="opt-extra-stores"><strong>Additional Store Stops:</strong></label>
+              {% set extra_fee = tariff.extra_store_fee if tariff else 20 %}
               <select id="opt-extra-stores" name="extra_stores_count">
                 <option value="0" selected>None (1 Store - ₱0)</option>
-                <option value="1">+1 Extra Store (+₱20)</option>
-                <option value="2">+2 Extra Stores (+₱40)</option>
-                <option value="3">+3 Extra Stores (+₱60)</option>
+                <option value="1">+1 Extra Store (+₱{{ extra_fee }})</option>
+                <option value="2">+2 Extra Stores (+₱{{ extra_fee * 2 }})</option>
+                <option value="3">+3 Extra Stores (+₱{{ extra_fee * 3 }})</option>
               </select>
             </div>
 
             <label class="custom-check-row">
               <input type="checkbox" id="opt-hinterland" name="is_hinterland" value="1">
               <div>
-                <strong>Hinterland / Mountain Route (+₱30)</strong>
+                <strong>Hinterland / Mountain Route (+₱{{ tariff.hinterland_fee if tariff else 30 }})</strong>
                 <small class="text-muted">Auto-added for steep climbs: Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon</small>
               </div>
             </label>
@@ -468,7 +469,7 @@
             <div>
               <span class="fare-clean-label" id="fare-estimate-label">Estimated Fare</span>
               <div class="fare-clean-number">
-                <span class="peso-sign">₱</span><strong id="fare-display">40</strong>
+                <span class="peso-sign">₱</span><strong id="fare-display">{{ tariff.base_fare if tariff else 40 }}</strong>
               </div>
             </div>
             <div class="fare-distance-pill">
@@ -481,7 +482,7 @@
 
           <div id="fare-group-summary-row" class="fare-group-summary-row hidden">
             <span id="fare-group-summary-label">👥 Group Fare Breakdown:</span>
-            <strong id="fare-group-summary-val">₱40 per rider × 1 = ₱40</strong>
+            <strong id="fare-group-summary-val">₱{{ tariff.base_fare if tariff else 40 }} per rider × 1 = ₱{{ tariff.base_fare if tariff else 40 }}</strong>
           </div>
 
           <div id="promo-discount-row" class="hidden" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;color:#16a34a;font-weight:600;font-size:0.9rem;">
@@ -489,7 +490,7 @@
             <span id="promo-discount-val">-₱0</span>
           </div>
 
-          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-2 km = ₱40 base, ₱18 per succeeding road km. Follows real road routes!</p>
+          <p class="fare-hint-clean" id="fare-hint-text">Official Island Tariff: 1-{{ tariff.base_km_label if tariff else '2' }} km = ₱{{ tariff.base_fare if tariff else 40 }} base, ₱{{ tariff.per_km_rate if tariff else 18 }} per succeeding road km. Follows real road routes!</p>
 
           <div style="text-align:right;margin-top:4px;">
             <button type="button" id="open-matrix-btn" class="text-btn" style="font-size:0.8rem;color:var(--primary);font-weight:600;">
@@ -624,21 +625,9 @@
             <tr><th>Distance (KM)</th><th>Fare</th></tr>
           </thead>
           <tbody>
-            <tr><td>1 KM</td><td><strong>₱40</strong></td></tr>
-            <tr><td>2 KMS</td><td><strong>₱40</strong></td></tr>
-            <tr><td>3 KMS</td><td><strong>₱58</strong></td></tr>
-            <tr><td>4 KMS</td><td><strong>₱76</strong></td></tr>
-            <tr><td>5 KMS</td><td><strong>₱94</strong></td></tr>
-            <tr><td>6 KMS</td><td><strong>₱112</strong></td></tr>
-            <tr><td>7 KMS</td><td><strong>₱130</strong></td></tr>
-            <tr><td>8 KMS</td><td><strong>₱148</strong></td></tr>
-            <tr><td>9 KMS</td><td><strong>₱166</strong></td></tr>
-            <tr><td>10 KMS</td><td><strong>₱184</strong></td></tr>
-            <tr><td>11 KMS</td><td><strong>₱202</strong></td></tr>
-            <tr><td>12 KMS</td><td><strong>₱220</strong></td></tr>
-            <tr><td>13 KMS</td><td><strong>₱238</strong></td></tr>
-            <tr><td>14 KMS</td><td><strong>₱256</strong></td></tr>
-            <tr><td>15 KMS</td><td><strong>₱274</strong></td></tr>
+            {% for row in fare_matrix_rows[:15] %}
+            <tr><td>{{ row.label }}</td><td><strong>₱{{ row.fare }}</strong></td></tr>
+            {% endfor %}
           </tbody>
         </table>
 
@@ -648,21 +637,9 @@
             <tr><th>Distance (KM)</th><th>Fare</th></tr>
           </thead>
           <tbody>
-            <tr><td>16 KMS</td><td><strong>₱292</strong></td></tr>
-            <tr><td>17 KMS</td><td><strong>₱310</strong></td></tr>
-            <tr><td>18 KMS</td><td><strong>₱328</strong></td></tr>
-            <tr><td>19 KMS</td><td><strong>₱346</strong></td></tr>
-            <tr><td>20 KMS</td><td><strong>₱364</strong></td></tr>
-            <tr><td>21 KMS</td><td><strong>₱382</strong></td></tr>
-            <tr><td>22 KMS</td><td><strong>₱400</strong></td></tr>
-            <tr><td>23 KMS</td><td><strong>₱418</strong></td></tr>
-            <tr><td>24 KMS</td><td><strong>₱436</strong></td></tr>
-            <tr><td>25 KMS</td><td><strong>₱454</strong></td></tr>
-            <tr><td>26 KMS</td><td><strong>₱472</strong></td></tr>
-            <tr><td>27 KMS</td><td><strong>₱490</strong></td></tr>
-            <tr><td>28 KMS</td><td><strong>₱508</strong></td></tr>
-            <tr><td>29 KMS</td><td><strong>₱526</strong></td></tr>
-            <tr><td>30 KMS</td><td><strong>₱544</strong></td></tr>
+            {% for row in fare_matrix_rows[15:] %}
+            <tr><td>{{ row.label }}</td><td><strong>₱{{ row.fare }}</strong></td></tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
@@ -670,11 +647,15 @@
       <div style="margin-top:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;font-size:0.88rem;">
         <h4 style="margin:0 0 6px;color:#c2410c;">Official Surcharges:</h4>
         <ul style="margin:0;padding-left:20px;line-height:1.5;">
-          <li><strong>Pasugo / Pabili Service:</strong> Additional ₱20 (Meter + ₱20)</li>
-          <li><strong>Large Store Queuing:</strong> +₱30 when queuing at Gaisano, Davilett, Nene Uy</li>
-          <li><strong>Additional Store Stops:</strong> +₱20 per extra store</li>
-          <li><strong>Bulky Orders (&gt;=₱2,000):</strong> +₱20</li>
-          <li><strong>Hinterland / Mountain Route:</strong> +₱30 auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon, etc.)</li>
+          {% if tariff and tariff.pasugo_fee != tariff.pabili_fee %}
+          <li><strong>Pabili Service:</strong> Additional ₱{{ tariff.pabili_fee }} &bull; <strong>Pasugo / Errand:</strong> Additional ₱{{ tariff.pasugo_fee }}</li>
+          {% else %}
+          <li><strong>Pasugo / Pabili Service:</strong> Additional ₱{{ tariff.pabili_fee if tariff else 20 }} (Meter + ₱{{ tariff.pabili_fee if tariff else 20 }})</li>
+          {% endif %}
+          <li><strong>Large Store Queuing:</strong> +₱{{ tariff.queuing_fee if tariff else 30 }} when queuing at Gaisano, Davilett, Nene Uy</li>
+          <li><strong>Additional Store Stops:</strong> +₱{{ tariff.extra_store_fee if tariff else 20 }} per extra store</li>
+          <li><strong>Bulky Orders (&gt;=₱2,000):</strong> +₱{{ tariff.bulky_fee if tariff else 20 }}</li>
+          <li><strong>Hinterland / Mountain Route:</strong> +₱{{ tariff.hinterland_fee if tariff else 30 }} auto-added for steep climbs (Soro-soro, Utopia, Highland, Ardent, Katibawasan, Binunsaran, Tagdo, Timogsay, Upper Cogon, etc.)</li>
         </ul>
       </div>
     </div>
@@ -833,6 +814,7 @@
 <script>
   window.SERVER_ACTIVE_BOOKING = {{ active_booking | tojson if active_booking else 'null' }};
   window.SERVER_ACTIVE_TRIPS = {{ active_trips | tojson if active_trips else '[]' }};
+  window.CCRC_TARIFF = {{ tariff | tojson if tariff else 'null' }};
 </script>
-<script src="/static/js/app.js?v=35"></script>
+<script src="/static/js/app.js?v=36"></script>
 {% endblock %}
