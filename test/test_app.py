@@ -2062,6 +2062,28 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         p.feed(rider_html)
         self.assertIs(p.scheduled_inside_banner, False)
 
+    def test_share_app_qr_button_and_modal_on_customer_rider_and_admin(self):
+        # 1. Customer Home Dashboard
+        home_html = self.client.get("/").get_data(as_text=True)
+        self.assertIn('id="open-customer-qr-btn"', home_html)
+        self.assertIn('id="ccrc-share-qr-modal"', home_html)
+        self.assertIn("window.openCcrcQrModal('main', false)", home_html)
+
+        # 2. Rider Dashboard
+        rider_html = self.client.get("/rider").get_data(as_text=True)
+        self.assertIn('id="open-rider-qr-btn"', rider_html)
+        self.assertIn('id="ccrc-share-qr-modal"', rider_html)
+        self.assertIn("window.openCcrcQrModal('main', true)", rider_html)
+
+        # 3. Authenticated Admin Dashboard
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["admin_ts"] = time.time()
+        admin_html = self.client.get("/admin").get_data(as_text=True)
+        self.assertIn('id="open-admin-qr-btn"', admin_html)
+        self.assertIn('id="ccrc-share-qr-modal"', admin_html)
+        self.assertIn("window.openCcrcQrModal('main', true)", admin_html)
+
 
 if __name__ == "__main__":
     unittest.main()
