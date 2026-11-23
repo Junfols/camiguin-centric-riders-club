@@ -215,6 +215,41 @@
     background: rgba(255,255,255,0.25);
     color: #ffffff;
   }
+
+  /* Backup Destination Chooser (Device vs Cloud) */
+  .backup-dest-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 8px 0 10px;
+  }
+  .backup-dest-card {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .backup-dest-card:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+  .backup-dest-card.active {
+    border-color: var(--primary, #ea580c);
+    background: #fff7ed;
+    box-shadow: 0 2px 8px rgba(234,88,12,0.18);
+  }
+  .backup-dest-card input[type="radio"] {
+    display: none;
+  }
 </style>
 
 <div class="container page-admin-wrap" style="padding-top:1.2rem;padding-bottom:3rem;">
@@ -1111,18 +1146,41 @@
           I-backup o i-restore ang tanan data sa club (Riders, Bookings, Chats, Reviews, Settings).
         </p>
 
-        <!-- Export -->
+        <!-- Export: Choose Destination (Device vs Cloud) -->
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
-          <strong style="font-size:0.9rem;display:block;margin-bottom:4px;">1-Click Database Backup</strong>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <a href="/api/admin/backup" class="btn btn-primary btn-sm btn-block" style="text-align:center;padding:8px;text-decoration:none;">
-              ⬇️ Download Full Backup (.JSON)
-            </a>
-            <button type="button" id="gdrive-backup-btn" class="btn btn-sm btn-block" onclick="backupToGoogleDrive(event)" style="background:#0f172a;color:#ffffff;padding:8px;border:none;border-radius:6px;cursor:pointer;">
-              ☁️ I-Save sa Google Drive
-            </button>
+          <strong style="font-size:0.9rem;display:block;margin-bottom:2px;">Pili-a Asa I-save ang Backup</strong>
+          <small class="text-muted" style="font-size:0.76rem;display:block;">Pili kung sa imong device (cellphone/PC) o diretso sa cloud (Google Drive / Cloud app).</small>
+
+          <div class="backup-dest-grid" role="radiogroup" aria-label="Backup destination">
+            <label class="backup-dest-card active" id="backup-dest-device-card" onclick="selectBackupDestination('device')">
+              <input type="radio" id="backup-dest-device" name="backup_dest" value="device" checked>
+              <span style="font-size:1.35rem;line-height:1;">📱</span>
+              <strong style="font-size:0.84rem;color:#0f172a;">Sa Device</strong>
+              <small class="text-muted" style="font-size:0.7rem;line-height:1.25;">Download .JSON file sa phone/PC</small>
+            </label>
+
+            <label class="backup-dest-card" id="backup-dest-cloud-card" onclick="selectBackupDestination('cloud')">
+              <input type="radio" id="backup-dest-cloud" name="backup_dest" value="cloud">
+              <span style="font-size:1.35rem;line-height:1;">☁️</span>
+              <strong style="font-size:0.84rem;color:#0f172a;">Sa Cloud</strong>
+              <small class="text-muted" style="font-size:0.7rem;line-height:1.25;">Google Drive / Cloud Share</small>
+            </label>
           </div>
-          <div id="gdrive-status-msg" class="hidden" style="margin-top:8px;padding:6px 10px;border-radius:6px;font-size:0.78rem;"></div>
+
+          <div id="backup-cloud-hint" class="hidden" style="margin-bottom:10px;padding:7px 10px;border-radius:8px;font-size:0.75rem;line-height:1.4;{% if settings.google_drive_webhook_url %}background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;{% else %}background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;{% endif %}">
+            {% if settings.google_drive_webhook_url %}
+              <strong>🟢 Auto-Sync Connected:</strong> Mo-upload diretso sa imong Google Drive folder.
+            {% else %}
+              <strong>📱 Mobile / Cloud Share:</strong> Mo-abli sa Share Sheet aron makapili ka og <strong>Google Drive</strong>, OneDrive, o Dropbox.
+              <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:700;text-decoration:underline;margin-left:4px;">Setup Auto-Upload &rarr;</a>
+            {% endif %}
+          </div>
+
+          <button type="button" id="admin-backup-action-btn" class="btn btn-primary btn-sm btn-block" onclick="runAdminBackup()" style="padding:9px 12px;font-weight:700;border-radius:8px;cursor:pointer;">
+            📱 Save Backup to Device (.JSON)
+          </button>
+
+          <div id="gdrive-status-msg" class="hidden" style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:0.78rem;line-height:1.4;"></div>
         </div>
 
         <!-- Restore -->
@@ -1768,57 +1826,176 @@
     }
   };
 
-  // Google Drive Backup Main Function
-  window.backupToGoogleDrive = async function(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const btn = document.getElementById("gdrive-backup-btn");
-    const statusEl = document.getElementById("gdrive-status-msg");
-    if (!btn || !statusEl) {
-      console.error("Button or status container missing");
-      return;
+  // Backup Destination Chooser (Device vs Cloud)
+  const HAS_GDRIVE_WEBHOOK = Boolean({{ 'true' if settings.google_drive_webhook_url else 'false' }});
+  let _selectedBackupDest = "device";
+  let _isBackupRunning = false;
+  let _pendingCloudBackupFile = null;
+
+  function _triggerBlobDownload(blob, filename) {
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    }, 1000);
+  }
+
+  function _extractBackupFilename(res, fallbackName) {
+    const cd = res.headers ? (res.headers.get("Content-Disposition") || "") : "";
+    const match = cd.match(/filename="?([^";]+)"?/i);
+    if (match && match[1]) return match[1].trim();
+    const nowStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    return fallbackName || `ccrc_backup_${nowStr}.json`;
+  }
+
+  window.selectBackupDestination = function(dest) {
+    const chosen = dest === "cloud" ? "cloud" : "device";
+    _selectedBackupDest = chosen;
+
+    const devCard = document.getElementById("backup-dest-device-card");
+    const cldCard = document.getElementById("backup-dest-cloud-card");
+    const devRadio = document.getElementById("backup-dest-device");
+    const cldRadio = document.getElementById("backup-dest-cloud");
+    const cloudHint = document.getElementById("backup-cloud-hint");
+    const actionBtn = document.getElementById("admin-backup-action-btn");
+
+    if (devCard) devCard.classList.toggle("active", chosen === "device");
+    if (cldCard) cldCard.classList.toggle("active", chosen === "cloud");
+    if (devRadio) devRadio.checked = chosen === "device";
+    if (cldRadio) cldRadio.checked = chosen === "cloud";
+    if (cloudHint) cloudHint.classList.toggle("hidden", chosen !== "cloud");
+
+    if (actionBtn && !_isBackupRunning) {
+      if (chosen === "cloud") {
+        actionBtn.textContent = "☁️ Save Backup to Cloud (Google Drive)";
+        actionBtn.style.background = "#0f172a";
+        actionBtn.style.borderColor = "#0f172a";
+      } else {
+        actionBtn.textContent = "📱 Save Backup to Device (.JSON)";
+        actionBtn.style.background = "";
+        actionBtn.style.borderColor = "";
+      }
     }
 
-    const originalText = btn.innerHTML;
+    try {
+      localStorage.setItem("ccrc_admin_backup_dest", chosen);
+    } catch (_) {}
+  };
+
+  window.retryPendingCloudShare = async function() {
+    const statusEl = document.getElementById("gdrive-status-msg");
+    if (!_pendingCloudBackupFile || !navigator.share) return;
+    try {
+      await navigator.share({
+        title: "Camiguin Centric Riders Club - Backup",
+        text: "CCRC Database System Backup",
+        files: [_pendingCloudBackupFile]
+      });
+      if (statusEl) {
+        statusEl.className = "alert-success";
+        statusEl.textContent = "✅ Malampusong na-share / na-save sa Cloud!";
+      }
+      _pendingCloudBackupFile = null;
+    } catch (err) {
+      if (statusEl) {
+        statusEl.className = err.name === "AbortError" ? "alert-warning" : "alert-error";
+        statusEl.textContent = err.name === "AbortError"
+          ? "Gikanselar ang pag-share sa Cloud."
+          : "❌ Error: " + err.message;
+      }
+    }
+  };
+
+  window.runAdminBackup = async function(overrideDest) {
+    if (_isBackupRunning) return;
+    const dest = (overrideDest === "cloud" || overrideDest === "device") ? overrideDest : _selectedBackupDest;
+    const btn = document.getElementById("admin-backup-action-btn");
+    const statusEl = document.getElementById("gdrive-status-msg");
+    if (!btn || !statusEl) return;
+
+    _isBackupRunning = true;
+    const originalText = btn.textContent;
     btn.disabled = true;
     btn.style.opacity = "0.75";
-    btn.innerHTML = "<span>⏳</span> Naga-konektar sa Google Drive...";
-    statusEl.className = "alert-warning";
-    statusEl.textContent = "Naga-andam sa database snapshot para sa Google Drive...";
     statusEl.classList.remove("hidden");
 
     try {
-      // 1. Try server-side webhook upload
-      let serverData = null;
-      try {
+      if (dest === "device") {
+        btn.textContent = "⏳ Naga-andam sa Device Backup...";
+        statusEl.className = "alert-warning";
+        statusEl.textContent = "Naga-download sa database backup file...";
+
+        const res = await fetch("/api/admin/backup");
+        if (!res.ok) throw new Error("Dili ma-download ang backup gikan sa server.");
+        const blob = await res.blob();
+        const filename = _extractBackupFilename(res);
+
+        // Desktop Chrome/Edge: allow picking exact folder on device when available
+        if (typeof window.showSaveFilePicker === "function") {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: filename,
+              types: [{ description: "CCRC Backup (.JSON)", accept: { "application/json": [".json"] } }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            statusEl.className = "alert-success";
+            statusEl.innerHTML = `✅ Malampusong na-save sa imong device: <strong>${filename}</strong>`;
+            return;
+          } catch (pickErr) {
+            if (pickErr.name === "AbortError") {
+              statusEl.className = "alert-warning";
+              statusEl.textContent = "Gikanselar ang pag-save sa device.";
+              return;
+            }
+            // Fall back to direct browser download if picker is unavailable/blocked
+          }
+        }
+
+        _triggerBlobDownload(blob, filename);
+        statusEl.className = "alert-success";
+        statusEl.innerHTML = `✅ Na-download sa imong device: <strong>${filename}</strong> (tan-awa sa imong Downloads folder).`;
+        return;
+      }
+
+      // Cloud Backup flow
+      btn.textContent = "⏳ Naga-andam sa Cloud Backup...";
+      statusEl.className = "alert-warning";
+      statusEl.textContent = "Naga-andam sa database snapshot para sa Cloud...";
+
+      const webhookFieldVal = (document.getElementById("set-gdrive-webhook")?.value || "").trim();
+      if (HAS_GDRIVE_WEBHOOK || webhookFieldVal) {
         const res = await fetch("/api/admin/backup/google-drive", {
           method: "POST",
           headers: { "Content-Type": "application/json" }
         });
-        if (res.ok) {
-          serverData = await res.json();
+        const serverData = await res.json().catch(() => null);
+        if (res.ok && serverData && serverData.configured && serverData.success) {
+          statusEl.className = "alert-success";
+          statusEl.innerHTML = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} <br><a href="${serverData.file_url}" target="_blank" style="color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;">🔗 Ablihi ang File sa Google Drive &rarr;</a>`;
+          return;
         }
-      } catch (postErr) {
-        console.warn("Server webhook check bypassed:", postErr);
+        if (serverData && serverData.configured && !serverData.success) {
+          throw new Error(serverData.error || "Napakyas ang Google Drive webhook upload.");
+        }
       }
 
-      if (serverData && serverData.configured && serverData.success) {
-        statusEl.className = "alert-success";
-        statusEl.innerHTML = `✅ ${serverData.message || 'Malampusong na-save sa Google Drive!'} <br><a href="${serverData.file_url}" target="_blank" style="color:#0369a1;font-weight:700;text-decoration:underline;margin-top:4px;display:inline-block;">🔗 Ablihi ang File sa Google Drive &rarr;</a>`;
-        return;
-      }
-
-      // 2. Fetch the backup file blob for mobile share or direct upload
+      // Direct backup fetch for Android/iOS Share Sheet (Google Drive, OneDrive, Dropbox) or Desktop fallback
       const backupBlobRes = await fetch("/api/admin/backup");
       if (!backupBlobRes.ok) throw new Error("Dili ma-download ang backup gikan sa server.");
       const blob = await backupBlobRes.blob();
-      const nowStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      const filename = (serverData && serverData.filename) || `ccrc_backup_${nowStr}.json`;
+      const filename = _extractBackupFilename(backupBlobRes);
       const file = new File([blob], filename, { type: "application/json" });
 
-      // 3. Android Mobile: Web Share API (Save to Drive option)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         statusEl.className = "alert-warning";
-        statusEl.textContent = "📱 Gina-abli ang Android Share Sheet... Pilia ang 'Google Drive' / 'Save to Drive'.";
+        statusEl.textContent = "📱 Gina-abli ang Share Sheet... Pilia ang Google Drive, OneDrive, o Dropbox.";
         try {
           await navigator.share({
             title: "Camiguin Centric Riders Club - Backup",
@@ -1826,50 +2003,54 @@
             files: [file]
           });
           statusEl.className = "alert-success";
-          statusEl.textContent = "✅ Malampusong na-share / na-save sa Google Drive!";
+          statusEl.textContent = "✅ Malampusong na-share / na-save sa Cloud!";
           return;
         } catch (shareErr) {
           if (shareErr.name === "AbortError") {
             statusEl.className = "alert-warning";
-            statusEl.textContent = "Gikanselar ang share dialog. Na-save gihapon ang backup file.";
+            statusEl.textContent = "Gikanselar ang Cloud Share.";
+            return;
           }
+          // If transient user gesture expired during fetch, offer instant 1-tap share button
+          _pendingCloudBackupFile = file;
+          statusEl.className = "alert-warning";
+          statusEl.innerHTML = `☁️ Andam na ang <strong>${filename}</strong> para sa Cloud.<br><button type="button" onclick="retryPendingCloudShare()" class="btn btn-primary btn-sm" style="margin-top:6px;padding:6px 12px;">☁️ I-tap Diri Aron Mopili og Cloud App &rarr;</button>`;
+          return;
         }
       }
 
-      // 4. Desktop / Fallback: Download file directly and open Google Drive in new tab
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 1000);
-
+      // Desktop fallback (no Share Sheet & no Webhook configured)
+      _triggerBlobDownload(blob, filename);
       window.open("https://drive.google.com/drive/my-drive", "_blank");
-
       statusEl.className = "alert-success";
-      statusEl.innerHTML = `📥 Na-download ang <strong>${filename}</strong> ug naablihan ang <strong>Google Drive</strong> sa bag-ong tab!<br>
-      I-drag &amp; drop o i-upload lang kini ngadto sa imong Google Drive.<br>
-      <small class="text-muted"><a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;">Gusto ka'g 1-click Awtomatikong Cloud Sync? I-set up ang Webhook &rarr;</a></small>`;
-
+      statusEl.innerHTML = `📥 Na-download ang <strong>${filename}</strong> ug naablihan ang <strong>Google Drive</strong> sa bag-ong tab — i-upload lang kini didto.<br>
+      <small class="text-muted"><a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;">Gusto ka'g 1-click Auto-Upload sa Google Drive? I-set up ang Webhook &rarr;</a></small>`;
     } catch (err) {
       statusEl.className = "alert-error";
       statusEl.textContent = "❌ Error: " + err.message;
     } finally {
+      _isBackupRunning = false;
       btn.disabled = false;
       btn.style.opacity = "1";
-      btn.innerHTML = originalText;
+      btn.textContent = originalText;
+      window.selectBackupDestination(_selectedBackupDest);
     }
   };
 
-  // Add event listener directly to button in addition to inline onclick
-  const gdriveBtn = document.getElementById("gdrive-backup-btn");
-  if (gdriveBtn) {
-    gdriveBtn.addEventListener("click", window.backupToGoogleDrive);
-  }
+  // Backwards-compatible alias
+  window.backupToGoogleDrive = function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    window.selectBackupDestination("cloud");
+    return window.runAdminBackup("cloud");
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try {
+      if (!document.getElementById("admin-backup-action-btn")) return;
+      const savedDest = localStorage.getItem("ccrc_admin_backup_dest");
+      window.selectBackupDestination(savedDest === "cloud" ? "cloud" : "device");
+    } catch (_) {}
+  });
 
   // Live Club Advisory & Announcement Broadcast Handlers
   window.applyAdvisoryPreset = function(cat, title, msg) {
