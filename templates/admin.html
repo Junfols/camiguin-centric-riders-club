@@ -1043,7 +1043,7 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="set-base-fare">Base Meter Fare (₱) *</label>
-              <input type="number" id="set-base-fare" name="base_fare" value="{{ settings.base_fare }}" required min="20">
+              <input type="number" id="set-base-fare" name="base_fare" value="{{ settings.base_fare }}" required step="any" min="20">
             </div>
             <div class="form-group">
               <label for="set-base-km">Covered Base Distance (km) *</label>
@@ -1054,11 +1054,11 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="set-per-km">Per Km Rate (₱/km) *</label>
-              <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required min="5">
+              <input type="number" id="set-per-km" name="per_km_rate" value="{{ settings.per_km_rate }}" required step="any" min="5">
             </div>
             <div class="form-group">
               <label for="set-min-fare">Minimum Trip Fare (₱) *</label>
-              <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required min="20">
+              <input type="number" id="set-min-fare" name="min_fare" value="{{ settings.min_fare }}" required step="any" min="20">
             </div>
           </div>
 
@@ -1066,22 +1066,22 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="set-pabili-fee">Pabili / Buy-For-Me Fee</label>
-              <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee }}">
+              <input type="number" id="set-pabili-fee" name="pabili_service_fee" value="{{ settings.pabili_service_fee }}" step="any" min="0">
             </div>
             <div class="form-group">
               <label for="set-pasugo-fee">Pasugo / Errand Fee</label>
-              <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee }}">
+              <input type="number" id="set-pasugo-fee" name="pasugo_service_fee" value="{{ settings.pasugo_service_fee }}" step="any" min="0">
             </div>
           </div>
 
           <div class="form-grid-2">
             <div class="form-group">
               <label for="set-queuing-fee">Queuing / Waiting Fee</label>
-              <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee }}">
+              <input type="number" id="set-queuing-fee" name="queuing_fee" value="{{ settings.queuing_fee }}" step="any" min="0">
             </div>
             <div class="form-group">
               <label for="set-hinterland-fee">Mountain / Trail Surcharge</label>
-              <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee }}">
+              <input type="number" id="set-hinterland-fee" name="hinterland_fee" value="{{ settings.hinterland_fee }}" step="any" min="0">
             </div>
           </div>
 

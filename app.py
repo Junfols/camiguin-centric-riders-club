@@ -395,6 +395,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "tagline": settings.get("tagline", "Express Ride-Hailing, Courier, & Errand Services in Camiguin Island"),
                 "hotline": settings.get("hotline", "0917 555 0199"),
                 "base_fare": settings.get("base_fare", "40"),
+                "base_km": settings.get("base_km", "2"),
                 "per_km_rate": settings.get("per_km_rate", "18"),
                 "min_fare": settings.get("min_fare", "40"),
                 "pabili_service_fee": settings.get("pabili_service_fee", "20"),
@@ -409,6 +410,53 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "db_backend": getattr(conn, "backend", "sqlite"),
             "year": datetime.now().year,
         }
+
+    def _build_tariff_context(settings: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        def _f(key: str, default: float) -> float:
+            val = settings.get(key)
+            if val is None or str(val).strip() == "":
+                return default
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                return default
+
+        def _fmt_num(val: float) -> str:
+            return str(int(val)) if val == int(val) else f"{val:g}"
+
+        base_fare = _f("base_fare", 40.0)
+        base_km = _f("base_km", 2.0)
+        per_km_rate = _f("per_km_rate", 18.0)
+        min_fare = _f("min_fare", 40.0)
+        pabili_fee = _f("pabili_service_fee", 20.0)
+        pasugo_fee = _f("pasugo_service_fee", pabili_fee)
+        queuing_fee = _f("queuing_fee", 30.0)
+        extra_store_fee = _f("extra_store_fee", 20.0)
+        bulky_fee = _f("bulky_order_fee", 20.0)
+        hinterland_fee = _f("hinterland_fee", 30.0)
+
+        tariff = {
+            "base_fare": int(round(base_fare)),
+            "base_km": base_km,
+            "base_km_label": _fmt_num(base_km),
+            "per_km_rate": int(round(per_km_rate)) if per_km_rate == int(per_km_rate) else round(per_km_rate, 2),
+            "min_fare": int(round(min_fare)),
+            "pabili_fee": int(round(pabili_fee)),
+            "pasugo_fee": int(round(pasugo_fee)),
+            "queuing_fee": int(round(queuing_fee)),
+            "extra_store_fee": int(round(extra_store_fee)),
+            "bulky_fee": int(round(bulky_fee)),
+            "hinterland_fee": int(round(hinterland_fee)),
+        }
+        matrix_rows = []
+        for km in range(1, 31):
+            fare_val, _, _ = calculate_fare(float(km), "pahatud", settings)
+            matrix_rows.append({
+                "km": km,
+                "label": "1 KM" if km == 1 else f"{km} KMS",
+                "fare": int(round(fare_val)),
+            })
+        return tariff, matrix_rows
 
     @app.get("/manifest.webmanifest")
     def manifest():
@@ -500,6 +548,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         online_riders = get_online_riders(conn)
         settings = get_settings(conn)
+        tariff, fare_matrix_rows = _build_tariff_context(settings)
 
         active_booking = None
         code = session.get("active_booking_code")
@@ -514,6 +563,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "index.html",
             online_riders_count=len(online_riders),
             settings=settings,
+            tariff=tariff,
+            fare_matrix_rows=fare_matrix_rows,
             active_nav="book",
             active_booking=active_booking,
         )
@@ -1373,7 +1424,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
 
         if is_hinterland and "hinterland" not in item_notes.lower() and "bukid" not in item_notes.lower():
-            tag = "[🏔️ Hinterland / Bukid Route +₱30]"
+            h_raw = settings.get("hinterland_fee")
+            try:
+                h_fee_val = int(round(float(h_raw))) if (h_raw is not None and str(h_raw).strip() != "") else 30
+            except (TypeError, ValueError):
+                h_fee_val = 30
+            tag = f"[🏔️ Hinterland / Bukid Route +₱{h_fee_val}]"
             item_notes = f"{tag} {item_notes}".strip()
 
         fare_amount, estimated_km, breakdown = calculate_fare(
@@ -2629,13 +2685,28 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         conn = get_db()
         data = request.get_json(silent=True) or {}
         updates = {}
+        numeric_keys = {
+            "base_fare", "base_km", "per_km_rate", "min_fare",
+            "pabili_service_fee", "pasugo_service_fee", "queuing_fee",
+            "extra_store_fee", "bulky_order_fee", "hinterland_fee",
+        }
         for key in (
             "club_name", "tagline", "hotline", "base_fare", "base_km", "per_km_rate", "min_fare",
             "pabili_service_fee", "pasugo_service_fee", "queuing_fee", "extra_store_fee", "bulky_order_fee", "hinterland_fee",
             "google_drive_webhook_url"
         ):
             if key in data:
-                updates[key] = str(data[key]).strip()
+                raw_val = str(data[key]).strip()
+                if key in numeric_keys:
+                    if raw_val == "":
+                        continue
+                    try:
+                        parsed = float(raw_val)
+                    except (TypeError, ValueError):
+                        return jsonify({"error": f"Invalid numeric value for {key}."}), 400
+                    if parsed < 0:
+                        return jsonify({"error": f"{key} cannot be negative."}), 400
+                updates[key] = raw_val
 
         if updates:
             update_settings(conn, updates)
