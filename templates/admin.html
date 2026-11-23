@@ -1120,18 +1120,6 @@
             </div>
           </div>
 
-          <h4 style="margin:14px 0 8px;font-size:0.92rem;display:flex;align-items:center;gap:6px;color:#334155;">
-            <span>☁️</span> Google Drive Cloud Backup (Optional)
-          </h4>
-          <div class="form-group">
-            <label for="set-gdrive-webhook">Google Drive Webhook URL</label>
-            <input type="url" id="set-gdrive-webhook" name="google_drive_webhook_url" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec">
-            <small class="text-muted" style="display:block;margin-top:4px;font-size:0.75rem;">
-              Awtomatikong i-upload ang backup diretso sa imong Google Drive.
-              <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;margin-left:4px;">Unsaon kini? &rarr;</a>
-            </small>
-          </div>
-
           <div id="settings-save-success" class="alert-success hidden" style="margin-top:10px;">Fare settings saved successfully!</div>
           <button type="submit" id="save-settings-btn" class="btn btn-primary btn-block" style="margin-top:12px;padding:10px;">Save Taripa Settings</button>
         </form>
@@ -1167,13 +1155,24 @@
             </label>
           </div>
 
-          <div id="backup-cloud-hint" class="hidden" style="margin-bottom:10px;padding:7px 10px;border-radius:8px;font-size:0.75rem;line-height:1.4;{% if settings.google_drive_webhook_url %}background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;{% else %}background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;{% endif %}">
-            {% if settings.google_drive_webhook_url %}
-              <strong>🟢 Auto-Sync Connected:</strong> Mo-upload diretso sa imong Google Drive folder.
-            {% else %}
-              <strong>📱 Mobile / Cloud Share:</strong> Mo-abli sa Share Sheet aron makapili ka og <strong>Google Drive</strong>, OneDrive, o Dropbox.
-              <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:700;text-decoration:underline;margin-left:4px;">Setup Auto-Upload &rarr;</a>
-            {% endif %}
+          <div id="backup-cloud-hint" class="hidden" style="margin-bottom:10px;padding:8px 10px;border-radius:8px;font-size:0.76rem;line-height:1.4;{% if settings.google_drive_webhook_url %}background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;{% else %}background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;{% endif %}">
+            <div id="backup-cloud-hint-summary">
+              {% if settings.google_drive_webhook_url %}
+                <strong>🟢 Auto-Sync Connected:</strong> Mo-upload diretso sa imong Google Drive folder.
+              {% else %}
+                <strong>📱 Mobile / Cloud Share:</strong> Mo-abli sa Share Sheet aron makapili ka og <strong>Google Drive</strong>, OneDrive, o Dropbox.
+              {% endif %}
+            </div>
+            <details style="margin-top:6px;">
+              <summary style="cursor:pointer;font-weight:700;color:#0284c7;">⚙️ Optional: Google Drive Auto-Upload Webhook</summary>
+              <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cbd5e1;">
+                <input type="url" id="set-gdrive-webhook" value="{{ settings.google_drive_webhook_url or '' }}" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%;padding:7px 9px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;color:#0f172a;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                  <a href="javascript:void(0)" onclick="openGdriveGuideModal()" style="color:#0284c7;font-weight:600;text-decoration:underline;">Unsaon kini? &rarr;</a>
+                  <button type="button" id="save-gdrive-webhook-btn" onclick="saveGdriveWebhook()" class="btn btn-sm" style="background:#0284c7;color:#ffffff;border:none;border-radius:6px;padding:5px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;">Save Webhook</button>
+                </div>
+              </div>
+            </details>
           </div>
 
           <button type="button" id="admin-backup-action-btn" class="btn btn-primary btn-sm btn-block" onclick="runAdminBackup()" style="padding:9px 12px;font-weight:700;border-radius:8px;cursor:pointer;">
@@ -1827,7 +1826,7 @@
   };
 
   // Backup Destination Chooser (Device vs Cloud)
-  const HAS_GDRIVE_WEBHOOK = Boolean({{ 'true' if settings.google_drive_webhook_url else 'false' }});
+  let _hasGdriveWebhook = Boolean({{ 'true' if settings.google_drive_webhook_url else 'false' }});
   let _selectedBackupDest = "device";
   let _isBackupRunning = false;
   let _pendingCloudBackupFile = null;
@@ -1911,6 +1910,61 @@
     }
   };
 
+  window.saveGdriveWebhook = async function() {
+    const input = document.getElementById("set-gdrive-webhook");
+    const btn = document.getElementById("save-gdrive-webhook-btn");
+    const statusEl = document.getElementById("gdrive-status-msg");
+    const summaryEl = document.getElementById("backup-cloud-hint-summary");
+    const hintBox = document.getElementById("backup-cloud-hint");
+    if (!input) return;
+
+    const urlVal = (input.value || "").trim();
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+    }
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ google_drive_webhook_url: urlVal })
+      });
+      if (!res.ok) throw new Error("Failed to save webhook URL.");
+      _hasGdriveWebhook = Boolean(urlVal);
+      if (summaryEl && hintBox) {
+        if (urlVal) {
+          summaryEl.innerHTML = "<strong>🟢 Auto-Sync Connected:</strong> Mo-upload diretso sa imong Google Drive folder.";
+          hintBox.style.background = "#ecfdf5";
+          hintBox.style.borderColor = "#a7f3d0";
+          hintBox.style.color = "#065f46";
+        } else {
+          summaryEl.innerHTML = "<strong>📱 Mobile / Cloud Share:</strong> Mo-abli sa Share Sheet aron makapili ka og <strong>Google Drive</strong>, OneDrive, o Dropbox.";
+          hintBox.style.background = "#eff6ff";
+          hintBox.style.borderColor = "#bfdbfe";
+          hintBox.style.color = "#1e40af";
+        }
+      }
+      if (statusEl) {
+        statusEl.className = "alert-success";
+        statusEl.textContent = urlVal
+          ? "✅ Na-save na ang Google Drive Webhook URL!"
+          : "✅ Gi-clear ang Google Drive Webhook URL.";
+        statusEl.classList.remove("hidden");
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.className = "alert-error";
+        statusEl.textContent = "❌ Error: " + err.message;
+        statusEl.classList.remove("hidden");
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Save Webhook";
+      }
+    }
+  };
+
   window.runAdminBackup = async function(overrideDest) {
     if (_isBackupRunning) return;
     const dest = (overrideDest === "cloud" || overrideDest === "device") ? overrideDest : _selectedBackupDest;
@@ -1926,42 +1980,51 @@
 
     try {
       if (dest === "device") {
+        // Mobile / browsers without Save-As picker: stream straight to native browser download manager immediately
+        if (typeof window.showSaveFilePicker !== "function") {
+          const a = document.createElement("a");
+          a.href = "/api/admin/backup";
+          a.setAttribute("download", "");
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => a.remove(), 500);
+          statusEl.className = "alert-success";
+          statusEl.textContent = "✅ Gisugdan na ang download sa imong device (tan-awa sa imong Downloads notification/folder).";
+          return;
+        }
+
+        // Desktop Chrome/Edge: allow picking exact folder on device
         btn.textContent = "⏳ Naga-andam sa Device Backup...";
         statusEl.className = "alert-warning";
-        statusEl.textContent = "Naga-download sa database backup file...";
+        statusEl.textContent = "Naga-andam sa database backup file...";
 
         const res = await fetch("/api/admin/backup");
         if (!res.ok) throw new Error("Dili ma-download ang backup gikan sa server.");
         const blob = await res.blob();
         const filename = _extractBackupFilename(res);
 
-        // Desktop Chrome/Edge: allow picking exact folder on device when available
-        if (typeof window.showSaveFilePicker === "function") {
-          try {
-            const handle = await window.showSaveFilePicker({
-              suggestedName: filename,
-              types: [{ description: "CCRC Backup (.JSON)", accept: { "application/json": [".json"] } }]
-            });
-            const writable = await handle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            statusEl.className = "alert-success";
-            statusEl.innerHTML = `✅ Malampusong na-save sa imong device: <strong>${filename}</strong>`;
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: "CCRC Backup (.JSON)", accept: { "application/json": [".json"] } }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          statusEl.className = "alert-success";
+          statusEl.innerHTML = `✅ Malampusong na-save sa imong device: <strong>${filename}</strong>`;
+          return;
+        } catch (pickErr) {
+          if (pickErr.name === "AbortError") {
+            statusEl.className = "alert-warning";
+            statusEl.textContent = "Gikanselar ang pag-save sa device.";
             return;
-          } catch (pickErr) {
-            if (pickErr.name === "AbortError") {
-              statusEl.className = "alert-warning";
-              statusEl.textContent = "Gikanselar ang pag-save sa device.";
-              return;
-            }
-            // Fall back to direct browser download if picker is unavailable/blocked
           }
+          _triggerBlobDownload(blob, filename);
+          statusEl.className = "alert-success";
+          statusEl.innerHTML = `✅ Na-download sa imong device: <strong>${filename}</strong> (tan-awa sa imong Downloads folder).`;
+          return;
         }
-
-        _triggerBlobDownload(blob, filename);
-        statusEl.className = "alert-success";
-        statusEl.innerHTML = `✅ Na-download sa imong device: <strong>${filename}</strong> (tan-awa sa imong Downloads folder).`;
-        return;
       }
 
       // Cloud Backup flow
@@ -1969,8 +2032,7 @@
       statusEl.className = "alert-warning";
       statusEl.textContent = "Naga-andam sa database snapshot para sa Cloud...";
 
-      const webhookFieldVal = (document.getElementById("set-gdrive-webhook")?.value || "").trim();
-      if (HAS_GDRIVE_WEBHOOK || webhookFieldVal) {
+      if (_hasGdriveWebhook) {
         const res = await fetch("/api/admin/backup/google-drive", {
           method: "POST",
           headers: { "Content-Type": "application/json" }

@@ -1962,6 +1962,10 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn('id="admin-backup-action-btn"', html)
         self.assertIn("window.selectBackupDestination = function", html)
         self.assertIn("window.runAdminBackup = async function", html)
+        self.assertIn("window.saveGdriveWebhook = async function", html)
+        # Ensure Taripa form stays clean with NO duplicate backup section inside it
+        taripa_form = html.split('id="admin-settings-form"', 1)[1].split("</form>", 1)[0]
+        self.assertNotIn("set-gdrive-webhook", taripa_form)
         # Ensure /api/admin/backup endpoint still downloads valid JSON
         bkp = self.client.get("/api/admin/backup")
         self.assertEqual(bkp.status_code, 200)
