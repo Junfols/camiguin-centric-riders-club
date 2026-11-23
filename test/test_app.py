@@ -1957,12 +1957,18 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         html = resp.get_data(as_text=True)
 
-        self.assertIn('id="backup-dest-device"', html)
-        self.assertIn('id="backup-dest-cloud"', html)
         self.assertIn('id="admin-backup-action-btn"', html)
-        self.assertIn("window.selectBackupDestination = function", html)
+        self.assertIn('id="admin-backup-share-btn"', html)
+        self.assertIn('id="gdrive-webhook-upload-btn"', html)
+        self.assertIn('id="set-gdrive-webhook"', html)
         self.assertIn("window.runAdminBackup = async function", html)
         self.assertIn("window.saveGdriveWebhook = async function", html)
+        # Ensure window.showSaveFilePicker is invoked BEFORE fetch("/api/admin/backup") so browser keeps user gesture
+        run_fn = html.split("window.runAdminBackup = async function", 1)[1].split("window.backupToGoogleDrive", 1)[0]
+        picker_idx = run_fn.find("window.showSaveFilePicker(")
+        fetch_idx = run_fn.find('fetch("/api/admin/backup"')
+        self.assertGreater(picker_idx, 0)
+        self.assertGreater(fetch_idx, picker_idx)
         # Ensure Taripa form stays clean with NO duplicate backup section inside it
         taripa_form = html.split('id="admin-settings-form"', 1)[1].split("</form>", 1)[0]
         self.assertNotIn("set-gdrive-webhook", taripa_form)
