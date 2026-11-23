@@ -33,6 +33,7 @@ from db import (
     CAMIGUIN_KNOWN_PLACES,
     export_full_backup,
     restore_full_backup,
+    reset_launch_data,
     add_booking_message,
     get_booking_messages,
     accept_booking,
@@ -2833,6 +2834,47 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except Exception as e:
             conn.rollback()
             return jsonify({"error": f"Restore failed: {str(e)}"}), 500
+
+    @app.post("/api/admin/reset-launch-data")
+    def admin_reset_launch_data():
+        if not _admin_ok():
+            return jsonify({"error": "Admin login required."}), 401
+        if (rl := _throttle("admin_reset", _client_ip(), 5, 900)):
+            return rl
+
+        payload = request.get_json(silent=True) or {}
+        confirm_text = (payload.get("confirm_text") or "").strip()
+        if confirm_text != "RESET":
+            return jsonify({"error": "Please type RESET (all caps) to confirm."}), 400
+
+        admin_pwd = (payload.get("admin_password") or "").strip()
+        conn = get_db()
+        settings = get_settings(conn)
+        stored_hash = settings.get("admin_password_hash") or ""
+        if not stored_hash or not admin_pwd or not check_password_hash(stored_hash, admin_pwd):
+            return jsonify({"error": "Incorrect admin password. Action aborted."}), 403
+
+        wipe_bookings = bool(payload.get("wipe_bookings", False))
+        wipe_customers = bool(payload.get("wipe_customers", False))
+        wipe_riders = bool(payload.get("wipe_riders", False))
+
+        if not (wipe_bookings or wipe_customers or wipe_riders):
+            return jsonify({"error": "Please select at least one category to clear."}), 400
+
+        try:
+            result = reset_launch_data(
+                conn,
+                wipe_bookings=wipe_bookings,
+                wipe_customers=wipe_customers,
+                wipe_riders=wipe_riders,
+            )
+            conn.commit()
+            if wipe_bookings:
+                session.pop("active_booking_code", None)
+            return jsonify(result)
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": f"Reset failed: {str(e)}"}), 500
 
     @app.post("/api/admin/backup/google-drive")
     def admin_upload_backup_google_drive():

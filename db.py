@@ -7929,6 +7929,123 @@ def restore_full_backup(
     }
 
 
+def reset_launch_data(
+    conn: DatabaseConnection,
+    wipe_bookings: bool = True,
+    wipe_customers: bool = False,
+    wipe_riders: bool = False,
+) -> dict[str, Any]:
+    """
+    Clears selected operational/test data for a fresh club launch while ALWAYS preserving
+    club settings, admin credentials, and Taripa / fare matrix configuration.
+    Safe for both SQLite and PostgreSQL (deletes in child-first foreign-key order and
+    preserves uploaded_media referenced by kept riders/customers/bookings).
+    """
+    cleared: dict[str, int] = {
+        "bookings": 0,
+        "transactions": 0,
+        "booking_messages": 0,
+        "reviews": 0,
+        "tracking_logs": 0,
+        "call_sessions": 0,
+        "rider_call_sessions": 0,
+        "customers": 0,
+        "riders": 0,
+        "uploaded_media": 0,
+    }
+    emptied_seq_tables: list[str] = []
+
+    def _delete_table(table: str) -> int:
+        row = conn.execute(f"SELECT COUNT(*) AS c FROM {table}").fetchone()
+        cnt = int(row["c"] if row else 0)
+        conn.execute(f"DELETE FROM {table}")
+        return cnt
+
+    if wipe_bookings:
+        _delete_table("call_signals")
+        cleared["call_sessions"] = _delete_table("call_sessions")
+        cleared["booking_messages"] = _delete_table("booking_messages")
+        cleared["tracking_logs"] = _delete_table("tracking_logs")
+        cleared["transactions"] = _delete_table("transactions")
+        cleared["reviews"] = _delete_table("reviews")
+        cleared["bookings"] = _delete_table("bookings")
+        conn.execute("UPDATE promo_codes SET uses_count = 0")
+        emptied_seq_tables.extend([
+            "call_signals", "call_sessions", "booking_messages",
+            "tracking_logs", "transactions", "reviews", "bookings",
+        ])
+
+    if wipe_customers:
+        cleared["customers"] = _delete_table("customers")
+        emptied_seq_tables.append("customers")
+    elif wipe_bookings:
+        conn.execute("UPDATE customers SET total_rides = 0, total_spent = 0.0")
+
+    if wipe_riders:
+        _delete_table("rider_call_signals")
+        cleared["rider_call_sessions"] = _delete_table("rider_call_sessions")
+        if not wipe_bookings:
+            conn.execute("UPDATE transactions SET rider_id = NULL WHERE rider_id IS NOT NULL")
+        cleared["riders"] = _delete_table("riders")
+        emptied_seq_tables.extend(["rider_call_signals", "rider_call_sessions", "riders"])
+    elif wipe_bookings:
+        conn.execute("UPDATE riders SET total_trips = 0, rating_avg = 5.0")
+
+    # Remove only orphaned uploaded_media so kept riders/customers/bookings never lose their images
+    kept_media: set[str] = set()
+    media_pat = re.compile(r"/media/([^\s\"'<>\]\)]+)")
+
+    def _collect_media(query: str) -> None:
+        for r in conn.execute(query).fetchall():
+            for val in dict(r).values():
+                if val:
+                    for fname in media_pat.findall(str(val)):
+                        kept_media.add(fname)
+
+    _collect_media("SELECT avatar_url, gcash_qr_url FROM riders")
+    _collect_media("SELECT avatar_url FROM customers")
+    _collect_media("SELECT receipt_url, item_notes FROM bookings")
+    _collect_media("SELECT media_url, message FROM booking_messages")
+
+    all_media_rows = conn.execute("SELECT filename FROM uploaded_media").fetchall()
+    for mr in all_media_rows:
+        fname = mr["filename"]
+        if fname not in kept_media:
+            conn.execute("DELETE FROM uploaded_media WHERE filename = ?", (fname,))
+            cleared["uploaded_media"] += 1
+
+    # Reset auto-increment ID sequences for emptied tables
+    if conn.backend == "postgresql":
+        for seq_tbl in emptied_seq_tables:
+            conn.execute(
+                f"SELECT setval(pg_get_serial_sequence('{seq_tbl}', 'id'), 1, false)"
+            )
+    elif conn.backend == "sqlite" and emptied_seq_tables:
+        has_seq = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'"
+        ).fetchone()
+        if has_seq:
+            for seq_tbl in emptied_seq_tables:
+                conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (seq_tbl,))
+
+    parts = []
+    if wipe_bookings:
+        parts.append(f"{cleared['bookings']} bookings, {cleared['transactions']} transactions, {cleared['reviews']} reviews, {cleared['booking_messages']} chats")
+    if wipe_customers:
+        parts.append(f"{cleared['customers']} passengers")
+    if wipe_riders:
+        parts.append(f"{cleared['riders']} riders")
+    if cleared["uploaded_media"]:
+        parts.append(f"{cleared['uploaded_media']} old media files")
+
+    summary_text = ", ".join(parts) if parts else "0 records"
+    return {
+        "success": True,
+        "cleared": cleared,
+        "message": f"Cleared {summary_text}. Admin password, Taripa / Fare Settings, and Club Settings were preserved.",
+    }
+
+
 # -------------------------------------------------------------------------
 # Customer Profiles, Verification & History
 # -------------------------------------------------------------------------

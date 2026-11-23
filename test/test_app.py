@@ -1813,6 +1813,141 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         ).get_json()
         self.assertEqual(est_after["fare_amount"], 80.0)
 
+    def test_admin_reset_launch_data_safety_and_selective_clearing(self):
+        from db import get_connection, save_uploaded_media, create_review, add_booking_message
+
+        # 1. Seed rider (with avatar), customer, custom tariff, booking (with receipt + chat + review)
+        r_id = self._create_active_rider(name="Real Club Rider", phone="09170000091")
+        c_id = self._create_customer(name="Test Customer Launch", phone="09180000092")
+
+        conn = get_connection(self.db_path)
+        try:
+            rider_avatar = save_uploaded_media(conn, "rider_keep.png", b"\x89PNG\r\n\x1a\nkept", "image/png")
+            receipt_img = save_uploaded_media(conn, "receipt_old.png", b"\x89PNG\r\n\x1a\nold", "image/png")
+            conn.execute("UPDATE riders SET avatar_url = ?, total_trips = 7, rating_avg = 4.2 WHERE id = ?", (rider_avatar, r_id))
+            conn.execute("UPDATE customers SET total_rides = 3, total_spent = 250.0 WHERE id = ?", (c_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+        bk = self.client.post("/api/bookings", json={
+            "customer_name": "Test Customer Launch",
+            "customer_phone": "09180000092",
+            "pickup_address": "Balbagon Port",
+            "dropoff_address": "Mambajao Public Market",
+            "service_type": "pahatud",
+        }).get_json()["booking"]
+
+        conn = get_connection(self.db_path)
+        try:
+            conn.execute("UPDATE bookings SET receipt_url = ? WHERE id = ?", (receipt_img, bk["id"]))
+            add_booking_message(conn, bk["id"], "customer", "Test Customer Launch", "Test chat message")
+            create_review(conn, bk["id"], r_id, "Test Customer Launch", 5, "Great test ride")
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Unauthenticated request must fail (401)
+        unauth = self.client.post("/api/admin/reset-launch-data", json={
+            "confirm_text": "RESET", "admin_password": "admin1234", "wipe_bookings": True
+        })
+        self.assertEqual(unauth.status_code, 401)
+
+        # Authenticate as admin and customize tariff
+        with self.client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["admin_ts"] = time.time()
+
+        self.client.post("/api/admin/settings", json={"base_fare": "45", "per_km_rate": "20"})
+
+        # Missing RESET confirmation -> 400
+        bad_confirm = self.client.post("/api/admin/reset-launch-data", json={
+            "confirm_text": "reset", "admin_password": "admin1234", "wipe_bookings": True
+        })
+        self.assertEqual(bad_confirm.status_code, 400)
+
+        # Wrong admin password -> 403
+        bad_pwd = self.client.post("/api/admin/reset-launch-data", json={
+            "confirm_text": "RESET", "admin_password": "wrongpassword", "wipe_bookings": True
+        })
+        self.assertEqual(bad_pwd.status_code, 403)
+
+        # No checkboxes selected -> 400
+        none_sel = self.client.post("/api/admin/reset-launch-data", json={
+            "confirm_text": "RESET", "admin_password": "admin1234",
+            "wipe_bookings": False, "wipe_customers": False, "wipe_riders": False,
+        })
+        self.assertEqual(none_sel.status_code, 400)
+
+        # 2. Selective reset: clear bookings/txns/chat/reviews only, KEEP riders + customers + settings
+        res1 = self.client.post("/api/admin/reset-launch-data", json={
+            "confirm_text": "RESET",
+            "admin_password": "admin1234",
+            "wipe_bookings": True,
+            "wipe_customers": False,
+            "wipe_riders": False,
+        })
+        self.assertEqual(res1.status_code, 200)
+        body1 = res1.get_json()
+        self.assertTrue(body1["success"])
+        self.assertEqual(body1["cleared"]["bookings"], 1)
+        self.assertEqual(body1["cleared"]["reviews"], 1)
+        self.assertEqual(body1["cleared"]["booking_messages"], 1)
+        self.assertEqual(body1["cleared"]["riders"], 0)
+        self.assertEqual(body1["cleared"]["customers"], 0)
+
+        conn = get_connection(self.db_path)
+        try:
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM bookings").fetchone()["c"], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM transactions").fetchone()["c"], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM booking_messages").fetchone()["c"], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM reviews").fetchone()["c"], 0)
+            # Rider & customer kept with reset stats
+            rider_row = conn.execute("SELECT * FROM riders WHERE id = ?", (r_id,)).fetchone()
+            self.assertIsNotNone(rider_row)
+            self.assertEqual(rider_row["total_trips"], 0)
+            self.assertEqual(rider_row["rating_avg"], 5.0)
+            cust_row = conn.execute("SELECT * FROM customers WHERE id = ?", (c_id,)).fetchone()
+            self.assertIsNotNone(cust_row)
+            self.assertEqual(cust_row["total_rides"], 0)
+            self.assertEqual(cust_row["total_spent"], 0.0)
+            # Kept rider avatar preserved, old receipt media removed
+            media_names = {r["filename"] for r in conn.execute("SELECT filename FROM uploaded_media").fetchall()}
+            self.assertIn("rider_keep.png", media_names)
+            self.assertNotIn("receipt_old.png", media_names)
+            # Tariff settings preserved
+            self.assertEqual(conn.execute("SELECT value FROM settings WHERE key = 'base_fare'").fetchone()["value"], "45")
+        finally:
+            conn.close()
+
+        # 3. Full reset: clear riders & customers too, settings still preserved
+        res2 = self.client.post("/api/admin/reset-launch-data", json={
+            "confirm_text": "RESET",
+            "admin_password": "admin1234",
+            "wipe_bookings": True,
+            "wipe_customers": True,
+            "wipe_riders": True,
+        })
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(res2.get_json()["cleared"]["riders"], 1)
+        self.assertEqual(res2.get_json()["cleared"]["customers"], 1)
+
+        conn = get_connection(self.db_path)
+        try:
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM riders").fetchone()["c"], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM customers").fetchone()["c"], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM uploaded_media").fetchone()["c"], 0)
+            # Settings & admin password hash still intact
+            self.assertEqual(conn.execute("SELECT value FROM settings WHERE key = 'base_fare'").fetchone()["value"], "45")
+            self.assertTrue(conn.execute("SELECT value FROM settings WHERE key = 'admin_password_hash'").fetchone()["value"])
+        finally:
+            conn.close()
+
+        # Admin page renders the Clear Test Data panel cleanly
+        admin_html = self.client.get("/admin").get_data(as_text=True)
+        self.assertIn('id="admin-reset-launch-form"', admin_html)
+        self.assertIn("/api/admin/reset-launch-data", admin_html)
+
 
 if __name__ == "__main__":
     unittest.main()
