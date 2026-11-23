@@ -201,7 +201,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.before_request
     def make_session_permanent():
-        session.permanent = True
+        if request.path not in ("/api/health", "/health", "/healthz"):
+            session.permanent = True
 
     @app.before_request
     def csrf_origin_check():
@@ -456,6 +457,25 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/offline")
     def offline_page():
         return render_template("offline.html")
+
+    @app.get("/api/health")
+    @app.get("/health")
+    @app.get("/healthz")
+    def health():
+        raw_url = (os.environ.get("DATABASE_URL") or "").strip()
+        is_pg = (not app.config.get("TESTING")) and raw_url.startswith(("postgres://", "postgresql://"))
+        backend = "postgresql" if is_pg else "sqlite"
+        if (request.args.get("db") or "").strip().lower() in ("1", "true", "yes"):
+            conn = get_db()
+            conn.execute("SELECT 1").fetchone()
+            backend = getattr(conn, "backend", backend)
+        resp = jsonify({
+            "status": "ok",
+            "backend": backend,
+            "date": get_now_pht().date().isoformat(),
+        })
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     @app.get("/media/<path:filename>")
     def serve_uploaded_media(filename: str):
