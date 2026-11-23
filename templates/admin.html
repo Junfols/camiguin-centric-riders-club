@@ -1146,6 +1146,77 @@
         </div>
       </div>
     </div>
+
+    <!-- Fresh Launch / Clear Test Data Card (Protected Collapsible Danger Zone) -->
+    <div class="card" style="padding:14px 16px;margin-top:1rem;border:1.5px solid #fecaca;background:#fffafa;">
+      <details id="admin-launch-reset-panel">
+        <summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;color:#991b1b;font-size:0.98rem;">
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span>🧹</span>
+            <span>Fresh Launch / Clear Test Data</span>
+          </span>
+          <span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;font-size:0.72rem;padding:3px 9px;border-radius:10px;">
+            Tap to open &darr;
+          </span>
+        </summary>
+
+        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed #fca5a5;">
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.82rem;color:#7f1d1d;line-height:1.45;">
+            <strong>⚠️ Pahimangno:</strong> Gamita lang kini kung andam na mo mag-<strong>Official Launch</strong> ug gusto limpyohan ang mga test data.
+            <br>
+            <span style="color:#15803d;font-weight:600;">✅ Dili ma-delete ang imong Admin Password, Taripa / Fare Settings, ug Club Settings.</span>
+            <div style="margin-top:8px;">
+              <a href="/api/admin/backup" class="btn btn-sm" style="display:inline-block;background:#ffffff;color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:5px 10px;font-size:0.78rem;font-weight:600;text-decoration:none;">
+                ⬇️ Download Backup Una (.JSON)
+              </a>
+            </div>
+          </div>
+
+          <form id="admin-reset-launch-form">
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;font-size:0.84rem;color:#1e293b;">
+              <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;">
+                <input type="checkbox" id="reset-wipe-bookings" name="wipe_bookings" checked style="margin-top:2px;width:16px;height:16px;accent-color:#dc2626;">
+                <span>
+                  <strong>Clear Bookings, Transactions, Revenue (₱0), Chat, Calls, Reviews &amp; GPS Logs</strong><br>
+                  <small class="text-muted">I-reset pud ang trip count sa riders ug ride count sa customers balik sa 0.</small>
+                </span>
+              </label>
+
+              <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;">
+                <input type="checkbox" id="reset-wipe-customers" name="wipe_customers" style="margin-top:2px;width:16px;height:16px;accent-color:#dc2626;">
+                <span>
+                  <strong>Clear Passengers / Customers</strong> <small class="text-muted">(Optional — i-check lang kung test accounts ra)</small>
+                </span>
+              </label>
+
+              <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;">
+                <input type="checkbox" id="reset-wipe-riders" name="wipe_riders" style="margin-top:2px;width:16px;height:16px;accent-color:#dc2626;">
+                <span>
+                  <strong>Clear Riders</strong> <small class="text-muted">(Optional — ayaw i-check kung naa nay tinuod nga club riders)</small>
+                </span>
+              </label>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="reset-confirm-text" style="color:#991b1b;">Type <strong>RESET</strong> to confirm *</label>
+                <input type="text" id="reset-confirm-text" name="confirm_text" placeholder="Type RESET" autocomplete="off" required>
+              </div>
+              <div class="form-group">
+                <label for="reset-admin-password" style="color:#991b1b;">Admin Password *</label>
+                <input type="password" id="reset-admin-password" name="admin_password" placeholder="Enter admin password" autocomplete="current-password" required>
+              </div>
+            </div>
+
+            <div id="reset-launch-status" class="hidden" style="margin:8px 0;padding:8px 10px;border-radius:8px;font-size:0.82rem;"></div>
+
+            <button type="submit" id="reset-launch-btn" class="btn btn-block" style="background:#dc2626;color:#ffffff;border:none;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;margin-top:6px;">
+              🧹 Clear Selected Data for Fresh Launch
+            </button>
+          </form>
+        </div>
+      </details>
+    </div>
   </div>
 
   {% endif %}
@@ -1590,6 +1661,92 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = "<span>⬆️</span> I-restore Kini nga Backup";
+      }
+    });
+  }
+
+  // Fresh Launch / Clear Test Data Handler
+  const resetLaunchForm = document.getElementById("admin-reset-launch-form");
+  if (resetLaunchForm) {
+    resetLaunchForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const wipeBookings = Boolean(document.getElementById("reset-wipe-bookings")?.checked);
+      const wipeCustomers = Boolean(document.getElementById("reset-wipe-customers")?.checked);
+      const wipeRiders = Boolean(document.getElementById("reset-wipe-riders")?.checked);
+      const confirmText = (document.getElementById("reset-confirm-text")?.value || "").trim();
+      const adminPassword = (document.getElementById("reset-admin-password")?.value || "").trim();
+      const statusEl = document.getElementById("reset-launch-status");
+      const btn = document.getElementById("reset-launch-btn");
+
+      if (!wipeBookings && !wipeCustomers && !wipeRiders) {
+        alert("Palihug pagpili og labing menos usa ka category nga i-clear.");
+        return;
+      }
+      if (confirmText !== "RESET") {
+        alert("Palihug i-type ang eksaktong RESET (all caps) aron makumpirma.");
+        return;
+      }
+      if (!adminPassword) {
+        alert("Palihug isulod ang imong Admin Password.");
+        return;
+      }
+
+      const targets = [];
+      if (wipeBookings) targets.push("Bookings, Transactions, Revenue, Chat, Calls, Reviews & GPS Logs");
+      if (wipeCustomers) targets.push("Passengers / Customers");
+      if (wipeRiders) targets.push("Riders");
+
+      const ok = confirm(
+        "⚠️ KATAPUSANG KUMPIRMASYON:\n\n" +
+        "I-clear karon ang:\n• " + targets.join("\n• ") + "\n\n" +
+        "(Dili ma-delete ang Admin Password, Taripa / Fare Settings, ug Club Settings.)\n\n" +
+        "Dili na kini mabalik kung walay backup. Ipadayon?"
+      );
+      if (!ok) return;
+
+      const origText = btn ? btn.innerHTML : "";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ Naglimpyo sa test data...";
+      }
+      if (statusEl) {
+        statusEl.className = "alert-warning";
+        statusEl.textContent = "Nag-clear sa napiling test data...";
+        statusEl.classList.remove("hidden");
+      }
+
+      try {
+        const res = await fetch("/api/admin/reset-launch-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            confirm_text: confirmText,
+            admin_password: adminPassword,
+            wipe_bookings: wipeBookings,
+            wipe_customers: wipeCustomers,
+            wipe_riders: wipeRiders
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to clear data.");
+
+        if (statusEl) {
+          statusEl.className = "alert-success";
+          statusEl.textContent = "✅ " + (data.message || "Malampusong nalimpyohan ang test data!");
+        }
+        alert("✅ Fresh Launch Ready!\n\n" + (data.message || "Limpyo na ang database!"));
+        window.location.reload();
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = "alert-error";
+          statusEl.textContent = "❌ Error: " + err.message;
+        }
+        alert("❌ Error: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
       }
     });
   }
