@@ -1654,6 +1654,26 @@ class CamiguinCentricRidersClubTests(unittest.TestCase):
         self.assertIn("close-receipt-btn", cmodal)
         self.assertIn("✕ Close", cmodal)
 
+    def test_health_endpoints(self):
+        for path in ("/api/health", "/health", "/healthz"):
+            resp = self.client.get(path)
+            self.assertEqual(resp.status_code, 200, path)
+            data = resp.get_json()
+            self.assertEqual(data["status"], "ok")
+            self.assertEqual(data["backend"], "sqlite")
+            self.assertRegex(data["date"], r"^\d{4}-\d{2}-\d{2}$")
+            self.assertEqual(resp.headers.get("Cache-Control"), "no-store")
+            self.assertNotIn("Set-Cookie", resp.headers)
+
+            head_resp = self.client.head(path)
+            self.assertEqual(head_resp.status_code, 200, f"HEAD {path}")
+            self.assertNotIn("Set-Cookie", head_resp.headers)
+
+        db_resp = self.client.get("/api/health?db=1")
+        self.assertEqual(db_resp.status_code, 200)
+        self.assertEqual(db_resp.get_json()["status"], "ok")
+        self.assertEqual(db_resp.get_json()["backend"], "sqlite")
+
 
 if __name__ == "__main__":
     unittest.main()
